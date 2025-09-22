@@ -53,11 +53,21 @@ const sessionToUser = (session: any): User | null => {
     return null;
   }
   
+  // Map database roles to our UserRole type
+  let role: UserRole = 'user'; // default
+  if (user.role) {
+    if (user.role === 'admin') {
+      role = 'admin';
+    } else {
+      role = 'user'; // other roles map to 'user'
+    }
+  }
+
   return {
     id: user.id,
     name: user.name || user.email,
     email: user.email,
-    role: 'user', // Always default to 'user' since role column doesn't exist in database
+    role: role,
     isAuthenticated: true
   }
 }

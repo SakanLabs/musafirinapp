@@ -1,4 +1,4 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, useNavigate, redirect } from "@tanstack/react-router";
 import { useState, useEffect } from "react";
 import { authService, type User } from "@/lib/auth";
 import { Button } from "@/components/ui/button";
@@ -6,6 +6,13 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 
 export const Route = createFileRoute("/dashboard/user")({
+	beforeLoad: async () => {
+		// Check if user is authenticated
+		const isAuthenticated = await authService.isAuthenticated()
+		if (!isAuthenticated) {
+			throw redirect({ to: "/login" })
+		}
+	},
 	component: UserDashboard,
 });
 

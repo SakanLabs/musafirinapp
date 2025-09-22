@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html class="no-js" lang="id">
+<head>
+  <meta charset="utf-8" />
+  <meta http-equiv="x-ua-compatible" content="ie=edge" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="author" content="Musafirin" />
+  <title>Invoice {{invoiceNo}}</title>
+  <style>
+    /* ====== Base ====== */
+    body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif,'Apple Color Emoji','Segoe UI Emoji','Segoe UI Symbol';line-height:1.3;color:#374151;background:#f9fafb;font-size:12px}
+    .cs-container{max-width:800px;margin:20px auto;padding:20px;background:#fff;box-shadow:0 10px 15px -3px rgba(0,0,0,.1),0 4px 6px -2px rgba(0,0,0,.05);border-radius:8px}
+    .cs-flex{display:flex}.cs-justify-between{justify-content:space-between}.cs-align-start{align-items:flex-start}.cs-align-center{align-items:center}
+    .cs-text-right{text-align:right}.cs-text-center{text-align:center}
+    .cs-mb-1{margin-bottom:3px}.cs-mb-2{margin-bottom:6px}.cs-mb-4{margin-bottom:12px}.cs-mb-6{margin-bottom:16px}.cs-mb-8{margin-bottom:20px}.cs-mt-8{margin-top:20px}
+    .cs-font-bold{font-weight:700}.cs-font-semibold{font-weight:600}
+    .cs-text-sm{font-size:11px}.cs-text-lg{font-size:16px}.cs-text-xl{font-size:18px}.cs-text-2xl{font-size:20px}.cs-text-3xl{font-size:24px}
+    .cs-text-gray-500{color:#6b7280}.cs-text-gray-600{color:#4b5563}.cs-text-gray-800{color:#1f2937}
+    .cs-logo{font-size:24px;font-weight:800;color:#0ea5e9;letter-spacing:-.5px}
+    .cs-badge{display:inline-block;padding:2px 6px;border-radius:999px;background:#eef2ff;color:#3730a3;font-weight:600;font-size:11px}
+    .cs-divider{height:1px;background:#e5e7eb;margin:16px 0}
+    .cs-list{margin:0;padding:0;list-style:none}
+    .cs-list li{margin:0 0 4px 0}
+
+    /* Cards */
+    .cs-card{background:#f9fafb;border:1px solid #e5e7eb;border-radius:6px;padding:12px}
+    .cs-info-card{background:#f9fafb;border:1px solid #e5e7eb;border-radius:6px;padding:16px;margin-top:16px}
+
+    /* Tables */
+    .cs-table{width:100%;border-collapse:collapse}
+    .cs-table th,.cs-table td{padding:8px 0;text-align:left;vertical-align:top}
+    .cs-table th{font-weight:700;color:#111827;border-bottom:1px solid #e5e7eb}
+    .cs-table td{border-bottom:1px solid #f1f5f9}
+    .cs-num{text-align:right;white-space:nowrap}
+    .cs-muted{color:#6b7280}
+
+    .cs-total-table{width:100%;margin-top:8px;border-collapse:collapse}
+    .cs-total-table td{padding:4px 0}
+    .cs-total-table .cs-label{text-align:right;color:#374151}
+    .cs-total-table .cs-value{text-align:right;font-weight:600}
+    /* ==== Compact helpers ==== */
+    .cs-card-compact { padding: 0 16px; }          /* no top/bottom padding */
+    .cs-mb-0 { margin-bottom: 0; }                 /* no bottom margin */
+    .cs-stack-tight > * + * { margin-top: 2px; }   /* rapat antar-baris */
+
+
+    /* Print */
+    @media print{
+      body{background:#fff;font-size:11px}
+      .cs-container{box-shadow:none;margin:0;padding:16px}
+      .cs-no-print{display:none !important}
+    }
+  </style>
+</head>
+<body>
+  <div class="cs-container">
+    <!-- Header -->
+    <div class="cs-flex cs-justify-between cs-align-start cs-mb-6">
+      <div>
+        <img src="data:image/png;base64,{{logoBase64}}" alt="Musafirin Logo" class="cs-logo-img" style="height: 60px; width: auto; margin-bottom: 8px;">
+        <!-- <p class="cs-text-sm cs-text-gray-500">Hotel Booking Invoice</p> -->
+      </div>
+      <div class="cs-text-right">
+        <div class="cs-badge">Invoice</div>
+        <p class="cs-font-semibold cs-text-lg">#{{invoiceNo}}</p>
+        <p class="cs-text-gray-500">{{invoiceDate}}</p>
+        <p class="cs-text-gray-600"><span class="cs-font-semibold">Jatuh Tempo:</span> {{dueDate}}</p>
+      </div>
+    </div>
+
+    <!-- Hotel & Guest -->
+      <div class="cs-flex cs-justify-between cs-align-start cs-mb-2">
+      <!-- Hotel -->
+      <div style="width:52%">
+        <p class="cs-font-semibold cs-text-gray-800 cs-mb-1">Hotel</p>
+        <div class="cs-card cs-card-compact cs-stack-tight">
+          <p class="cs-font-semibold cs-mb-0">{{hotelName}}</p>
+          <p class="cs-text-sm cs-text-gray-600">{{hotelAddress}}</p>
+        </div>
+      </div>
+
+      <!-- Tamu -->
+      <div style="width:44%" class="cs-text-right">
+        <p class="cs-font-semibold cs-text-gray-800 cs-mb-1">Tamu</p>
+        <div class="cs-card cs-card-compact cs-stack-tight">
+          <p class="cs-font-semibold cs-mb-0">{{guest.name}}</p>
+          <p class="cs-text-sm cs-text-gray-600">
+            {{guest.email}} <span class="cs-text-gray-500"> | </span> {{guest.phone}}
+          </p>
+        </div>
+      </div>
+    </div>
+
+
+    <!-- Stay Info -->
+    <div class="cs-card cs-flex cs-justify-between cs-align-start cs-mb-2">
+      <div>
+        <p class="cs-text-gray-600 cs-font-semibold cs-mb-1">Check-in</p>
+        <p class="cs-font-semibold">{{checkIn}}</p>
+      </div>
+      <div>
+        <p class="cs-text-gray-600 cs-font-semibold cs-mb-1">Check-out</p>
+        <p class="cs-font-semibold">{{checkOut}}</p>
+      </div>
+      <div>
+        <p class="cs-text-gray-600 cs-font-semibold cs-mb-1">Total Malam</p>
+        <p class="cs-font-semibold">{{totalNights}}</p>
+      </div>
+      <div>
+        <p class="cs-text-gray-600 cs-font-semibold cs-mb-1">Mata Uang</p>
+        <p class="cs-font-semibold">{{currency}}</p>
+      </div>
+    </div>
+
+    <!-- Booking Details -->
+    <div class="cs-mb-2">
+      <h2 class="cs-text-lg cs-font-bold cs-text-gray-800 cs-mb-2">Rincian Pemesanan</h2>
+      <table class="cs-table">
+        <thead>
+          <tr>
+            <th style="width:30%">Tipe Kamar</th>
+            <th style="width:18%">Meal Plan</th>
+            <th style="width:10%" class="cs-text-center">Qty</th>
+            <th style="width:12%" class="cs-text-center">Malam</th>
+            <th style="width:15%" class="cs-num">Room Rate</th>
+            <th style="width:15%" class="cs-num">Total Price</th>
+          </tr>
+        </thead>
+        <tbody>
+          {{#each items}}
+          <tr>
+            <td>
+              <div class="cs-font-semibold">{{roomType}}</div>
+            </td>
+            <td>{{mealPlan}}</td>
+            <td class="cs-text-center">{{quantity}}</td>
+            <td class="cs-text-center">{{nights}}</td>
+            <td class="cs-num">{{currency}} {{roomRate}}</td>
+            <td class="cs-num">{{currency}} {{lineTotal}}</td>
+          </tr>
+          {{/each}}
+        </tbody>
+      </table>
+
+      <!-- Totals -->
+      <table class="cs-total-table">
+        <tr>
+          <td class="cs-label" style="width:85%">Subtotal</td>
+          <td class="cs-value" style="width:15%">{{currency}} {{subtotal}}</td>
+        </tr>
+        <tr>
+          <td class="cs-label" style="font-weight:700">Grand Total</td>
+          <td class="cs-value" style="font-weight:700">{{currency}} {{grandTotal}}</td>
+        </tr>
+        <tr>
+          <td class="cs-label">Terbayar</td>
+          <td class="cs-value">{{currency}} {{paidAmount}}</td>
+        </tr>
+        <tr>
+          <td class="cs-label">Sisa Tagihan</td>
+          <td class="cs-value">{{currency}} {{balanceDue}}</td>
+        </tr>
+      </table>
+    </div>
+
+    <!-- Payment Instruction -->
+    <div class="cs-info-card">
+      <h3 class="cs-text-lg cs-font-bold cs-text-gray-800 cs-mb-2">Tata Cara Pembayaran</h3>
+      <div class="cs-text-gray-600 cs-text-sm">
+        <p class="cs-mb-1">1. Transfer ke: <span class="cs-font-semibold">{{bank.bankName}} ({{bank.bankCountry}})</span></p>
+        <p class="cs-mb-1">Atas Nama: <span class="cs-font-semibold">{{bank.accountName}}</span> | No. Rek: <span class="cs-font-semibold">{{bank.accountNumberOrIBAN}}</span></p>
+        <p class="cs-mb-1">2. Kirim bukti ke {{billingContact.email}} / WA {{billingContact.phone}} dengan nomor invoice.</p>
+        <p>3. Biaya bank ditanggung pembayar.</p>
+      </div>
+    </div>
+
+    <!-- Terms & Conditions -->
+    <div class="cs-info-card">
+      <h3 class="cs-text-lg cs-font-bold cs-text-gray-800 cs-mb-2">Ketentuan Pemesanan</h3>
+      <div class="cs-text-gray-600 cs-text-sm">
+        <p class="cs-mb-1">• Pemesanan <span class="cs-font-semibold">terkonfirmasi</span> setelah Full Payment.</p>
+        <p class="cs-mb-1">• <span class="cs-font-semibold">Pembatalan:</span> Pesanan ini tidak dapat di batalkan dan di refund.</p>
+        <p class="cs-mb-1">• Check-in: {{terms.policyCheckInTime}} | Check-out: {{terms.policyCheckOutTime}}.</p>
+        <p>• Perubahan/permintaan khusus tergantung ketersediaan. Harga dapat berubah sebelum pelunasan.</p>
+      </div>
+    </div>
+
+    <!-- Footer -->
+    <div class="cs-divider"></div>
+    <div class="cs-flex cs-justify-between cs-align-center">
+      <p class="cs-text-sm cs-text-gray-500">Terima kasih telah memesan melalui {{brandName}}.</p>
+      <button class="cs-no-print" onclick="window.print()" style="border:1px solid #e5e7eb;background:#fff;border-radius:6px;padding:6px 10px;cursor:pointer">Cetak</button>
+    </div>
+  </div>
+</body>
+</html>

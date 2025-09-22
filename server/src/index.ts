@@ -2,9 +2,14 @@ import { Hono } from "hono";
 import { cors } from "hono/cors";
 import type { ApiResponse } from "shared/dist";
 import { betterAuth } from "better-auth";
+import { admin } from "better-auth/plugins";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { db } from "./db";
 import * as schema from "./db/schema";
+import bookingRoutes from "./routes/bookings";
+import invoiceRoutes from "./routes/invoices";
+import voucherRoutes from "./routes/vouchers";
+import reportsRoutes from "./routes/reports";
 
 // Load environment variables
 const BETTER_AUTH_SECRET = process.env.BETTER_AUTH_SECRET;
@@ -56,6 +61,12 @@ const auth = betterAuth({
       prompt: "select_account consent",
     },
   },
+  plugins: [
+    admin({
+      // Define admin users by their IDs or use role-based approach
+      // adminUserIds: ["admin-user-id"], // Optional: specific user IDs as admins
+    })
+  ],
 });
 
 export const app = new Hono()
@@ -75,6 +86,11 @@ export const app = new Hono()
       return c.json({ error: 'Authentication failed' }, 500);
     }
   })
+  // API Routes
+  .route("/api/bookings", bookingRoutes)
+  .route("/api/invoices", invoiceRoutes)
+  .route("/api/vouchers", voucherRoutes)
+  .route("/api/reports", reportsRoutes)
   .get("/", (c) => {
     return c.text("Hello Hono!");
   })

@@ -40,3 +40,14 @@ pnpm-debug.log*
 # Bun
 bun.lockb
 .turbo
+
+# Test files and temporary files
+test-*.pdf
+*.tmp
+*.temp
+test-output/
+cookies.txt
+testing-summary.md
+
+# MinIO data
+minio-data/

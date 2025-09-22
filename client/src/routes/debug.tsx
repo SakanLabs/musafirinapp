@@ -1,103 +1,105 @@
-import { createFileRoute } from "@tanstack/react-router"
-import { useState, useEffect } from "react"
-import { authService } from "@/lib/auth"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
+import { createFileRoute, useLocation, useRouter } from '@tanstack/react-router'
+import { useState, useEffect } from 'react'
+import { authService } from '@/lib/auth'
 
-export const Route = createFileRoute("/debug")({
+export const Route = createFileRoute('/debug')({
   component: DebugPage,
 })
 
 function DebugPage() {
-  const [authState, setAuthState] = useState<any>(null)
+  const location = useLocation()
+  const router = useRouter()
+  const [user, setUser] = useState<any>(null)
+  const [isAuthenticated, setIsAuthenticated] = useState(false)
   const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-
-  const checkAuth = async () => {
-    setLoading(true)
-    setError(null)
-    try {
-      console.log('Debug: Checking authentication...')
-      
-      const user = await authService.getCurrentUser()
-      const isAuth = await authService.isAuthenticated()
-      const isAdmin = await authService.isAdmin()
-      
-      setAuthState({
-        user,
-        isAuthenticated: isAuth,
-        isAdmin,
-        timestamp: new Date().toISOString()
-      })
-      
-      console.log('Debug: Auth state:', { user, isAuth, isAdmin })
-    } catch (err) {
-      console.error('Debug: Auth check failed:', err)
-      setError(err instanceof Error ? err.message : 'Unknown error')
-    } finally {
-      setLoading(false)
-    }
-  }
 
   useEffect(() => {
+    const checkAuth = async () => {
+      try {
+        const currentUser = await authService.getCurrentUser()
+        const authStatus = await authService.isAuthenticated()
+        setUser(currentUser)
+        setIsAuthenticated(authStatus)
+      } catch (error) {
+        console.error('Auth check error:', error)
+      } finally {
+        setLoading(false)
+      }
+    }
     checkAuth()
   }, [])
 
+  if (loading) {
+    return (
+      <div className="p-6 max-w-4xl mx-auto">
+        <h1 className="text-2xl font-bold mb-6">Debug Information</h1>
+        <p>Loading...</p>
+      </div>
+    )
+  }
+
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 p-8">
-      <div className="max-w-4xl mx-auto">
-        <Card>
-          <CardHeader>
-            <CardTitle>Authentication Debug Page</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <Button onClick={checkAuth} disabled={loading}>
-              {loading ? 'Checking...' : 'Refresh Auth State'}
-            </Button>
-            
-            {error && (
-              <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">
-                <strong>Error:</strong> {error}
-              </div>
-            )}
-            
-            <div className="bg-gray-100 dark:bg-gray-800 p-4 rounded-lg">
-              <h3 className="font-semibold mb-2">Current Auth State:</h3>
-              <pre className="text-sm overflow-auto">
-                {JSON.stringify(authState, null, 2)}
-              </pre>
-            </div>
-            
-            <div className="space-y-2">
-              <h3 className="font-semibold">Quick Actions:</h3>
-              <div className="flex gap-2">
-                <Button 
-                  variant="outline" 
-                  onClick={() => window.location.href = '/login'}
-                >
-                  Go to Login
-                </Button>
-                <Button 
-                  variant="outline" 
-                  onClick={() => window.location.href = '/dashboard/user'}
-                >
-                  Go to User Dashboard
-                </Button>
-                <Button 
-                  variant="outline" 
-                  onClick={() => window.location.href = '/test-user-dashboard'}
-                >
-                  Go to Test Dashboard
-                </Button>
-              </div>
-            </div>
-            
-            <div className="text-sm text-gray-600 dark:text-gray-400">
-              <p><strong>Current URL:</strong> {window.location.href}</p>
-              <p><strong>User Agent:</strong> {navigator.userAgent}</p>
-            </div>
-          </CardContent>
-        </Card>
+    <div className="p-6 max-w-4xl mx-auto">
+      <h1 className="text-2xl font-bold mb-6">Debug Information</h1>
+      
+      <div className="space-y-6">
+        <div className="bg-gray-100 p-4 rounded-lg">
+          <h2 className="text-lg font-semibold mb-2">Current Location</h2>
+          <pre className="text-sm overflow-auto">
+            {JSON.stringify(location, null, 2)}
+          </pre>
+        </div>
+
+        <div className="bg-gray-100 p-4 rounded-lg">
+          <h2 className="text-lg font-semibold mb-2">Authentication Status</h2>
+          <div className="space-y-2">
+            <p><strong>Is Authenticated:</strong> {isAuthenticated ? 'Yes' : 'No'}</p>
+            <p><strong>User:</strong></p>
+            <pre className="text-sm overflow-auto">
+              {JSON.stringify(user, null, 2)}
+            </pre>
+          </div>
+        </div>
+
+        <div className="bg-gray-100 p-4 rounded-lg">
+          <h2 className="text-lg font-semibold mb-2">Router State</h2>
+          <pre className="text-sm overflow-auto">
+            {JSON.stringify({
+              state: router.state,
+              history: router.history.location
+            }, null, 2)}
+          </pre>
+        </div>
+
+        <div className="bg-gray-100 p-4 rounded-lg">
+          <h2 className="text-lg font-semibold mb-2">Test Navigation</h2>
+          <div className="space-y-2">
+            <button 
+              onClick={() => router.navigate({ to: '/bookings' })}
+              className="bg-blue-500 text-white px-4 py-2 rounded mr-2"
+            >
+              Navigate to /bookings
+            </button>
+            <button 
+              onClick={() => router.navigate({ to: '/bookings/create' })}
+              className="bg-green-500 text-white px-4 py-2 rounded mr-2"
+            >
+              Navigate to /bookings/create
+            </button>
+            <button 
+              onClick={() => window.location.href = '/bookings/create'}
+              className="bg-red-500 text-white px-4 py-2 rounded"
+            >
+              Direct window.location to /bookings/create
+            </button>
+          </div>
+        </div>
+
+        <div className="bg-gray-100 p-4 rounded-lg">
+          <h2 className="text-lg font-semibold mb-2">Current URL</h2>
+          <p><strong>window.location.href:</strong> {window.location.href}</p>
+          <p><strong>window.location.pathname:</strong> {window.location.pathname}</p>
+        </div>
       </div>
     </div>
   )
