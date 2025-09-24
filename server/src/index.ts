@@ -10,6 +10,8 @@ import bookingRoutes from "./routes/bookings";
 import invoiceRoutes from "./routes/invoices";
 import voucherRoutes from "./routes/vouchers";
 import reportsRoutes from "./routes/reports";
+import analyticsRoutes from "./routes/analytics";
+import costsRoutes from "./routes/costs";
 
 // Load environment variables
 const BETTER_AUTH_SECRET = process.env.BETTER_AUTH_SECRET;
@@ -88,6 +90,8 @@ export const app = new Hono()
   .route("/api/invoices", invoiceRoutes)
   .route("/api/vouchers", voucherRoutes)
   .route("/api/reports", reportsRoutes)
+  .route("/api/analytics", analyticsRoutes)
+  .route("/api/costs", costsRoutes)
   .get("/", (c) => {
     return c.text("Hello Hono!");
   })

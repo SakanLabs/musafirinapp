@@ -50,6 +50,8 @@ function EditBookingPage() {
     numberOfGuests: 1,
     specialRequests: '',
     totalAmount: 0,
+    hotelCostPerNight: 0,
+    totalHotelCost: 0,
     status: 'pending'
   })
 
@@ -66,6 +68,8 @@ function EditBookingPage() {
         numberOfGuests: 1, // Default value since this field doesn't exist in Booking interface
         specialRequests: '', // Default value since this field doesn't exist in Booking interface
         totalAmount: booking.totalAmount || 0,
+        hotelCostPerNight: 0, // Default value, will be populated from backend later
+        totalHotelCost: 0, // Default value, will be populated from backend later
         status: booking.bookingStatus || 'pending'
       })
     }
@@ -229,7 +233,7 @@ function EditBookingPage() {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Total Amount</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Total Amount (SAR)</label>
                   <Input
                     type="number"
                     step="0.01"
@@ -237,6 +241,30 @@ function EditBookingPage() {
                     onChange={(e) => handleInputChange('totalAmount', parseFloat(e.target.value) || 0)}
                     required
                   />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Hotel Cost per Night (SAR)</label>
+                  <Input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    value={formData.hotelCostPerNight}
+                    onChange={(e) => handleInputChange('hotelCostPerNight', parseFloat(e.target.value) || 0)}
+                    placeholder="0"
+                  />
+                  <p className="text-xs text-gray-500 mt-1">Cost price from hotel supplier</p>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Total Hotel Cost (SAR)</label>
+                  <Input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    value={formData.totalHotelCost}
+                    onChange={(e) => handleInputChange('totalHotelCost', parseFloat(e.target.value) || 0)}
+                    placeholder="0"
+                  />
+                  <p className="text-xs text-gray-500 mt-1">Total cost for all nights</p>
                 </div>
               </CardContent>
             </Card>

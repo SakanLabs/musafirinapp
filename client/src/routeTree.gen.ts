@@ -16,10 +16,12 @@ import { Route as InvoicesRouteImport } from './routes/invoices'
 import { Route as ForgotPasswordRouteImport } from './routes/forgot-password'
 import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as CreateBookingRouteImport } from './routes/create-booking'
+import { Route as CostsRouteImport } from './routes/costs'
 import { Route as ClearAuthCacheRouteImport } from './routes/clear-auth-cache'
 import { Route as BookingsRouteImport } from './routes/bookings'
 import { Route as BookingEditRouteImport } from './routes/booking-edit'
 import { Route as BookingDetailRouteImport } from './routes/booking-detail'
+import { Route as AnalyticsRouteImport } from './routes/analytics'
 import { Route as AdminRouteImport } from './routes/admin'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as VouchersCreateRouteImport } from './routes/vouchers/create'
@@ -66,6 +68,11 @@ const CreateBookingRoute = CreateBookingRouteImport.update({
   path: '/create-booking',
   getParentRoute: () => rootRouteImport,
 } as any)
+const CostsRoute = CostsRouteImport.update({
+  id: '/costs',
+  path: '/costs',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ClearAuthCacheRoute = ClearAuthCacheRouteImport.update({
   id: '/clear-auth-cache',
   path: '/clear-auth-cache',
@@ -84,6 +91,11 @@ const BookingEditRoute = BookingEditRouteImport.update({
 const BookingDetailRoute = BookingDetailRouteImport.update({
   id: '/booking-detail',
   path: '/booking-detail',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AnalyticsRoute = AnalyticsRouteImport.update({
+  id: '/analytics',
+  path: '/analytics',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AdminRoute = AdminRouteImport.update({
@@ -140,10 +152,12 @@ const BookingsBookingIdEditRoute = BookingsBookingIdEditRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/admin': typeof AdminRoute
+  '/analytics': typeof AnalyticsRoute
   '/booking-detail': typeof BookingDetailRoute
   '/booking-edit': typeof BookingEditRoute
   '/bookings': typeof BookingsRouteWithChildren
   '/clear-auth-cache': typeof ClearAuthCacheRoute
+  '/costs': typeof CostsRoute
   '/create-booking': typeof CreateBookingRoute
   '/dashboard': typeof DashboardRouteWithChildren
   '/forgot-password': typeof ForgotPasswordRoute
@@ -163,10 +177,12 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/admin': typeof AdminRoute
+  '/analytics': typeof AnalyticsRoute
   '/booking-detail': typeof BookingDetailRoute
   '/booking-edit': typeof BookingEditRoute
   '/bookings': typeof BookingsRouteWithChildren
   '/clear-auth-cache': typeof ClearAuthCacheRoute
+  '/costs': typeof CostsRoute
   '/create-booking': typeof CreateBookingRoute
   '/dashboard': typeof DashboardRouteWithChildren
   '/forgot-password': typeof ForgotPasswordRoute
@@ -187,10 +203,12 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/admin': typeof AdminRoute
+  '/analytics': typeof AnalyticsRoute
   '/booking-detail': typeof BookingDetailRoute
   '/booking-edit': typeof BookingEditRoute
   '/bookings': typeof BookingsRouteWithChildren
   '/clear-auth-cache': typeof ClearAuthCacheRoute
+  '/costs': typeof CostsRoute
   '/create-booking': typeof CreateBookingRoute
   '/dashboard': typeof DashboardRouteWithChildren
   '/forgot-password': typeof ForgotPasswordRoute
@@ -212,10 +230,12 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/admin'
+    | '/analytics'
     | '/booking-detail'
     | '/booking-edit'
     | '/bookings'
     | '/clear-auth-cache'
+    | '/costs'
     | '/create-booking'
     | '/dashboard'
     | '/forgot-password'
@@ -235,10 +255,12 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/admin'
+    | '/analytics'
     | '/booking-detail'
     | '/booking-edit'
     | '/bookings'
     | '/clear-auth-cache'
+    | '/costs'
     | '/create-booking'
     | '/dashboard'
     | '/forgot-password'
@@ -258,10 +280,12 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/admin'
+    | '/analytics'
     | '/booking-detail'
     | '/booking-edit'
     | '/bookings'
     | '/clear-auth-cache'
+    | '/costs'
     | '/create-booking'
     | '/dashboard'
     | '/forgot-password'
@@ -282,10 +306,12 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AdminRoute: typeof AdminRoute
+  AnalyticsRoute: typeof AnalyticsRoute
   BookingDetailRoute: typeof BookingDetailRoute
   BookingEditRoute: typeof BookingEditRoute
   BookingsRoute: typeof BookingsRouteWithChildren
   ClearAuthCacheRoute: typeof ClearAuthCacheRoute
+  CostsRoute: typeof CostsRoute
   CreateBookingRoute: typeof CreateBookingRoute
   DashboardRoute: typeof DashboardRouteWithChildren
   ForgotPasswordRoute: typeof ForgotPasswordRoute
@@ -348,6 +374,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof CreateBookingRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/costs': {
+      id: '/costs'
+      path: '/costs'
+      fullPath: '/costs'
+      preLoaderRoute: typeof CostsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/clear-auth-cache': {
       id: '/clear-auth-cache'
       path: '/clear-auth-cache'
@@ -374,6 +407,13 @@ declare module '@tanstack/react-router' {
       path: '/booking-detail'
       fullPath: '/booking-detail'
       preLoaderRoute: typeof BookingDetailRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/analytics': {
+      id: '/analytics'
+      path: '/analytics'
+      fullPath: '/analytics'
+      preLoaderRoute: typeof AnalyticsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/admin': {
@@ -513,10 +553,12 @@ const VouchersRouteWithChildren = VouchersRoute._addFileChildren(
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AdminRoute: AdminRoute,
+  AnalyticsRoute: AnalyticsRoute,
   BookingDetailRoute: BookingDetailRoute,
   BookingEditRoute: BookingEditRoute,
   BookingsRoute: BookingsRouteWithChildren,
   ClearAuthCacheRoute: ClearAuthCacheRoute,
+  CostsRoute: CostsRoute,
   CreateBookingRoute: CreateBookingRoute,
   DashboardRoute: DashboardRouteWithChildren,
   ForgotPasswordRoute: ForgotPasswordRoute,

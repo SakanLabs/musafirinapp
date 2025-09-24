@@ -1,4 +1,4 @@
-import { createFileRoute, redirect, Link } from "@tanstack/react-router"
+import { createFileRoute, redirect, Link, useNavigate } from "@tanstack/react-router"
 import { useState } from "react"
 import { PageLayout } from "@/components/layout/PageLayout"
 import { DataTable, Column } from "@/components/ui/data-table"
@@ -14,9 +14,9 @@ import {
   Calendar,
   MapPin,
   Users,
-  DollarSign,
   Loader2
 } from "lucide-react"
+import { SARCurrency } from "@/components/ui/sar-currency"
 import { authService } from "@/lib/auth"
 import { 
   formatCurrency, 
@@ -27,6 +27,7 @@ import {
   generateBookingWhatsAppMessage 
 } from "@/lib/utils"
 import { useBookings, useCreateBooking, type Booking, type CreateBookingData } from "@/lib/queries"
+import { useOperationalCosts } from '../lib/queries/analytics'
 
 export const Route = createFileRoute("/bookings")({ 
   beforeLoad: async () => {
@@ -40,6 +41,7 @@ export const Route = createFileRoute("/bookings")({
 })
 
 function BookingsPage() {
+  const navigate = useNavigate()
   const [isCreateDrawerOpen, setIsCreateDrawerOpen] = useState(false)
   const [formData, setFormData] = useState({
     guestName: "",
@@ -57,7 +59,40 @@ function BookingsPage() {
 
   // Fetch bookings using TanStack Query
   const { data: bookings = [], isLoading, error } = useBookings()
+  const { data: operationalCosts = [] } = useOperationalCosts()
   const createBookingMutation = useCreateBooking()
+
+  // Helper function to calculate profit for a booking
+  const calculateBookingProfit = (booking: Booking) => {
+    // Calculate revenue from booking items
+    const revenue = booking.items?.reduce((total, item) => {
+      return total + (parseFloat(item.unitPrice) * item.roomCount)
+    }, 0) || parseFloat(booking.totalAmount.toString())
+
+    // Calculate hotel costs from booking items
+    const hotelCosts = booking.items?.reduce((total, item) => {
+      return total + (parseFloat(item.hotelCostPrice || '0') * item.roomCount)
+    }, 0) || 0
+
+    // Calculate operational costs for this booking
+    const bookingOperationalCosts = operationalCosts
+      .filter(cost => cost.bookingId === booking.id)
+      .reduce((total, cost) => total + parseFloat(cost.amount), 0)
+
+    // Calculate profits
+    const grossProfit = revenue - hotelCosts
+    const netProfit = grossProfit - bookingOperationalCosts
+    const profitMargin = revenue > 0 ? (netProfit / revenue) * 100 : 0
+
+    return {
+      revenue,
+      hotelCosts,
+      operationalCosts: bookingOperationalCosts,
+      grossProfit,
+      netProfit,
+      profitMargin
+    }
+  }
 
   // Define columns for bookings table
   const bookingColumns: Column<Booking>[] = [
@@ -66,6 +101,33 @@ function BookingsPage() {
       header: 'ID',
       sortable: true,
       width: 'w-24'
+    },
+    {
+      key: 'actions',
+      header: 'Actions',
+      render: (booking) => (
+        <div className="flex space-x-1">
+          <Button 
+            size="sm" 
+            variant="outline"
+            onClick={() => navigate({ to: "/booking-detail", search: { id: booking.id.toString() } })}
+            title="Lihat Detail Booking"
+            className="flex items-center space-x-1"
+          >
+            <Eye className="h-4 w-4" />
+            <span>Detail</span>
+          </Button>
+          <Button 
+            size="sm" 
+            variant="ghost"
+            onClick={() => handleShareWhatsApp(booking)}
+            title="Share ke WhatsApp"
+          >
+            <Share className="h-4 w-4" />
+          </Button>
+        </div>
+      ),
+      width: 'w-36'
     },
     {
       key: 'clientName',
@@ -99,7 +161,7 @@ function BookingsPage() {
     },
     {
       key: 'totalAmount',
-      header: 'Total',
+      header: 'Total Rates',
       render: (booking) => formatCurrency(booking.totalAmount.toString(), 'SAR'),
       sortable: true,
       width: 'w-32'
@@ -113,29 +175,6 @@ function BookingsPage() {
         </Badge>
       ),
       sortable: true,
-      width: 'w-24'
-    },
-    {
-      key: 'actions',
-      header: 'Actions',
-      render: (booking) => (
-        <div className="flex space-x-2">
-          <Button 
-            size="sm" 
-            variant="ghost"
-            onClick={() => window.location.href = `/booking-detail?id=${booking.id}`}
-          >
-            <Eye className="h-4 w-4" />
-          </Button>
-          <Button 
-            size="sm" 
-            variant="ghost"
-            onClick={() => handleShareWhatsApp(booking)}
-          >
-            <Share className="h-4 w-4" />
-          </Button>
-        </div>
-      ),
       width: 'w-24'
     }
   ]
@@ -356,7 +395,7 @@ function BookingsPage() {
           {/* Pricing */}
           <Card className="p-4">
             <div className="flex items-center space-x-2 mb-4">
-              <DollarSign className="h-5 w-5 text-orange-600" />
+              <SARCurrency iconSize={20} className="text-orange-600" />
               <h3 className="text-lg font-semibold">Pricing</h3>
             </div>
             <div className="grid grid-cols-1 gap-4">

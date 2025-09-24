@@ -6,7 +6,6 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { 
   Calendar,
-  DollarSign,
   FileText,
   Ticket,
   Hotel,
@@ -17,6 +16,7 @@ import {
   Plus,
   Loader2
 } from "lucide-react"
+import { SARCurrency } from "@/components/ui/sar-currency"
 import { formatCurrency, formatDate, getPaymentStatusColor, getBookingStatusColor, shareToWhatsApp, generateBookingWhatsAppMessage } from "@/lib/utils"
 import { useDashboardSummary } from "@/lib/queries"
 import { authService } from "@/lib/auth"
@@ -188,7 +188,7 @@ function AdminDashboard() {
             value: "+8%", // Placeholder - you can calculate this from monthlyRevenue data
             type: 'increase'
           }}
-          icon={DollarSign}
+          icon={SARCurrency}
         />
         
         <StatCard

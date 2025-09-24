@@ -90,7 +90,8 @@ export const bookingItems = pgTable('booking_items', {
   bookingId: integer('booking_id').notNull().references(() => bookings.id, { onDelete: 'cascade' }),
   roomType: roomTypeEnum('room_type').notNull(),
   roomCount: integer('room_count').notNull(),
-  unitPrice: decimal('unit_price', { precision: 10, scale: 2 }).notNull(),
+  unitPrice: decimal('unit_price', { precision: 10, scale: 2 }).notNull(), // Harga jual ke customer
+  hotelCostPrice: decimal('hotel_cost_price', { precision: 10, scale: 2 }).default('0').notNull(), // Harga beli ke hotel
 });
 
 // Invoices table
@@ -117,6 +118,34 @@ export const vouchers = pgTable('vouchers', {
   createdAt: timestamp('created_at').defaultNow().notNull(),
 });
 
+// Operational costs for tracking additional expenses per booking
+export const operationalCosts = pgTable('operational_costs', {
+  id: serial('id').primaryKey(),
+  bookingId: integer('booking_id').notNull().references(() => bookings.id, { onDelete: 'cascade' }),
+  costType: varchar('cost_type', { length: 100 }).notNull(), // e.g., 'transportation', 'visa', 'admin'
+  description: text('description'),
+  amount: decimal('amount', { precision: 10, scale: 2 }).notNull(),
+  currency: varchar('currency', { length: 3 }).default('SAR').notNull(),
+  incurredDate: timestamp('incurred_date').defaultNow().notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+});
+
+// Hotel cost templates for default pricing
+export const hotelCostTemplates = pgTable('hotel_cost_templates', {
+  id: serial('id').primaryKey(),
+  hotelName: varchar('hotel_name', { length: 255 }).notNull(),
+  city: cityEnum('city').notNull(),
+  roomType: roomTypeEnum('room_type').notNull(),
+  costPrice: decimal('cost_price', { precision: 10, scale: 2 }).notNull(),
+  currency: varchar('currency', { length: 3 }).default('SAR').notNull(),
+  effectiveDate: timestamp('effective_date').defaultNow().notNull(),
+  notes: text('notes'),
+  isActive: boolean('is_active').default(true).notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+});
+
 
 
 // Type exports for better-auth tables
@@ -140,3 +169,7 @@ export type Invoice = typeof invoices.$inferSelect;
 export type NewInvoice = typeof invoices.$inferInsert;
 export type Voucher = typeof vouchers.$inferSelect;
 export type NewVoucher = typeof vouchers.$inferInsert;
+export type OperationalCost = typeof operationalCosts.$inferSelect;
+export type NewOperationalCost = typeof operationalCosts.$inferInsert;
+export type HotelCostTemplate = typeof hotelCostTemplates.$inferSelect;
+export type NewHotelCostTemplate = typeof hotelCostTemplates.$inferInsert;

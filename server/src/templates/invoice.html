@@ -43,6 +43,10 @@
     .cs-mb-0 { margin-bottom: 0; }                 /* no bottom margin */
     .cs-stack-tight > * + * { margin-top: 2px; }   /* rapat antar-baris */
 
+    /* Saudi Riyal SVG Icon */
+    .cs-sar-icon{display:inline-block;width:12px;height:12px;vertical-align:middle;margin-right:2px}
+    .cs-sar-icon-lg{display:inline-block;width:16px;height:16px;vertical-align:middle;margin-right:3px}
+
 
     /* Print */
     @media print{
@@ -108,7 +112,10 @@
       </div>
       <div>
         <p class="cs-text-gray-600 cs-font-semibold cs-mb-1">Mata Uang</p>
-        <p class="cs-font-semibold">{{currency}}</p>
+        <p class="cs-font-semibold">
+          <img src="data:image/svg+xml;base64,{{saudiRiyalSVGBase64}}" alt="SAR" class="cs-sar-icon-lg">
+          SAR
+        </p>
       </div>
     </div>
 
@@ -135,8 +142,14 @@
             <td>{{mealPlan}}</td>
             <td class="cs-text-center">{{quantity}}</td>
             <td class="cs-text-center">{{nights}}</td>
-            <td class="cs-num">{{currency}} {{roomRate}}</td>
-            <td class="cs-num">{{currency}} {{lineTotal}}</td>
+            <td class="cs-num">
+              <img src="data:image/svg+xml;base64,{{@root.saudiRiyalSVGBase64}}" alt="SAR" class="cs-sar-icon">
+              {{roomRate}}
+            </td>
+            <td class="cs-num">
+              <img src="data:image/svg+xml;base64,{{@root.saudiRiyalSVGBase64}}" alt="SAR" class="cs-sar-icon">
+              {{lineTotal}}
+            </td>
           </tr>
           {{/each}}
         </tbody>
@@ -146,19 +159,31 @@
       <table class="cs-total-table">
         <tr>
           <td class="cs-label" style="width:85%">Subtotal</td>
-          <td class="cs-value" style="width:15%">{{currency}} {{subtotal}}</td>
+          <td class="cs-value" style="width:15%">
+            <img src="data:image/svg+xml;base64,{{saudiRiyalSVGBase64}}" alt="SAR" class="cs-sar-icon">
+            {{subtotal}}
+          </td>
         </tr>
         <tr>
           <td class="cs-label" style="font-weight:700">Grand Total</td>
-          <td class="cs-value" style="font-weight:700">{{currency}} {{grandTotal}}</td>
+          <td class="cs-value" style="font-weight:700">
+            <img src="data:image/svg+xml;base64,{{saudiRiyalSVGBase64}}" alt="SAR" class="cs-sar-icon">
+            {{grandTotal}}
+          </td>
         </tr>
         <tr>
           <td class="cs-label">Terbayar</td>
-          <td class="cs-value">{{currency}} {{paidAmount}}</td>
+          <td class="cs-value">
+            <img src="data:image/svg+xml;base64,{{saudiRiyalSVGBase64}}" alt="SAR" class="cs-sar-icon">
+            {{paidAmount}}
+          </td>
         </tr>
         <tr>
           <td class="cs-label">Sisa Tagihan</td>
-          <td class="cs-value">{{currency}} {{balanceDue}}</td>
+          <td class="cs-value">
+            <img src="data:image/svg+xml;base64,{{saudiRiyalSVGBase64}}" alt="SAR" class="cs-sar-icon">
+            {{balanceDue}}
+          </td>
         </tr>
       </table>
     </div>

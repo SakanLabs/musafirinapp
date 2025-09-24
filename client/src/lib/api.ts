@@ -137,6 +137,19 @@ export const API_ENDPOINTS = {
   VOUCHERS: '/api/vouchers',
   GENERATE_VOUCHER: (id: string) => `/api/vouchers/${id}/generate`,
   
-  // Reports endpoints
+  // Reports
   REPORTS_SUMMARY: '/api/reports/summary',
+
+  // Analytics
+  ANALYTICS_REVENUE: '/api/analytics/revenue',
+  ANALYTICS_PROFIT: '/api/analytics/profit',
+  ANALYTICS_DASHBOARD: '/api/analytics/dashboard',
+  ANALYTICS_SUMMARY: '/api/analytics/summary',
+
+  // Costs
+  COSTS_HOTEL_TEMPLATES: '/api/costs/hotel-templates',
+  COSTS_HOTEL_TEMPLATE_BY_ID: (id: string) => `/api/costs/hotel-templates/${id}`,
+  COSTS_OPERATIONAL: '/api/costs/operational',
+  COSTS_OPERATIONAL_BY_ID: (id: string) => `/api/costs/operational/${id}`,
+  COSTS_OPERATIONAL_BY_BOOKING: (bookingId: string) => `/api/costs/operational/booking/${bookingId}`,
 } as const;

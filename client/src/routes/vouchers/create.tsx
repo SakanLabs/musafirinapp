@@ -13,9 +13,9 @@ import {
   Calendar,
   MapPin,
   Users,
-  DollarSign,
   Loader2
 } from "lucide-react"
+import { SARCurrency } from "@/components/ui/sar-currency"
 import { useState } from "react"
 import { authService } from "@/lib/auth"
 import { formatCurrency, formatDate } from "@/lib/utils"
@@ -305,7 +305,7 @@ function CreateVoucherPage() {
             {/* Pricing */}
             <div className="bg-white rounded-lg p-6 shadow-sm mb-8">
               <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
-                <DollarSign className="h-5 w-5 mr-2 text-blue-600" />
+                <SARCurrency amount="" iconSize={20} className="mr-2 text-blue-600" showSymbol={true} />
                 Pricing
               </h3>
               <div className="text-center">

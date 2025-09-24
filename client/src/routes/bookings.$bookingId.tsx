@@ -11,7 +11,6 @@ import {
   Calendar,
   MapPin,
   Users,
-  DollarSign,
   Phone,
   Mail,
   Loader2,
@@ -116,7 +115,7 @@ Hotel: ${booking.hotelName}
 Check-in: ${formatDate(booking.checkIn)}
 Check-out: ${formatDate(booking.checkOut)}
 Room: ${booking.items?.[0]?.roomType || 'N/A'}
-Total: ${formatCurrency(booking.totalAmount)}`
+Total: ${formatCurrency(booking.totalAmount, 'SAR')}`
     
     const whatsappUrl = `https://wa.me/${booking.clientPhone}?text=${encodeURIComponent(message)}`
     window.open(whatsappUrl, '_blank')

@@ -8,7 +8,8 @@ import {
   Hotel,
   Settings,
   Menu,
-  X
+  X,
+  BarChart3
 } from 'lucide-react'
 import { useState } from 'react'
 import { Button } from '@/components/ui/button'
@@ -18,6 +19,11 @@ const navigation = [
     name: 'Dashboard',
     href: '/dashboard/admin',
     icon: LayoutDashboard
+  },
+  {
+    name: 'Analytics',
+    href: '/analytics',
+    icon: BarChart3
   },
   {
     name: 'Bookings',

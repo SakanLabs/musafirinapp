@@ -2,6 +2,15 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiClient, API_ENDPOINTS } from '../api';
 
 // Types for bookings (based on the schema)
+export interface BookingItem {
+  id: number;
+  bookingId: number;
+  roomType: 'DBL' | 'TPL' | 'Quad';
+  roomCount: number;
+  unitPrice: string; // decimal as string
+  hotelCostPrice: string; // decimal as string
+}
+
 export interface Booking {
   id: number;
   code: string;
@@ -19,7 +28,7 @@ export interface Booking {
   meta?: any;
   createdAt: string;
   updatedAt: string;
-  items?: any[];
+  items?: BookingItem[];
 }
 
 export interface CreateBookingData {
@@ -33,6 +42,8 @@ export interface CreateBookingData {
   roomType: string;
   numberOfGuests: number;
   totalAmount: number;
+  hotelCostPerNight?: number;
+  totalHotelCost?: number;
   specialRequests?: string;
 }
 
@@ -46,6 +57,8 @@ export interface UpdateBookingData {
   roomType: string;
   numberOfGuests: number;
   totalAmount: number;
+  hotelCostPerNight?: number;
+  totalHotelCost?: number;
   status: 'pending' | 'confirmed' | 'cancelled' | 'completed';
   specialRequests?: string;
 }
@@ -76,8 +89,7 @@ export function useBooking(id: string) {
   return useQuery({
     queryKey: bookingKeys.detail(id),
     queryFn: async () => {
-      // Temporarily use test endpoint for testing complete data
-      const response = await apiClient.get<{success: boolean, data: Booking}>(`${API_ENDPOINTS.BOOKINGS}/test/${id}`);
+      const response = await apiClient.get<{success: boolean, data: Booking}>(`${API_ENDPOINTS.BOOKINGS}/${id}`);
       return response.data;
     },
     enabled: !!id,
@@ -109,7 +121,8 @@ export function useCreateBooking() {
           {
             roomType: data.roomType,
             roomCount: 1, // Assuming 1 room for now
-            unitPrice: data.totalAmount.toString() // Total amount as unit price for single room
+            unitPrice: data.totalAmount.toString(), // Total amount as unit price for single room
+            hotelCostPrice: data.hotelCostPerNight || 0
           }
         ]
       };

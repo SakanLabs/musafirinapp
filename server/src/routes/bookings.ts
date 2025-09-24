@@ -202,6 +202,7 @@ bookingRoutes.post('/', requireAdmin, async (c) => {
         roomType: item.roomType,
         roomCount: item.roomCount,
         unitPrice: item.unitPrice.toString(),
+        hotelCostPrice: item.hotelCostPrice ? item.hotelCostPrice.toString() : '0',
       }));
 
       const insertedItems = await tx
@@ -248,7 +249,9 @@ bookingRoutes.put('/:id', requireAdmin, async (c) => {
       numberOfGuests, 
       totalAmount, 
       status,
-      specialRequests 
+      specialRequests,
+      hotelCostPerNight,
+      totalHotelCost
     } = body;
 
     if (!guestName || !guestEmail || !guestPhone || !checkInDate || !checkOutDate || !roomType || !numberOfGuests || !totalAmount) {
@@ -311,6 +314,7 @@ bookingRoutes.put('/:id', requireAdmin, async (c) => {
       roomType: roomType as 'DBL' | 'TPL' | 'Quad',
       roomCount: 1, // Assuming 1 room for now
       unitPrice: totalAmount.toString(),
+      hotelCostPrice: hotelCostPerNight ? hotelCostPerNight.toString() : '0',
     });
 
     // Fetch updated booking with client info

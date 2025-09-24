@@ -4,11 +4,12 @@ import { PageLayout } from "@/components/layout/PageLayout"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card } from "@/components/ui/card"
+import { SARAmount, SaudiRiyalIcon } from "@/components/ui/sar-currency"
 import { 
   Users,
   Calendar,
   MapPin,
-  DollarSign,
+  Coins,
   Save,
   ArrowLeft,
   Loader2
@@ -42,7 +43,9 @@ function CreateBookingPage() {
     roomType: "",
     numberOfGuests: 1,
     pricePerNight: 0,
+    hotelCostPerNight: 0,
     totalAmount: 0,
+    totalHotelCost: 0,
     specialRequests: ""
   })
 
@@ -54,8 +57,8 @@ function CreateBookingPage() {
       [field]: value
     }
     
-    // Auto-calculate total amount when price per night or dates change
-    if (field === 'pricePerNight' || field === 'checkInDate' || field === 'checkOutDate') {
+    // Auto-calculate total amount and hotel cost when price per night, hotel cost per night, or dates change
+    if (field === 'pricePerNight' || field === 'hotelCostPerNight' || field === 'checkInDate' || field === 'checkOutDate') {
       const nights = field === 'checkInDate' || field === 'checkOutDate' 
         ? calculateNightsFromDates(
             field === 'checkInDate' ? value as string : updatedData.checkInDate,
@@ -64,7 +67,9 @@ function CreateBookingPage() {
         : calculateNights()
       
       const pricePerNight = field === 'pricePerNight' ? value as number : updatedData.pricePerNight
+      const hotelCostPerNight = field === 'hotelCostPerNight' ? value as number : updatedData.hotelCostPerNight
       updatedData.totalAmount = nights * pricePerNight
+      updatedData.totalHotelCost = nights * hotelCostPerNight
     }
     
     setFormData(updatedData)
@@ -127,6 +132,9 @@ function CreateBookingPage() {
     if (formData.pricePerNight <= 0) {
       newErrors.pricePerNight = "Price per night must be greater than 0"
     }
+    if (formData.hotelCostPerNight < 0) {
+      newErrors.hotelCostPerNight = "Hotel cost per night cannot be negative"
+    }
     if (formData.totalAmount <= 0) {
       newErrors.totalAmount = "Total amount must be greater than 0"
     }
@@ -154,6 +162,8 @@ function CreateBookingPage() {
         roomType: formData.roomType,
         numberOfGuests: formData.numberOfGuests,
         totalAmount: formData.totalAmount,
+        hotelCostPerNight: formData.hotelCostPerNight || undefined,
+        totalHotelCost: formData.totalHotelCost || undefined,
         specialRequests: formData.specialRequests || undefined
       }
 
@@ -182,9 +192,7 @@ function CreateBookingPage() {
     return nights * formData.pricePerNight
   }
 
-  const formatSAR = (amount: number) => {
-    return `${amount.toLocaleString()} SAR`
-  }
+
 
   return (
     <PageLayout
@@ -392,14 +400,14 @@ function CreateBookingPage() {
         {/* Pricing */}
         <Card className="p-6">
           <div className="flex items-center space-x-2 mb-6">
-            <DollarSign className="h-5 w-5 text-yellow-600" />
-            <h3 className="text-lg font-semibold">Pricing</h3>
+            <SaudiRiyalIcon size={16} className="text-yellow-600" />
+            <h3 className="text-lg font-semibold">Pricing & Costs</h3>
           </div>
           
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Price per Night (SAR) *
+                Selling Price per Night (SAR) *
               </label>
               <Input
                 type="number"
@@ -417,11 +425,67 @@ function CreateBookingPage() {
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Total Amount
+                Hotel Cost per Night (SAR)
               </label>
-              <div className="bg-gray-50 p-3 rounded-md">
-                <p className="text-sm text-gray-600">
-                  {formatSAR(formData.totalAmount)} ({calculateNights()} night{calculateNights() !== 1 ? 's' : ''})
+              <Input
+                type="number"
+                min="0"
+                step="10"
+                value={formData.hotelCostPerNight}
+                onChange={(e) => handleInputChange('hotelCostPerNight', parseFloat(e.target.value) || 0)}
+                placeholder="0"
+                className={errors.hotelCostPerNight ? "border-red-500" : ""}
+              />
+              {errors.hotelCostPerNight && (
+                <p className="text-red-500 text-sm mt-1">{errors.hotelCostPerNight}</p>
+              )}
+              <p className="text-xs text-gray-500 mt-1">
+                Cost price from hotel supplier
+              </p>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Total Revenue
+              </label>
+              <div className="bg-green-50 p-3 rounded-md border border-green-200">
+                <p className="text-sm text-green-800 font-medium">
+                  <SARAmount amount={formData.totalAmount} /> ({calculateNights()} night{calculateNights() !== 1 ? 's' : ''})
+                </p>
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Total Hotel Cost
+              </label>
+              <div className="bg-red-50 p-3 rounded-md border border-red-200">
+                <p className="text-sm text-red-800 font-medium">
+                  <SARAmount amount={formData.totalHotelCost} /> ({calculateNights()} night{calculateNights() !== 1 ? 's' : ''})
+                </p>
+              </div>
+            </div>
+
+            <div className="md:col-span-2">
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Estimated Profit
+              </label>
+              <div className={`p-3 rounded-md border ${
+                (formData.totalAmount - formData.totalHotelCost) >= 0 
+                  ? 'bg-blue-50 border-blue-200' 
+                  : 'bg-yellow-50 border-yellow-200'
+              }`}>
+                <p className={`text-sm font-semibold ${
+                  (formData.totalAmount - formData.totalHotelCost) >= 0 
+                    ? 'text-blue-800' 
+                    : 'text-yellow-800'
+                }`}>
+                  <SARAmount amount={formData.totalAmount - formData.totalHotelCost} />
+                  {formData.pricePerNight > 0 && formData.hotelCostPerNight > 0 && (
+                    <span className="ml-2 text-xs">
+                      ({(((formData.pricePerNight - formData.hotelCostPerNight) / formData.pricePerNight) * 100).toFixed(1)}% margin)
+                    </span>
+                  )}
                 </p>
               </div>
             </div>

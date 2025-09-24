@@ -6,10 +6,15 @@ export function cn(...inputs: ClassValue[]) {
 }
 
 // Currency formatting
-export function formatCurrency(amount: number | string, currency: string = 'IDR'): string {
+export function formatCurrency(amount: number | string, currency: string = 'SAR'): string {
   const numAmount = typeof amount === 'string' ? parseFloat(amount) : amount;
   
   if (isNaN(numAmount)) return '-';
+  
+  if (currency === 'SAR') {
+    // Format SAR with custom symbol
+    return formatSAR(numAmount);
+  }
   
   if (currency === 'IDR') {
     return new Intl.NumberFormat('id-ID', {
@@ -24,6 +29,21 @@ export function formatCurrency(amount: number | string, currency: string = 'IDR'
     style: 'currency',
     currency: currency,
   }).format(numAmount);
+}
+
+// Format SAR with custom symbol - only replace currency symbol, keep Latin numbers
+export function formatSAR(amount: number | string): string {
+  const numAmount = typeof amount === 'string' ? parseFloat(amount) : amount;
+  
+  if (isNaN(numAmount)) return '-';
+  
+  // Format number with standard locale but replace $ with SAR symbol
+  const formattedNumber = new Intl.NumberFormat('en-US', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(numAmount);
+  
+  return formattedNumber;
 }
 
 // Date formatting

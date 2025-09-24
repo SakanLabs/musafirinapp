@@ -11,13 +11,13 @@ import {
   Calendar,
   MapPin,
   Users,
-  DollarSign,
   Phone,
   Mail,
   Loader2,
   Edit,
   Clock
 } from "lucide-react"
+import { SARCurrency } from "@/components/ui/sar-currency"
 import { authService } from "@/lib/auth"
 import { formatCurrency, formatDate } from "@/lib/utils"
 import { useBooking, useGenerateInvoice, useGenerateVoucher } from "@/lib/queries"
@@ -244,7 +244,7 @@ Total: ${formatCurrency(booking.totalAmount.toString(), 'SAR')}`
                       <div>
                         <label className="text-sm font-medium text-gray-500">Unit Price</label>
                         <div className="flex items-center">
-                          <DollarSign className="h-4 w-4 mr-2 text-gray-400" />
+                          <SARCurrency amount="" iconSize={16} className="mr-2 text-gray-400" showSymbol={true} />
                           <p className="text-lg font-semibold">{formatCurrency(item.unitPrice, 'SAR')}</p>
                         </div>
                       </div>
@@ -277,7 +277,7 @@ Total: ${formatCurrency(booking.totalAmount.toString(), 'SAR')}`
               <div>
                 <label className="text-sm font-medium text-gray-500">Total Amount</label>
                 <div className="flex items-center">
-                  <DollarSign className="h-4 w-4 mr-2 text-gray-400" />
+                  <SARCurrency amount="" iconSize={16} className="mr-2 text-gray-400" showSymbol={true} />
                   <p className="text-lg font-semibold">{formatCurrency(booking.totalAmount.toString(), 'SAR')}</p>
                 </div>
               </div>

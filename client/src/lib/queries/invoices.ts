@@ -65,3 +65,23 @@ export function useInvoiceByBooking(bookingId: string) {
     staleTime: 5 * 60 * 1000, // 5 minutes
   });
 }
+
+// Check if invoice exists for booking (without creating one)
+export function useCheckInvoiceExists(bookingId: string) {
+  return useQuery({
+    queryKey: [...invoiceKeys.all, 'check-exists', bookingId],
+    queryFn: async () => {
+      try {
+        const response = await apiClient.get<{success: boolean, data: Invoice[]}>(API_ENDPOINTS.INVOICES);
+        const invoices = response.data;
+        const existingInvoice = invoices.find(invoice => invoice.bookingId.toString() === bookingId);
+        return existingInvoice || null;
+      } catch (error) {
+        console.error('Error checking invoice existence:', error);
+        return null;
+      }
+    },
+    enabled: !!bookingId,
+    staleTime: 5 * 60 * 1000, // 5 minutes
+  });
+}

@@ -53,3 +53,23 @@ export function useVoucher(id: string) {
     staleTime: 5 * 60 * 1000, // 5 minutes
   });
 }
+
+// Check if voucher exists for booking
+export function useCheckVoucherExists(bookingId: string) {
+  return useQuery({
+    queryKey: [...voucherKeys.all, 'check-exists', bookingId],
+    queryFn: async () => {
+      try {
+        const response = await apiClient.get<{success: boolean, data: Voucher[]}>(API_ENDPOINTS.VOUCHERS);
+        const vouchers = response.data;
+        const existingVoucher = vouchers.find(voucher => voucher.bookingId.toString() === bookingId);
+        return existingVoucher || null;
+      } catch (error) {
+        console.error('Error checking voucher existence:', error);
+        return null;
+      }
+    },
+    enabled: !!bookingId,
+    staleTime: 5 * 60 * 1000, // 5 minutes
+  });
+}

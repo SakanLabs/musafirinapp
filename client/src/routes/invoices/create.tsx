@@ -10,10 +10,10 @@ import {
   ArrowLeft,
   Loader2,
   Calendar,
-  DollarSign,
   User,
   Building
 } from "lucide-react"
+import { SARCurrency } from "@/components/ui/sar-currency"
 import { authService } from "@/lib/auth"
 import { formatCurrency, formatDate } from "@/lib/utils"
 
@@ -363,7 +363,7 @@ function CreateInvoicePage() {
             {/* Pricing */}
             <Card className="p-6">
               <div className="flex items-center space-x-2 mb-4">
-                <DollarSign className="h-5 w-5 text-orange-600" />
+                <SARCurrency amount="" iconSize={20} className="text-orange-600" showSymbol={true} />
                 <h3 className="text-lg font-semibold">Pricing</h3>
               </div>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">

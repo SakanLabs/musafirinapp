@@ -4,6 +4,7 @@ import { join } from 'path';
 export interface InvoiceTemplateData {
   brandName: string;
   logoBase64: string;
+  saudiRiyalSVGBase64: string;
   invoiceNo: string;
   invoiceDate: string;
   dueDate: string;
@@ -26,17 +27,17 @@ export interface InvoiceTemplateData {
     mealPlan: string;
     quantity: number;
     nights: number;
-    roomRate: number;
-    lineTotal: number;
+    roomRate: string;
+    lineTotal: string;
     notes?: string;
   }>;
   
-  subtotal: number;
-  taxAmount: number;
-  serviceFee: number;
-  grandTotal: number;
-  paidAmount: number;
-  balanceDue: number;
+  subtotal: string;
+  taxAmount: string;
+  serviceFee: string;
+  grandTotal: string;
+  paidAmount: string;
+  balanceDue: string;
   
   payments: Array<{
     method: string;
@@ -153,6 +154,10 @@ export class TemplateEngine {
         itemHtml = itemHtml.replace(/\{\{(\w+)\}\}/g, (itemMatch: string, itemKey: string) => {
           return item[itemKey] !== undefined ? String(item[itemKey]) : itemMatch;
         });
+        // Handle @root references
+        itemHtml = itemHtml.replace(/\{\{@root\.(\w+)\}\}/g, (rootMatch: string, rootKey: string) => {
+          return data[rootKey] !== undefined ? String(data[rootKey]) : rootMatch;
+        });
         return itemHtml;
       }).join('');
     });
@@ -221,6 +226,31 @@ export class TemplateHelpers {
   }
 
   /**
+   * Get Saudi Riyal SVG symbol as base64 string
+   */
+  static getSaudiRiyalSVGBase64(): string {
+    try {
+      // SVG content for Saudi Riyal Symbol
+      const svgContent = `<?xml version="1.0" encoding="UTF-8"?>
+<svg id="Layer_1" data-name="Layer 1" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1124.14 1256.39">
+  <defs>
+    <style>
+      .cls-1 {
+        fill: currentColor;
+      }
+    </style>
+  </defs>
+  <path class="cls-1" d="M699.62,1113.02h0c-20.06,44.48-33.32,92.75-38.4,143.37l424.51-90.24c20.06-44.47,33.31-92.75,38.4-143.37l-424.51,90.24Z"/>
+  <path class="cls-1" d="M1085.73,895.8c20.06-44.47,33.32-92.75,38.4-143.37l-330.68,70.33v-135.2l292.27-62.11c20.06-44.47,33.32-92.75,38.4-143.37l-330.68,70.27V66.13c-50.67,28.45-95.67,66.32-132.25,110.99v403.35l-132.25,28.11V0c-50.67,28.44-95.67,66.32-132.25,110.99v525.69l-295.91,62.88c-20.06,44.47-33.33,92.75-38.42,143.37l334.33-71.05v170.26l-358.3,76.14c-20.06,44.47-33.32,92.75-38.4,143.37l375.04-79.7c30.53-6.35,56.77-24.4,73.83-49.24l68.78-101.97v-.02c7.14-10.55,11.3-23.27,11.3-36.97v-149.98l132.25-28.11v270.4l424.53-90.28Z"/>
+</svg>`;
+      return Buffer.from(svgContent).toString('base64');
+    } catch (error) {
+      console.warn('Failed to generate Saudi Riyal SVG, using fallback');
+      return '';
+    }
+  }
+
+  /**
    * Format date to readable string
    */
   static formatDate(date: Date | string): string {
@@ -233,11 +263,14 @@ export class TemplateHelpers {
   }
 
   /**
-   * Format currency amount
+   * Format currency amount (without currency symbol since SVG is used separately)
    */
   static formatCurrency(amount: number | string, currency: string = 'SAR'): string {
     const num = typeof amount === 'string' ? parseFloat(amount) : amount;
-    return `${num.toFixed(2)} ${currency}`;
+    return num.toLocaleString('en-US', { 
+      minimumFractionDigits: 2, 
+      maximumFractionDigits: 2 
+    });
   }
 
   /**
@@ -283,25 +316,27 @@ export class TemplateHelpers {
       'Quad': 'Quad'
     };
     
-    // Map booking items to invoice items
+    // Map booking items to invoice items and calculate totals
+    let subtotalAmount = 0;
     const items = bookingItems.map(item => {
       const roomRate = parseFloat(item.unitPrice) || 0;
       const quantity = item.roomCount || 1;
       const lineTotal = roomRate * quantity * totalNights;
+      subtotalAmount += lineTotal;
       
       return {
         roomType: roomTypeMap[item.roomType] || item.roomType || 'Standard Room',
         mealPlan: 'Room Only', // Default since not in current schema
         quantity,
         nights: totalNights,
-        roomRate,
-        lineTotal,
+        roomRate: this.formatCurrency(roomRate),
+        lineTotal: this.formatCurrency(lineTotal),
         notes: '' // Default since not in current schema
       };
     });
 
     // Calculate totals
-    const subtotal = items.reduce((sum, item) => sum + item.lineTotal, 0);
+    const subtotal = subtotalAmount;
     const taxAmount = 0; // Default to 0, can be calculated based on business rules
     const serviceFee = 0; // Default to 0, can be calculated based on business rules
     const grandTotal = subtotal + taxAmount + serviceFee;
@@ -350,6 +385,7 @@ export class TemplateHelpers {
     return {
       brandName: "Musafirin",
       logoBase64: this.getLogoBase64(),
+      saudiRiyalSVGBase64: this.getSaudiRiyalSVGBase64(),
       invoiceNo: invoice.number,
       invoiceDate: this.formatDate(customInvoiceDate || invoice.createdAt || new Date()),
       dueDate: this.formatDate(customDueDate),
@@ -369,12 +405,12 @@ export class TemplateHelpers {
       
       items,
       
-      subtotal,
-      taxAmount,
-      serviceFee,
-      grandTotal,
-      paidAmount,
-      balanceDue,
+      subtotal: this.formatCurrency(subtotal),
+      taxAmount: this.formatCurrency(taxAmount),
+      serviceFee: this.formatCurrency(serviceFee),
+      grandTotal: this.formatCurrency(grandTotal),
+      paidAmount: this.formatCurrency(paidAmount),
+      balanceDue: this.formatCurrency(balanceDue),
       
       payments,
       

@@ -14,7 +14,6 @@ import {
   Calendar,
   MapPin,
   Users,
-  DollarSign,
   Phone,
   Mail,
   Loader2,
@@ -22,12 +21,15 @@ import {
   Clock,
   Settings
 } from "lucide-react"
+import { SARCurrency } from "@/components/ui/sar-currency"
 import { authService } from "@/lib/auth"
 import { 
   formatCurrency, 
   formatDate
 } from "@/lib/utils"
 import { useBooking, useGenerateInvoice, useGenerateVoucher, useUpdateBookingStatus } from "@/lib/queries"
+import { useCheckInvoiceExists } from "@/lib/queries/invoices"
+import { useCheckVoucherExists } from "@/lib/queries/vouchers"
 
 // Helper functions
 const getBookingStatusColor = (status: string) => {
@@ -89,9 +91,19 @@ function BookingDetailPage() {
   const generateInvoiceMutation = useGenerateInvoice()
   const generateVoucherMutation = useGenerateVoucher()
   const updateBookingStatusMutation = useUpdateBookingStatus()
+  
+  // Check if invoice and voucher already exist
+  const { data: existingInvoice } = useCheckInvoiceExists(id)
+  const { data: existingVoucher } = useCheckVoucherExists(id)
 
   const handleGenerateInvoice = () => {
-    setIsDueDateModalOpen(true)
+    if (existingInvoice) {
+      // If invoice already exists, navigate to invoices page
+      navigate({ to: '/invoices' })
+    } else {
+      // If no invoice exists, show due date modal to generate new one
+      setIsDueDateModalOpen(true)
+    }
   }
 
   const handleDueDateSubmit = async (dueDate: string) => {
@@ -114,21 +126,27 @@ function BookingDetailPage() {
   }
 
   const handleGenerateVoucher = async () => {
-    if (!booking || !id) {
-      alert("Booking data tidak tersedia")
-      return
-    }
+    if (existingVoucher) {
+      // If voucher already exists, navigate to vouchers page
+      navigate({ to: '/vouchers' })
+    } else {
+      // If no voucher exists, generate new one
+      if (!booking || !id) {
+        alert("Booking data tidak tersedia")
+        return
+      }
 
-    try {
-      await generateVoucherMutation.mutateAsync({ 
-        bookingId: id.toString(), 
-        guestName: booking.clientName 
-      })
-      console.log("Voucher generated successfully")
-      alert("Voucher berhasil digenerate dan diunduh!")
-    } catch (error) {
-      console.error("Failed to generate voucher:", error)
-      alert("Gagal generate voucher. Silakan coba lagi.")
+      try {
+        await generateVoucherMutation.mutateAsync({ 
+          bookingId: id.toString(), 
+          guestName: booking.clientName 
+        })
+        console.log("Voucher generated successfully")
+        alert("Voucher berhasil digenerate dan diunduh!")
+      } catch (error) {
+        console.error("Failed to generate voucher:", error)
+        alert("Gagal generate voucher. Silakan coba lagi.")
+      }
     }
   }
 
@@ -283,7 +301,7 @@ function BookingDetailPage() {
                   <div>
                     <label className="text-sm font-medium text-gray-500">Total Amount</label>
                     <div className="flex items-center">
-                      <DollarSign className="h-4 w-4 mr-2 text-gray-400" />
+                      <SARCurrency iconSize={16} className="mr-2 text-gray-400" />
                       <p className="text-gray-900 font-semibold">{formatCurrency(booking.totalAmount.toString(), 'SAR')}</p>
                     </div>
                   </div>
@@ -363,7 +381,11 @@ function BookingDetailPage() {
                   ) : (
                     <FileText className="h-4 w-4 mr-2" />
                   )}
-                  Generate Invoice
+                  {generateInvoiceMutation.isPending ? (
+                    "Generating..."
+                  ) : (
+                    existingInvoice ? "Lihat Invoice" : "Generate Invoice"
+                  )}
                 </Button>
                 <Button
                   variant="outline"
@@ -376,7 +398,11 @@ function BookingDetailPage() {
                   ) : (
                     <Ticket className="h-4 w-4 mr-2" />
                   )}
-                  Generate Voucher
+                  {generateVoucherMutation.isPending ? (
+                    "Generating..."
+                  ) : (
+                    existingVoucher ? "Lihat Voucher" : "Generate Voucher"
+                  )}
                 </Button>
                 <Button
                   variant="secondary"
