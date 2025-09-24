@@ -15,6 +15,7 @@ export interface Booking {
   totalAmount: number;
   paymentStatus: 'unpaid' | 'partial' | 'paid' | 'overdue';
   bookingStatus: 'pending' | 'confirmed' | 'cancelled';
+  hotelConfirmationNo?: string;
   meta?: any;
   createdAt: string;
   updatedAt: string;
@@ -142,18 +143,34 @@ export function useUpdateBooking() {
   });
 }
 
-// Update booking status
+// Update booking status and hotel confirmation number
 export function useUpdateBookingStatus() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({ id, status }: { id: string; status: Booking['bookingStatus'] }) => {
-      const response = await apiClient.put<{success: boolean, data: Booking}>(API_ENDPOINTS.BOOKING_BY_ID(id), { status });
+    mutationFn: async ({ 
+      id, 
+      paymentStatus, 
+      bookingStatus, 
+      hotelConfirmationNo 
+    }: { 
+      id: string; 
+      paymentStatus?: Booking['paymentStatus']; 
+      bookingStatus?: Booking['bookingStatus'];
+      hotelConfirmationNo?: string;
+    }) => {
+      const updateData: any = {};
+      
+      if (paymentStatus) updateData.paymentStatus = paymentStatus;
+      if (bookingStatus) updateData.bookingStatus = bookingStatus;
+      if (hotelConfirmationNo !== undefined) updateData.hotelConfirmationNo = hotelConfirmationNo;
+      
+      const response = await apiClient.patch<{success: boolean, data: Booking}>(API_ENDPOINTS.BOOKING_BY_ID(id), updateData);
       return response.data;
     },
-    onSuccess: (response) => {
+    onSuccess: (booking) => {
       // Update the specific booking in cache
-      queryClient.setQueryData(bookingKeys.detail(response.id), response);
+      queryClient.setQueryData(bookingKeys.detail(booking.id), booking);
       // Invalidate bookings list to refresh
       queryClient.invalidateQueries({ queryKey: bookingKeys.lists() });
     },
@@ -187,7 +204,30 @@ export function useGenerateInvoice() {
 // Generate voucher for booking
 export function useGenerateVoucher() {
   return useMutation({
-    mutationFn: (bookingId: string) =>
-      apiClient.post(API_ENDPOINTS.GENERATE_VOUCHER(bookingId)),
+    mutationFn: async ({ bookingId, guestName }: { bookingId: string; guestName: string }) => {
+      const response = await apiClient.post<{
+        success: boolean;
+        message: string;
+        data: {
+          id: number;
+          number: string;
+          bookingId: number;
+          guestName: string;
+          qrUrl: string;
+          pdfUrl: string;
+          createdAt: string;
+        };
+      }>(API_ENDPOINTS.GENERATE_VOUCHER(bookingId), {
+        guestName
+      });
+      
+      // Auto-download the PDF if pdfUrl is provided
+      if (response.data.pdfUrl) {
+        const filename = `voucher-${response.data.number}.pdf`;
+        await apiClient.downloadFile(response.data.pdfUrl, filename);
+      }
+      
+      return response;
+    },
   });
 }

@@ -81,21 +81,102 @@ export async function generateVoucherPDF(
   const browser = await puppeteer.launch({ headless: true });
   const page = await browser.newPage();
 
-  // We need to get booking items for the voucher template
-  // For now, we'll create a mock array - this should be passed as parameter in real implementation
-  const mockBookingItems = [
-    {
-      roomType: 'Standard Room', // This should come from actual booking items
-      roomCount: 1,
-      unitPrice: booking.totalAmount.toString(),
-    }
-  ];
+  // Import required modules for Handlebars template
+  const { readFileSync } = await import('fs');
+  const { join } = await import('path');
+  const { fileURLToPath } = await import('url');
+  const { dirname } = await import('path');
+  const Handlebars = await import('handlebars');
 
-  // Prepare data for template
-  const templateData = TemplateHelpers.prepareVoucherData(voucher, booking, client, mockBookingItems, qrCodeDataURL);
+  const __filename = fileURLToPath(import.meta.url);
+  const __dirname = dirname(__filename);
+
+  // Helper function to format date
+   function formatDate(date: Date | string | undefined): string {
+     if (!date) return '';
+     if (typeof date === 'string') return date;
+     return (date as Date).toISOString().split('T')[0];
+   }
+
+  // Helper function to calculate nights
+  function calculateNights(checkIn: Date, checkOut: Date): number {
+    const diffTime = Math.abs(checkOut.getTime() - checkIn.getTime());
+    return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+  }
+
+  // Prepare voucher data for Handlebars template
+  const voucherData = {
+    // Brand info
+    brandName: "Musafirin",
+    brandTagline: "Atur Sendiri Perjalanan Ibadahmu",
+    brandWebsite: "https://hotel.musafirin.co",
+    logoBase64: "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==", // Placeholder
+
+    // Voucher info
+    voucherNo: voucher.number,
+    issueDate: formatDate(new Date()),
+    paymentType: "Prepaid",
+    isPayAtHotel: false,
+    hotelConfirmationNo: booking.hotelConfirmationNo || '',
+    supplierRef: booking.code,
+
+    // Hotel info
+    hotelName: booking.hotelName,
+    hotelAddress: `${booking.city}, Saudi Arabia`,
+    hotelPhone: "+966-14-xxxxxxx",
+    hotelEmail: "reservations@hotel.example",
+    hotelMapUrl: `https://maps.google.com/?q=${encodeURIComponent(booking.hotelName)}`,
+
+    // Guest info
+    leadGuest: {
+      name: voucher.guestName || client.name,
+      email: client.email,
+      phone: client.phone || '+966-5XXXXXXX'
+    },
+    guests: [], // Additional guests if any
+
+    // Stay details
+     checkIn: formatDate(booking.checkIn || new Date()),
+     checkOut: formatDate(booking.checkOut || new Date()),
+    policyCheckInTime: "15:00",
+    policyCheckOutTime: "12:00",
+    nights: calculateNights(booking.checkIn, booking.checkOut),
+    rooms: 1, // Default to 1, should be calculated from booking items
+    adults: 2, // Default to 2, should be calculated from booking items
+    children: 0, // Default to 0, should be calculated from booking items
+
+    // Room details - mock data for now
+    roomsDetail: [
+      {
+        roomType: 'Standard Room',
+        mealPlan: 'Room Only',
+        quantity: 1,
+        occupancy: '2A',
+        remarks: '-'
+      }
+    ],
+
+    // Inclusions and policies
+    inclusions: [
+      "Wi-Fi gratis",
+      "Akses ke fasilitas hotel"
+    ],
+    specialRequest: "",
+    cancellationPolicy: "Mengikuti kebijakan hotel; no-show dikenakan 1 malam.",
+    paymentNote: "Prepaid — hotel tidak akan menagih tamu saat check-in.",
+
+    // Support
+    supportEmail: "support@musafirin.co",
+    supportPhone: "+966-5XXXXXXX"
+  };
+
+  // Load and compile template
+  const templatePath = join(__dirname, '../templates/voucher.html');
+  const templateContent = readFileSync(templatePath, 'utf-8');
+  const template = Handlebars.compile(templateContent);
   
-  // Render HTML using template engine
-  const html = templateEngine.renderVoucher(templateData);
+  // Generate HTML
+  const html = template(voucherData);
 
   await page.setContent(html);
   const pdf = await page.pdf({

@@ -72,10 +72,18 @@ function BookingDetailPage() {
   const generateVoucherMutation = useGenerateVoucher()
 
   const handleGenerateInvoice = async () => {
+    if (!booking) return
+    
+    // Set due date to 30 days from now
+    const dueDate = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
+    
     try {
-      await generateInvoiceMutation.mutateAsync(bookingId)
+      await generateInvoiceMutation.mutateAsync({
+        bookingId: bookingId,
+        dueDate: dueDate
+      })
       console.log("Invoice generated successfully")
-      alert("Invoice generated successfully")
+      alert("Invoice generated and downloaded successfully")
     } catch (error) {
       console.error("Failed to generate invoice:", error)
       alert("Failed to generate invoice")
@@ -83,10 +91,15 @@ function BookingDetailPage() {
   }
 
   const handleGenerateVoucher = async () => {
+    if (!booking) return
+    
     try {
-      await generateVoucherMutation.mutateAsync(bookingId)
+      await generateVoucherMutation.mutateAsync({
+        bookingId: bookingId,
+        guestName: booking.clientName
+      })
       console.log("Voucher generated successfully")
-      alert("Voucher generated successfully")
+      alert("Voucher generated and downloaded successfully")
     } catch (error) {
       console.error("Failed to generate voucher:", error)
       alert("Failed to generate voucher")
@@ -295,7 +308,7 @@ Total: ${formatCurrency(booking.totalAmount)}`
               </div>
               <div>
                 <span className="text-gray-500 text-sm">Created</span>
-                <p className="font-semibold">{formatDate(booking.created)}</p>
+                <p className="font-semibold">{formatDate(booking.createdAt)}</p>
               </div>
               <div>
                 <span className="text-gray-500 text-sm">Total Amount</span>

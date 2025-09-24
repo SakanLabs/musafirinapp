@@ -100,18 +100,20 @@ Create a new booking with client and booking items.
 ```
 
 #### PATCH /bookings/:id
-Update booking payment status or booking status.
+Update booking payment status, booking status, or hotel confirmation number.
 
 **Request Body:**
 ```json
 {
   "paymentStatus": "paid",
-  "bookingStatus": "confirmed"
+  "bookingStatus": "confirmed",
+  "hotelConfirmationNo": "HTL-CONF-123456"
 }
 ```
 
 **Valid Payment Statuses:** `unpaid`, `partial`, `paid`, `overdue`
 **Valid Booking Statuses:** `pending`, `confirmed`, `cancelled`
+**Hotel Confirmation Number:** String, max 100 characters (optional)
 
 ### Invoices
 

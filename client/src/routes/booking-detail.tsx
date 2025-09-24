@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { DueDateModal } from "@/components/modals/DueDateModal"
+import { UpdateBookingStatusModal } from "@/components/modals/UpdateBookingStatusModal"
 import { 
   ArrowLeft,
   FileText,
@@ -18,14 +19,15 @@ import {
   Mail,
   Loader2,
   Edit,
-  Clock
+  Clock,
+  Settings
 } from "lucide-react"
 import { authService } from "@/lib/auth"
 import { 
   formatCurrency, 
   formatDate
 } from "@/lib/utils"
-import { useBooking, useGenerateInvoice, useGenerateVoucher } from "@/lib/queries"
+import { useBooking, useGenerateInvoice, useGenerateVoucher, useUpdateBookingStatus } from "@/lib/queries"
 
 // Helper functions
 const getBookingStatusColor = (status: string) => {
@@ -58,8 +60,12 @@ const getPaymentStatusColor = (status: string) => {
 
 export const Route = createFileRoute("/booking-detail")({
   validateSearch: (search: Record<string, unknown>) => {
+    const id = search.id as string;
+    if (!id) {
+      throw new Error('Booking ID is required');
+    }
     return {
-      id: (search.id as string) || '',
+      id: id,
     }
   },
   beforeLoad: async () => {
@@ -76,11 +82,13 @@ function BookingDetailPage() {
   const { id } = Route.useSearch()
   const navigate = useNavigate()
   const [isDueDateModalOpen, setIsDueDateModalOpen] = useState(false)
+  const [isUpdateStatusModalOpen, setIsUpdateStatusModalOpen] = useState(false)
   
   // Fetch booking data using TanStack Query
   const { data: booking, isLoading, error } = useBooking(id)
   const generateInvoiceMutation = useGenerateInvoice()
   const generateVoucherMutation = useGenerateVoucher()
+  const updateBookingStatusMutation = useUpdateBookingStatus()
 
   const handleGenerateInvoice = () => {
     setIsDueDateModalOpen(true)
@@ -106,11 +114,21 @@ function BookingDetailPage() {
   }
 
   const handleGenerateVoucher = async () => {
+    if (!booking || !id) {
+      alert("Booking data tidak tersedia")
+      return
+    }
+
     try {
-      await generateVoucherMutation.mutateAsync(id)
+      await generateVoucherMutation.mutateAsync({ 
+        bookingId: id.toString(), 
+        guestName: booking.clientName 
+      })
       console.log("Voucher generated successfully")
+      alert("Voucher berhasil digenerate dan diunduh!")
     } catch (error) {
       console.error("Failed to generate voucher:", error)
+      alert("Gagal generate voucher. Silakan coba lagi.")
     }
   }
 
@@ -124,6 +142,24 @@ function BookingDetailPage() {
 
   const handleEditBooking = () => {
     navigate({ to: "/booking-edit", search: { id } })
+  }
+
+  const handleUpdateBookingStatus = async (updateData: {
+    paymentStatus?: any
+    bookingStatus?: any
+    hotelConfirmationNo?: string
+  }) => {
+    try {
+      await updateBookingStatusMutation.mutateAsync({
+        id: id.toString(),
+        ...updateData
+      })
+      setIsUpdateStatusModalOpen(false)
+      alert("Status booking berhasil diupdate!")
+    } catch (error) {
+      console.error("Failed to update booking status:", error)
+      alert("Gagal update status booking. Silakan coba lagi.")
+    }
   }
 
   if (isLoading) {
@@ -342,6 +378,19 @@ function BookingDetailPage() {
                   )}
                   Generate Voucher
                 </Button>
+                <Button
+                  variant="secondary"
+                  className="w-full"
+                  onClick={() => setIsUpdateStatusModalOpen(true)}
+                  disabled={updateBookingStatusMutation.isPending}
+                >
+                  {updateBookingStatusMutation.isPending ? (
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  ) : (
+                    <Settings className="h-4 w-4 mr-2" />
+                  )}
+                  Update Status
+                </Button>
               </CardContent>
             </Card>
 
@@ -370,6 +419,14 @@ function BookingDetailPage() {
         onClose={() => setIsDueDateModalOpen(false)}
         onSubmit={handleDueDateSubmit}
         isLoading={generateInvoiceMutation.isPending}
+      />
+
+      <UpdateBookingStatusModal
+        isOpen={isUpdateStatusModalOpen}
+        onClose={() => setIsUpdateStatusModalOpen(false)}
+        onSubmit={handleUpdateBookingStatus}
+        isLoading={updateBookingStatusMutation.isPending}
+        booking={booking}
       />
     </PageLayout>
   )

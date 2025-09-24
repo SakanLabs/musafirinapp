@@ -10,21 +10,10 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as VouchersRouteImport } from './routes/vouchers'
-import { Route as TestUserDashboardNoAuthRouteImport } from './routes/test-user-dashboard-no-auth'
-import { Route as TestUserDashboardRouteImport } from './routes/test-user-dashboard'
-import { Route as TestSimpleRedirectRouteImport } from './routes/test-simple-redirect'
-import { Route as TestRoutingRouteImport } from './routes/test-routing'
-import { Route as TestRedirectRouteImport } from './routes/test-redirect'
-import { Route as TestLogsRouteImport } from './routes/test-logs'
-import { Route as TestBookingAccessRouteImport } from './routes/test-booking-access'
-import { Route as TestAuthRouteImport } from './routes/test-auth'
 import { Route as RegisterRouteImport } from './routes/register'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as InvoicesRouteImport } from './routes/invoices'
 import { Route as ForgotPasswordRouteImport } from './routes/forgot-password'
-import { Route as DebugAuthRouteImport } from './routes/debug-auth'
-import { Route as DebugRouteImport } from './routes/debug'
-import { Route as DashboardTestRouteImport } from './routes/dashboard-test'
 import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as CreateBookingRouteImport } from './routes/create-booking'
 import { Route as ClearAuthCacheRouteImport } from './routes/clear-auth-cache'
@@ -47,46 +36,6 @@ const VouchersRoute = VouchersRouteImport.update({
   path: '/vouchers',
   getParentRoute: () => rootRouteImport,
 } as any)
-const TestUserDashboardNoAuthRoute = TestUserDashboardNoAuthRouteImport.update({
-  id: '/test-user-dashboard-no-auth',
-  path: '/test-user-dashboard-no-auth',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const TestUserDashboardRoute = TestUserDashboardRouteImport.update({
-  id: '/test-user-dashboard',
-  path: '/test-user-dashboard',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const TestSimpleRedirectRoute = TestSimpleRedirectRouteImport.update({
-  id: '/test-simple-redirect',
-  path: '/test-simple-redirect',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const TestRoutingRoute = TestRoutingRouteImport.update({
-  id: '/test-routing',
-  path: '/test-routing',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const TestRedirectRoute = TestRedirectRouteImport.update({
-  id: '/test-redirect',
-  path: '/test-redirect',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const TestLogsRoute = TestLogsRouteImport.update({
-  id: '/test-logs',
-  path: '/test-logs',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const TestBookingAccessRoute = TestBookingAccessRouteImport.update({
-  id: '/test-booking-access',
-  path: '/test-booking-access',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const TestAuthRoute = TestAuthRouteImport.update({
-  id: '/test-auth',
-  path: '/test-auth',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const RegisterRoute = RegisterRouteImport.update({
   id: '/register',
   path: '/register',
@@ -105,21 +54,6 @@ const InvoicesRoute = InvoicesRouteImport.update({
 const ForgotPasswordRoute = ForgotPasswordRouteImport.update({
   id: '/forgot-password',
   path: '/forgot-password',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const DebugAuthRoute = DebugAuthRouteImport.update({
-  id: '/debug-auth',
-  path: '/debug-auth',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const DebugRoute = DebugRouteImport.update({
-  id: '/debug',
-  path: '/debug',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const DashboardTestRoute = DashboardTestRouteImport.update({
-  id: '/dashboard-test',
-  path: '/dashboard-test',
   getParentRoute: () => rootRouteImport,
 } as any)
 const DashboardRoute = DashboardRouteImport.update({
@@ -212,21 +146,10 @@ export interface FileRoutesByFullPath {
   '/clear-auth-cache': typeof ClearAuthCacheRoute
   '/create-booking': typeof CreateBookingRoute
   '/dashboard': typeof DashboardRouteWithChildren
-  '/dashboard-test': typeof DashboardTestRoute
-  '/debug': typeof DebugRoute
-  '/debug-auth': typeof DebugAuthRoute
   '/forgot-password': typeof ForgotPasswordRoute
   '/invoices': typeof InvoicesRouteWithChildren
   '/login': typeof LoginRoute
   '/register': typeof RegisterRoute
-  '/test-auth': typeof TestAuthRoute
-  '/test-booking-access': typeof TestBookingAccessRoute
-  '/test-logs': typeof TestLogsRoute
-  '/test-redirect': typeof TestRedirectRoute
-  '/test-routing': typeof TestRoutingRoute
-  '/test-simple-redirect': typeof TestSimpleRedirectRoute
-  '/test-user-dashboard': typeof TestUserDashboardRoute
-  '/test-user-dashboard-no-auth': typeof TestUserDashboardNoAuthRoute
   '/vouchers': typeof VouchersRouteWithChildren
   '/auth/callback': typeof AuthCallbackRoute
   '/booking-view/$bookingId': typeof BookingViewBookingIdRoute
@@ -246,21 +169,10 @@ export interface FileRoutesByTo {
   '/clear-auth-cache': typeof ClearAuthCacheRoute
   '/create-booking': typeof CreateBookingRoute
   '/dashboard': typeof DashboardRouteWithChildren
-  '/dashboard-test': typeof DashboardTestRoute
-  '/debug': typeof DebugRoute
-  '/debug-auth': typeof DebugAuthRoute
   '/forgot-password': typeof ForgotPasswordRoute
   '/invoices': typeof InvoicesRouteWithChildren
   '/login': typeof LoginRoute
   '/register': typeof RegisterRoute
-  '/test-auth': typeof TestAuthRoute
-  '/test-booking-access': typeof TestBookingAccessRoute
-  '/test-logs': typeof TestLogsRoute
-  '/test-redirect': typeof TestRedirectRoute
-  '/test-routing': typeof TestRoutingRoute
-  '/test-simple-redirect': typeof TestSimpleRedirectRoute
-  '/test-user-dashboard': typeof TestUserDashboardRoute
-  '/test-user-dashboard-no-auth': typeof TestUserDashboardNoAuthRoute
   '/vouchers': typeof VouchersRouteWithChildren
   '/auth/callback': typeof AuthCallbackRoute
   '/booking-view/$bookingId': typeof BookingViewBookingIdRoute
@@ -281,21 +193,10 @@ export interface FileRoutesById {
   '/clear-auth-cache': typeof ClearAuthCacheRoute
   '/create-booking': typeof CreateBookingRoute
   '/dashboard': typeof DashboardRouteWithChildren
-  '/dashboard-test': typeof DashboardTestRoute
-  '/debug': typeof DebugRoute
-  '/debug-auth': typeof DebugAuthRoute
   '/forgot-password': typeof ForgotPasswordRoute
   '/invoices': typeof InvoicesRouteWithChildren
   '/login': typeof LoginRoute
   '/register': typeof RegisterRoute
-  '/test-auth': typeof TestAuthRoute
-  '/test-booking-access': typeof TestBookingAccessRoute
-  '/test-logs': typeof TestLogsRoute
-  '/test-redirect': typeof TestRedirectRoute
-  '/test-routing': typeof TestRoutingRoute
-  '/test-simple-redirect': typeof TestSimpleRedirectRoute
-  '/test-user-dashboard': typeof TestUserDashboardRoute
-  '/test-user-dashboard-no-auth': typeof TestUserDashboardNoAuthRoute
   '/vouchers': typeof VouchersRouteWithChildren
   '/auth/callback': typeof AuthCallbackRoute
   '/booking-view/$bookingId': typeof BookingViewBookingIdRoute
@@ -317,21 +218,10 @@ export interface FileRouteTypes {
     | '/clear-auth-cache'
     | '/create-booking'
     | '/dashboard'
-    | '/dashboard-test'
-    | '/debug'
-    | '/debug-auth'
     | '/forgot-password'
     | '/invoices'
     | '/login'
     | '/register'
-    | '/test-auth'
-    | '/test-booking-access'
-    | '/test-logs'
-    | '/test-redirect'
-    | '/test-routing'
-    | '/test-simple-redirect'
-    | '/test-user-dashboard'
-    | '/test-user-dashboard-no-auth'
     | '/vouchers'
     | '/auth/callback'
     | '/booking-view/$bookingId'
@@ -351,21 +241,10 @@ export interface FileRouteTypes {
     | '/clear-auth-cache'
     | '/create-booking'
     | '/dashboard'
-    | '/dashboard-test'
-    | '/debug'
-    | '/debug-auth'
     | '/forgot-password'
     | '/invoices'
     | '/login'
     | '/register'
-    | '/test-auth'
-    | '/test-booking-access'
-    | '/test-logs'
-    | '/test-redirect'
-    | '/test-routing'
-    | '/test-simple-redirect'
-    | '/test-user-dashboard'
-    | '/test-user-dashboard-no-auth'
     | '/vouchers'
     | '/auth/callback'
     | '/booking-view/$bookingId'
@@ -385,21 +264,10 @@ export interface FileRouteTypes {
     | '/clear-auth-cache'
     | '/create-booking'
     | '/dashboard'
-    | '/dashboard-test'
-    | '/debug'
-    | '/debug-auth'
     | '/forgot-password'
     | '/invoices'
     | '/login'
     | '/register'
-    | '/test-auth'
-    | '/test-booking-access'
-    | '/test-logs'
-    | '/test-redirect'
-    | '/test-routing'
-    | '/test-simple-redirect'
-    | '/test-user-dashboard'
-    | '/test-user-dashboard-no-auth'
     | '/vouchers'
     | '/auth/callback'
     | '/booking-view/$bookingId'
@@ -420,21 +288,10 @@ export interface RootRouteChildren {
   ClearAuthCacheRoute: typeof ClearAuthCacheRoute
   CreateBookingRoute: typeof CreateBookingRoute
   DashboardRoute: typeof DashboardRouteWithChildren
-  DashboardTestRoute: typeof DashboardTestRoute
-  DebugRoute: typeof DebugRoute
-  DebugAuthRoute: typeof DebugAuthRoute
   ForgotPasswordRoute: typeof ForgotPasswordRoute
   InvoicesRoute: typeof InvoicesRouteWithChildren
   LoginRoute: typeof LoginRoute
   RegisterRoute: typeof RegisterRoute
-  TestAuthRoute: typeof TestAuthRoute
-  TestBookingAccessRoute: typeof TestBookingAccessRoute
-  TestLogsRoute: typeof TestLogsRoute
-  TestRedirectRoute: typeof TestRedirectRoute
-  TestRoutingRoute: typeof TestRoutingRoute
-  TestSimpleRedirectRoute: typeof TestSimpleRedirectRoute
-  TestUserDashboardRoute: typeof TestUserDashboardRoute
-  TestUserDashboardNoAuthRoute: typeof TestUserDashboardNoAuthRoute
   VouchersRoute: typeof VouchersRouteWithChildren
   AuthCallbackRoute: typeof AuthCallbackRoute
   BookingViewBookingIdRoute: typeof BookingViewBookingIdRoute
@@ -447,62 +304,6 @@ declare module '@tanstack/react-router' {
       path: '/vouchers'
       fullPath: '/vouchers'
       preLoaderRoute: typeof VouchersRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/test-user-dashboard-no-auth': {
-      id: '/test-user-dashboard-no-auth'
-      path: '/test-user-dashboard-no-auth'
-      fullPath: '/test-user-dashboard-no-auth'
-      preLoaderRoute: typeof TestUserDashboardNoAuthRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/test-user-dashboard': {
-      id: '/test-user-dashboard'
-      path: '/test-user-dashboard'
-      fullPath: '/test-user-dashboard'
-      preLoaderRoute: typeof TestUserDashboardRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/test-simple-redirect': {
-      id: '/test-simple-redirect'
-      path: '/test-simple-redirect'
-      fullPath: '/test-simple-redirect'
-      preLoaderRoute: typeof TestSimpleRedirectRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/test-routing': {
-      id: '/test-routing'
-      path: '/test-routing'
-      fullPath: '/test-routing'
-      preLoaderRoute: typeof TestRoutingRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/test-redirect': {
-      id: '/test-redirect'
-      path: '/test-redirect'
-      fullPath: '/test-redirect'
-      preLoaderRoute: typeof TestRedirectRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/test-logs': {
-      id: '/test-logs'
-      path: '/test-logs'
-      fullPath: '/test-logs'
-      preLoaderRoute: typeof TestLogsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/test-booking-access': {
-      id: '/test-booking-access'
-      path: '/test-booking-access'
-      fullPath: '/test-booking-access'
-      preLoaderRoute: typeof TestBookingAccessRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/test-auth': {
-      id: '/test-auth'
-      path: '/test-auth'
-      fullPath: '/test-auth'
-      preLoaderRoute: typeof TestAuthRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/register': {
@@ -531,27 +332,6 @@ declare module '@tanstack/react-router' {
       path: '/forgot-password'
       fullPath: '/forgot-password'
       preLoaderRoute: typeof ForgotPasswordRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/debug-auth': {
-      id: '/debug-auth'
-      path: '/debug-auth'
-      fullPath: '/debug-auth'
-      preLoaderRoute: typeof DebugAuthRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/debug': {
-      id: '/debug'
-      path: '/debug'
-      fullPath: '/debug'
-      preLoaderRoute: typeof DebugRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/dashboard-test': {
-      id: '/dashboard-test'
-      path: '/dashboard-test'
-      fullPath: '/dashboard-test'
-      preLoaderRoute: typeof DashboardTestRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/dashboard': {
@@ -739,21 +519,10 @@ const rootRouteChildren: RootRouteChildren = {
   ClearAuthCacheRoute: ClearAuthCacheRoute,
   CreateBookingRoute: CreateBookingRoute,
   DashboardRoute: DashboardRouteWithChildren,
-  DashboardTestRoute: DashboardTestRoute,
-  DebugRoute: DebugRoute,
-  DebugAuthRoute: DebugAuthRoute,
   ForgotPasswordRoute: ForgotPasswordRoute,
   InvoicesRoute: InvoicesRouteWithChildren,
   LoginRoute: LoginRoute,
   RegisterRoute: RegisterRoute,
-  TestAuthRoute: TestAuthRoute,
-  TestBookingAccessRoute: TestBookingAccessRoute,
-  TestLogsRoute: TestLogsRoute,
-  TestRedirectRoute: TestRedirectRoute,
-  TestRoutingRoute: TestRoutingRoute,
-  TestSimpleRedirectRoute: TestSimpleRedirectRoute,
-  TestUserDashboardRoute: TestUserDashboardRoute,
-  TestUserDashboardNoAuthRoute: TestUserDashboardNoAuthRoute,
   VouchersRoute: VouchersRouteWithChildren,
   AuthCallbackRoute: AuthCallbackRoute,
   BookingViewBookingIdRoute: BookingViewBookingIdRoute,

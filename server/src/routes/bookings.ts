@@ -8,205 +8,6 @@ import type { NewBooking, NewBookingItem, NewClient } from '../db/schema';
 
 const bookingRoutes = new Hono();
 
-// TEST ROUTE - GET /api/bookings/test - List all bookings without auth (for testing)
-bookingRoutes.get('/test', async (c) => {
-  try {
-    const bookingData = await db.select().from(bookings);
-    
-    return c.json({
-      message: 'Database connection successful',
-      data: bookingData?.map(booking => ({
-        id: booking.id,
-        code: booking.code,
-        clientId: booking.clientId,
-        hotelName: booking.hotelName,
-        city: booking.city,
-        checkIn: booking.checkIn,
-        checkOut: booking.checkOut,
-        totalAmount: booking.totalAmount,
-        paymentStatus: booking.paymentStatus,
-        bookingStatus: booking.bookingStatus,
-        createdAt: booking.createdAt
-      })) || []
-    });
-  } catch (error) {
-    console.error('Database error:', error);
-    return c.json({ error: 'Failed to fetch bookings' }, 500);
-  }
-});
-
-// TEST ROUTE - PUT /api/bookings/test/:id - Update booking without auth (for testing)
-bookingRoutes.put('/test/:id', async (c) => {
-  try {
-    const bookingId = parseInt(c.req.param('id'));
-    const body = await c.req.json();
-
-    if (!bookingId || isNaN(bookingId)) {
-      return c.json({ error: 'Invalid booking ID' }, 400);
-    }
-
-    // Validate required fields
-    const { 
-      guestName, 
-      guestEmail, 
-      guestPhone, 
-      checkInDate, 
-      checkOutDate, 
-      roomType, 
-      numberOfGuests, 
-      totalAmount, 
-      status,
-      specialRequests 
-    } = body;
-
-    if (!guestName || !guestEmail || !guestPhone || !checkInDate || !checkOutDate || !roomType || !numberOfGuests || !totalAmount) {
-      return c.json({ error: 'Missing required fields' }, 400);
-    }
-
-    // Check if booking exists
-    const existingBooking = await db
-      .select({
-        id: bookings.id,
-        clientId: bookings.clientId,
-      })
-      .from(bookings)
-      .where(eq(bookings.id, bookingId))
-      .limit(1);
-
-    if (existingBooking.length === 0) {
-      return c.json({ error: 'Booking not found' }, 404);
-    }
-
-    const clientId = existingBooking[0]?.clientId;
-    
-    if (!clientId) {
-      return c.json({ error: 'Client not found for booking' }, 404);
-    }
-
-    // Update client information
-    await db
-      .update(clients)
-      .set({
-        name: guestName,
-        email: guestEmail,
-        phone: guestPhone,
-      })
-      .where(eq(clients.id, clientId));
-
-    // Update booking information
-    await db
-      .update(bookings)
-      .set({
-        checkIn: new Date(checkInDate),
-        checkOut: new Date(checkOutDate),
-        totalAmount: totalAmount.toString(),
-        bookingStatus: status || 'pending',
-        meta: specialRequests ? { specialRequests } : null,
-        updatedAt: new Date(),
-      })
-      .where(eq(bookings.id, bookingId));
-
-    // Update booking items
-    // First, delete existing items
-    await db
-      .delete(bookingItems)
-      .where(eq(bookingItems.bookingId, bookingId));
-
-    // Then, insert new item
-    await db.insert(bookingItems).values({
-      bookingId: bookingId,
-      roomType: roomType as 'DBL' | 'TPL' | 'Quad',
-      roomCount: 1, // Assuming 1 room for now
-      unitPrice: totalAmount.toString(),
-    });
-
-    return c.json({
-      success: true,
-      message: 'Booking updated successfully (test endpoint)',
-    });
-  } catch (error) {
-    console.error('Error updating booking:', error);
-    return c.json({ error: 'Failed to update booking' }, 500);
-  }
-});
-
-// TEST ROUTE - GET /api/bookings/test/:id - Get single booking detail without auth (for testing)
-bookingRoutes.get('/test/:id', async (c) => {
-  try {
-    const bookingId = parseInt(c.req.param('id'));
-
-    if (!bookingId || isNaN(bookingId)) {
-      return c.json({ error: 'Invalid booking ID' }, 400);
-    }
-
-    // Query bookings table with client information using Drizzle
-    const result = await db
-      .select({
-        id: bookings.id,
-        code: bookings.code,
-        clientId: bookings.clientId,
-        hotelName: bookings.hotelName,
-        city: bookings.city,
-        checkIn: bookings.checkIn,
-        checkOut: bookings.checkOut,
-        totalAmount: bookings.totalAmount,
-        paymentStatus: bookings.paymentStatus,
-        bookingStatus: bookings.bookingStatus,
-        meta: bookings.meta,
-        createdAt: bookings.createdAt,
-        updatedAt: bookings.updatedAt,
-        clientName: clients.name,
-        clientEmail: clients.email,
-        clientPhone: clients.phone,
-      })
-      .from(bookings)
-      .leftJoin(clients, eq(bookings.clientId, clients.id))
-      .where(eq(bookings.id, bookingId))
-      .limit(1);
-
-    if (result.length === 0) {
-      return c.json({ error: 'Booking not found' }, 404);
-    }
-
-    const bookingData = result[0];
-
-    // Get booking items
-    const items = await db
-      .select()
-      .from(bookingItems)
-      .where(eq(bookingItems.bookingId, bookingId));
-
-    // Transform the data to match expected API format
-    const transformedBooking = {
-      id: bookingData.id,
-      code: bookingData.code,
-      clientId: bookingData.clientId,
-      clientName: bookingData.clientName,
-      clientEmail: bookingData.clientEmail,
-      clientPhone: bookingData.clientPhone,
-      hotelName: bookingData.hotelName,
-      city: bookingData.city,
-      checkIn: bookingData.checkIn,
-      checkOut: bookingData.checkOut,
-      totalAmount: bookingData.totalAmount,
-      paymentStatus: bookingData.paymentStatus,
-      bookingStatus: bookingData.bookingStatus,
-      meta: bookingData.meta,
-      createdAt: bookingData.createdAt,
-      updatedAt: bookingData.updatedAt,
-      items: items
-    };
-
-    return c.json({
-      success: true,
-      data: transformedBooking,
-    });
-  } catch (error) {
-    console.error('Error fetching booking:', error);
-    return c.json({ error: 'Failed to fetch booking' }, 500);
-  }
-});
-
 // GET /api/bookings - List all bookings
 bookingRoutes.get('/', requireAdmin, async (c) => {
   try {
@@ -237,70 +38,6 @@ bookingRoutes.get('/', requireAdmin, async (c) => {
   } catch (error) {
     console.error('Error fetching bookings:', error);
     return c.json({ error: 'Failed to fetch bookings' }, 500);
-  }
-});
-
-// TEST ROUTE - PATCH /api/bookings/test/:id - Update booking status without auth (for testing)
-bookingRoutes.patch('/test/:id', async (c) => {
-  try {
-    const bookingId = parseInt(c.req.param('id'));
-    const body = await c.req.json();
-    const { paymentStatus, bookingStatus } = body;
-
-    if (!bookingId || isNaN(bookingId)) {
-      return c.json({ error: 'Invalid booking ID' }, 400);
-    }
-
-    // Validate status values
-    const validPaymentStatuses = ['unpaid', 'partial', 'paid', 'overdue'];
-    const validBookingStatuses = ['pending', 'confirmed', 'cancelled'];
-
-    if (paymentStatus && !validPaymentStatuses.includes(paymentStatus)) {
-      return c.json({ error: 'Invalid payment status' }, 400);
-    }
-
-    if (bookingStatus && !validBookingStatuses.includes(bookingStatus)) {
-      return c.json({ error: 'Invalid booking status' }, 400);
-    }
-
-    // Check if booking exists
-    const existingBooking = await db
-      .select()
-      .from(bookings)
-      .where(eq(bookings.id, bookingId))
-      .limit(1);
-
-    if (existingBooking.length === 0) {
-      return c.json({ error: 'Booking not found' }, 404);
-    }
-
-    // Update booking
-    const updateData: any = {
-      updatedAt: new Date(),
-    };
-
-    if (paymentStatus) {
-      updateData.paymentStatus = paymentStatus;
-    }
-
-    if (bookingStatus) {
-      updateData.bookingStatus = bookingStatus;
-    }
-
-    const [updatedBooking] = await db
-      .update(bookings)
-      .set(updateData)
-      .where(eq(bookings.id, bookingId))
-      .returning();
-
-    return c.json({
-      success: true,
-      data: updatedBooking,
-      message: 'Booking updated successfully',
-    });
-  } catch (error) {
-    console.error('Error updating booking:', error);
-    return c.json({ error: 'Failed to update booking' }, 500);
   }
 });
 
@@ -532,7 +269,11 @@ bookingRoutes.put('/:id', requireAdmin, async (c) => {
       return c.json({ error: 'Booking not found' }, 404);
     }
 
-    const clientId = existingBooking[0].clientId;
+    const clientId = existingBooking[0]?.clientId;
+    
+    if (!clientId) {
+      return c.json({ error: 'Client not found for booking' }, 404);
+    }
 
     // Update client information
     await db
@@ -641,12 +382,12 @@ bookingRoutes.put('/:id', requireAdmin, async (c) => {
   }
 });
 
-// PATCH /api/bookings/:id - Update booking status
+// PATCH /api/bookings/:id - Update booking status and hotel confirmation number
 bookingRoutes.patch('/:id', requireAdmin, async (c) => {
   try {
     const bookingId = parseInt(c.req.param('id'));
     const body = await c.req.json();
-    const { paymentStatus, bookingStatus } = body;
+    const { paymentStatus, bookingStatus, hotelConfirmationNo } = body;
 
     if (!bookingId || isNaN(bookingId)) {
       return c.json({ error: 'Invalid booking ID' }, 400);
@@ -662,6 +403,15 @@ bookingRoutes.patch('/:id', requireAdmin, async (c) => {
 
     if (bookingStatus && !validBookingStatuses.includes(bookingStatus)) {
       return c.json({ error: 'Invalid booking status' }, 400);
+    }
+
+    // Validate hotel confirmation number if provided
+    if (hotelConfirmationNo && typeof hotelConfirmationNo !== 'string') {
+      return c.json({ error: 'Hotel confirmation number must be a string' }, 400);
+    }
+
+    if (hotelConfirmationNo && hotelConfirmationNo.length > 100) {
+      return c.json({ error: 'Hotel confirmation number must be 100 characters or less' }, 400);
     }
 
     // Check if booking exists
@@ -686,6 +436,10 @@ bookingRoutes.patch('/:id', requireAdmin, async (c) => {
 
     if (bookingStatus) {
       updateData.bookingStatus = bookingStatus;
+    }
+
+    if (hotelConfirmationNo !== undefined) {
+      updateData.hotelConfirmationNo = hotelConfirmationNo;
     }
 
     const [updatedBooking] = await db

@@ -40,17 +40,17 @@ const auth = betterAuth({
     },
   },
   advanced: {
-    useSecureCookies: false, // Allow non-secure cookies in development
+    useSecureCookies: false,
     defaultCookieAttributes: {
-      httpOnly: false, // Set to false for debugging
-      secure: false, // Set to false for localhost
-      sameSite: "lax", // More permissive for localhost
-      domain: undefined, // Don't set domain for localhost
+      httpOnly: false,
+      secure: false,
+      sameSite: "lax",
+      domain: undefined,
     },
   },
   emailAndPassword: {
     enabled: true,
-    requireEmailVerification: false, // Set to false for development
+    requireEmailVerification: false,
   },
   socialProviders: {
     google: {
@@ -62,10 +62,7 @@ const auth = betterAuth({
     },
   },
   plugins: [
-    admin({
-      // Define admin users by their IDs or use role-based approach
-      // adminUserIds: ["admin-user-id"], // Optional: specific user IDs as admins
-    })
+    admin({})
   ],
 });
 
@@ -73,7 +70,7 @@ export const app = new Hono()
   .use(cors({
     origin: ["http://localhost:5173", "http://localhost:5174"],
     credentials: true,
-    allowMethods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allowMethods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
     allowHeaders: ["Content-Type", "Authorization"],
   }))
   // Better Auth handler

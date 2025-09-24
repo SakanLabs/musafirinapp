@@ -78,6 +78,7 @@ export const bookings = pgTable('bookings', {
   totalAmount: decimal('total_amount', { precision: 10, scale: 2 }).notNull(),
   paymentStatus: paymentStatusEnum('payment_status').default('unpaid').notNull(),
   bookingStatus: bookingStatusEnum('booking_status').default('pending').notNull(),
+  hotelConfirmationNo: varchar('hotel_confirmation_no', { length: 100 }),
   meta: jsonb('meta'),
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),

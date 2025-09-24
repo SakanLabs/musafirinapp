@@ -1,0 +1,1 @@
+ALTER TABLE "bookings" ADD COLUMN "hotel_confirmation_no" varchar(100);
