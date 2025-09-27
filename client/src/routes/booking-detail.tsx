@@ -19,7 +19,8 @@ import {
   Loader2,
   Edit,
   Clock,
-  Settings
+  Settings,
+  RefreshCw
 } from "lucide-react"
 import { SARCurrency } from "@/components/ui/sar-currency"
 import { authService } from "@/lib/auth"
@@ -27,7 +28,7 @@ import {
   formatCurrency, 
   formatDate
 } from "@/lib/utils"
-import { useBooking, useGenerateInvoice, useGenerateVoucher, useUpdateBookingStatus } from "@/lib/queries"
+import { useBooking, useGenerateInvoice, useRegenerateInvoice, useGenerateVoucher, useUpdateBookingStatus } from "@/lib/queries"
 import { useCheckInvoiceExists } from "@/lib/queries/invoices"
 import { useCheckVoucherExists } from "@/lib/queries/vouchers"
 
@@ -84,11 +85,13 @@ function BookingDetailPage() {
   const { id } = Route.useSearch()
   const navigate = useNavigate()
   const [isDueDateModalOpen, setIsDueDateModalOpen] = useState(false)
+  const [isRegenerating, setIsRegenerating] = useState(false)
   const [isUpdateStatusModalOpen, setIsUpdateStatusModalOpen] = useState(false)
   
   // Fetch booking data using TanStack Query
   const { data: booking, isLoading, error } = useBooking(id)
   const generateInvoiceMutation = useGenerateInvoice()
+  const regenerateInvoiceMutation = useRegenerateInvoice()
   const generateVoucherMutation = useGenerateVoucher()
   const updateBookingStatusMutation = useUpdateBookingStatus()
   
@@ -102,25 +105,40 @@ function BookingDetailPage() {
       navigate({ to: '/invoices' })
     } else {
       // If no invoice exists, show due date modal to generate new one
+      setIsRegenerating(false)
       setIsDueDateModalOpen(true)
     }
   }
 
+  const handleRegenerateInvoice = () => {
+    // Show due date modal for regeneration
+    setIsRegenerating(true)
+    setIsDueDateModalOpen(true)
+  }
+
   const handleDueDateSubmit = async (dueDate: string) => {
     try {
-      await generateInvoiceMutation.mutateAsync({ 
-        bookingId: id, 
-        dueDate 
-      })
-      setIsDueDateModalOpen(false)
+      if (isRegenerating) {
+        await regenerateInvoiceMutation.mutateAsync({ 
+          bookingId: id, 
+          dueDate 
+        })
+        alert("Invoice berhasil digenerate ulang! Anda akan diarahkan ke halaman invoices.")
+      } else {
+        await generateInvoiceMutation.mutateAsync({ 
+          bookingId: id, 
+          dueDate 
+        })
+        alert("Invoice berhasil digenerate! Anda akan diarahkan ke halaman invoices.")
+      }
       
-      // Show success message
-      alert("Invoice berhasil digenerate! Anda akan diarahkan ke halaman invoices.")
+      setIsDueDateModalOpen(false)
+      setIsRegenerating(false)
       
       // Redirect to invoices page
       navigate({ to: '/invoices' })
     } catch (error) {
-      console.error("Failed to generate invoice:", error)
+      console.error("Failed to generate/regenerate invoice:", error)
       alert("Gagal generate invoice. Silakan coba lagi.")
     }
   }
@@ -301,7 +319,7 @@ function BookingDetailPage() {
                   <div>
                     <label className="text-sm font-medium text-gray-500">Total Amount</label>
                     <div className="flex items-center">
-                      <SARCurrency iconSize={16} className="mr-2 text-gray-400" />
+                      <SARCurrency amount={booking.totalAmount.toString()} iconSize={16} className="mr-2 text-gray-400" />
                       <p className="text-gray-900 font-semibold">{formatCurrency(booking.totalAmount.toString(), 'SAR')}</p>
                     </div>
                   </div>
@@ -387,6 +405,25 @@ function BookingDetailPage() {
                     existingInvoice ? "Lihat Invoice" : "Generate Invoice"
                   )}
                 </Button>
+                {existingInvoice && (
+                  <Button
+                    variant="outline"
+                    className="w-full"
+                    onClick={handleRegenerateInvoice}
+                    disabled={regenerateInvoiceMutation.isPending}
+                  >
+                    {regenerateInvoiceMutation.isPending ? (
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    ) : (
+                      <RefreshCw className="h-4 w-4 mr-2" />
+                    )}
+                    {regenerateInvoiceMutation.isPending ? (
+                      "Regenerating..."
+                    ) : (
+                      "Regenerate Invoice"
+                    )}
+                  </Button>
+                )}
                 <Button
                   variant="outline"
                   className="w-full"

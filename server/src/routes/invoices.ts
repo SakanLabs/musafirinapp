@@ -239,6 +239,7 @@ invoiceRoutes.post('/:bookingId/generate', requireAdmin, async (c) => {
     
     const customInvoiceDate = body.invoiceDate ? new Date(body.invoiceDate) : new Date();
     const customDueDate = new Date(body.dueDate);
+    const forceRegenerate = body.forceRegenerate === true;
 
     // Check if booking exists
     const booking = await db
@@ -273,12 +274,21 @@ invoiceRoutes.post('/:bookingId/generate', requireAdmin, async (c) => {
       .where(eq(invoices.bookingId, bookingId))
       .limit(1);
 
-    if (existingInvoice.length > 0) {
+    if (existingInvoice.length > 0 && !forceRegenerate) {
       return c.json({ 
         message: 'Invoice already exists for this booking',
         invoice: existingInvoice[0],
         downloadUrl: existingInvoice[0].pdfUrl
       });
+    }
+
+    // If force regenerate is true, delete existing invoice
+    if (existingInvoice.length > 0 && forceRegenerate) {
+      await db
+        .delete(invoices)
+        .where(eq(invoices.id, existingInvoice[0].id));
+      
+      console.log(`Force regenerating invoice for booking ${bookingId}, deleted existing invoice ${existingInvoice[0].number}`);
     }
 
     // Get booking items

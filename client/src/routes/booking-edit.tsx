@@ -58,6 +58,13 @@ function EditBookingPage() {
   // Initialize form data when booking data is loaded
   useEffect(() => {
     if (booking) {
+      // Calculate hotel cost per night and total from booking items
+      const hotelCostPrice = booking.items?.[0]?.hotelCostPrice ? parseFloat(booking.items[0].hotelCostPrice) : 0;
+      const checkInDate = booking.checkIn ? new Date(booking.checkIn) : null;
+      const checkOutDate = booking.checkOut ? new Date(booking.checkOut) : null;
+      const nights = checkInDate && checkOutDate ? Math.ceil((checkOutDate.getTime() - checkInDate.getTime()) / (1000 * 60 * 60 * 24)) : 1;
+      const totalHotelCost = hotelCostPrice * nights;
+
       setFormData({
         guestName: booking.clientName || '',
         guestEmail: booking.clientEmail || '',
@@ -66,10 +73,10 @@ function EditBookingPage() {
         checkOutDate: booking.checkOut ? booking.checkOut.split('T')[0] : '',
         roomType: booking.items?.[0]?.roomType || '',
         numberOfGuests: 1, // Default value since this field doesn't exist in Booking interface
-        specialRequests: '', // Default value since this field doesn't exist in Booking interface
+        specialRequests: booking.meta?.specialRequests || '', // Get from meta field
         totalAmount: booking.totalAmount || 0,
-        hotelCostPerNight: 0, // Default value, will be populated from backend later
-        totalHotelCost: 0, // Default value, will be populated from backend later
+        hotelCostPerNight: hotelCostPrice,
+        totalHotelCost: totalHotelCost,
         status: booking.bookingStatus || 'pending'
       })
     }
@@ -201,17 +208,12 @@ function EditBookingPage() {
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Room Type</label>
-                  <select
+                  <Input
                     value={formData.roomType}
                     onChange={(e) => handleInputChange('roomType', e.target.value)}
-                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                    placeholder="Enter room type (e.g., Deluxe Double, Executive Suite, Standard Twin)"
                     required
-                  >
-                    <option value="">Select Room Type</option>
-                    <option value="DBL">DBL (Double Room)</option>
-                    <option value="TPL">TPL (Triple Room)</option>
-                    <option value="Quad">Quad (Quad Room)</option>
-                  </select>
+                  />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Number of Guests</label>

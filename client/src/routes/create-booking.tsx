@@ -369,16 +369,12 @@ function CreateBookingPage() {
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Room Type *
               </label>
-              <select
+              <Input
                 value={formData.roomType}
                 onChange={(e) => handleInputChange('roomType', e.target.value)}
-                className={`flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-base shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50 md:text-sm ${errors.roomType ? "border-red-500" : ""}`}
-              >
-                <option value="">Select room type</option>
-                <option value="DBL">Double Room (DBL)</option>
-                <option value="TPL">Triple Room (TPL)</option>
-                <option value="Quad">Quad Room (Quad)</option>
-              </select>
+                placeholder="Enter room type (e.g., Deluxe Double, Executive Suite, Standard Twin)"
+                className={errors.roomType ? "border-red-500" : ""}
+              />
               {errors.roomType && (
                 <p className="text-red-500 text-sm mt-1">{errors.roomType}</p>
               )}

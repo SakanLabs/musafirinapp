@@ -5,7 +5,7 @@ import { apiClient, API_ENDPOINTS } from '../api';
 export interface BookingItem {
   id: number;
   bookingId: number;
-  roomType: 'DBL' | 'TPL' | 'Quad';
+  roomType: string; // Changed from enum to string for flexibility
   roomCount: number;
   unitPrice: string; // decimal as string
   hotelCostPrice: string; // decimal as string
@@ -201,6 +201,31 @@ export function useGenerateInvoice() {
         downloadUrl: string;
       }>(API_ENDPOINTS.GENERATE_INVOICE(bookingId), {
         dueDate
+      });
+      
+      // Auto-download the PDF if downloadUrl is provided
+      if (response.downloadUrl) {
+        const filename = `invoice-${response.data.number || bookingId}.pdf`;
+        await apiClient.downloadFile(response.downloadUrl, filename);
+      }
+      
+      return response;
+    },
+  });
+}
+
+// Regenerate invoice for booking (force create new)
+export function useRegenerateInvoice() {
+  return useMutation({
+    mutationFn: async ({ bookingId, dueDate }: { bookingId: string; dueDate: string }) => {
+      const response = await apiClient.post<{
+        success: boolean;
+        message: string;
+        data: any;
+        downloadUrl: string;
+      }>(API_ENDPOINTS.REGENERATE_INVOICE(bookingId), {
+        dueDate,
+        forceRegenerate: true
       });
       
       // Auto-download the PDF if downloadUrl is provided

@@ -309,7 +309,8 @@ export class TemplateHelpers {
     const checkOutDate = this.formatDate(booking.checkOut);
     const totalNights = this.calculateDuration(booking.checkIn, booking.checkOut);
     
-    // Map room types to readable names
+    // Map legacy room type codes to readable names (for backward compatibility)
+    // New room types will use their original names directly
     const roomTypeMap: { [key: string]: string } = {
       'DBL': 'Deluxe Double',
       'TPL': 'Triple',
@@ -319,9 +320,10 @@ export class TemplateHelpers {
     // Map booking items to invoice items and calculate totals
     let subtotalAmount = 0;
     const items = bookingItems.map(item => {
-      const roomRate = parseFloat(item.unitPrice) || 0;
+      const totalPrice = parseFloat(item.unitPrice) || 0; // unitPrice currently stores total amount
       const quantity = item.roomCount || 1;
-      const lineTotal = roomRate * quantity * totalNights;
+      const roomRatePerNight = totalPrice / (quantity * totalNights); // Calculate actual room rate per night
+      const lineTotal = totalPrice; // Use the stored total price directly
       subtotalAmount += lineTotal;
       
       return {
@@ -329,7 +331,7 @@ export class TemplateHelpers {
         mealPlan: 'Room Only', // Default since not in current schema
         quantity,
         nights: totalNights,
-        roomRate: this.formatCurrency(roomRate),
+        roomRate: this.formatCurrency(roomRatePerNight), // Show actual room rate per night
         lineTotal: this.formatCurrency(lineTotal),
         notes: '' // Default since not in current schema
       };

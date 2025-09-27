@@ -55,7 +55,7 @@ export const verification = pgTable('verification', {
 export const cityEnum = pgEnum('city', ['Makkah', 'Madinah']);
 export const paymentStatusEnum = pgEnum('payment_status', ['unpaid', 'partial', 'paid', 'overdue']);
 export const bookingStatusEnum = pgEnum('booking_status', ['pending', 'confirmed', 'cancelled']);
-export const roomTypeEnum = pgEnum('room_type', ['DBL', 'TPL', 'Quad']);
+// roomTypeEnum removed - now using varchar for flexibility
 export const invoiceStatusEnum = pgEnum('invoice_status', ['draft', 'sent', 'paid', 'overdue', 'cancelled']);
 // Clients table
 export const clients = pgTable('clients', {
@@ -88,7 +88,7 @@ export const bookings = pgTable('bookings', {
 export const bookingItems = pgTable('booking_items', {
   id: serial('id').primaryKey(),
   bookingId: integer('booking_id').notNull().references(() => bookings.id, { onDelete: 'cascade' }),
-  roomType: roomTypeEnum('room_type').notNull(),
+  roomType: varchar('room_type', { length: 255 }).notNull(), // Changed from enum to varchar for flexibility
   roomCount: integer('room_count').notNull(),
   unitPrice: decimal('unit_price', { precision: 10, scale: 2 }).notNull(), // Harga jual ke customer
   hotelCostPrice: decimal('hotel_cost_price', { precision: 10, scale: 2 }).default('0').notNull(), // Harga beli ke hotel
@@ -136,7 +136,7 @@ export const hotelCostTemplates = pgTable('hotel_cost_templates', {
   id: serial('id').primaryKey(),
   hotelName: varchar('hotel_name', { length: 255 }).notNull(),
   city: cityEnum('city').notNull(),
-  roomType: roomTypeEnum('room_type').notNull(),
+  roomType: varchar('room_type', { length: 255 }).notNull(), // Changed from enum to varchar for flexibility
   costPrice: decimal('cost_price', { precision: 10, scale: 2 }).notNull(),
   currency: varchar('currency', { length: 3 }).default('SAR').notNull(),
   effectiveDate: timestamp('effective_date').defaultNow().notNull(),

@@ -129,6 +129,7 @@ export const API_ENDPOINTS = {
   // Invoice endpoints
   INVOICES: '/api/invoices',
   GENERATE_INVOICE: (id: string) => `/api/invoices/${id}/generate`,
+  REGENERATE_INVOICE: (id: string) => `/api/invoices/${id}/generate`,
   INVOICE_BY_BOOKING: (bookingId: string) => `/api/invoices/booking/${bookingId}`,
   INVOICE_BY_BOOKING_TEST: (bookingId: string) => `/api/invoices/test/booking/${bookingId}`,
   DOWNLOAD_INVOICE: (id: string) => `/api/invoices/${id}/download`,
