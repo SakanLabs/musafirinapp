@@ -1,4 +1,4 @@
-import { createFileRoute, redirect, Link } from "@tanstack/react-router"
+import { createFileRoute, Link } from "@tanstack/react-router"
 import { PageLayout } from "@/components/layout/PageLayout"
 import { DataTable, Column } from "@/components/ui/data-table"
 import { Button } from "@/components/ui/button"
@@ -11,92 +11,14 @@ import {
   Filter,
   Loader2
 } from "lucide-react"
-import { authService } from "@/lib/auth"
-import { formatCurrency, formatDate, getPaymentStatusColor } from "@/lib/utils"
+import { formatCurrency, formatDate } from "@/lib/utils"
 import { useInvoices, type Invoice } from "@/lib/queries/invoices"
 
 export const Route = createFileRoute("/invoices")({ 
   component: InvoicesPage
 })
 
-// Mock invoices data
-const mockInvoices = [
-  {
-    id: 1,
-    number: "INV-2024-001",
-    clientName: "John Doe",
-    clientEmail: "john@example.com",
-    bookingCode: "BK001",
-    amount: "2500000",
-    currency: "IDR",
-    status: "paid",
-    issueDate: "2024-01-16",
-    dueDate: "2024-01-30",
-    paidDate: "2024-01-18",
-    pdfUrl: "/invoices/INV-2024-001.pdf",
-    notes: "Payment received via bank transfer"
-  },
-  {
-    id: 2,
-    number: "INV-2024-002",
-    clientName: "Jane Smith",
-    clientEmail: "jane@example.com",
-    bookingCode: "BK002",
-    amount: "3200000",
-    currency: "IDR",
-    status: "pending",
-    issueDate: "2024-01-17",
-    dueDate: "2024-01-31",
-    paidDate: null,
-    pdfUrl: "/invoices/INV-2024-002.pdf",
-    notes: null
-  },
-  {
-    id: 3,
-    number: "INV-2024-003",
-    clientName: "Bob Johnson",
-    clientEmail: "bob@example.com",
-    bookingCode: "BK003",
-    amount: "1800000",
-    currency: "IDR",
-    status: "paid",
-    issueDate: "2024-01-18",
-    dueDate: "2024-02-01",
-    paidDate: "2024-01-20",
-    pdfUrl: "/invoices/INV-2024-003.pdf",
-    notes: "Payment received via credit card"
-  },
-  {
-    id: 4,
-    number: "INV-2024-004",
-    clientName: "Alice Brown",
-    clientEmail: "alice@example.com",
-    bookingCode: "BK004",
-    amount: "2800000",
-    currency: "IDR",
-    status: "overdue",
-    issueDate: "2024-01-10",
-    dueDate: "2024-01-24",
-    paidDate: null,
-    pdfUrl: "/invoices/INV-2024-004.pdf",
-    notes: "Follow-up required"
-  },
-  {
-    id: 5,
-    number: "INV-2024-005",
-    clientName: "Charlie Wilson",
-    clientEmail: "charlie@example.com",
-    bookingCode: "BK005",
-    amount: "1500000",
-    currency: "IDR",
-    status: "paid",
-    issueDate: "2024-01-19",
-    dueDate: "2024-02-02",
-    paidDate: "2024-01-21",
-    pdfUrl: "/invoices/INV-2024-005.pdf",
-    notes: "Payment received via bank transfer"
-  }
-]
+
 
 function InvoicesPage() {
   // Fetch invoices using TanStack Query

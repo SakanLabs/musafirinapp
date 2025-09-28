@@ -12,15 +12,13 @@ import {
   Ticket,
   Share,
   Calendar,
-  MapPin,
   Users,
   Phone,
   Mail,
   Loader2,
   Edit,
   Clock,
-  Settings,
-  RefreshCw
+  Settings
 } from "lucide-react"
 import { SARCurrency } from "@/components/ui/sar-currency"
 import { authService } from "@/lib/auth"
@@ -28,7 +26,7 @@ import {
   formatCurrency, 
   formatDate
 } from "@/lib/utils"
-import { useBooking, useGenerateInvoice, useRegenerateInvoice, useGenerateVoucher, useUpdateBookingStatus } from "@/lib/queries"
+import { useBooking, useGenerateInvoice, useGenerateVoucher, useRegenerateVoucher, useUpdateBookingStatus } from "@/lib/queries"
 import { useCheckInvoiceExists } from "@/lib/queries/invoices"
 import { useCheckVoucherExists } from "@/lib/queries/vouchers"
 
@@ -85,14 +83,13 @@ function BookingDetailPage() {
   const { id } = Route.useSearch()
   const navigate = useNavigate()
   const [isDueDateModalOpen, setIsDueDateModalOpen] = useState(false)
-  const [isRegenerating, setIsRegenerating] = useState(false)
   const [isUpdateStatusModalOpen, setIsUpdateStatusModalOpen] = useState(false)
   
   // Fetch booking data using TanStack Query
   const { data: booking, isLoading, error } = useBooking(id)
   const generateInvoiceMutation = useGenerateInvoice()
-  const regenerateInvoiceMutation = useRegenerateInvoice()
   const generateVoucherMutation = useGenerateVoucher()
+  const regenerateVoucherMutation = useRegenerateVoucher()
   const updateBookingStatusMutation = useUpdateBookingStatus()
   
   // Check if invoice and voucher already exist
@@ -100,71 +97,59 @@ function BookingDetailPage() {
   const { data: existingVoucher } = useCheckVoucherExists(id)
 
   const handleGenerateInvoice = () => {
-    if (existingInvoice) {
-      // If invoice already exists, navigate to invoices page
-      navigate({ to: '/invoices' })
-    } else {
-      // If no invoice exists, show due date modal to generate new one
-      setIsRegenerating(false)
-      setIsDueDateModalOpen(true)
-    }
-  }
-
-  const handleRegenerateInvoice = () => {
-    // Show due date modal for regeneration
-    setIsRegenerating(true)
+    // Always show due date modal to generate/regenerate invoice
     setIsDueDateModalOpen(true)
   }
 
   const handleDueDateSubmit = async (dueDate: string) => {
     try {
-      if (isRegenerating) {
-        await regenerateInvoiceMutation.mutateAsync({ 
-          bookingId: id, 
-          dueDate 
-        })
-        alert("Invoice berhasil digenerate ulang! Anda akan diarahkan ke halaman invoices.")
-      } else {
-        await generateInvoiceMutation.mutateAsync({ 
-          bookingId: id, 
-          dueDate 
-        })
-        alert("Invoice berhasil digenerate! Anda akan diarahkan ke halaman invoices.")
-      }
+      await generateInvoiceMutation.mutateAsync({ 
+        bookingId: id, 
+        dueDate 
+      })
       
+      const message = existingInvoice 
+        ? "Invoice berhasil digenerate ulang! Anda akan diarahkan ke halaman invoices."
+        : "Invoice berhasil digenerate! Anda akan diarahkan ke halaman invoices."
+      
+      alert(message)
       setIsDueDateModalOpen(false)
-      setIsRegenerating(false)
       
       // Redirect to invoices page
       navigate({ to: '/invoices' })
     } catch (error) {
-      console.error("Failed to generate/regenerate invoice:", error)
+      console.error("Failed to generate invoice:", error)
       alert("Gagal generate invoice. Silakan coba lagi.")
     }
   }
 
   const handleGenerateVoucher = async () => {
-    if (existingVoucher) {
-      // If voucher already exists, navigate to vouchers page
-      navigate({ to: '/vouchers' })
-    } else {
-      // If no voucher exists, generate new one
-      if (!booking || !id) {
-        alert("Booking data tidak tersedia")
-        return
-      }
+    if (!booking || !id) {
+      alert("Booking data tidak tersedia")
+      return
+    }
 
-      try {
+    try {
+      if (existingVoucher) {
+        // If voucher already exists, regenerate it
+        await regenerateVoucherMutation.mutateAsync({ 
+          bookingId: id.toString(), 
+          guestName: booking.clientName 
+        })
+        console.log("Voucher regenerated successfully")
+        alert("Voucher berhasil digenerate ulang dan diunduh!")
+      } else {
+        // If no voucher exists, generate new one
         await generateVoucherMutation.mutateAsync({ 
           bookingId: id.toString(), 
           guestName: booking.clientName 
         })
         console.log("Voucher generated successfully")
         alert("Voucher berhasil digenerate dan diunduh!")
-      } catch (error) {
-        console.error("Failed to generate voucher:", error)
-        alert("Gagal generate voucher. Silakan coba lagi.")
       }
+    } catch (error) {
+      console.error("Failed to generate voucher:", error)
+      alert("Gagal generate voucher. Silakan coba lagi.")
     }
   }
 
@@ -181,8 +166,8 @@ function BookingDetailPage() {
   }
 
   const handleUpdateBookingStatus = async (updateData: {
-    paymentStatus?: any
-    bookingStatus?: any
+    paymentStatus?: "unpaid" | "partial" | "paid" | "overdue"
+    bookingStatus?: "pending" | "confirmed" | "cancelled"
     hotelConfirmationNo?: string
   }) => {
     try {
@@ -402,43 +387,24 @@ function BookingDetailPage() {
                   {generateInvoiceMutation.isPending ? (
                     "Generating..."
                   ) : (
-                    existingInvoice ? "Lihat Invoice" : "Generate Invoice"
+                    existingInvoice ? "Generate Ulang Invoice" : "Generate Invoice"
                   )}
                 </Button>
-                {existingInvoice && (
-                  <Button
-                    variant="outline"
-                    className="w-full"
-                    onClick={handleRegenerateInvoice}
-                    disabled={regenerateInvoiceMutation.isPending}
-                  >
-                    {regenerateInvoiceMutation.isPending ? (
-                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                    ) : (
-                      <RefreshCw className="h-4 w-4 mr-2" />
-                    )}
-                    {regenerateInvoiceMutation.isPending ? (
-                      "Regenerating..."
-                    ) : (
-                      "Regenerate Invoice"
-                    )}
-                  </Button>
-                )}
                 <Button
                   variant="outline"
                   className="w-full"
                   onClick={handleGenerateVoucher}
-                  disabled={generateVoucherMutation.isPending}
+                  disabled={generateVoucherMutation.isPending || regenerateVoucherMutation.isPending}
                 >
-                  {generateVoucherMutation.isPending ? (
+                  {(generateVoucherMutation.isPending || regenerateVoucherMutation.isPending) ? (
                     <Loader2 className="h-4 w-4 mr-2 animate-spin" />
                   ) : (
                     <Ticket className="h-4 w-4 mr-2" />
                   )}
-                  {generateVoucherMutation.isPending ? (
+                  {(generateVoucherMutation.isPending || regenerateVoucherMutation.isPending) ? (
                     "Generating..."
                   ) : (
-                    existingVoucher ? "Lihat Voucher" : "Generate Voucher"
+                    existingVoucher ? "Generate Ulang Voucher" : "Generate Voucher"
                   )}
                 </Button>
                 <Button

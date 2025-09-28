@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { Card } from '../ui/card';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
@@ -6,7 +6,7 @@ import { StatCard } from '../ui/stat-card';
 import { SARAmount } from '../ui/sar-currency';
 import { useDashboardAnalytics } from '../../lib/queries';
 import type { AnalyticsFilters } from 'shared/src/types';
-import { Coins, BarChart3, TrendingUp, Percent, Calendar, Filter, Download, Clock } from 'lucide-react';
+import { Coins, BarChart3, TrendingUp, Percent, Filter, Download } from 'lucide-react';
 
 export function AnalyticsDashboard() {
   const [filters, setFilters] = useState<AnalyticsFilters>({});

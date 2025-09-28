@@ -26,6 +26,10 @@ interface User {
   createdAt: string
 }
 
+
+
+
+
 function AdminPage() {
   const [users, setUsers] = useState<User[]>([])
   const [loading, setLoading] = useState(true)
@@ -51,12 +55,12 @@ function AdminPage() {
       
       if (response.data?.users) {
         // Map the response to our User interface
-        const mappedUsers: User[] = response.data.users.map((user: any) => ({
-          id: user.id,
-          name: user.name || user.email,
-          email: user.email,
+        const mappedUsers: User[] = (response.data.users as Record<string, unknown>[]).map((user) => ({
+          id: String(user.id),
+          name: String(user.name || user.email || 'Unknown'),
+          email: String(user.email || ''),
           role: (user.role === 'admin' ? 'admin' : 'user') as 'user' | 'admin',
-          createdAt: user.createdAt
+          createdAt: String(user.createdAt || new Date().toISOString())
         }))
         setUsers(mappedUsers)
       }

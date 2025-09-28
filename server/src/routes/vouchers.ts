@@ -46,7 +46,8 @@ voucherRoutes.get('/', requireAdmin, async (c) => {
 // POST /api/vouchers/:bookingId/generate - Generate voucher for booking
 voucherRoutes.post('/:bookingId/generate', requireAdmin, async (c) => {
   try {
-    const bookingId = c.req.param('bookingId');
+    const bookingIdParam = c.req.param('bookingId');
+    const bookingId = parseInt(bookingIdParam, 10);
     const body = await c.req.json();
     const { guestName } = body;
 
@@ -58,7 +59,7 @@ voucherRoutes.post('/:bookingId/generate', requireAdmin, async (c) => {
       guestNameLength: guestName?.length
     });
 
-    if (!bookingId || isNaN(bookingId)) {
+    if (!bookingIdParam || isNaN(bookingId)) {
       return c.json({ error: 'Invalid booking ID' }, 400);
     }
 
@@ -98,18 +99,39 @@ voucherRoutes.post('/:bookingId/generate', requireAdmin, async (c) => {
 
     const bookingData = booking[0]!;
 
+    console.log('Booking data found:', {
+      id: bookingData.id,
+      code: bookingData.code,
+      paymentStatus: bookingData.paymentStatus,
+      bookingStatus: bookingData.bookingStatus,
+      hotelConfirmationNo: bookingData.hotelConfirmationNo,
+      hotelName: bookingData.hotelName,
+      clientName: bookingData.clientName
+    });
+
     // Validate payment status - voucher can only be generated for paid bookings
     if (bookingData.paymentStatus !== 'paid') {
+      console.log('Payment status validation failed:', {
+        currentStatus: bookingData.paymentStatus,
+        requiredStatus: 'paid'
+      });
       return c.json({ 
-        error: 'Voucher can only be generated for paid bookings',
-        currentStatus: bookingData.paymentStatus 
+        error: 'Cannot generate voucher: Payment must be completed first',
+        details: `Current payment status is '${bookingData.paymentStatus}'. Please update the booking payment status to 'paid' before generating a voucher.`,
+        currentStatus: bookingData.paymentStatus,
+        requiredStatus: 'paid'
       }, 400);
     }
 
     // Validate hotel confirmation number - required for voucher generation
     if (!bookingData.hotelConfirmationNo) {
+      console.log('Hotel confirmation number validation failed:', {
+        hotelConfirmationNo: bookingData.hotelConfirmationNo
+      });
       return c.json({ 
-        error: 'Hotel confirmation number is required to generate voucher. Please update the booking first.' 
+        error: 'Cannot generate voucher: Hotel confirmation number required',
+        details: 'Please add a hotel confirmation number to this booking before generating a voucher. This ensures the booking is confirmed with the hotel.',
+        solution: 'Update the booking with the hotel confirmation number received from the hotel.'
       }, 400);
     }
 
@@ -120,8 +142,15 @@ voucherRoutes.post('/:bookingId/generate', requireAdmin, async (c) => {
       .where(eq(vouchers.bookingId, bookingId))
       .limit(1);
 
-    if (existingVoucher.length > 0) {
-      return c.json({ error: 'Voucher already exists for this booking' }, 400);
+    // Always delete existing voucher if it exists (auto-replace behavior)
+    if (existingVoucher.length > 0 && existingVoucher[0]) {
+      await db
+        .delete(vouchers)
+        .where(eq(vouchers.bookingId, bookingId));
+      console.log('Existing voucher deleted for auto-replacement:', {
+        bookingId,
+        deletedVoucherId: existingVoucher[0].id
+      });
     }
 
     // Generate voucher number
@@ -160,6 +189,12 @@ voucherRoutes.post('/:bookingId/generate', requireAdmin, async (c) => {
       updatedAt: bookingData.updatedAt,
     };
 
+    // Get booking items for room details
+    const bookingItemsData = await db
+      .select()
+      .from(bookingItems)
+      .where(eq(bookingItems.bookingId, bookingId));
+
     // Generate PDF
     const pdfBuffer = await generateVoucherPDF(
       voucherForPDF,
@@ -171,6 +206,7 @@ voucherRoutes.post('/:bookingId/generate', requireAdmin, async (c) => {
         phone: bookingData.clientPhone,
         createdAt: new Date(),
       },
+      bookingItemsData,
       qrCodeDataURL
     );
 

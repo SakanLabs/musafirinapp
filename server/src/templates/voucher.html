@@ -74,8 +74,6 @@
         <div class="cs-card cs-card-compact">
           <p class="cs-font-semibold cs-mb-1">{{hotelName}}</p>
           <p class="cs-text-sm cs-text-gray-600">{{hotelAddress}}</p>
-          <p class="cs-text-xs cs-text-gray-500">Tel: {{hotelPhone}} • Email: {{hotelEmail}}</p>
-          {{#if hotelMapUrl}}<p class="cs-text-xs"><a href="{{hotelMapUrl}}">View map</a></p>{{/if}}
         </div>
       </div>
       <div style="width:44%" class="cs-text-right">
@@ -109,7 +107,7 @@
       </div>
       <div>
         <p class="cs-text-gray-600 cs-font-semibold cs-mb-1">Rooms / Pax</p>
-        <p class="cs-font-semibold">{{rooms}} rooms • {{adults}} Adults{{#if children}} • {{children}} Children{{/if}}</p>
+        <p class="cs-font-semibold">{{rooms}} rooms{{#if adults}} • {{adults}} Adults{{/if}}{{#if children}} • {{children}} Children{{/if}}</p>
       </div>
       <div>
         <p class="cs-text-gray-600 cs-font-semibold cs-mb-1">Confirmation</p>
@@ -123,11 +121,10 @@
       <table class="cs-table">
         <thead>
           <tr>
-            <th style="width:36%">Room Type</th>
-            <th style="width:18%">Meal Plan</th>
-            <th style="width:12%" class="cs-text-center">Rooms</th>
-            <th style="width:12%" class="cs-text-center">Occupancy</th>
-            <th style="width:22%">Remarks</th>
+            <th style="width:40%">Room Type</th>
+            <th style="width:20%">Meal Plan</th>
+            <th style="width:15%" class="cs-text-center">Rooms</th>
+            <th style="width:25%">Remarks</th>
           </tr>
         </thead>
         <tbody>
@@ -136,7 +133,6 @@
             <td class="cs-font-semibold">{{roomType}}</td>
             <td>{{mealPlan}}</td>
             <td class="cs-text-center">{{quantity}}</td>
-            <td class="cs-text-center">{{occupancy}}</td>
             <td>{{remarks}}</td>
           </tr>
           {{/each}}

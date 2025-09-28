@@ -1,4 +1,3 @@
-import React from 'react';
 import { formatSAR } from '../../lib/utils';
 import { cn } from '../../lib/utils';
 

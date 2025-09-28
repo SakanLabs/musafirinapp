@@ -11,8 +11,32 @@ export interface User {
   isAuthenticated: boolean
 }
 
+// Better Auth session interface - flexible to handle different formats
+interface BetterAuthSession {
+  user?: {
+    id: string;
+    name: string;
+    email: string;
+    role?: UserRole;
+  };
+  data?: {
+    user?: {
+      id: string;
+      name: string;
+      email: string;
+      role?: UserRole;
+    };
+  };
+  // Direct user properties (when session is the user object itself)
+  id?: string;
+  name?: string;
+  email?: string;
+  role?: UserRole;
+  [key: string]: unknown;
+}
+
 // Helper function to convert Better Auth session to our User interface
-const sessionToUser = (session: any): User | null => {
+const sessionToUser = (session: BetterAuthSession | null): User | null => {
   console.log('sessionToUser - input session:', session);
   console.log('sessionToUser - session type:', typeof session);
   
@@ -87,14 +111,14 @@ export const authService = {
       
       if (result.data?.user) {
         const session = await getSession()
-        const user = sessionToUser(session)
+        const user = sessionToUser(session as BetterAuthSession)
         // Update cache
         userCache = { user, timestamp: Date.now() };
         return { success: true, user: user || undefined }
       }
       
       return { success: false, error: result.error?.message || 'Login failed' }
-    } catch (error) {
+    } catch {
       return { success: false, error: 'An unexpected error occurred' }
     }
   },
@@ -119,7 +143,7 @@ export const authService = {
       
       console.log('getCurrentUser - raw session response:', session);
       
-      const user = sessionToUser(session);
+      const user = sessionToUser(session as BetterAuthSession);
       console.log('getCurrentUser - converted user:', user);
       
       // Update cache

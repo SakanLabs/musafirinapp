@@ -16,8 +16,8 @@ import {
   Plus,
   Loader2
 } from "lucide-react"
-import { SARCurrency } from "@/components/ui/sar-currency"
-import { formatCurrency, formatDate, getPaymentStatusColor, getBookingStatusColor, shareToWhatsApp, generateBookingWhatsAppMessage } from "@/lib/utils"
+
+import { formatCurrency, formatDate, getBookingStatusColor, shareToWhatsApp, generateBookingWhatsAppMessage } from "@/lib/utils"
 import { useDashboardSummary } from "@/lib/queries"
 import { authService } from "@/lib/auth"
 
@@ -188,7 +188,7 @@ function AdminDashboard() {
             value: "+8%", // Placeholder - you can calculate this from monthlyRevenue data
             type: 'increase'
           }}
-          icon={SARCurrency}
+          icon={TrendingUp}
         />
         
         <StatCard

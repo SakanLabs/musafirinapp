@@ -3,7 +3,7 @@ import { PageLayout } from "@/components/layout/PageLayout"
 import { AnalyticsDashboard } from "@/components/analytics"
 import { authService } from "@/lib/auth"
 
-export const Route = createFileRoute("/analytics" as any)({
+export const Route = createFileRoute("/analytics")({
   beforeLoad: async () => {
     // Check if user is authenticated
     const isAuthenticated = await authService.isAuthenticated()

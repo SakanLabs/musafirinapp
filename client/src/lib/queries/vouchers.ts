@@ -24,7 +24,7 @@ export interface Voucher {
 export const voucherKeys = {
   all: ['vouchers'] as const,
   lists: () => [...voucherKeys.all, 'list'] as const,
-  list: (filters: Record<string, any>) => [...voucherKeys.lists(), { filters }] as const,
+  list: (filters: Record<string, unknown>) => [...voucherKeys.lists(), { filters }] as const,
   details: () => [...voucherKeys.all, 'detail'] as const,
   detail: (id: string) => [...voucherKeys.details(), id] as const,
 };

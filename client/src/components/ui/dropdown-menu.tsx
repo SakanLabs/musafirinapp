@@ -1,6 +1,5 @@
 import * as React from "react"
 import { cn } from "@/lib/utils"
-import { ChevronDown } from "lucide-react"
 
 interface DropdownMenuProps {
   children: React.ReactNode

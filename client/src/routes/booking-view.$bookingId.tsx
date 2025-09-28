@@ -45,8 +45,14 @@ function BookingViewPage() {
   const handleGenerateInvoice = async () => {
     if (!booking) return
     
+    // Set due date to 30 days from now
+    const dueDate = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
+    
     try {
-      await generateInvoiceMutation.mutateAsync(booking.id)
+      await generateInvoiceMutation.mutateAsync({
+        bookingId: booking.id.toString(),
+        dueDate: dueDate
+      })
       // Handle success (e.g., show toast, download file)
     } catch (error) {
       console.error('Failed to generate invoice:', error)
@@ -58,7 +64,10 @@ function BookingViewPage() {
     if (!booking) return
     
     try {
-      await generateVoucherMutation.mutateAsync(booking.id)
+      await generateVoucherMutation.mutateAsync({
+        bookingId: booking.id.toString(),
+        guestName: booking.clientName
+      })
       // Handle success (e.g., show toast, download file)
     } catch (error) {
       console.error('Failed to generate voucher:', error)
@@ -83,7 +92,7 @@ Total: ${formatCurrency(booking.totalAmount.toString(), 'SAR')}`
 
   const handleEditBooking = () => {
     if (booking?.id) {
-      navigate({ to: "/booking-edit", search: { id: booking.id } })
+      navigate({ to: "/booking-edit", search: { id: booking.id.toString() } })
     }
   }
 

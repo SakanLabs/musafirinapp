@@ -9,7 +9,6 @@ import {
   Users,
   Calendar,
   MapPin,
-  Coins,
   Save,
   ArrowLeft,
   Loader2
@@ -167,7 +166,7 @@ function CreateBookingPage() {
         specialRequests: formData.specialRequests || undefined
       }
 
-      const result = await createBookingMutation.mutateAsync(bookingData)
+      await createBookingMutation.mutateAsync(bookingData)
       
       // Navigate to booking detail page or bookings list
       navigate({ to: "/bookings" })
@@ -187,10 +186,7 @@ function CreateBookingPage() {
     return 0
   }
 
-  const calculateTotalAmount = () => {
-    const nights = calculateNights()
-    return nights * formData.pricePerNight
-  }
+
 
 
 

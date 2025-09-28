@@ -289,6 +289,14 @@ bookingRoutes.put('/:id', requireAdmin, async (c) => {
       .where(eq(clients.id, clientId));
 
     // Update booking information
+    const metaData: Record<string, any> = {};
+    if (specialRequests) {
+      metaData.specialRequests = specialRequests;
+    }
+    if (numberOfGuests) {
+      metaData.numberOfGuests = numberOfGuests;
+    }
+
     const [updatedBooking] = await db
       .update(bookings)
       .set({
@@ -296,7 +304,7 @@ bookingRoutes.put('/:id', requireAdmin, async (c) => {
         checkOut: new Date(checkOutDate),
         totalAmount: totalAmount.toString(),
         bookingStatus: status || 'pending',
-        meta: specialRequests ? { specialRequests } : null,
+        meta: Object.keys(metaData).length > 0 ? metaData : null,
         updatedAt: new Date(),
       })
       .where(eq(bookings.id, bookingId))

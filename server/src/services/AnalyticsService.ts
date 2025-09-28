@@ -370,7 +370,7 @@ export class AnalyticsService {
     }
 
     if (filters.status) {
-      conditions.push(eq(bookings.status, filters.status));
+      conditions.push(sql`${bookings.bookingStatus} = ${filters.status}`);
     }
 
     return conditions.length > 0 ? and(...conditions) : undefined;

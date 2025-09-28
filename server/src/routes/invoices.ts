@@ -274,21 +274,13 @@ invoiceRoutes.post('/:bookingId/generate', requireAdmin, async (c) => {
       .where(eq(invoices.bookingId, bookingId))
       .limit(1);
 
-    if (existingInvoice.length > 0 && !forceRegenerate) {
-      return c.json({ 
-        message: 'Invoice already exists for this booking',
-        invoice: existingInvoice[0],
-        downloadUrl: existingInvoice[0].pdfUrl
-      });
-    }
-
-    // If force regenerate is true, delete existing invoice
-    if (existingInvoice.length > 0 && forceRegenerate) {
+    // Always delete existing invoice if it exists (auto-replace behavior)
+    if (existingInvoice.length > 0 && existingInvoice[0]) {
       await db
         .delete(invoices)
         .where(eq(invoices.id, existingInvoice[0].id));
       
-      console.log(`Force regenerating invoice for booking ${bookingId}, deleted existing invoice ${existingInvoice[0].number}`);
+      console.log(`Replacing existing invoice for booking ${bookingId}, deleted invoice ${existingInvoice[0].number}`);
     }
 
     // Get booking items

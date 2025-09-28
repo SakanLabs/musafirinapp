@@ -10,7 +10,7 @@ import {
   useCreateOperationalCost,
   useDeleteOperationalCost
 } from '../lib/queries/analytics'
-import type { HotelCostTemplate, NewHotelCostTemplate, OperationalCost, NewOperationalCost } from 'shared/src/types'
+import type { HotelCostTemplate, NewHotelCostTemplate, NewOperationalCost } from 'shared/src/types'
 
 export const Route = createFileRoute('/costs')({
   beforeLoad: async () => {
@@ -338,7 +338,7 @@ function TemplateFormModal({
   isLoading
 }: {
   template?: HotelCostTemplate | null
-  onSubmit: (data: any) => void
+  onSubmit: (data: NewHotelCostTemplate) => void
   onClose: () => void
   isLoading: boolean
 }) {
@@ -353,7 +353,7 @@ function TemplateFormModal({
     e.preventDefault()
     onSubmit({
       ...formData,
-      costPrice: parseFloat(formData.costPrice) || 0
+      costPrice: (parseFloat(formData.costPrice) || 0).toString()
     })
   }
 
@@ -455,7 +455,7 @@ function OperationalCostFormModal({
     onSubmit({
       bookingId: parseInt(formData.bookingId),
       costType: formData.costType,
-      amount: parseFloat(formData.amount),
+      amount: parseFloat(formData.amount).toString(),
       description: formData.description || undefined
     })
   }

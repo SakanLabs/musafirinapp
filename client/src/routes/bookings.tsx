@@ -12,7 +12,6 @@ import {
   Eye,
   Share,
   Calendar,
-  MapPin,
   Users,
   Loader2
 } from "lucide-react"
@@ -21,13 +20,11 @@ import { authService } from "@/lib/auth"
 import { 
   formatCurrency, 
   formatDate, 
-  getPaymentStatusColor, 
   getBookingStatusColor, 
   shareToWhatsApp, 
   generateBookingWhatsAppMessage 
 } from "@/lib/utils"
 import { useBookings, useCreateBooking, type Booking, type CreateBookingData } from "@/lib/queries"
-import { useOperationalCosts } from '../lib/queries/analytics'
 
 export const Route = createFileRoute("/bookings")({ 
   beforeLoad: async () => {
@@ -59,40 +56,9 @@ function BookingsPage() {
 
   // Fetch bookings using TanStack Query
   const { data: bookings = [], isLoading, error } = useBookings()
-  const { data: operationalCosts = [] } = useOperationalCosts()
   const createBookingMutation = useCreateBooking()
 
-  // Helper function to calculate profit for a booking
-  const calculateBookingProfit = (booking: Booking) => {
-    // Calculate revenue from booking items
-    const revenue = booking.items?.reduce((total, item) => {
-      return total + (parseFloat(item.unitPrice) * item.roomCount)
-    }, 0) || parseFloat(booking.totalAmount.toString())
 
-    // Calculate hotel costs from booking items
-    const hotelCosts = booking.items?.reduce((total, item) => {
-      return total + (parseFloat(item.hotelCostPrice || '0') * item.roomCount)
-    }, 0) || 0
-
-    // Calculate operational costs for this booking
-    const bookingOperationalCosts = operationalCosts
-      .filter(cost => cost.bookingId === booking.id)
-      .reduce((total, cost) => total + parseFloat(cost.amount), 0)
-
-    // Calculate profits
-    const grossProfit = revenue - hotelCosts
-    const netProfit = grossProfit - bookingOperationalCosts
-    const profitMargin = revenue > 0 ? (netProfit / revenue) * 100 : 0
-
-    return {
-      revenue,
-      hotelCosts,
-      operationalCosts: bookingOperationalCosts,
-      grossProfit,
-      netProfit,
-      profitMargin
-    }
-  }
 
   // Define columns for bookings table
   const bookingColumns: Column<Booking>[] = [
@@ -390,7 +356,7 @@ function BookingsPage() {
           {/* Pricing */}
           <Card className="p-4">
             <div className="flex items-center space-x-2 mb-4">
-              <SARCurrency iconSize={20} className="text-orange-600" />
+              <SARCurrency iconSize={20} className="text-orange-600" amount={""} />
               <h3 className="text-lg font-semibold">Pricing</h3>
             </div>
             <div className="grid grid-cols-1 gap-4">

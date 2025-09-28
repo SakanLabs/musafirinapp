@@ -4,15 +4,11 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { 
-  ArrowLeft,
   FileText,
   Ticket,
   Share,
   Calendar,
-  MapPin,
   Users,
-  Phone,
-  Mail,
   Loader2,
   Edit,
   Clock

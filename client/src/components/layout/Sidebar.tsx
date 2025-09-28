@@ -6,7 +6,6 @@ import {
   FileText,
   Ticket,
   Hotel,
-  Settings,
   Menu,
   X,
   BarChart3

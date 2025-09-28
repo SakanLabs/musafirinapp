@@ -2,7 +2,6 @@ import { createFileRoute, redirect, Link } from "@tanstack/react-router"
 import { PageLayout } from "@/components/layout/PageLayout"
 import { DataTable, Column } from "@/components/ui/data-table"
 import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
 import { 
   Ticket,
   Download,
@@ -155,27 +154,21 @@ function VouchersPage() {
     shareToWhatsApp({ phoneNumber: voucher.clientEmail, message }) // Using email since phone not available
   }
 
-  const getVoucherStatusColor = (status: string) => {
-    switch (status) {
-      case 'active':
-        return 'bg-green-100 text-green-800 border-green-200'
-      case 'used':
-        return 'bg-blue-100 text-blue-800 border-blue-200'
-      case 'cancelled':
-        return 'bg-red-100 text-red-800 border-red-200'
-      case 'expired':
-        return 'bg-gray-100 text-gray-800 border-gray-200'
-      default:
-        return 'bg-gray-100 text-gray-800 border-gray-200'
-    }
-  }
+
 
   // Calculate summary stats
   const totalVouchers = vouchers?.length || 0
-  const activeVouchers = vouchers?.filter(v => v.status === 'active').length || 0
-  const usedVouchers = vouchers?.filter(v => v.status === 'used').length || 0
-  const cancelledVouchers = vouchers?.filter(v => v.status === 'cancelled').length || 0
-  const totalNights = vouchers?.reduce((sum, v) => sum + v.nights, 0) || 0
+  // Calculate active/used based on checkout dates since vouchers don't have status field
+  const currentDate = new Date()
+  const activeVouchers = vouchers?.filter(v => v.checkOut && new Date(v.checkOut) >= currentDate).length || 0
+  const usedVouchers = vouchers?.filter(v => v.checkOut && new Date(v.checkOut) < currentDate).length || 0
+  // Calculate total nights using checkIn/checkOut dates
+  const totalNights = vouchers?.reduce((sum, v) => {
+    if (v.checkIn && v.checkOut) {
+      return sum + calculateNights(v.checkIn, v.checkOut)
+    }
+    return sum
+  }, 0) || 0
 
   return (
     <PageLayout

@@ -25,7 +25,7 @@ export interface Booking {
   paymentStatus: 'unpaid' | 'partial' | 'paid' | 'overdue';
   bookingStatus: 'pending' | 'confirmed' | 'cancelled';
   hotelConfirmationNo?: string;
-  meta?: any;
+  meta?: Record<string, unknown>;
   createdAt: string;
   updatedAt: string;
   items?: BookingItem[];
@@ -67,7 +67,7 @@ export interface UpdateBookingData {
 export const bookingKeys = {
   all: ['bookings'] as const,
   lists: () => [...bookingKeys.all, 'list'] as const,
-  list: (filters: Record<string, any>) => [...bookingKeys.lists(), { filters }] as const,
+  list: (filters: Record<string, unknown>) => [...bookingKeys.lists(), { filters }] as const,
   details: () => [...bookingKeys.all, 'detail'] as const,
   detail: (id: string | number) => [...bookingKeys.details(), id.toString()] as const,
 };
@@ -115,7 +115,10 @@ export function useCreateBooking() {
           city: data.city,
           checkIn: data.checkInDate,
           checkOut: data.checkOutDate,
-          meta: data.specialRequests ? { specialRequests: data.specialRequests } : null
+          meta: {
+            ...(data.specialRequests && { specialRequests: data.specialRequests }),
+            numberOfGuests: data.numberOfGuests
+          }
         },
         items: [
           {
@@ -172,7 +175,7 @@ export function useUpdateBookingStatus() {
       bookingStatus?: Booking['bookingStatus'];
       hotelConfirmationNo?: string;
     }) => {
-      const updateData: any = {};
+      const updateData: Partial<Pick<Booking, 'paymentStatus' | 'bookingStatus' | 'hotelConfirmationNo'>> = {};
       
       if (paymentStatus) updateData.paymentStatus = paymentStatus;
       if (bookingStatus) updateData.bookingStatus = bookingStatus;
@@ -190,14 +193,14 @@ export function useUpdateBookingStatus() {
   });
 }
 
-// Generate invoice for booking
+// Generate invoice for booking (automatically replaces existing invoice)
 export function useGenerateInvoice() {
   return useMutation({
     mutationFn: async ({ bookingId, dueDate }: { bookingId: string; dueDate: string }) => {
       const response = await apiClient.post<{
         success: boolean;
         message: string;
-        data: any;
+        data: { number?: string; id: string };
         downloadUrl: string;
       }>(API_ENDPOINTS.GENERATE_INVOICE(bookingId), {
         dueDate
@@ -214,29 +217,9 @@ export function useGenerateInvoice() {
   });
 }
 
-// Regenerate invoice for booking (force create new)
+// Alias for backward compatibility - now both functions do the same thing
 export function useRegenerateInvoice() {
-  return useMutation({
-    mutationFn: async ({ bookingId, dueDate }: { bookingId: string; dueDate: string }) => {
-      const response = await apiClient.post<{
-        success: boolean;
-        message: string;
-        data: any;
-        downloadUrl: string;
-      }>(API_ENDPOINTS.REGENERATE_INVOICE(bookingId), {
-        dueDate,
-        forceRegenerate: true
-      });
-      
-      // Auto-download the PDF if downloadUrl is provided
-      if (response.downloadUrl) {
-        const filename = `invoice-${response.data.number || bookingId}.pdf`;
-        await apiClient.downloadFile(response.downloadUrl, filename);
-      }
-      
-      return response;
-    },
-  });
+  return useGenerateInvoice();
 }
 
 // Generate voucher for booking
@@ -268,4 +251,9 @@ export function useGenerateVoucher() {
       return response;
     },
   });
+}
+
+// Alias for backward compatibility - now both functions do the same thing
+export function useRegenerateVoucher() {
+  return useGenerateVoucher();
 }

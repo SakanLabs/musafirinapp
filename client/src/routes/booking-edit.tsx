@@ -3,16 +3,13 @@ import { PageLayout } from "@/components/layout/PageLayout"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
-import { Badge } from "@/components/ui/badge"
 import { 
   ArrowLeft,
   Save,
-  Loader2,
-  X
+  Loader2
 } from "lucide-react"
 import { authService } from "@/lib/auth"
 import { useBooking, useUpdateBooking, UpdateBookingData } from "@/lib/queries/bookings"
-import { formatCurrency, formatDate } from "@/lib/utils"
 import { useState, useEffect } from "react"
 
 export const Route = createFileRoute("/booking-edit")({
@@ -72,8 +69,8 @@ function EditBookingPage() {
         checkInDate: booking.checkIn ? booking.checkIn.split('T')[0] : '',
         checkOutDate: booking.checkOut ? booking.checkOut.split('T')[0] : '',
         roomType: booking.items?.[0]?.roomType || '',
-        numberOfGuests: 1, // Default value since this field doesn't exist in Booking interface
-        specialRequests: booking.meta?.specialRequests || '', // Get from meta field
+        numberOfGuests: (booking.meta?.numberOfGuests as number) || 1,
+        specialRequests: (booking.meta?.specialRequests as string) || '', // Get from meta field
         totalAmount: booking.totalAmount || 0,
         hotelCostPerNight: hotelCostPrice,
         totalHotelCost: totalHotelCost,

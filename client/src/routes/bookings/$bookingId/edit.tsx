@@ -3,11 +3,9 @@ import { PageLayout } from "@/components/layout/PageLayout"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
-import { Loader2, Save, X } from "lucide-react"
+import { Save, Loader2, X } from "lucide-react"
 import { authService } from "@/lib/auth"
 import { useBooking, useUpdateBooking, UpdateBookingData } from "@/lib/queries/bookings"
-import { formatCurrency, formatDate } from "@/lib/utils"
 import { useState, useEffect } from "react"
 
 export const Route = createFileRoute("/bookings/$bookingId/edit")({
@@ -44,16 +42,16 @@ function EditBookingPage() {
   useEffect(() => {
     if (booking) {
       setFormData({
-        guestName: booking.guestName || '',
-        guestEmail: booking.guestEmail || '',
-        guestPhone: booking.guestPhone || '',
-        checkInDate: booking.checkInDate || '',
-        checkOutDate: booking.checkOutDate || '',
-        roomType: booking.roomType || '',
-        numberOfGuests: booking.numberOfGuests || 1,
-        specialRequests: booking.specialRequests || '',
+        guestName: booking.clientName || '',
+        guestEmail: booking.clientEmail || '',
+        guestPhone: booking.clientPhone || '',
+        checkInDate: booking.checkIn || '',
+        checkOutDate: booking.checkOut || '',
+        roomType: booking.items?.[0]?.roomType || '',
+        numberOfGuests: (booking.meta?.numberOfGuests as number) || 1,
+        specialRequests: (booking.meta?.specialRequests as string) || '',
         totalAmount: booking.totalAmount || 0,
-        status: booking.status || 'pending'
+        status: booking.bookingStatus || 'pending'
       })
     }
   }, [booking])

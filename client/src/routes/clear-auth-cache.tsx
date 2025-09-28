@@ -59,11 +59,11 @@ function ClearAuthCachePage() {
               </Button>
               
               <Button 
-                onClick={() => navigate({ to: "/test-booking-access" })} 
+                onClick={() => navigate({ to: "/bookings" })} 
                 className="w-full"
                 variant="outline"
               >
-                🧪 Test Booking Access
+                📋 Go to Bookings
               </Button>
             </div>
           </div>
