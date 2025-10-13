@@ -152,7 +152,7 @@ invoiceRoutes.get('/booking/:bookingId', requireAdmin, async (c) => {
       roomType: item.roomType,
       unitPrice: item.unitPrice,
       hasPricingPeriods: item.hasPricingPeriods,
-      pricingPeriodsCount: item.pricingPeriods ? item.pricingPeriods.length : 0
+      pricingPeriodsCount: (item as any).pricingPeriods ? (item as any).pricingPeriods.length : 0
     })));
 
     const bookingData = booking[0]!;
@@ -387,7 +387,7 @@ invoiceRoutes.post('/:bookingId/generate', requireAdmin, async (c) => {
       roomType: item.roomType,
       unitPrice: item.unitPrice,
       hasPricingPeriods: item.hasPricingPeriods,
-      pricingPeriodsCount: item.pricingPeriods ? item.pricingPeriods.length : 0
+      pricingPeriodsCount: (item as any).pricingPeriods ? (item as any).pricingPeriods.length : 0
     })));
 
     const bookingData = booking[0]!;
@@ -821,8 +821,8 @@ invoiceRoutes.post('/:invoiceId/pay', requireAdmin, async (c) => {
       // Update invoice status based on booking payment status and due date
       const now = new Date();
       const isOverdue = (newRemaining > 0) && (invoiceRow.dueDate ? new Date(invoiceRow.dueDate as any) < now : false);
-      const newInvoiceStatus: 'draft' | 'sent' | 'paid' | 'pending' | 'overdue' | 'cancelled' =
-        newPaymentStatus === 'paid' ? 'paid' : isOverdue ? 'overdue' : 'pending';
+      const newInvoiceStatus: 'draft' | 'sent' | 'paid' | 'overdue' | 'cancelled' =
+        newPaymentStatus === 'paid' ? 'paid' : isOverdue ? 'overdue' : 'sent';
 
       await tx
         .update(invoices)

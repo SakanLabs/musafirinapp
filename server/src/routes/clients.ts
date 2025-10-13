@@ -205,22 +205,26 @@ app.post('/', requireAdmin, async (c) => {
       .returning();
 
     // Create initial deposit record with zero balance
-    await db
-      .insert(clientDeposits)
-      .values({
-        clientId: newClient[0].id,
-        currentBalance: '0',
-        totalDeposited: '0',
-        totalUsed: '0',
-        currency: 'SAR',
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      });
+    if (newClient[0]) {
+      await db
+        .insert(clientDeposits)
+        .values({
+          clientId: newClient[0].id,
+          currentBalance: '0',
+          totalDeposited: '0',
+          totalUsed: '0',
+          currency: 'SAR',
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        });
 
-    return c.json({ 
-      message: 'Client created successfully', 
-      client: newClient[0] 
-    }, 201);
+      return c.json({ 
+        message: 'Client created successfully', 
+        client: newClient[0] 
+      }, 201);
+    } else {
+      return c.json({ error: 'Failed to create client' }, 500);
+    }
   } catch (error) {
     console.error('Error creating client:', error);
     return c.json({ error: 'Failed to create client' }, 500);

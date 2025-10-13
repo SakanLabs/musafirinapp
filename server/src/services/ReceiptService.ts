@@ -66,7 +66,7 @@ export class ReceiptService {
 
       if (existingReceipt.length > 0) {
         console.log(`Receipt already exists for booking ${bookingId}`);
-        return existingReceipt[0];
+        return existingReceipt[0] || null;
       }
 
       // Get booking data with client
@@ -98,10 +98,10 @@ export class ReceiptService {
         balanceDue,
         currency: 'IDR',
         issueDate: new Date(),
-        payerName: client.name,
-        payerEmail: client.email || null,
-        payerPhone: client.phone || null,
-        payerAddress: client.address || null,
+        payerName: client?.name || '',
+        payerEmail: client?.email || null,
+        payerPhone: client?.phone || null,
+        payerAddress: client?.address || null,
         hotelName: booking.hotelName,
         hotelAddress: null,
         bankName: 'Bank Syariah Indonesia',
@@ -117,7 +117,7 @@ export class ReceiptService {
       // Insert receipt
       const insertedReceipt = await db.insert(receipts).values(newReceipt).returning();
 
-      if (insertedReceipt.length === 0) {
+      if (insertedReceipt.length === 0 || !insertedReceipt[0]) {
         throw new Error('Failed to create receipt');
       }
 
@@ -129,12 +129,17 @@ export class ReceiptService {
         const pdfUrl = await generateReceiptPDF(receiptData);
         
         // Update receipt with PDF URL
-        await db
+        const updatedReceipts = await db
           .update(receipts)
           .set({ pdfUrl })
-          .where(eq(receipts.id, receipt.id));
+          .where(eq(receipts.id, receipt.id))
+          .returning();
 
-        receipt.pdfUrl = pdfUrl;
+        if (updatedReceipts.length > 0) {
+          Object.assign(receipt, updatedReceipts[0]);
+        } else {
+          receipt.pdfUrl = pdfUrl;
+        }
       }
 
       console.log(`Receipt ${receiptNumber} generated successfully for booking ${bookingId}`);
@@ -168,7 +173,7 @@ export class ReceiptService {
       .where(eq(receipts.id, receiptId))
       .limit(1);
 
-    return result.length > 0 ? result[0] : null;
+    return result.length > 0 ? (result[0] || null) : null;
   }
 
   private async getBookingWithClient(bookingId: number) {
@@ -182,7 +187,7 @@ export class ReceiptService {
       .where(eq(bookings.id, bookingId))
       .limit(1);
 
-    if (result.length === 0 || !result[0].booking || !result[0].client) {
+    if (result.length === 0 || !result[0] || !result[0].booking || !result[0].client) {
       return null;
     }
 
@@ -256,10 +261,10 @@ export class ReceiptService {
           mealPlan: booking.mealPlan,
         },
         client: {
-          name: client!.name,
-          email: client!.email || '',
-          phone: client!.phone || '',
-          address: client!.address || '',
+          name: client?.name || '',
+          email: client?.email || '',
+          phone: client?.phone || '',
+          address: client?.address || '',
         },
         payer: {
           name: receipt.payerName,

@@ -673,7 +673,7 @@ bookingRoutes.put('/:id', requireAdmin, async (c) => {
       }).returning();
 
       // Insert pricing periods if they exist
-      if (room.pricingPeriods && room.pricingPeriods.length > 0) {
+      if (room.pricingPeriods && room.pricingPeriods.length > 0 && newItem) {
         const pricingPeriodsData = room.pricingPeriods.map((period: any) => ({
           bookingItemId: newItem.id,
           startDate: new Date(period.startDate),

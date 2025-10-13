@@ -220,7 +220,11 @@ voucherRoutes.post('/:bookingId/generate', requireAdmin, async (c) => {
         name: bookingData.clientName!,
         email: bookingData.clientEmail!,
         phone: bookingData.clientPhone,
+        address: null,
+        notes: null,
+        isActive: true,
         createdAt: new Date(),
+        updatedAt: new Date(),
       },
       bookingItemsData,
       qrCodeDataURL
