@@ -140,7 +140,7 @@ export async function generateVoucherPDF(
     // Stay details
      checkIn: formatDate(booking.checkIn ?? new Date()),
      checkOut: formatDate(booking.checkOut ?? new Date()),
-    policyCheckInTime: "15:00",
+    policyCheckInTime: "16:00",
     policyCheckOutTime: "12:00",
     nights: calculateNights(booking.checkIn, booking.checkOut),
     rooms: bookingItems.reduce((sum, item) => sum + item.roomCount, 0),
@@ -151,7 +151,7 @@ export async function generateVoucherPDF(
     // Room details dari booking items yang sebenarnya
     roomsDetail: bookingItems.map(item => ({
       roomType: item.roomType,
-      mealPlan: 'Room Only', // Default value
+      mealPlan: TemplateHelpers.formatMealPlan(booking.mealPlan),
       quantity: item.roomCount,
       remarks: '-'
     })),
@@ -227,6 +227,20 @@ export async function checkFileExistsInMinio(fileName: string): Promise<boolean>
   }
 }
 
+// Delete file from MinIO bucket (ignores missing files)
+export async function deleteFromMinio(fileName: string): Promise<void> {
+  try {
+    await ensureBucketExists();
+    await minioClient.removeObject(BUCKET_NAME, fileName);
+  } catch (error: any) {
+    if (error?.code === 'NoSuchKey' || error?.code === 'NotFound') {
+      return;
+    }
+    console.error('Error deleting from MinIO:', error);
+    throw new Error('Failed to delete file');
+  }
+}
+
 // Generate unique invoice number
 export function generateInvoiceNumber(): string {
   const year = new Date().getFullYear();
@@ -246,4 +260,151 @@ export function generateBookingCode(): string {
   const timestamp = Date.now().toString().slice(-6);
   const random = Math.random().toString(36).substring(2, 6).toUpperCase();
   return `BK-${timestamp}-${random}`;
+}
+
+// Generate unique receipt number
+export function generateReceiptNumber(): string {
+  const year = new Date().getFullYear();
+  const timestamp = Date.now().toString().slice(-6);
+  return `KWT-${year}-${timestamp}`;
+}
+
+// Generate receipt PDF
+export async function generateReceiptPDF(receiptData: any): Promise<string> {
+  const browser = await puppeteer.launch({ headless: true });
+  const page = await browser.newPage();
+
+  try {
+    // Load template directly
+    const { readFileSync } = await import('fs');
+    const { join } = await import('path');
+    const templatePath = join(process.cwd(), 'src', 'templates', 'kwitansi.html');
+    let template = readFileSync(templatePath, 'utf-8');
+
+    // Load logo base64
+    const logoPath = join(process.cwd(), '..', 'logomusafirin.png');
+    let logoBase64 = '';
+    try {
+      const logoBuffer = readFileSync(logoPath);
+      logoBase64 = logoBuffer.toString('base64');
+    } catch (error) {
+      console.warn('Logo file not found, using empty logo');
+    }
+
+    // Load Saudi Riyal SVG base64
+    const saudiRiyalPath = join(process.cwd(), 'client', 'Saudi_Riyal_Symbol.svg');
+    let saudiRiyalSVGBase64 = '';
+    try {
+      const saudiRiyalBuffer = readFileSync(saudiRiyalPath);
+      saudiRiyalSVGBase64 = saudiRiyalBuffer.toString('base64');
+    } catch (error) {
+      console.warn('Saudi Riyal SVG not found, using SAR text');
+    }
+
+    // Comprehensive template replacement
+    let renderedHtml = template;
+    
+    // Basic receipt info
+    renderedHtml = renderedHtml.replace(/\{\{receiptNo\}\}/g, receiptData.receipt?.number || '');
+    renderedHtml = renderedHtml.replace(/\{\{receiptDate\}\}/g, receiptData.receipt?.issueDate || '');
+    
+    // Payer information
+    renderedHtml = renderedHtml.replace(/\{\{payer\.name\}\}/g, receiptData.payer?.name || '');
+    renderedHtml = renderedHtml.replace(/\{\{payer\.email\}\}/g, receiptData.payer?.email || '');
+    renderedHtml = renderedHtml.replace(/\{\{payer\.phone\}\}/g, receiptData.payer?.phone || '');
+    renderedHtml = renderedHtml.replace(/\{\{payer\.address\}\}/g, receiptData.payer?.address || '');
+    
+    // Invoice information
+    renderedHtml = renderedHtml.replace(/\{\{invoice\.invoiceNo\}\}/g, receiptData.receipt?.number || '');
+    renderedHtml = renderedHtml.replace(/\{\{invoice\.invoiceDate\}\}/g, receiptData.receipt?.issueDate || '');
+    
+    // Hotel information
+    renderedHtml = renderedHtml.replace(/\{\{hotelName\}\}/g, receiptData.booking?.hotelName || receiptData.hotel?.name || '');
+    renderedHtml = renderedHtml.replace(/\{\{hotelAddress\}\}/g, receiptData.hotel?.address || '');
+    
+    // Totals
+    renderedHtml = renderedHtml.replace(/\{\{totals\.invoiceAmount\}\}/g, receiptData.receipt?.totalAmount || '0');
+    renderedHtml = renderedHtml.replace(/\{\{totals\.paidAmount\}\}/g, receiptData.receipt?.paidAmount || '0');
+    renderedHtml = renderedHtml.replace(/\{\{totals\.balanceDue\}\}/g, receiptData.receipt?.balanceDue || '0');
+    
+    // Amount in words
+    renderedHtml = renderedHtml.replace(/\{\{amountInWords\}\}/g, receiptData.receipt?.amountInWords || '');
+    
+    // Bank information
+    renderedHtml = renderedHtml.replace(/\{\{bank\.bankName\}\}/g, receiptData.bank?.name || '');
+    renderedHtml = renderedHtml.replace(/\{\{bank\.bankCountry\}\}/g, receiptData.bank?.country || '');
+    renderedHtml = renderedHtml.replace(/\{\{bank\.accountName\}\}/g, receiptData.bank?.accountName || '');
+    renderedHtml = renderedHtml.replace(/\{\{bank\.accountNumberOrIBAN\}\}/g, receiptData.bank?.accountNumber || '');
+    
+    // Notes
+    renderedHtml = renderedHtml.replace(/\{\{notes\}\}/g, receiptData.receipt?.notes || '');
+    
+    // Brand information
+    renderedHtml = renderedHtml.replace(/\{\{brandName\}\}/g, receiptData.brand?.name || 'Musafirin');
+    
+    // Logo and icons
+    renderedHtml = renderedHtml.replace(/\{\{logoBase64\}\}/g, logoBase64);
+    renderedHtml = renderedHtml.replace(/\{\{saudiRiyalSVGBase64\}\}/g, saudiRiyalSVGBase64);
+    
+    // Handle conditional blocks (simple implementation)
+    // Remove {{#if amountInWords}} blocks if no amount in words
+    if (!receiptData.receipt?.amountInWords) {
+      renderedHtml = renderedHtml.replace(/\{\{#if amountInWords\}\}[\s\S]*?\{\{\/if\}\}/g, '');
+    } else {
+      renderedHtml = renderedHtml.replace(/\{\{#if amountInWords\}\}/g, '');
+      renderedHtml = renderedHtml.replace(/\{\{\/if\}\}/g, '');
+    }
+    
+    // Remove {{#if notes}} blocks if no notes
+    if (!receiptData.receipt?.notes) {
+      renderedHtml = renderedHtml.replace(/\{\{#if notes\}\}[\s\S]*?\{\{\/if\}\}/g, '');
+    } else {
+      renderedHtml = renderedHtml.replace(/\{\{#if notes\}\}/g, '');
+      renderedHtml = renderedHtml.replace(/\{\{\/if\}\}/g, '');
+    }
+    
+    // Handle payments loop (simple implementation for now)
+    // For now, we'll create a simple payment entry
+    const paymentRow = `
+      <tr>
+        <td>
+          <div class="cs-font-semibold">Pembayaran Hotel</div>
+          <div class="cs-text-sm cs-text-gray-500">${receiptData.receipt?.issueDate || ''}</div>
+        </td>
+        <td>Transfer Bank</td>
+        <td>-</td>
+        <td class="cs-num">
+          <img src="data:image/svg+xml;base64,${saudiRiyalSVGBase64}" class="cs-sar-icon" alt="SAR" />
+          ${receiptData.receipt?.paidAmount || '0'}
+        </td>
+      </tr>
+    `;
+    
+    // Replace the payments loop
+    renderedHtml = renderedHtml.replace(/\{\{#each payments\}\}[\s\S]*?\{\{\/each\}\}/g, paymentRow);
+
+    await page.setContent(renderedHtml);
+    
+    const pdf = await page.pdf({
+      format: 'A4',
+      printBackground: true,
+      margin: {
+        top: '20px',
+        right: '20px',
+        bottom: '20px',
+        left: '20px'
+      }
+    });
+
+    await browser.close();
+
+    // Upload to MinIO
+    const fileName = `receipts/${receiptData.receipt.number}.pdf`;
+    const pdfUrl = await uploadToMinio(fileName, Buffer.from(pdf));
+
+    return pdfUrl;
+  } catch (error) {
+    await browser.close();
+    throw error;
+  }
 }

@@ -155,7 +155,7 @@ function CreateVoucherPage() {
     
     try {
       // Here you would typically call your API to create the voucher
-      console.log("Creating voucher:", formData)
+
       
       // Simulate API call
       await new Promise(resolve => setTimeout(resolve, 2000))

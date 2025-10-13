@@ -9,6 +9,8 @@ export interface BookingItem {
   roomCount: number;
   unitPrice: string; // decimal as string
   hotelCostPrice: string; // decimal as string
+  hasPricingPeriods?: boolean;
+  pricingPeriods?: PricingPeriod[];
 }
 
 export interface Booking {
@@ -22,6 +24,7 @@ export interface Booking {
   checkIn: string;
   checkOut: string;
   totalAmount: number;
+  mealPlan: 'Breakfast' | 'Half Board' | 'Full Board' | 'Room Only';
   paymentStatus: 'unpaid' | 'partial' | 'paid' | 'overdue';
   bookingStatus: 'pending' | 'confirmed' | 'cancelled';
   hotelConfirmationNo?: string;
@@ -29,6 +32,24 @@ export interface Booking {
   createdAt: string;
   updatedAt: string;
   items?: BookingItem[];
+}
+
+export interface PricingPeriod {
+  startDate: string;
+  endDate: string;
+  nights: number;
+  unitPrice: number;
+  hotelCostPrice?: number;
+  subtotal: number;
+}
+
+export interface CreateBookingRoomItem {
+  roomType: string;
+  roomCount: number;
+  unitPrice: number;
+  hotelCostPrice?: number;
+  hasPricingPeriods?: boolean;
+  pricingPeriods?: PricingPeriod[];
 }
 
 export interface CreateBookingData {
@@ -39,12 +60,17 @@ export interface CreateBookingData {
   city: string;
   checkInDate: string;
   checkOutDate: string;
-  roomType: string;
+  rooms: CreateBookingRoomItem[];
+  mealPlan: 'Breakfast' | 'Half Board' | 'Full Board' | 'Room Only';
   numberOfGuests: number;
   totalAmount: number;
+  specialRequests?: string;
+  paymentMethod?: 'bank_transfer' | 'deposit' | 'cash';
+  paymentAmount?: number;
+  // Legacy fields for backward compatibility
+  roomType?: string;
   hotelCostPerNight?: number;
   totalHotelCost?: number;
-  specialRequests?: string;
 }
 
 export interface UpdateBookingData {
@@ -54,13 +80,16 @@ export interface UpdateBookingData {
   guestPhone: string;
   checkInDate: string;
   checkOutDate: string;
-  roomType: string;
+  mealPlan: 'Breakfast' | 'Half Board' | 'Full Board' | 'Room Only';
   numberOfGuests: number;
   totalAmount: number;
-  hotelCostPerNight?: number;
-  totalHotelCost?: number;
   status: 'pending' | 'confirmed' | 'cancelled' | 'completed';
   specialRequests?: string;
+  rooms: CreateBookingRoomItem[];
+  // Legacy fields for backward compatibility
+  roomType?: string;
+  hotelCostPerNight?: number;
+  totalHotelCost?: number;
 }
 
 // Query keys
@@ -103,7 +132,33 @@ export function useCreateBooking() {
 
   return useMutation({
     mutationFn: async (data: CreateBookingData) => {
+      console.log('Creating booking with data:', data);
+      
       // Transform data to match backend API format
+      let items: any[];
+      
+      if (data.rooms && data.rooms.length > 0) {
+        // New multiple rooms format
+        items = data.rooms.map(room => ({
+          roomType: room.roomType,
+          roomCount: room.roomCount,
+          unitPrice: room.unitPrice.toString(),
+          hotelCostPrice: room.hotelCostPrice || 0,
+          hasPricingPeriods: room.hasPricingPeriods || false,
+          ...(room.hasPricingPeriods && room.pricingPeriods ? { pricingPeriods: room.pricingPeriods } : {})
+        }));
+      } else {
+        // Legacy single room format for backward compatibility
+        items = [
+          {
+            roomType: data.roomType || '',
+            roomCount: 1,
+            unitPrice: data.totalAmount.toString(),
+            hotelCostPrice: data.hotelCostPerNight || 0
+          }
+        ];
+      }
+
       const requestData = {
         client: {
           name: data.guestName,
@@ -115,20 +170,19 @@ export function useCreateBooking() {
           city: data.city,
           checkIn: data.checkInDate,
           checkOut: data.checkOutDate,
+          mealPlan: data.mealPlan,
           meta: {
             ...(data.specialRequests && { specialRequests: data.specialRequests }),
             numberOfGuests: data.numberOfGuests
           }
         },
-        items: [
-          {
-            roomType: data.roomType,
-            roomCount: 1, // Assuming 1 room for now
-            unitPrice: data.totalAmount.toString(), // Total amount as unit price for single room
-            hotelCostPrice: data.hotelCostPerNight || 0
-          }
-        ]
+        items,
+        ...(data.paymentMethod && data.paymentAmount && data.paymentAmount > 0
+          ? { payment: { method: data.paymentMethod, amount: data.paymentAmount } }
+          : {})
       };
+      
+      console.log('Sending request data to backend:', requestData);
       
       const response = await apiClient.post<{success: boolean, data: Booking}>(API_ENDPOINTS.BOOKINGS, requestData);
       return response.data;
@@ -188,6 +242,24 @@ export function useUpdateBookingStatus() {
       // Update the specific booking in cache
       queryClient.setQueryData(bookingKeys.detail(booking.id), booking);
       // Invalidate bookings list to refresh
+      queryClient.invalidateQueries({ queryKey: bookingKeys.lists() });
+    },
+  });
+}
+
+// Delete booking
+export function useDeleteBooking() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (id: string | number) => {
+      const bookingId = id.toString();
+      const response = await apiClient.delete<{ success: boolean; data: { id: number; code: string; clientId: number } }>(
+        API_ENDPOINTS.BOOKING_BY_ID(bookingId)
+      );
+      return response.data;
+    },
+    onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: bookingKeys.lists() });
     },
   });
@@ -256,4 +328,39 @@ export function useGenerateVoucher() {
 // Alias for backward compatibility - now both functions do the same thing
 export function useRegenerateVoucher() {
   return useGenerateVoucher();
+}
+
+export interface PayBookingData {
+  id: string;
+  method: 'bank_transfer' | 'deposit' | 'cash';
+  amount: number;
+  referenceNumber?: string;
+  description?: string;
+}
+
+export function usePayBooking() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (data: PayBookingData) => {
+      const payload: { method: PayBookingData['method']; amount: number; referenceNumber?: string; description?: string } = {
+        method: data.method,
+        amount: data.amount,
+      };
+      if (data.referenceNumber) payload.referenceNumber = data.referenceNumber;
+      if (data.description) payload.description = data.description;
+
+      const response = await apiClient.post<{ success: boolean; data: Booking }>(
+        API_ENDPOINTS.BOOKING_PAY(data.id),
+        payload
+      );
+      return response.data;
+    },
+    onSuccess: (booking) => {
+      // Update the specific booking in cache
+      queryClient.setQueryData(bookingKeys.detail(booking.id), booking);
+      // Invalidate bookings list to refresh
+      queryClient.invalidateQueries({ queryKey: bookingKeys.lists() });
+    },
+  });
 }

@@ -1,5 +1,5 @@
 import { db } from '../db';
-import { bookings, bookingItems, operationalCosts, hotelCostTemplates } from '../db/schema';
+import { bookings, bookingItems, bookingItemPricingPeriods, operationalCosts, hotelCostTemplates } from '../db/schema';
 import { eq, gte, lte, and, sql, desc, asc } from 'drizzle-orm';
 
 export interface RevenueData {
@@ -65,13 +65,19 @@ export class AnalyticsService {
   async getRevenueData(filters: AnalyticsFilters = {}): Promise<RevenueData> {
     const whereConditions = this.buildWhereConditions(filters);
 
-    // Total revenue query
+    // Total revenue query (paid bookings only)
+    const totalRevenueWhere = (() => {
+      const conds = [eq(bookings.paymentStatus, 'paid')];
+      if (whereConditions) conds.unshift(whereConditions);
+      return and(...conds);
+    })();
+
     const totalRevenueResult = await db
       .select({
         totalRevenue: sql<number>`COALESCE(SUM(${bookings.totalAmount}), 0)`,
       })
       .from(bookings)
-      .where(whereConditions);
+      .where(totalRevenueWhere);
 
     const totalRevenue = Number(totalRevenueResult[0]?.totalRevenue || 0);
 
@@ -158,22 +164,74 @@ export class AnalyticsService {
   async getProfitData(filters: AnalyticsFilters = {}): Promise<ProfitData> {
     const whereConditions = this.buildWhereConditions(filters);
 
-    // Get revenue and hotel costs from booking items
-    const profitQuery = await db
+    // Revenue from paid bookings only
+    const revenueWhere = (() => {
+      const conds = [eq(bookings.paymentStatus, 'paid')];
+      if (whereConditions) conds.unshift(whereConditions);
+      return and(...conds);
+    })();
+
+    const revenueResult = await db
+      .select({ totalRevenue: sql<number>`COALESCE(SUM(${bookings.totalAmount}), 0)` })
+      .from(bookings)
+      .where(revenueWhere);
+
+    const totalRevenue = Number(revenueResult[0]?.totalRevenue || 0);
+
+    // Hotel costs: non-period items (nights * roomCount * hotelCostPrice) - only for paid bookings
+    const nonPeriodWhere = (() => {
+      const conds = [eq(bookingItems.hasPricingPeriods, false), eq(bookings.paymentStatus, 'paid')];
+      if (whereConditions) conds.unshift(whereConditions);
+      return and(...conds);
+    })();
+
+    const hotelCostNonPeriodResult = await db
       .select({
-        totalRevenue: sql<number>`COALESCE(SUM(${bookingItems.unitPrice} * ${bookingItems.roomCount}), 0)`,
-        totalHotelCosts: sql<number>`COALESCE(SUM(${bookingItems.hotelCostPrice} * ${bookingItems.roomCount}), 0)`,
-        bookingId: bookingItems.bookingId,
+        totalHotelCostsNonPeriod: sql<number>`
+          COALESCE(
+            SUM(
+              (DATE_PART('day', ${bookings.checkOut} - ${bookings.checkIn})) 
+              * ${bookingItems.hotelCostPrice} 
+              * ${bookingItems.roomCount}
+            ), 0
+          )
+        `
       })
       .from(bookingItems)
       .innerJoin(bookings, eq(bookings.id, bookingItems.bookingId))
-      .where(whereConditions)
-      .groupBy(bookingItems.bookingId);
+      .where(nonPeriodWhere);
 
-    const totalRevenue = profitQuery.reduce((sum, row) => sum + Number(row.totalRevenue), 0);
-    const totalHotelCosts = profitQuery.reduce((sum, row) => sum + Number(row.totalHotelCosts), 0);
+    const totalHotelCostsNonPeriod = Number(hotelCostNonPeriodResult[0]?.totalHotelCostsNonPeriod || 0);
 
-    // Get additional operational costs
+    // Hotel costs: period-based items (nights * roomCount * hotelCostPrice) - only for paid bookings
+    const periodWhere = (() => {
+      const conds = [eq(bookingItems.hasPricingPeriods, true), eq(bookings.paymentStatus, 'paid')];
+      if (whereConditions) conds.unshift(whereConditions);
+      return and(...conds);
+    })();
+
+    const hotelCostPeriodResult = await db
+      .select({
+        totalHotelCostsPeriod: sql<number>`
+          COALESCE(
+            SUM(
+              ${bookingItemPricingPeriods.nights} 
+              * ${bookingItemPricingPeriods.hotelCostPrice} 
+              * ${bookingItems.roomCount}
+            ), 0
+          )
+        `
+      })
+      .from(bookingItemPricingPeriods)
+      .innerJoin(bookingItems, eq(bookingItems.id, bookingItemPricingPeriods.bookingItemId))
+      .innerJoin(bookings, eq(bookings.id, bookingItems.bookingId))
+      .where(periodWhere);
+
+    const totalHotelCostsPeriod = Number(hotelCostPeriodResult[0]?.totalHotelCostsPeriod || 0);
+
+    const totalHotelCosts = totalHotelCostsNonPeriod + totalHotelCostsPeriod;
+
+    // Get additional operational costs (kept for breakdown but excluded from net profit)
     const additionalCostsQuery = await db
       .select({
         totalAdditionalCosts: sql<number>`COALESCE(SUM(${operationalCosts.amount}), 0)`,
@@ -184,9 +242,9 @@ export class AnalyticsService {
 
     const totalAdditionalCosts = Number(additionalCostsQuery[0]?.totalAdditionalCosts || 0);
 
-    // Calculate profits
+    // Calculate profits per requirement: Net Profit = Client Price - Hotel Cost
     const grossProfit = totalRevenue - totalHotelCosts;
-    const netProfit = grossProfit - totalAdditionalCosts;
+    const netProfit = grossProfit; // Exclude operational costs per business definition
     const profitMargin = totalRevenue > 0 ? (netProfit / totalRevenue) * 100 : 0;
 
     // Profit by city
@@ -333,10 +391,25 @@ export class AnalyticsService {
    * Get combined analytics data (revenue + profit)
    */
   async getAnalyticsData(filters: AnalyticsFilters = {}) {
+    const whereConditions = this.buildWhereConditions(filters);
     const [revenueData, profitData] = await Promise.all([
       this.getRevenueData(filters),
       this.getProfitData(filters),
     ]);
+
+    // Total paid bookings (consistent with revenue calculation)
+    const totalBookingsWhere = (() => {
+      const conds = [eq(bookings.paymentStatus, 'paid')];
+      if (whereConditions) conds.unshift(whereConditions);
+      return and(...conds);
+    })();
+
+    const totalBookingsResult = await db
+      .select({ count: sql<number>`COUNT(*)` })
+      .from(bookings)
+      .where(totalBookingsWhere);
+
+    const totalBookings = Number(totalBookingsResult[0]?.count || 0);
 
     return {
       revenue: revenueData,
@@ -346,7 +419,7 @@ export class AnalyticsService {
         grossProfit: profitData.grossProfit,
         netProfit: profitData.netProfit,
         profitMargin: profitData.profitMargin,
-        totalBookings: revenueData.revenueByCity.reduce((sum, city) => sum + city.bookingCount, 0),
+        totalBookings,
       },
     };
   }

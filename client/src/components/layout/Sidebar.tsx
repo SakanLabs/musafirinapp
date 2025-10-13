@@ -8,7 +8,9 @@ import {
   Hotel,
   Menu,
   X,
-  BarChart3
+  BarChart3,
+  Users,
+  Receipt
 } from 'lucide-react'
 import { useState } from 'react'
 import { Button } from '@/components/ui/button'
@@ -30,9 +32,19 @@ const navigation = [
     icon: Calendar
   },
   {
+    name: 'Clients',
+    href: '/clients',
+    icon: Users
+  },
+  {
     name: 'Invoices',
     href: '/invoices',
     icon: FileText
+  },
+  {
+    name: 'Receipts',
+    href: '/receipts',
+    icon: Receipt
   },
   {
     name: 'Vouchers',

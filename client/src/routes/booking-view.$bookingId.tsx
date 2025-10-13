@@ -241,7 +241,7 @@ Total: ${formatCurrency(booking.totalAmount.toString(), 'SAR')}`
               <div className="space-y-4">
                 {booking.items.map((item, index) => (
                   <div key={item.id || index} className="border rounded-lg p-4 bg-gray-50">
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
                       <div>
                         <label className="text-sm font-medium text-gray-500">Room Type</label>
                         <p className="text-lg font-semibold">{item.roomType}</p>
@@ -258,6 +258,41 @@ Total: ${formatCurrency(booking.totalAmount.toString(), 'SAR')}`
                         </div>
                       </div>
                     </div>
+                    
+                    {/* Pricing Periods */}
+                    {item.pricingPeriods && item.pricingPeriods.length > 0 && (
+                      <div className="mt-4 border-t pt-4">
+                        <h4 className="text-sm font-medium text-gray-700 mb-3">Pricing Periods</h4>
+                        <div className="space-y-3">
+                          {item.pricingPeriods.map((period, periodIndex) => (
+                            <div key={periodIndex} className="bg-white rounded-lg p-3 border">
+                              <div className="grid grid-cols-2 md:grid-cols-5 gap-3 text-sm">
+                                <div>
+                                  <label className="text-xs font-medium text-gray-500">Start Date</label>
+                                  <p className="text-sm">{formatDate(period.startDate)}</p>
+                                </div>
+                                <div>
+                                  <label className="text-xs font-medium text-gray-500">End Date</label>
+                                  <p className="text-sm">{formatDate(period.endDate)}</p>
+                                </div>
+                                <div>
+                                  <label className="text-xs font-medium text-gray-500">Nights</label>
+                                  <p className="text-sm font-semibold">{period.nights}</p>
+                                </div>
+                                <div>
+                                  <label className="text-xs font-medium text-gray-500">Unit Price</label>
+                                  <p className="text-sm font-semibold">{formatCurrency(period.unitPrice, 'SAR')}</p>
+                                </div>
+                                <div>
+                                  <label className="text-xs font-medium text-gray-500">Subtotal</label>
+                                  <p className="text-sm font-semibold">{formatCurrency(period.subtotal, 'SAR')}</p>
+                                </div>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
                   </div>
                 ))}
               </div>

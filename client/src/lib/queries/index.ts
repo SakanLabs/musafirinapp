@@ -4,3 +4,5 @@ export * from './invoices';
 export * from './vouchers';
 export * from './reports';
 export * from './analytics';
+export * from './clients';
+export * from './deposits';

@@ -130,10 +130,22 @@
         <tbody>
           {{#each roomsDetail}}
           <tr>
-            <td class="cs-font-semibold">{{roomType}}</td>
+            <td>
+              <div class="cs-font-semibold">{{roomType}}</div>
+              {{#if hasPricingPeriods}}
+              <div class="cs-text-xs cs-text-gray-600" style="margin-top: 4px;">
+                <strong>Pricing Periods:</strong>
+                {{#each pricingPeriods}}
+                <div style="margin-top: 2px; padding: 2px 6px; background: #f8fafc; border-radius: 3px;">
+                  {{startDate}} - {{endDate}} ({{nights}} nights)
+                </div>
+                {{/each}}
+              </div>
+              {{/if}}
+            </td>
             <td>{{mealPlan}}</td>
             <td class="cs-text-center">{{quantity}}</td>
-            <td>{{remarks}}</td>
+            <td class="cs-text-xs">{{remarks}}</td>
           </tr>
           {{/each}}
         </tbody>

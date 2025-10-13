@@ -8,6 +8,7 @@ export interface InvoiceTemplateData {
   invoiceNo: string;
   invoiceDate: string;
   dueDate: string;
+  templateName?: string;
   
   hotelName: string;
   hotelAddress: string;
@@ -21,6 +22,7 @@ export interface InvoiceTemplateData {
   checkOut: string;
   totalNights: number;
   currency: string;
+  mealPlanLabel: string;
   
   items: Array<{
     roomType: string;
@@ -30,6 +32,14 @@ export interface InvoiceTemplateData {
     roomRate: string;
     lineTotal: string;
     notes?: string;
+    hasPricingPeriods?: boolean;
+    pricingPeriods?: Array<{
+      startDate: string;
+      endDate: string;
+      nights: number;
+      pricePerNight: string;
+      subtotal: string;
+    }>;
   }>;
   
   subtotal: string;
@@ -88,6 +98,19 @@ export interface VoucherTemplateData {
     roomType: string;
     roomCount: number;
   }>;
+  roomsDetail: Array<{
+    roomType: string;
+    mealPlan: string;
+    quantity: number;
+    remarks: string;
+    hasPricingPeriods?: boolean;
+    pricingPeriods?: Array<{
+      startDate: string;
+      endDate: string;
+      nights: number;
+      pricePerNight: string;
+    }>;
+  }>;
   qrCodeDataURL: string;
 }
 
@@ -133,7 +156,11 @@ export class TemplateEngine {
 
     // Handle simple placeholders {{variable}}
     result = result.replace(/\{\{(\w+)\}\}/g, (match, key) => {
-      return data[key] !== undefined ? String(data[key]) : match;
+      const value = data[key];
+      if (value !== undefined && value !== null) {
+        return String(value);
+      }
+      return match;
     });
 
     // Handle conditional blocks {{#if variable}}...{{/if}}
@@ -150,9 +177,24 @@ export class TemplateEngine {
 
       return array.map(item => {
         let itemHtml = itemTemplate;
+        
+        // Handle conditional blocks within the loop {{#if variable}}...{{/if}}
+         itemHtml = itemHtml.replace(/\{\{#if\s+(\w+)\}\}([\s\S]*?)\{\{\/if\}\}/g, (condMatch: string, condKey: string, condContent: string) => {
+           return item[condKey] ? condContent : '';
+         });
+         
+         // Handle else blocks {{#if variable}}...{{else}}...{{/if}}
+         itemHtml = itemHtml.replace(/\{\{#if\s+(\w+)\}\}([\s\S]*?)\{\{else\}\}([\s\S]*?)\{\{\/if\}\}/g, (condMatch: string, condKey: string, ifContent: string, elseContent: string) => {
+           return item[condKey] ? ifContent : elseContent;
+         });
+        
         // Replace placeholders within the loop
         itemHtml = itemHtml.replace(/\{\{(\w+)\}\}/g, (itemMatch: string, itemKey: string) => {
-          return item[itemKey] !== undefined ? String(item[itemKey]) : itemMatch;
+          const value = item[itemKey];
+          if (value !== undefined && value !== null) {
+            return String(value);
+          }
+          return itemMatch;
         });
         // Handle @root references
         itemHtml = itemHtml.replace(/\{\{@root\.(\w+)\}\}/g, (rootMatch: string, rootKey: string) => {
@@ -186,8 +228,10 @@ export class TemplateEngine {
   /**
    * Render invoice template with data
    */
-  public renderInvoice(data: InvoiceTemplateData): string {
-    const template = this.loadTemplate('invoice');
+  public renderInvoice(data: InvoiceTemplateData & { templateName?: string }): string {
+    // Use templateName from data if available, otherwise default to 'invoice'
+    const templateName = data.templateName ? data.templateName.replace('.html', '') : 'invoice';
+    const template = this.loadTemplate(templateName);
     return this.replacePlaceholders(template, data);
   }
 
@@ -265,12 +309,15 @@ export class TemplateHelpers {
   /**
    * Format currency amount (without currency symbol since SVG is used separately)
    */
-  static formatCurrency(amount: number | string, currency: string = 'SAR'): string {
-    const num = typeof amount === 'string' ? parseFloat(amount) : amount;
-    return num.toLocaleString('en-US', { 
-      minimumFractionDigits: 2, 
-      maximumFractionDigits: 2 
-    });
+  static formatCurrency(amount: number | string | null | undefined, currency: string = 'SAR'): string {
+    if (amount === null || amount === undefined || amount === '') {
+      return '0.00';
+    }
+    
+    const numAmount = typeof amount === 'string' ? parseFloat(amount) : Number(amount);
+    const validAmount = isNaN(numAmount) ? 0 : numAmount;
+    
+    return validAmount.toFixed(2);
   }
 
   /**
@@ -308,6 +355,7 @@ export class TemplateHelpers {
     const checkInDate = this.formatDate(booking.checkIn);
     const checkOutDate = this.formatDate(booking.checkOut);
     const totalNights = this.calculateDuration(booking.checkIn, booking.checkOut);
+    const mealPlanLabel = this.formatMealPlan(booking.mealPlan);
     
     // Map legacy room type codes to readable names (for backward compatibility)
     // New room types will use their original names directly
@@ -319,22 +367,102 @@ export class TemplateHelpers {
     
     // Map booking items to invoice items and calculate totals
     let subtotalAmount = 0;
-    const items = bookingItems.map(item => {
-      const totalPrice = parseFloat(item.unitPrice) || 0; // unitPrice currently stores total amount
+    const items = bookingItems.map((item) => {
       const quantity = item.roomCount || 1;
-      const roomRatePerNight = totalPrice / (quantity * totalNights); // Calculate actual room rate per night
-      const lineTotal = totalPrice; // Use the stored total price directly
+      let lineTotal = 0;
+      let roomRatePerNight = 0;
+      let pricingPeriods: any[] = [];
+      
+      if (item.hasPricingPeriods && item.pricingPeriods && item.pricingPeriods.length > 0) {
+        console.log('Processing item with pricing periods:', {
+          roomType: item.roomType,
+          pricingPeriodsCount: item.pricingPeriods.length
+        });
+        
+        // Item has pricing periods - use them for calculations
+        pricingPeriods = item.pricingPeriods.map((period: any) => {
+          const unitPrice = typeof period.unitPrice === 'string' 
+            ? parseFloat(period.unitPrice) 
+            : Number(period.unitPrice);
+          const periodSubtotal = typeof period.subtotal === 'string' 
+            ? parseFloat(period.subtotal) 
+            : Number(period.subtotal);
+          
+          lineTotal += periodSubtotal;
+          
+          return {
+            startDate: this.formatDate(period.startDate),
+            endDate: this.formatDate(period.endDate),
+            nights: period.nights || 0,
+            pricePerNight: TemplateHelpers.formatCurrency(unitPrice),
+            subtotal: TemplateHelpers.formatCurrency(periodSubtotal)
+          };
+        });
+        
+        // For pricing periods, roomRate is shown as "Variable" in template
+        roomRatePerNight = 0; // Not used when hasPricingPeriods is true
+      } else {
+        console.log('Processing item without pricing periods:', {
+          roomType: item.roomType,
+          unitPrice: item.unitPrice,
+          unitPriceType: typeof item.unitPrice,
+          quantity,
+          totalNights,
+          hasPricingPeriods: item.hasPricingPeriods
+        });
+        
+        const unitPriceValue = typeof item.unitPrice === 'string' 
+          ? parseFloat(item.unitPrice) 
+          : Number(item.unitPrice);
+        const unitPrice = isNaN(unitPriceValue) ? 0 : unitPriceValue;
+        
+        roomRatePerNight = unitPrice;
+        lineTotal = unitPrice * quantity * totalNights;
+        
+        console.log('Calculated values for non-pricing-period item:', {
+          unitPriceValue,
+          unitPrice,
+          roomRatePerNight,
+          lineTotal,
+          calculation: `${unitPrice} × ${quantity} × ${totalNights} = ${lineTotal}`,
+          isValidCalculation: !isNaN(lineTotal) && lineTotal > 0
+        });
+      }
+      
       subtotalAmount += lineTotal;
       
-      return {
+      const formattedRoomRate = TemplateHelpers.formatCurrency(roomRatePerNight) || '0.00';
+      const formattedLineTotal = TemplateHelpers.formatCurrency(lineTotal) || '0.00';
+      
+      console.log('Creating finalItem with hasPricingPeriods:', {
+        itemHasPricingPeriods: item.hasPricingPeriods,
+        itemHasPricingPeriodsType: typeof item.hasPricingPeriods,
+        pricingPeriodsLength: item.pricingPeriods?.length || 0,
+        finalHasPricingPeriods: item.hasPricingPeriods || false
+      });
+      
+      const finalItem = {
         roomType: roomTypeMap[item.roomType] || item.roomType || 'Standard Room',
-        mealPlan: 'Room Only', // Default since not in current schema
-        quantity,
-        nights: totalNights,
-        roomRate: this.formatCurrency(roomRatePerNight), // Show actual room rate per night
-        lineTotal: this.formatCurrency(lineTotal),
-        notes: '' // Default since not in current schema
+        mealPlan: this.formatMealPlan(booking.mealPlan) || 'No Meal',
+        quantity: quantity || 1,
+        nights: totalNights || 0,
+        roomRate: formattedRoomRate,
+        lineTotal: formattedLineTotal,
+        hasPricingPeriods: item.hasPricingPeriods || false,
+        pricingPeriods: pricingPeriods || []
       };
+      
+      console.log('Final item data sent to template:', {
+        roomType: finalItem.roomType,
+        roomRate: finalItem.roomRate,
+        lineTotal: finalItem.lineTotal,
+        hasPricingPeriods: finalItem.hasPricingPeriods,
+        quantity: finalItem.quantity,
+        nights: finalItem.nights,
+        pricingPeriodsCount: finalItem.pricingPeriods.length
+      });
+      
+      return finalItem;
     });
 
     // Calculate totals
@@ -384,7 +512,9 @@ export class TemplateHelpers {
       ? 'Central Area, Makkah, Saudi Arabia'
       : 'Central Area, Madinah, Saudi Arabia';
 
-    return {
+
+
+    const finalData = {
       brandName: "Musafirin",
       logoBase64: this.getLogoBase64(),
       saudiRiyalSVGBase64: this.getSaudiRiyalSVGBase64(),
@@ -404,15 +534,16 @@ export class TemplateHelpers {
       checkOut: checkOutDate,
       totalNights,
       currency: invoice.currency || 'SAR',
+      mealPlanLabel,
       
       items,
       
-      subtotal: this.formatCurrency(subtotal),
-      taxAmount: this.formatCurrency(taxAmount),
-      serviceFee: this.formatCurrency(serviceFee),
-      grandTotal: this.formatCurrency(grandTotal),
-      paidAmount: this.formatCurrency(paidAmount),
-      balanceDue: this.formatCurrency(balanceDue),
+      subtotal: TemplateHelpers.formatCurrency(subtotal),
+      taxAmount: TemplateHelpers.formatCurrency(taxAmount),
+      serviceFee: TemplateHelpers.formatCurrency(serviceFee),
+      grandTotal: TemplateHelpers.formatCurrency(grandTotal),
+      paidAmount: TemplateHelpers.formatCurrency(paidAmount),
+      balanceDue: TemplateHelpers.formatCurrency(balanceDue),
       
       payments,
       
@@ -438,6 +569,36 @@ export class TemplateHelpers {
       },
       
       notes: "Harap bawa ID saat check-in."
+    };
+    
+    // Determine which template to use based on pricing periods
+    const hasAnyPricingPeriods = items.some(item => item.hasPricingPeriods);
+    const templateName = hasAnyPricingPeriods ? 'invoice.html' : 'invoice-simple.html';
+    
+    console.log('Final data being sent to template:', {
+      templateName,
+      itemsCount: finalData.items.length,
+      hasAnyPricingPeriods,
+      items: finalData.items.map((item, index) => ({
+        index,
+        roomType: item.roomType,
+        roomRate: item.roomRate,
+        roomRateType: typeof item.roomRate,
+        lineTotal: item.lineTotal,
+        lineTotalType: typeof item.lineTotal,
+        hasPricingPeriods: item.hasPricingPeriods,
+        hasPricingPeriodsType: typeof item.hasPricingPeriods,
+        pricingPeriodsCount: item.pricingPeriods?.length || 0,
+        quantity: item.quantity,
+        nights: item.nights
+      })),
+      subtotal: finalData.subtotal,
+      grandTotal: finalData.grandTotal
+    });
+    
+    return {
+      ...finalData,
+      templateName
     };
   }
 
@@ -467,6 +628,33 @@ export class TemplateHelpers {
       roomCount
     }));
 
+    // Prepare detailed room information with pricing periods
+    const roomsDetail = bookingItems.map(item => {
+      let remarks = '';
+      let pricingPeriods: any[] = [];
+      
+      if (item.hasPricingPeriods && item.pricingPeriods && item.pricingPeriods.length > 0) {
+        remarks = 'Variable pricing periods - see details';
+        pricingPeriods = item.pricingPeriods.map((period: any) => ({
+          startDate: this.formatDate(period.startDate),
+          endDate: this.formatDate(period.endDate),
+          nights: period.nights,
+          pricePerNight: TemplateHelpers.formatCurrency(parseFloat(period.pricePerNight))
+        }));
+      } else {
+        remarks = `${duration} nights total`;
+      }
+      
+      return {
+        roomType: item.roomType,
+        mealPlan: this.formatMealPlan(booking.mealPlan),
+        quantity: item.roomCount,
+        remarks,
+        hasPricingPeriods: item.hasPricingPeriods || false,
+        pricingPeriods: pricingPeriods.length > 0 ? pricingPeriods : undefined
+      };
+    });
+
     return {
       voucherNumber: voucher.number,
       guestName: voucher.guestName || client.name,
@@ -479,11 +667,26 @@ export class TemplateHelpers {
       checkInDate,
       checkOutDate,
       duration,
-      totalAmount: this.formatCurrency(booking.totalAmount, 'SAR'),
+      totalAmount: TemplateHelpers.formatCurrency(booking.totalAmount, 'SAR'),
       currency: 'SAR',
       rooms,
+      roomsDetail,
       qrCodeDataURL
     };
+  }
+  /**
+   * Map meal plan enum to friendly label used in invoices
+   */
+
+  static formatMealPlan(mealPlan: string | null | undefined): string {
+    const map: Record<string, string> = {
+      'Breakfast': 'Breakfast (BB)',
+      'Half Board': 'Half Board (HB)',
+      'Full Board': 'Full Board (FB)',
+      'Room Only': 'Room Only (RO)'
+    };
+    if (!mealPlan) return 'Room Only (RO)';
+    return map[mealPlan] || mealPlan;
   }
 }
 

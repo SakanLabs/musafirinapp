@@ -1,4 +1,4 @@
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiClient, API_ENDPOINTS } from '../api';
 
 // Types for invoices (based on API documentation)
@@ -18,6 +18,9 @@ export interface Invoice {
   clientEmail: string;
   hotelName: string;
   city: string;
+  // Extended fields for Invoice Detail
+  bookingPaymentStatus?: 'unpaid' | 'partial' | 'paid' | 'overdue';
+  bookingMeta?: Record<string, unknown>;
 }
 
 // Query keys
@@ -45,7 +48,10 @@ export function useInvoices() {
 export function useInvoice(id: string) {
   return useQuery({
     queryKey: invoiceKeys.detail(id),
-    queryFn: () => apiClient.get<Invoice>(`/api/invoices/${id}`),
+    queryFn: async () => {
+      const response = await apiClient.get<{success: boolean, data: Invoice}>(API_ENDPOINTS.INVOICE_BY_ID(id));
+      return response.data;
+    },
     enabled: !!id,
     staleTime: 5 * 60 * 1000, // 5 minutes
   });
@@ -83,5 +89,41 @@ export function useCheckInvoiceExists(bookingId: string) {
     },
     enabled: !!bookingId,
     staleTime: 5 * 60 * 1000, // 5 minutes
+  });
+}
+
+// Record payment for an invoice
+export interface PayInvoiceData {
+  id: string;
+  method: 'bank_transfer' | 'deposit' | 'cash';
+  amount: number;
+  referenceNumber?: string;
+  description?: string;
+}
+
+export function usePayInvoice() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (data: PayInvoiceData) => {
+      const payload: { method: PayInvoiceData['method']; amount: number; referenceNumber?: string; description?: string } = {
+        method: data.method,
+        amount: data.amount,
+      };
+      if (data.referenceNumber) payload.referenceNumber = data.referenceNumber;
+      if (data.description) payload.description = data.description;
+
+      const response = await apiClient.post<{ success: boolean; data: Invoice }>(
+        API_ENDPOINTS.INVOICE_PAY(data.id),
+        payload
+      );
+      return response.data;
+    },
+    onSuccess: (invoice) => {
+      // Update the specific invoice in cache
+      queryClient.setQueryData(invoiceKeys.detail(invoice.id.toString()), invoice);
+      // Invalidate invoices list to refresh
+      queryClient.invalidateQueries({ queryKey: invoiceKeys.lists() });
+    },
   });
 }

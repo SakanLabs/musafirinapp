@@ -48,7 +48,7 @@ function InvoicesPage() {
       header: 'Booking ID',
       render: (invoice) => (
         <Link 
-          to="/bookings/$bookingId" 
+          to="/booking-view/$bookingId" 
           params={{ bookingId: invoice.bookingId.toString() }}
           className="text-blue-600 hover:text-blue-800 underline"
         >
@@ -95,17 +95,19 @@ function InvoicesPage() {
       header: 'Actions',
       render: (invoice) => (
         <div className="flex space-x-2">
-          <Button 
-            size="sm" 
-            variant="ghost"
-            onClick={() => handleViewInvoice(invoice)}
+          <Link
+            to="/invoice-detail"
+            search={{ id: invoice.id.toString() }}
+            className="inline-flex items-center justify-center rounded-md hover:bg-gray-100 px-2 py-1"
+            title="View Invoice Detail"
           >
             <Eye className="h-4 w-4" />
-          </Button>
-          <Button 
-            size="sm" 
+          </Link>
+          <Button
+            size="sm"
             variant="ghost"
-            onClick={() => handleDownloadPDF(invoice)}
+            onClick={() => window.open(`http://localhost:3000/api/invoices/by-number/${invoice.number}`, '_blank')}
+            title="Download PDF"
           >
             <Download className="h-4 w-4" />
           </Button>
@@ -115,90 +117,7 @@ function InvoicesPage() {
     }
   ]
 
-  const handleViewInvoice = async (invoice: Invoice) => {
-    try {
-      // Use the new endpoint that auto-creates invoice if not exists
-      const response = await fetch(`http://localhost:3000/api/invoices/booking/${invoice.bookingCode}`, {
-        method: 'GET',
-        credentials: 'include',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      });
 
-      if (!response.ok) {
-        throw new Error(`Failed to get invoice: ${response.status}`);
-      }
-
-      const result = await response.json();
-      if (result.success && result.data.pdfUrl) {
-        window.open(result.data.pdfUrl, '_blank');
-      } else {
-        console.error("No PDF URL found in response");
-      }
-    } catch (error) {
-      console.error("Error viewing invoice:", error);
-      // Fallback to original method
-      window.open(invoice.pdfUrl, '_blank');
-    }
-  }
-
-  const handleDownloadPDF = async (invoice: Invoice) => {
-    try {
-      // Use the new endpoint that auto-creates invoice if not exists
-      const response = await fetch(`http://localhost:3000/api/invoices/booking/${invoice.bookingCode}`, {
-        method: 'GET',
-        credentials: 'include',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      });
-
-      if (!response.ok) {
-        throw new Error(`Failed to get invoice: ${response.status}`);
-      }
-
-      const result = await response.json();
-      if (result.success && result.data.pdfUrl) {
-        // Download the PDF
-        const downloadResponse = await fetch(result.data.pdfUrl, {
-          method: 'GET',
-          credentials: 'include',
-        });
-
-        if (!downloadResponse.ok) {
-          throw new Error(`Download failed: ${downloadResponse.status}`);
-        }
-
-        const blob = await downloadResponse.blob();
-        
-        // Create download link
-        const downloadUrl = window.URL.createObjectURL(blob);
-        const link = document.createElement('a');
-        link.href = downloadUrl;
-        link.download = `${result.data.number || invoice.number}.pdf`;
-        
-        // Trigger download
-        document.body.appendChild(link);
-        link.click();
-        
-        // Cleanup
-        document.body.removeChild(link);
-        window.URL.revokeObjectURL(downloadUrl);
-      } else {
-        console.error("No PDF URL found in response");
-      }
-    } catch (error) {
-      console.error("Error downloading invoice:", error);
-      // Fallback to original method
-      const link = document.createElement('a');
-      link.href = invoice.pdfUrl;
-      link.download = `${invoice.number}.pdf`;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-    }
-  }
 
   const getInvoiceStatusColor = (status: string) => {
     switch (status) {

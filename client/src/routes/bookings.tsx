@@ -97,7 +97,8 @@ function BookingsPage() {
     },
     {
       key: 'clientName',
-      header: 'Guest',
+      header: 'Guest Name',
+      render: (booking) => booking.clientName || 'N/A',
       sortable: true
     },
     {
@@ -108,8 +109,18 @@ function BookingsPage() {
     {
       key: 'roomType',
       header: 'Room Type',
-      render: (booking) => booking.items?.[0]?.roomType || 'N/A',
+      render: (booking) => {
+        const roomTypes = booking.items?.map((item) => item.roomType).filter(Boolean) ?? [];
+        return roomTypes.length > 0 ? roomTypes.join(', ') : 'N/A';
+      },
       sortable: true
+    },
+    {
+      key: 'mealPlan',
+      header: 'Meal Plan',
+      render: (booking) => booking.mealPlan,
+      sortable: true,
+      width: 'w-32'
     },
     {
       key: 'checkIn',
@@ -175,10 +186,18 @@ function BookingsPage() {
         city: formData.city,
         checkInDate: formData.checkInDate,
         checkOutDate: formData.checkOutDate,
-        roomType: formData.roomType,
+        rooms: [{
+          roomType: formData.roomType,
+          roomCount: 1,
+          unitPrice: formData.totalAmount,
+          hotelCostPrice: 0
+        }],
+        mealPlan: 'Room Only',
         numberOfGuests: formData.numberOfGuests,
         totalAmount: formData.totalAmount,
-        specialRequests: formData.specialRequests || undefined
+        specialRequests: formData.specialRequests || undefined,
+        // Legacy fields for backward compatibility
+        roomType: formData.roomType
       }
 
       await createBookingMutation.mutateAsync(bookingData)

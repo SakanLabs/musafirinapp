@@ -97,7 +97,7 @@
 
 
     <!-- Stay Info -->
-    <div class="cs-card cs-flex cs-justify-between cs-align-start cs-mb-2">
+    <div class="cs-card cs-flex cs-justify-between cs-align-start cs-mb-2" style="flex-wrap: wrap; gap: 12px;">
       <div>
         <p class="cs-text-gray-600 cs-font-semibold cs-mb-1">Check-in</p>
         <p class="cs-font-semibold">{{checkIn}}</p>
@@ -109,6 +109,10 @@
       <div>
         <p class="cs-text-gray-600 cs-font-semibold cs-mb-1">Total Malam</p>
         <p class="cs-font-semibold">{{totalNights}}</p>
+      </div>
+      <div>
+        <p class="cs-text-gray-600 cs-font-semibold cs-mb-1">Meal Plan</p>
+        <p class="cs-font-semibold">{{mealPlanLabel}}</p>
       </div>
       <div>
         <p class="cs-text-gray-600 cs-font-semibold cs-mb-1">Mata Uang</p>
@@ -125,12 +129,12 @@
       <table class="cs-table">
         <thead>
           <tr>
-            <th style="width:30%">Tipe Kamar</th>
-            <th style="width:18%">Meal Plan</th>
-            <th style="width:10%" class="cs-text-center">Qty</th>
-            <th style="width:12%" class="cs-text-center">Malam</th>
-            <th style="width:15%" class="cs-num">Room Rate</th>
-            <th style="width:15%" class="cs-num">Total Price</th>
+            <th style="width:28%">Tipe Kamar</th>
+            <th style="width:16%">Meal Plan</th>
+            <th style="width:8%" class="cs-text-center">Qty</th>
+            <th style="width:8%" class="cs-text-center">Malam</th>
+            <th style="width:18%" class="cs-num">Harga/Malam</th>
+            <th style="width:22%" class="cs-num">Total Harga</th>
           </tr>
         </thead>
         <tbody>
@@ -138,13 +142,26 @@
           <tr>
             <td>
               <div class="cs-font-semibold">{{roomType}}</div>
+              <div class="cs-text-sm cs-text-gray-600 cs-mt-1">
+                <strong>Pricing Periods:</strong>
+                {{#each pricingPeriods}}
+                <div style="margin-top: 4px; padding: 4px 8px; background: #f8fafc; border-radius: 4px;">
+                  <div>{{startDate}} - {{endDate}} ({{nights}} nights)</div>
+                  <div>
+                    <img src="data:image/svg+xml;base64,{{@root.saudiRiyalSVGBase64}}" alt="SAR" class="cs-sar-icon">
+                    {{pricePerNight}}/night × {{nights}} nights = 
+                    <img src="data:image/svg+xml;base64,{{@root.saudiRiyalSVGBase64}}" alt="SAR" class="cs-sar-icon">
+                    {{subtotal}}
+                  </div>
+                </div>
+                {{/each}}
+              </div>
             </td>
             <td>{{mealPlan}}</td>
             <td class="cs-text-center">{{quantity}}</td>
-            <td class="cs-text-center">{{nights}}</td>
+            <td class="cs-text-center">Variable</td>
             <td class="cs-num">
-              <img src="data:image/svg+xml;base64,{{@root.saudiRiyalSVGBase64}}" alt="SAR" class="cs-sar-icon">
-              {{roomRate}}
+              <span class="cs-text-sm cs-text-gray-500">Variable</span>
             </td>
             <td class="cs-num">
               <img src="data:image/svg+xml;base64,{{@root.saudiRiyalSVGBase64}}" alt="SAR" class="cs-sar-icon">
@@ -196,6 +213,7 @@
         <p class="cs-mb-1">Atas Nama: <span class="cs-font-semibold">{{bank.accountName}}</span> | No. Rek: <span class="cs-font-semibold">{{bank.accountNumberOrIBAN}}</span></p>
         <p class="cs-mb-1">2. Kirim bukti ke {{billingContact.email}} / WA {{billingContact.phone}} dengan nomor invoice.</p>
         <p>3. Biaya bank ditanggung pembayar.</p>
+        <p>Note: Kurs SAR update tiap hari mengikuti: https://www.bca.co.id/id/informasi/kurs. Bank Notes - Jual SAR</p>
       </div>
     </div>
 

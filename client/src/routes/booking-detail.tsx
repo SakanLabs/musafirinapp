@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { DueDateModal } from "@/components/modals/DueDateModal"
 import { UpdateBookingStatusModal } from "@/components/modals/UpdateBookingStatusModal"
+import { Modal } from "@/components/ui/modal"
 import { 
   ArrowLeft,
   FileText,
@@ -18,7 +19,9 @@ import {
   Loader2,
   Edit,
   Clock,
-  Settings
+  Settings,
+  Trash2,
+  CheckCircle2
 } from "lucide-react"
 import { SARCurrency } from "@/components/ui/sar-currency"
 import { authService } from "@/lib/auth"
@@ -26,7 +29,7 @@ import {
   formatCurrency, 
   formatDate
 } from "@/lib/utils"
-import { useBooking, useGenerateInvoice, useGenerateVoucher, useRegenerateVoucher, useUpdateBookingStatus } from "@/lib/queries"
+import { useBooking, useGenerateInvoice, useGenerateVoucher, useRegenerateVoucher, useUpdateBookingStatus, useDeleteBooking } from "@/lib/queries"
 import { useCheckInvoiceExists } from "@/lib/queries/invoices"
 import { useCheckVoucherExists } from "@/lib/queries/vouchers"
 
@@ -84,6 +87,8 @@ function BookingDetailPage() {
   const navigate = useNavigate()
   const [isDueDateModalOpen, setIsDueDateModalOpen] = useState(false)
   const [isUpdateStatusModalOpen, setIsUpdateStatusModalOpen] = useState(false)
+  const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false)
+  const [isSuccessModalOpen, setIsSuccessModalOpen] = useState(false)
   
   // Fetch booking data using TanStack Query
   const { data: booking, isLoading, error } = useBooking(id)
@@ -91,6 +96,7 @@ function BookingDetailPage() {
   const generateVoucherMutation = useGenerateVoucher()
   const regenerateVoucherMutation = useRegenerateVoucher()
   const updateBookingStatusMutation = useUpdateBookingStatus()
+  const deleteBookingMutation = useDeleteBooking()
   
   // Check if invoice and voucher already exist
   const { data: existingInvoice } = useCheckInvoiceExists(id)
@@ -136,7 +142,7 @@ function BookingDetailPage() {
           bookingId: id.toString(), 
           guestName: booking.clientName 
         })
-        console.log("Voucher regenerated successfully")
+
         alert("Voucher berhasil digenerate ulang dan diunduh!")
       } else {
         // If no voucher exists, generate new one
@@ -144,7 +150,7 @@ function BookingDetailPage() {
           bookingId: id.toString(), 
           guestName: booking.clientName 
         })
-        console.log("Voucher generated successfully")
+        
         alert("Voucher berhasil digenerate dan diunduh!")
       }
     } catch (error) {
@@ -181,6 +187,22 @@ function BookingDetailPage() {
       console.error("Failed to update booking status:", error)
       alert("Gagal update status booking. Silakan coba lagi.")
     }
+  }
+
+  const handleDeleteBooking = async () => {
+    try {
+      await deleteBookingMutation.mutateAsync(id)
+      setIsDeleteConfirmOpen(false)
+      setIsSuccessModalOpen(true)
+    } catch (error) {
+      console.error("Failed to delete booking:", error)
+      alert("Gagal menghapus booking. Silakan coba lagi.")
+    }
+  }
+
+  const handleSuccessModalClose = () => {
+    setIsSuccessModalOpen(false)
+    navigate({ to: "/bookings" })
   }
 
   if (isLoading) {
@@ -232,6 +254,18 @@ function BookingDetailPage() {
             >
               <Edit className="h-4 w-4 mr-2" />
               Edit
+            </Button>
+            <Button
+              variant="destructive"
+              size="sm"
+              onClick={() => setIsDeleteConfirmOpen(true)}
+            >
+              {deleteBookingMutation.isPending ? (
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              ) : (
+                <Trash2 className="h-4 w-4 mr-2" />
+              )}
+              {deleteBookingMutation.isPending ? "Deleting..." : "Delete"}
             </Button>
           </div>
         </div>
@@ -298,8 +332,8 @@ function BookingDetailPage() {
                     <p className="text-gray-900">{booking.city}</p>
                   </div>
                   <div>
-                    <label className="text-sm font-medium text-gray-500">Room Type</label>
-                    <p className="text-gray-900">{booking.items?.[0]?.roomType || 'N/A'}</p>
+                    <label className="text-sm font-medium text-gray-500">Meal Plan</label>
+                    <p className="text-gray-900">{booking.mealPlan}</p>
                   </div>
                   <div>
                     <label className="text-sm font-medium text-gray-500">Total Amount</label>
@@ -307,6 +341,103 @@ function BookingDetailPage() {
                       <SARCurrency amount={booking.totalAmount.toString()} iconSize={16} className="mr-2 text-gray-400" />
                       <p className="text-gray-900 font-semibold">{formatCurrency(booking.totalAmount.toString(), 'SAR')}</p>
                     </div>
+                  </div>
+                </div>
+
+                {/* Rooms Information */}
+                <div className="mt-6">
+                  <label className="text-sm font-medium text-gray-500 mb-3 block">Rooms Information</label>
+                  <div className="space-y-3">
+                    {booking.items && booking.items.length > 0 ? (
+                      booking.items.map((item, index) => (
+                        <div key={index} className="bg-gray-50 p-4 rounded-lg">
+                          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                            <div>
+                              <label className="text-xs font-medium text-gray-500">Room Type</label>
+                              <p className="text-sm text-gray-900">{item.roomType}</p>
+                            </div>
+                            <div>
+                              <label className="text-xs font-medium text-gray-500">Quantity</label>
+                              <p className="text-sm text-gray-900">{item.roomCount} room(s)</p>
+                            </div>
+                            {!item.hasPricingPeriods && (
+                              <>
+                                <div>
+                                  <label className="text-xs font-medium text-gray-500">Unit Price</label>
+                                  <p className="text-sm text-gray-900">{formatCurrency(item.unitPrice.toString(), 'SAR')}</p>
+                                </div>
+                                {item.hotelCostPrice && (
+                                  <div>
+                                    <label className="text-xs font-medium text-gray-500">Hotel Cost</label>
+                                    <p className="text-sm text-gray-900">{formatCurrency(item.hotelCostPrice.toString(), 'SAR')}</p>
+                                  </div>
+                                )}
+                                <div>
+                                  <label className="text-xs font-medium text-gray-500">Subtotal</label>
+                                  <p className="text-sm text-gray-900 font-semibold">
+                                    {formatCurrency((Number(item.unitPrice) * Number(item.roomCount)).toString(), 'SAR')}
+                                  </p>
+                                </div>
+                              </>
+                            )}
+                          </div>
+
+                          {/* Pricing Periods Breakdown */}
+                          {item.hasPricingPeriods && item.pricingPeriods && item.pricingPeriods.length > 0 && (
+                            <div className="mt-4 border-t pt-4">
+                              <label className="text-xs font-medium text-gray-500 mb-2 block">Pricing Periods</label>
+                              <div className="space-y-2">
+                                {item.pricingPeriods.map((period, periodIndex) => (
+                                  <div key={periodIndex} className="bg-white p-3 rounded border">
+                                    <div className="grid grid-cols-1 md:grid-cols-5 gap-2 text-xs">
+                                      <div>
+                                        <label className="font-medium text-gray-500">Period</label>
+                                        <p className="text-gray-900">
+                                          {formatDate(period.startDate)} - {formatDate(period.endDate)}
+                                        </p>
+                                      </div>
+                                      <div>
+                                        <label className="font-medium text-gray-500">Nights</label>
+                                        <p className="text-gray-900">{period.nights}</p>
+                                      </div>
+                                      <div>
+                                        <label className="font-medium text-gray-500">Price/Night</label>
+                                        <p className="text-gray-900">{formatCurrency(period.unitPrice.toString(), 'SAR')}</p>
+                                      </div>
+                                      {period.hotelCostPrice && (
+                                        <div>
+                                          <label className="font-medium text-gray-500">Hotel Cost/Night</label>
+                                          <p className="text-gray-900">{formatCurrency(period.hotelCostPrice.toString(), 'SAR')}</p>
+                                        </div>
+                                      )}
+                                      <div>
+                                        <label className="font-medium text-gray-500">Period Subtotal</label>
+                                        <p className="text-gray-900 font-semibold">
+                                          {formatCurrency((period.subtotal * item.roomCount).toString(), 'SAR')}
+                                        </p>
+                                      </div>
+                                    </div>
+                                  </div>
+                                ))}
+                                <div className="bg-blue-50 p-3 rounded border border-blue-200">
+                                  <div className="flex justify-between items-center">
+                                    <span className="text-sm font-medium text-blue-800">Total for {item.roomType}</span>
+                                    <span className="text-sm font-bold text-blue-900">
+                                      {formatCurrency(
+                                        (item.pricingPeriods.reduce((sum, period) => sum + period.subtotal, 0) * item.roomCount).toString(),
+                                        'SAR'
+                                      )}
+                                    </span>
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      ))
+                    ) : (
+                      <p className="text-gray-500 text-sm">No room information available</p>
+                    )}
                   </div>
                 </div>
               </CardContent>
@@ -457,6 +588,61 @@ function BookingDetailPage() {
         isLoading={updateBookingStatusMutation.isPending}
         booking={booking}
       />
+      <Modal
+        isOpen={isDeleteConfirmOpen}
+        onClose={() => {
+          if (!deleteBookingMutation.isPending) {
+            setIsDeleteConfirmOpen(false)
+          }
+        }}
+        title="Delete Booking"
+        footer={
+          <>
+            <Button
+              variant="outline"
+              onClick={() => setIsDeleteConfirmOpen(false)}
+              disabled={deleteBookingMutation.isPending}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handleDeleteBooking}
+              disabled={deleteBookingMutation.isPending}
+            >
+              {deleteBookingMutation.isPending ? (
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              ) : (
+                <Trash2 className="h-4 w-4 mr-2" />
+              )}
+              {deleteBookingMutation.isPending ? "Deleting..." : "Delete Booking"}
+            </Button>
+          </>
+        }
+      >
+        <p className="text-sm text-gray-600">
+          Are you sure you want to delete booking <span className="font-semibold">{booking.code}</span>? This action cannot be undone.
+        </p>
+      </Modal>
+      <Modal
+        isOpen={isSuccessModalOpen}
+        onClose={handleSuccessModalClose}
+        title="Booking Deleted"
+        footer={
+          <Button onClick={handleSuccessModalClose}>
+            Back to Bookings
+          </Button>
+        }
+      >
+        <div className="flex items-start space-x-3">
+          <CheckCircle2 className="h-6 w-6 text-green-500 mt-1" />
+          <div className="space-y-1">
+            <p className="text-sm text-gray-700">
+              Booking <span className="font-semibold">{booking.code}</span> has been deleted successfully.
+            </p>
+          </div>
+        </div>
+      </Modal>
     </PageLayout>
   )
 }

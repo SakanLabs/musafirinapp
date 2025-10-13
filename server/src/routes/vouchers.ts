@@ -63,10 +63,6 @@ voucherRoutes.post('/:bookingId/generate', requireAdmin, async (c) => {
       return c.json({ error: 'Invalid booking ID' }, 400);
     }
 
-    if (!guestName) {
-      return c.json({ error: 'Guest name is required' }, 400);
-    }
-
     // Check if booking exists
     const booking = await db
       .select({
@@ -81,6 +77,7 @@ voucherRoutes.post('/:bookingId/generate', requireAdmin, async (c) => {
         paymentStatus: bookings.paymentStatus,
         bookingStatus: bookings.bookingStatus,
         hotelConfirmationNo: bookings.hotelConfirmationNo,
+        mealPlan: bookings.mealPlan,
         meta: bookings.meta,
         createdAt: bookings.createdAt,
         updatedAt: bookings.updatedAt,
@@ -108,6 +105,24 @@ voucherRoutes.post('/:bookingId/generate', requireAdmin, async (c) => {
       hotelName: bookingData.hotelName,
       clientName: bookingData.clientName
     });
+
+    // Determine guest name
+    const resolvedGuestName = (typeof guestName === 'string' ? guestName.trim() : '')
+      || (typeof bookingData.meta === 'object' && bookingData.meta !== null && typeof (bookingData.meta as Record<string, unknown>).guestName === 'string'
+        ? ((bookingData.meta as Record<string, unknown>).guestName as string).trim()
+        : '')
+      || (bookingData.clientName ? bookingData.clientName.trim() : '');
+
+    if (!resolvedGuestName) {
+      console.log('Guest name resolution failed for voucher generation', {
+        providedGuestName: guestName,
+        metaGuestName: typeof bookingData.meta === 'object' && bookingData.meta !== null
+          ? (bookingData.meta as Record<string, unknown>).guestName
+          : undefined,
+        clientName: bookingData.clientName
+      });
+      return c.json({ error: 'Guest name is required' }, 400);
+    }
 
     // Validate payment status - voucher can only be generated for paid bookings
     if (bookingData.paymentStatus !== 'paid') {
@@ -165,7 +180,7 @@ voucherRoutes.post('/:bookingId/generate', requireAdmin, async (c) => {
       id: 0, // temporary ID
       number: voucherNumber,
       bookingId: bookingId,
-      guestName: guestName,
+      guestName: resolvedGuestName,
       qrUrl: qrData,
       pdfUrl: null,
       createdAt: new Date(),
@@ -184,6 +199,7 @@ voucherRoutes.post('/:bookingId/generate', requireAdmin, async (c) => {
       paymentStatus: bookingData.paymentStatus,
       bookingStatus: bookingData.bookingStatus,
       hotelConfirmationNo: bookingData.hotelConfirmationNo,
+      mealPlan: bookingData.mealPlan,
       meta: bookingData.meta,
       createdAt: bookingData.createdAt,
       updatedAt: bookingData.updatedAt,
@@ -221,7 +237,7 @@ voucherRoutes.post('/:bookingId/generate', requireAdmin, async (c) => {
     const newVoucher: NewVoucher = {
       number: voucherNumber,
       bookingId: bookingId,
-      guestName: guestName,
+      guestName: resolvedGuestName,
       qrUrl: qrData,
       pdfUrl: pdfUrl,
     };

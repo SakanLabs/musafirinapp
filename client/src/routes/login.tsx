@@ -173,6 +173,39 @@ function LoginPage() {
             </Button>
           </div>
 
+          {/* Quick Admin Login for Testing */}
+          <div className="mt-4 p-3 bg-yellow-50 dark:bg-yellow-900/20 rounded-lg border border-yellow-200 dark:border-yellow-800">
+            <p className="text-xs text-yellow-800 dark:text-yellow-200 mb-2 font-medium">🧪 Quick Admin Login (Testing)</p>
+            <div className="space-y-2">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="w-full text-xs bg-blue-50 hover:bg-blue-100 border-blue-200"
+                onClick={() => {
+                  setEmail('kakguru.fajar@gmail.com');
+                  setPassword('');
+                  setError('Use your actual password for this admin account');
+                }}
+              >
+                👤 Ahmad Fajar (Admin)
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="w-full text-xs bg-green-50 hover:bg-green-100 border-green-200"
+                onClick={() => {
+                  setEmail('testadmin@example.com');
+                  setPassword('');
+                  setError('Use your actual password for this admin account');
+                }}
+              >
+                🔧 Test Admin
+              </Button>
+            </div>
+          </div>
+
           {/* Sign Up Link */}
           <div className="mt-6 text-center">
             <span className="text-sm text-gray-600 dark:text-gray-400">

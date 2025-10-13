@@ -11,12 +11,15 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as VouchersRouteImport } from './routes/vouchers'
 import { Route as RegisterRouteImport } from './routes/register'
+import { Route as ReceiptsRouteImport } from './routes/receipts'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as InvoicesRouteImport } from './routes/invoices'
+import { Route as InvoiceDetailRouteImport } from './routes/invoice-detail'
 import { Route as ForgotPasswordRouteImport } from './routes/forgot-password'
 import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as CreateBookingRouteImport } from './routes/create-booking'
 import { Route as CostsRouteImport } from './routes/costs'
+import { Route as ClientsRouteImport } from './routes/clients'
 import { Route as ClearAuthCacheRouteImport } from './routes/clear-auth-cache'
 import { Route as BookingsRouteImport } from './routes/bookings'
 import { Route as BookingEditRouteImport } from './routes/booking-edit'
@@ -24,11 +27,13 @@ import { Route as BookingDetailRouteImport } from './routes/booking-detail'
 import { Route as AnalyticsRouteImport } from './routes/analytics'
 import { Route as AdminRouteImport } from './routes/admin'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as ClientsIndexRouteImport } from './routes/clients/index'
 import { Route as VouchersCreateRouteImport } from './routes/vouchers/create'
 import { Route as InvoicesCreateRouteImport } from './routes/invoices/create'
 import { Route as DashboardUserRouteImport } from './routes/dashboard/user'
 import { Route as DashboardAdminRouteImport } from './routes/dashboard/admin'
-import { Route as BookingsBookingIdRouteImport } from './routes/bookings.$bookingId'
+import { Route as ClientsCreateRouteImport } from './routes/clients/create'
+import { Route as ClientDetailClientIdRouteImport } from './routes/client-detail.$clientId'
 import { Route as BookingViewBookingIdRouteImport } from './routes/booking-view.$bookingId'
 import { Route as AuthCallbackRouteImport } from './routes/auth/callback'
 import { Route as BookingsBookingIdEditRouteImport } from './routes/bookings/$bookingId/edit'
@@ -43,6 +48,11 @@ const RegisterRoute = RegisterRouteImport.update({
   path: '/register',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ReceiptsRoute = ReceiptsRouteImport.update({
+  id: '/receipts',
+  path: '/receipts',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const LoginRoute = LoginRouteImport.update({
   id: '/login',
   path: '/login',
@@ -51,6 +61,11 @@ const LoginRoute = LoginRouteImport.update({
 const InvoicesRoute = InvoicesRouteImport.update({
   id: '/invoices',
   path: '/invoices',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const InvoiceDetailRoute = InvoiceDetailRouteImport.update({
+  id: '/invoice-detail',
+  path: '/invoice-detail',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ForgotPasswordRoute = ForgotPasswordRouteImport.update({
@@ -71,6 +86,11 @@ const CreateBookingRoute = CreateBookingRouteImport.update({
 const CostsRoute = CostsRouteImport.update({
   id: '/costs',
   path: '/costs',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ClientsRoute = ClientsRouteImport.update({
+  id: '/clients',
+  path: '/clients',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ClearAuthCacheRoute = ClearAuthCacheRouteImport.update({
@@ -108,6 +128,11 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ClientsIndexRoute = ClientsIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => ClientsRoute,
+} as any)
 const VouchersCreateRoute = VouchersCreateRouteImport.update({
   id: '/create',
   path: '/create',
@@ -128,10 +153,15 @@ const DashboardAdminRoute = DashboardAdminRouteImport.update({
   path: '/admin',
   getParentRoute: () => DashboardRoute,
 } as any)
-const BookingsBookingIdRoute = BookingsBookingIdRouteImport.update({
-  id: '/$bookingId',
-  path: '/$bookingId',
-  getParentRoute: () => BookingsRoute,
+const ClientsCreateRoute = ClientsCreateRouteImport.update({
+  id: '/create',
+  path: '/create',
+  getParentRoute: () => ClientsRoute,
+} as any)
+const ClientDetailClientIdRoute = ClientDetailClientIdRouteImport.update({
+  id: '/client-detail/$clientId',
+  path: '/client-detail/$clientId',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const BookingViewBookingIdRoute = BookingViewBookingIdRouteImport.update({
   id: '/booking-view/$bookingId',
@@ -144,9 +174,9 @@ const AuthCallbackRoute = AuthCallbackRouteImport.update({
   getParentRoute: () => rootRouteImport,
 } as any)
 const BookingsBookingIdEditRoute = BookingsBookingIdEditRouteImport.update({
-  id: '/edit',
-  path: '/edit',
-  getParentRoute: () => BookingsBookingIdRoute,
+  id: '/$bookingId/edit',
+  path: '/$bookingId/edit',
+  getParentRoute: () => BookingsRoute,
 } as any)
 
 export interface FileRoutesByFullPath {
@@ -157,21 +187,26 @@ export interface FileRoutesByFullPath {
   '/booking-edit': typeof BookingEditRoute
   '/bookings': typeof BookingsRouteWithChildren
   '/clear-auth-cache': typeof ClearAuthCacheRoute
+  '/clients': typeof ClientsRouteWithChildren
   '/costs': typeof CostsRoute
   '/create-booking': typeof CreateBookingRoute
   '/dashboard': typeof DashboardRouteWithChildren
   '/forgot-password': typeof ForgotPasswordRoute
+  '/invoice-detail': typeof InvoiceDetailRoute
   '/invoices': typeof InvoicesRouteWithChildren
   '/login': typeof LoginRoute
+  '/receipts': typeof ReceiptsRoute
   '/register': typeof RegisterRoute
   '/vouchers': typeof VouchersRouteWithChildren
   '/auth/callback': typeof AuthCallbackRoute
   '/booking-view/$bookingId': typeof BookingViewBookingIdRoute
-  '/bookings/$bookingId': typeof BookingsBookingIdRouteWithChildren
+  '/client-detail/$clientId': typeof ClientDetailClientIdRoute
+  '/clients/create': typeof ClientsCreateRoute
   '/dashboard/admin': typeof DashboardAdminRoute
   '/dashboard/user': typeof DashboardUserRoute
   '/invoices/create': typeof InvoicesCreateRoute
   '/vouchers/create': typeof VouchersCreateRoute
+  '/clients/': typeof ClientsIndexRoute
   '/bookings/$bookingId/edit': typeof BookingsBookingIdEditRoute
 }
 export interface FileRoutesByTo {
@@ -186,17 +221,21 @@ export interface FileRoutesByTo {
   '/create-booking': typeof CreateBookingRoute
   '/dashboard': typeof DashboardRouteWithChildren
   '/forgot-password': typeof ForgotPasswordRoute
+  '/invoice-detail': typeof InvoiceDetailRoute
   '/invoices': typeof InvoicesRouteWithChildren
   '/login': typeof LoginRoute
+  '/receipts': typeof ReceiptsRoute
   '/register': typeof RegisterRoute
   '/vouchers': typeof VouchersRouteWithChildren
   '/auth/callback': typeof AuthCallbackRoute
   '/booking-view/$bookingId': typeof BookingViewBookingIdRoute
-  '/bookings/$bookingId': typeof BookingsBookingIdRouteWithChildren
+  '/client-detail/$clientId': typeof ClientDetailClientIdRoute
+  '/clients/create': typeof ClientsCreateRoute
   '/dashboard/admin': typeof DashboardAdminRoute
   '/dashboard/user': typeof DashboardUserRoute
   '/invoices/create': typeof InvoicesCreateRoute
   '/vouchers/create': typeof VouchersCreateRoute
+  '/clients': typeof ClientsIndexRoute
   '/bookings/$bookingId/edit': typeof BookingsBookingIdEditRoute
 }
 export interface FileRoutesById {
@@ -208,21 +247,26 @@ export interface FileRoutesById {
   '/booking-edit': typeof BookingEditRoute
   '/bookings': typeof BookingsRouteWithChildren
   '/clear-auth-cache': typeof ClearAuthCacheRoute
+  '/clients': typeof ClientsRouteWithChildren
   '/costs': typeof CostsRoute
   '/create-booking': typeof CreateBookingRoute
   '/dashboard': typeof DashboardRouteWithChildren
   '/forgot-password': typeof ForgotPasswordRoute
+  '/invoice-detail': typeof InvoiceDetailRoute
   '/invoices': typeof InvoicesRouteWithChildren
   '/login': typeof LoginRoute
+  '/receipts': typeof ReceiptsRoute
   '/register': typeof RegisterRoute
   '/vouchers': typeof VouchersRouteWithChildren
   '/auth/callback': typeof AuthCallbackRoute
   '/booking-view/$bookingId': typeof BookingViewBookingIdRoute
-  '/bookings/$bookingId': typeof BookingsBookingIdRouteWithChildren
+  '/client-detail/$clientId': typeof ClientDetailClientIdRoute
+  '/clients/create': typeof ClientsCreateRoute
   '/dashboard/admin': typeof DashboardAdminRoute
   '/dashboard/user': typeof DashboardUserRoute
   '/invoices/create': typeof InvoicesCreateRoute
   '/vouchers/create': typeof VouchersCreateRoute
+  '/clients/': typeof ClientsIndexRoute
   '/bookings/$bookingId/edit': typeof BookingsBookingIdEditRoute
 }
 export interface FileRouteTypes {
@@ -235,21 +279,26 @@ export interface FileRouteTypes {
     | '/booking-edit'
     | '/bookings'
     | '/clear-auth-cache'
+    | '/clients'
     | '/costs'
     | '/create-booking'
     | '/dashboard'
     | '/forgot-password'
+    | '/invoice-detail'
     | '/invoices'
     | '/login'
+    | '/receipts'
     | '/register'
     | '/vouchers'
     | '/auth/callback'
     | '/booking-view/$bookingId'
-    | '/bookings/$bookingId'
+    | '/client-detail/$clientId'
+    | '/clients/create'
     | '/dashboard/admin'
     | '/dashboard/user'
     | '/invoices/create'
     | '/vouchers/create'
+    | '/clients/'
     | '/bookings/$bookingId/edit'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -264,17 +313,21 @@ export interface FileRouteTypes {
     | '/create-booking'
     | '/dashboard'
     | '/forgot-password'
+    | '/invoice-detail'
     | '/invoices'
     | '/login'
+    | '/receipts'
     | '/register'
     | '/vouchers'
     | '/auth/callback'
     | '/booking-view/$bookingId'
-    | '/bookings/$bookingId'
+    | '/client-detail/$clientId'
+    | '/clients/create'
     | '/dashboard/admin'
     | '/dashboard/user'
     | '/invoices/create'
     | '/vouchers/create'
+    | '/clients'
     | '/bookings/$bookingId/edit'
   id:
     | '__root__'
@@ -285,21 +338,26 @@ export interface FileRouteTypes {
     | '/booking-edit'
     | '/bookings'
     | '/clear-auth-cache'
+    | '/clients'
     | '/costs'
     | '/create-booking'
     | '/dashboard'
     | '/forgot-password'
+    | '/invoice-detail'
     | '/invoices'
     | '/login'
+    | '/receipts'
     | '/register'
     | '/vouchers'
     | '/auth/callback'
     | '/booking-view/$bookingId'
-    | '/bookings/$bookingId'
+    | '/client-detail/$clientId'
+    | '/clients/create'
     | '/dashboard/admin'
     | '/dashboard/user'
     | '/invoices/create'
     | '/vouchers/create'
+    | '/clients/'
     | '/bookings/$bookingId/edit'
   fileRoutesById: FileRoutesById
 }
@@ -311,16 +369,20 @@ export interface RootRouteChildren {
   BookingEditRoute: typeof BookingEditRoute
   BookingsRoute: typeof BookingsRouteWithChildren
   ClearAuthCacheRoute: typeof ClearAuthCacheRoute
+  ClientsRoute: typeof ClientsRouteWithChildren
   CostsRoute: typeof CostsRoute
   CreateBookingRoute: typeof CreateBookingRoute
   DashboardRoute: typeof DashboardRouteWithChildren
   ForgotPasswordRoute: typeof ForgotPasswordRoute
+  InvoiceDetailRoute: typeof InvoiceDetailRoute
   InvoicesRoute: typeof InvoicesRouteWithChildren
   LoginRoute: typeof LoginRoute
+  ReceiptsRoute: typeof ReceiptsRoute
   RegisterRoute: typeof RegisterRoute
   VouchersRoute: typeof VouchersRouteWithChildren
   AuthCallbackRoute: typeof AuthCallbackRoute
   BookingViewBookingIdRoute: typeof BookingViewBookingIdRoute
+  ClientDetailClientIdRoute: typeof ClientDetailClientIdRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -339,6 +401,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof RegisterRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/receipts': {
+      id: '/receipts'
+      path: '/receipts'
+      fullPath: '/receipts'
+      preLoaderRoute: typeof ReceiptsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/login': {
       id: '/login'
       path: '/login'
@@ -351,6 +420,13 @@ declare module '@tanstack/react-router' {
       path: '/invoices'
       fullPath: '/invoices'
       preLoaderRoute: typeof InvoicesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/invoice-detail': {
+      id: '/invoice-detail'
+      path: '/invoice-detail'
+      fullPath: '/invoice-detail'
+      preLoaderRoute: typeof InvoiceDetailRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/forgot-password': {
@@ -379,6 +455,13 @@ declare module '@tanstack/react-router' {
       path: '/costs'
       fullPath: '/costs'
       preLoaderRoute: typeof CostsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/clients': {
+      id: '/clients'
+      path: '/clients'
+      fullPath: '/clients'
+      preLoaderRoute: typeof ClientsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/clear-auth-cache': {
@@ -430,6 +513,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/clients/': {
+      id: '/clients/'
+      path: '/'
+      fullPath: '/clients/'
+      preLoaderRoute: typeof ClientsIndexRouteImport
+      parentRoute: typeof ClientsRoute
+    }
     '/vouchers/create': {
       id: '/vouchers/create'
       path: '/create'
@@ -458,12 +548,19 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DashboardAdminRouteImport
       parentRoute: typeof DashboardRoute
     }
-    '/bookings/$bookingId': {
-      id: '/bookings/$bookingId'
-      path: '/$bookingId'
-      fullPath: '/bookings/$bookingId'
-      preLoaderRoute: typeof BookingsBookingIdRouteImport
-      parentRoute: typeof BookingsRoute
+    '/clients/create': {
+      id: '/clients/create'
+      path: '/create'
+      fullPath: '/clients/create'
+      preLoaderRoute: typeof ClientsCreateRouteImport
+      parentRoute: typeof ClientsRoute
+    }
+    '/client-detail/$clientId': {
+      id: '/client-detail/$clientId'
+      path: '/client-detail/$clientId'
+      fullPath: '/client-detail/$clientId'
+      preLoaderRoute: typeof ClientDetailClientIdRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/booking-view/$bookingId': {
       id: '/booking-view/$bookingId'
@@ -481,36 +578,38 @@ declare module '@tanstack/react-router' {
     }
     '/bookings/$bookingId/edit': {
       id: '/bookings/$bookingId/edit'
-      path: '/edit'
+      path: '/$bookingId/edit'
       fullPath: '/bookings/$bookingId/edit'
       preLoaderRoute: typeof BookingsBookingIdEditRouteImport
-      parentRoute: typeof BookingsBookingIdRoute
+      parentRoute: typeof BookingsRoute
     }
   }
 }
 
-interface BookingsBookingIdRouteChildren {
+interface BookingsRouteChildren {
   BookingsBookingIdEditRoute: typeof BookingsBookingIdEditRoute
 }
 
-const BookingsBookingIdRouteChildren: BookingsBookingIdRouteChildren = {
-  BookingsBookingIdEditRoute: BookingsBookingIdEditRoute,
-}
-
-const BookingsBookingIdRouteWithChildren =
-  BookingsBookingIdRoute._addFileChildren(BookingsBookingIdRouteChildren)
-
-interface BookingsRouteChildren {
-  BookingsBookingIdRoute: typeof BookingsBookingIdRouteWithChildren
-}
-
 const BookingsRouteChildren: BookingsRouteChildren = {
-  BookingsBookingIdRoute: BookingsBookingIdRouteWithChildren,
+  BookingsBookingIdEditRoute: BookingsBookingIdEditRoute,
 }
 
 const BookingsRouteWithChildren = BookingsRoute._addFileChildren(
   BookingsRouteChildren,
 )
+
+interface ClientsRouteChildren {
+  ClientsCreateRoute: typeof ClientsCreateRoute
+  ClientsIndexRoute: typeof ClientsIndexRoute
+}
+
+const ClientsRouteChildren: ClientsRouteChildren = {
+  ClientsCreateRoute: ClientsCreateRoute,
+  ClientsIndexRoute: ClientsIndexRoute,
+}
+
+const ClientsRouteWithChildren =
+  ClientsRoute._addFileChildren(ClientsRouteChildren)
 
 interface DashboardRouteChildren {
   DashboardAdminRoute: typeof DashboardAdminRoute
@@ -558,16 +657,20 @@ const rootRouteChildren: RootRouteChildren = {
   BookingEditRoute: BookingEditRoute,
   BookingsRoute: BookingsRouteWithChildren,
   ClearAuthCacheRoute: ClearAuthCacheRoute,
+  ClientsRoute: ClientsRouteWithChildren,
   CostsRoute: CostsRoute,
   CreateBookingRoute: CreateBookingRoute,
   DashboardRoute: DashboardRouteWithChildren,
   ForgotPasswordRoute: ForgotPasswordRoute,
+  InvoiceDetailRoute: InvoiceDetailRoute,
   InvoicesRoute: InvoicesRouteWithChildren,
   LoginRoute: LoginRoute,
+  ReceiptsRoute: ReceiptsRoute,
   RegisterRoute: RegisterRoute,
   VouchersRoute: VouchersRouteWithChildren,
   AuthCallbackRoute: AuthCallbackRoute,
   BookingViewBookingIdRoute: BookingViewBookingIdRoute,
+  ClientDetailClientIdRoute: ClientDetailClientIdRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

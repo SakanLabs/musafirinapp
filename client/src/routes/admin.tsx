@@ -51,7 +51,7 @@ function AdminPage() {
           offset: 0
         }
       })
-      console.log('Admin users response:', response)
+      
       
       if (response.data?.users) {
         // Map the response to our User interface

@@ -37,11 +37,7 @@ interface BetterAuthSession {
 
 // Helper function to convert Better Auth session to our User interface
 const sessionToUser = (session: BetterAuthSession | null): User | null => {
-  console.log('sessionToUser - input session:', session);
-  console.log('sessionToUser - session type:', typeof session);
-  
   if (!session) {
-    console.log('sessionToUser - session is null/undefined');
     return null;
   }
   
@@ -50,30 +46,23 @@ const sessionToUser = (session: BetterAuthSession | null): User | null => {
   
   // Try session.user first (Better Auth format and direct API format)
   if (session.user) {
-    console.log('sessionToUser - found session.user:', session.user);
     user = session.user;
   }
   // Try session.data.user (alternative format)
   else if (session.data?.user) {
-    console.log('sessionToUser - found session.data.user:', session.data.user);
     user = session.data.user;
   }
   // Try direct user object
   else if (session.id && session.email) {
-    console.log('sessionToUser - treating session as direct user object');
     user = session;
   }
   
   if (!user) {
-    console.log('sessionToUser - no user found in session');
     return null;
   }
   
-  console.log('sessionToUser - extracted user:', user);
-  
   // Ensure all required fields are present
   if (!user.id || !user.email) {
-    console.log('sessionToUser - user missing required fields (id or email)');
     return null;
   }
   
@@ -127,12 +116,10 @@ export const authService = {
   getCurrentUser: async (): Promise<User | null> => {
     // Check cache first
     if (userCache && (Date.now() - userCache.timestamp) < CACHE_DURATION) {
-      console.log('getCurrentUser - returning cached user:', userCache.user);
       return userCache.user;
     }
     
     try {
-      console.log('getCurrentUser - fetching fresh session');
       const session = await getSession({
         fetchOptions: {
           onError(context) {
@@ -141,10 +128,7 @@ export const authService = {
         },
       });
       
-      console.log('getCurrentUser - raw session response:', session);
-      
       const user = sessionToUser(session as BetterAuthSession);
-      console.log('getCurrentUser - converted user:', user);
       
       // Update cache
       userCache = {
@@ -166,10 +150,8 @@ export const authService = {
   // Check if user is authenticated
   isAuthenticated: async (): Promise<boolean> => {
     try {
-      console.log('isAuthenticated - starting check');
       const user = await authService.getCurrentUser()
       const result = user?.isAuthenticated ?? false;
-      console.log('isAuthenticated - user:', user, 'result:', result);
       return result;
     } catch (error) {
       console.warn('Authentication check failed, falling back to false:', error);

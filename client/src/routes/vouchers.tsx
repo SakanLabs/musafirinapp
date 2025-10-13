@@ -125,13 +125,13 @@ function VouchersPage() {
 
   const handleViewVoucher = (voucher: Voucher) => {
     // Here you would typically navigate to voucher detail page or open in modal
-    console.log("Viewing voucher:", voucher.number)
+    
     window.open(voucher.pdfUrl, '_blank')
   }
 
   const handleDownloadPDF = (voucher: Voucher) => {
     // Here you would typically trigger PDF download
-    console.log("Downloading PDF for voucher:", voucher.number)
+    
     
     // Create a temporary link to trigger download
     const link = document.createElement('a')

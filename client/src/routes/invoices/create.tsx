@@ -155,7 +155,7 @@ function CreateInvoicePage() {
     
     try {
       // TODO: Implement API call to create invoice
-      console.log("Creating invoice with data:", formData)
+
       
       // Simulate API call
       await new Promise(resolve => setTimeout(resolve, 2000))

@@ -18,10 +18,8 @@ function OAuthCallback() {
 				await new Promise(resolve => setTimeout(resolve, 2000));
 				
 				const user = await authService.getCurrentUser();
-				console.log("OAuth callback - user:", user);
 				
 				if (!user) {
-					console.log("OAuth callback - no user found, redirecting to login");
 					setError("Authentication failed. Please try again.");
 					setTimeout(() => {
 						navigate({ to: "/login" });
@@ -30,12 +28,10 @@ function OAuthCallback() {
 				}
 				
 				// Redirect to appropriate dashboard based on role
-				const dashboardPath = user.role === 'admin' ? '/dashboard/admin' : '/dashboard/user';
-				console.log("OAuth callback - redirecting to:", dashboardPath);
+				const dashboardPath = await authService.getDefaultDashboard();
 				
 				navigate({ to: dashboardPath });
 			} catch (error) {
-				console.error("OAuth callback error:", error);
 				setError("An error occurred during authentication.");
 				setTimeout(() => {
 					navigate({ to: "/login" });

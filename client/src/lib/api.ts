@@ -125,29 +125,55 @@ export const API_ENDPOINTS = {
   // Auth endpoints
   BOOKINGS: '/api/bookings',
   BOOKING_BY_ID: (id: string) => `/api/bookings/${id}`,
-  
+  BOOKING_PAY: (id: string) => `/api/bookings/${id}/pay`,
+
+  // Client endpoints
+  CLIENTS: '/api/clients',
+  CLIENT_BY_ID: (id: string) => `/api/clients/${id}`,
+
+  // Deposit endpoints
+  DEPOSITS: '/api/deposits',
+  DEPOSIT_BALANCE: (clientId: string) => `/api/deposits/clients/${clientId}/balance`,
+  DEPOSIT_TRANSACTIONS: (clientId: string) => `/api/deposits/clients/${clientId}/transactions`,
+  DEPOSIT_UPDATE_TRANSACTION: (clientId: string, transactionId: number | string) => `/api/deposits/clients/${clientId}/transactions/${transactionId}`,
+  DEPOSIT_DELETE_TRANSACTION: (clientId: string, transactionId: number | string) => `/api/deposits/clients/${clientId}/transactions/${transactionId}`,
+  DEPOSIT_ADD: (clientId: string) => `/api/deposits/clients/${clientId}/add`,
+  DEPOSIT_REFUND: (clientId: string) => `/api/deposits/clients/${clientId}/refund`,
+  DEPOSIT_ADJUST: (clientId: string) => `/api/deposits/clients/${clientId}/adjustment`,
+  DEPOSIT_SUMMARY: '/api/deposits/summary',
+
   // Invoice endpoints
   INVOICES: '/api/invoices',
+  INVOICE_BY_ID: (id: string) => `/api/invoices/${id}`,
   GENERATE_INVOICE: (id: string) => `/api/invoices/${id}/generate`,
   REGENERATE_INVOICE: (id: string) => `/api/invoices/${id}/generate`,
   INVOICE_BY_BOOKING: (bookingId: string) => `/api/invoices/booking/${bookingId}`,
   INVOICE_BY_BOOKING_TEST: (bookingId: string) => `/api/invoices/test/booking/${bookingId}`,
+  INVOICE_PAY: (id: string) => `/api/invoices/${id}/pay`,
   DOWNLOAD_INVOICE: (id: string) => `/api/invoices/${id}/download`,
-  
+
   // Voucher endpoints
   VOUCHERS: '/api/vouchers',
   GENERATE_VOUCHER: (id: string) => `/api/vouchers/${id}/generate`,
-  
-  // Reports
+
+  // Receipt endpoints
+  RECEIPTS: '/api/receipts',
+  RECEIPT_BY_ID: (id: string) => `/api/receipts/${id}`,
+  RECEIPT_BY_BOOKING: (bookingId: string) => `/api/receipts/booking/${bookingId}`,
+  RECEIPT_BY_NUMBER: (number: string) => `/api/receipts/number/${number}`,
+  GENERATE_RECEIPT: '/api/receipts/generate',
+  DOWNLOAD_RECEIPT: (id: string) => `/api/receipts/${id}/download`,
+
+  // Reports endpoints
   REPORTS_SUMMARY: '/api/reports/summary',
 
-  // Analytics
+  // Analytics endpoints
   ANALYTICS_REVENUE: '/api/analytics/revenue',
   ANALYTICS_PROFIT: '/api/analytics/profit',
   ANALYTICS_DASHBOARD: '/api/analytics/dashboard',
   ANALYTICS_SUMMARY: '/api/analytics/summary',
 
-  // Costs
+  // Costs endpoints
   COSTS_HOTEL_TEMPLATES: '/api/costs/hotel-templates',
   COSTS_HOTEL_TEMPLATE_BY_ID: (id: string) => `/api/costs/hotel-templates/${id}`,
   COSTS_OPERATIONAL: '/api/costs/operational',

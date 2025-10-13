@@ -32,11 +32,19 @@ function EditBookingPage() {
     guestPhone: '',
     checkInDate: '',
     checkOutDate: '',
-    roomType: '',
+    mealPlan: 'Room Only',
     numberOfGuests: 1,
     specialRequests: '',
     totalAmount: 0,
-    status: 'pending'
+    status: 'pending',
+    rooms: [{
+      roomType: '',
+      roomCount: 1,
+      unitPrice: 0,
+      hotelCostPrice: 0
+    }],
+    // Legacy fields for backward compatibility
+    roomType: ''
   })
 
   useEffect(() => {
@@ -47,11 +55,24 @@ function EditBookingPage() {
         guestPhone: booking.clientPhone || '',
         checkInDate: booking.checkIn || '',
         checkOutDate: booking.checkOut || '',
-        roomType: booking.items?.[0]?.roomType || '',
+        mealPlan: booking.mealPlan || 'Room Only',
         numberOfGuests: (booking.meta?.numberOfGuests as number) || 1,
         specialRequests: (booking.meta?.specialRequests as string) || '',
         totalAmount: booking.totalAmount || 0,
-        status: booking.bookingStatus || 'pending'
+        status: booking.bookingStatus || 'pending',
+        rooms: booking.items?.map(item => ({
+          roomType: item.roomType,
+          roomCount: item.roomCount,
+          unitPrice: parseFloat(item.unitPrice),
+          hotelCostPrice: parseFloat(item.hotelCostPrice)
+        })) || [{
+          roomType: '',
+          roomCount: 1,
+          unitPrice: 0,
+          hotelCostPrice: 0
+        }],
+        // Legacy fields for backward compatibility
+        roomType: booking.items?.[0]?.roomType || ''
       })
     }
   }, [booking])
@@ -72,7 +93,7 @@ function EditBookingPage() {
         ...formData
       })
       
-      console.log("Booking updated successfully!")
+
       navigate({ to: `/bookings/${bookingId}` })
     } catch (error) {
       console.error('Error updating booking:', error)
