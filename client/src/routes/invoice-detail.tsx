@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { PageLayout } from "@/components/layout/PageLayout";
 import { Button } from "@/components/ui/button";
@@ -8,6 +8,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { formatCurrency, formatDate } from "@/lib/utils";
 import { useInvoice, usePayInvoice, type Invoice } from "@/lib/queries/invoices";
+import { useReceiptsByBooking, useGenerateReceipt } from "@/lib/queries/receipts";
+import { authService } from "@/lib/auth";
 import { FileText, Download, Banknote, CalendarDays, Loader2, Info } from "lucide-react";
 
 export const Route = createFileRoute("/invoice-detail")({
@@ -130,9 +132,33 @@ function InvoiceDetailPage() {
     description: "",
   });
 
+  // Admin check
+  const [isAdmin, setIsAdmin] = useState(false);
+  useEffect(() => {
+    let mounted = true;
+    authService.isAdmin().then(v => { if (mounted) setIsAdmin(v) }).catch(() => setIsAdmin(false));
+    return () => { mounted = false };
+  }, []);
+
+  // Receipts by booking & generate mutation
+  const bookingIdStr = invoice ? invoice.bookingId.toString() : "";
+  const { data: receiptsForBooking = [], isLoading: receiptsLoading } = useReceiptsByBooking(bookingIdStr);
+  const generateReceiptMutation = useGenerateReceipt();
+
   const handleDownload = () => {
     if (!invoice) return;
     window.open(`http://localhost:3000/api/invoices/by-number/${invoice.number}`, "_blank");
+  };
+
+  const handleGenerateReceipt = async () => {
+    if (!invoice) return;
+    try {
+      const receipt = await generateReceiptMutation.mutateAsync(invoice.bookingId);
+      alert(`Receipt generated successfully: ${receipt.number}`);
+    } catch (err: any) {
+      console.error('Failed to generate receipt:', err);
+      alert(err?.message || 'Failed to generate receipt');
+    }
   };
 
   const handleSubmitPay = async (e: React.FormEvent) => {
@@ -211,6 +237,27 @@ function InvoiceDetailPage() {
             <Download className="h-4 w-4 mr-2" />
             Download PDF
           </Button>
+          {isAdmin && invoice.status === 'paid' && (receiptsForBooking?.length ?? 0) === 0 && (
+            <Button 
+              onClick={handleGenerateReceipt}
+              disabled={generateReceiptMutation.isPending}
+              title="Generate receipt for this booking (requires paid invoice)"
+            >
+              {generateReceiptMutation.isPending ? (<><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Generating...</>) : 'Generate Receipt'}
+            </Button>
+          )}
+          {isAdmin && (receiptsForBooking?.length ?? 0) > 0 && (
+            <Button 
+              variant="secondary"
+              onClick={() => {
+                const r = receiptsForBooking[0];
+                window.open(`http://localhost:3000/api/receipts/${r.id}/download`, '_blank');
+              }}
+              title="Download existing receipt"
+            >
+              Download Receipt
+            </Button>
+          )}
         </div>
       }
     >

@@ -1110,6 +1110,29 @@ bookingRoutes.post('/:id/pay', requireAdmin, async (c) => {
         }
       }
 
+      // Sync invoice.status with booking.paymentStatus if invoice exists
+      const inv = await tx
+        .select({ id: invoices.id, dueDate: invoices.dueDate })
+        .from(invoices)
+        .where(eq(invoices.bookingId, bookingId))
+        .limit(1);
+
+      if (inv.length > 0) {
+        const now = new Date();
+        const remainingBalanceNum = typeof meta?.remainingBalance === 'number'
+          ? meta.remainingBalance
+          : typeof meta?.remainingBalance === 'string'
+            ? parseFloat(meta.remainingBalance)
+            : 0;
+        const isOverdue = (remainingBalanceNum > 0) && (inv[0]!.dueDate ? new Date(inv[0]!.dueDate as any) < now : false);
+        const newInvoiceStatus: 'draft' | 'sent' | 'paid' | 'overdue' | 'cancelled' =
+          newPaymentStatus === 'paid' ? 'paid' : isOverdue ? 'overdue' : 'sent';
+        await tx
+          .update(invoices)
+          .set({ status: newInvoiceStatus })
+          .where(eq(invoices.id, inv[0]!.id));
+      }
+
       // Return updated booking details (same shape as GET /api/bookings/:id)
       const result = await tx
         .select({

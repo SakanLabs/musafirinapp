@@ -86,9 +86,7 @@ export function useGenerateReceipt() {
   
   return useMutation({
     mutationFn: async (bookingId: number) => {
-      const response = await apiClient.post<{success: boolean, data: Receipt}>(API_ENDPOINTS.GENERATE_RECEIPT, {
-        bookingId
-      });
+      const response = await apiClient.post<{success: boolean, data: Receipt}>(API_ENDPOINTS.GENERATE_RECEIPT(bookingId));
       return response.data;
     },
     onSuccess: (_, bookingId) => {

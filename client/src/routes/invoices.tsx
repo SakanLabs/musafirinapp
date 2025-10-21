@@ -12,7 +12,9 @@ import {
   Loader2
 } from "lucide-react"
 import { formatCurrency, formatDate } from "@/lib/utils"
-import { useInvoices, type Invoice } from "@/lib/queries/invoices"
+import { useInvoices, type Invoice, useBackfillInvoiceStatus } from "@/lib/queries/invoices"
+import { useEffect, useState } from "react"
+import { authService } from "@/lib/auth"
 
 export const Route = createFileRoute("/invoices")({ 
   component: InvoicesPage
@@ -23,6 +25,18 @@ export const Route = createFileRoute("/invoices")({
 function InvoicesPage() {
   // Fetch invoices using TanStack Query
   const { data: invoices = [], isLoading, error } = useInvoices()
+
+  // State & mutation for Sync Status (admin-only)
+  const [isAdmin, setIsAdmin] = useState(false)
+  const { mutateAsync: backfillStatus, isPending } = useBackfillInvoiceStatus()
+  const [syncSummary, setSyncSummary] = useState<{ totalProcessed: number; updatedCount: number } | null>(null)
+  const [syncError, setSyncError] = useState<string | null>(null)
+
+  useEffect(() => {
+    let mounted = true
+    authService.isAdmin().then(v => { if (mounted) setIsAdmin(v) }).catch(() => setIsAdmin(false))
+    return () => { mounted = false }
+  }, [])
 
   // Define columns for invoices table
   const invoiceColumns: Column<Invoice>[] = [
@@ -160,10 +174,39 @@ function InvoicesPage() {
               Create Invoice
             </Button>
           </Link>
+          {isAdmin && (
+            <Button
+              variant="secondary"
+              onClick={async () => {
+                setSyncError(null)
+                setSyncSummary(null)
+                try {
+                  const result = await backfillStatus()
+                  setSyncSummary({ totalProcessed: result.totalProcessed, updatedCount: result.updatedCount })
+                } catch (e: any) {
+                  setSyncError(e?.message || 'Sync gagal')
+                }
+              }}
+              disabled={isPending}
+              title="Sinkronisasi status invoice vs booking"
+            >
+              {isPending ? (<><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Syncing...</>) : 'Sync Status'}
+            </Button>
+          )}
         </div>
       }
     >
       {/* Summary Cards */}
+      {syncSummary && (
+        <div className="mb-4 text-sm text-gray-700">
+          Sync selesai. Total diproses: {syncSummary.totalProcessed}, diupdate: {syncSummary.updatedCount}.
+        </div>
+      )}
+      {syncError && (
+        <div className="mb-4 text-sm text-red-600">
+          {syncError}
+        </div>
+      )}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
         <div className="bg-white rounded-lg border border-gray-200 p-6">
           <div className="flex items-center justify-between">

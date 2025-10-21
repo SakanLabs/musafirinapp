@@ -1,5 +1,5 @@
 import { db } from '../db';
-import { receipts, bookings, clients, invoices } from '../db/schema';
+import { receipts, bookings, clients, invoices, bookingItems } from '../db/schema';
 import { eq, desc } from 'drizzle-orm';
 import { generateReceiptPDF } from '../utils/pdf';
 import { generateReceiptNumber } from '../utils/pdf';
@@ -24,6 +24,7 @@ interface ReceiptTemplateData {
     nights: number;
     city: string;
     mealPlan: string;
+    roomSummary?: string; // e.g. "1 Quad Standard Full Board"
   };
   client: {
     name: string;
@@ -235,6 +236,15 @@ export class ReceiptService {
       const checkOutDate = new Date(booking.checkOut);
       const nights = Math.ceil((checkOutDate.getTime() - checkInDate.getTime()) / (1000 * 60 * 60 * 24));
 
+      // Fetch booking items to build room summary
+      const items = await db
+        .select()
+        .from(bookingItems)
+        .where(eq(bookingItems.bookingId, booking.id));
+      const roomSummary = items && items.length > 0
+        ? items.map((it: any) => `${it.roomCount} ${it.roomType} ${booking.mealPlan}`).join(', ')
+        : undefined;
+
       // Calculate actual paid amount from booking payments
       const actualPaidAmount = parseFloat(this.calculatePaidAmount(booking));
       const totalAmount = parseFloat(receipt.totalAmount);
@@ -259,6 +269,7 @@ export class ReceiptService {
           nights,
           city: booking.city,
           mealPlan: booking.mealPlan,
+          roomSummary,
         },
         client: {
           name: client?.name || '',
@@ -283,7 +294,7 @@ export class ReceiptService {
           accountNumber: receipt.accountNumberOrIBAN || '',
         },
         brand: {
-          name: 'Musafirin',
+          name: 'Poppy Ayu',
           tagline: 'Your Trusted Travel Partner',
           website: 'www.musafirin.com',
         },

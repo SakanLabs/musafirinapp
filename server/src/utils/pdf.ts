@@ -167,7 +167,7 @@ export async function generateVoucherPDF(
 
     // Support
     supportEmail: "support@musafirin.co",
-    supportPhone: "+966-5XXXXXXX"
+    supportPhone: "+966-539101812"
   };
 
   // Load and compile template
@@ -301,6 +301,16 @@ export async function generateReceiptPDF(receiptData: any): Promise<string> {
       console.warn('Saudi Riyal SVG not found, using SAR text');
     }
 
+    // Load signature image base64
+    const signaturePath = join(process.cwd(), 'public', 'ttd.png');
+    let signatureBase64 = '';
+    try {
+      const sigBuffer = readFileSync(signaturePath);
+      signatureBase64 = sigBuffer.toString('base64');
+    } catch (error) {
+      console.warn('Signature image not found, continuing without signature image');
+    }
+
     // Comprehensive template replacement
     let renderedHtml = template;
     
@@ -345,6 +355,7 @@ export async function generateReceiptPDF(receiptData: any): Promise<string> {
     // Logo and icons
     renderedHtml = renderedHtml.replace(/\{\{logoBase64\}\}/g, logoBase64);
     renderedHtml = renderedHtml.replace(/\{\{saudiRiyalSVGBase64\}\}/g, saudiRiyalSVGBase64);
+    renderedHtml = renderedHtml.replace(/\{\{signatureBase64\}\}/g, signatureBase64);
     
     // Handle conditional blocks (simple implementation)
     // Remove {{#if amountInWords}} blocks if no amount in words
@@ -364,12 +375,19 @@ export async function generateReceiptPDF(receiptData: any): Promise<string> {
     }
     
     // Handle payments loop (simple implementation for now)
-    // For now, we'll create a simple payment entry
+    // Build hotel details under payment row
+    const hotelDetails = `
+        <div class="cs-text-sm cs-text-gray-700">${receiptData.booking?.hotelName || ''}</div>
+        <div class="cs-text-sm cs-text-gray-500">Check-in: ${receiptData.booking?.checkIn || ''}</div>
+        <div class="cs-text-sm cs-text-gray-500">Check-out: ${receiptData.booking?.checkOut || ''}</div>
+        ${receiptData.booking?.roomSummary ? `<div class=\"cs-text-sm cs-text-gray-700\">${receiptData.booking.roomSummary}</div>` : ''}
+    `;
     const paymentRow = `
       <tr>
         <td>
           <div class="cs-font-semibold">Pembayaran Hotel</div>
           <div class="cs-text-sm cs-text-gray-500">${receiptData.receipt?.issueDate || ''}</div>
+          ${hotelDetails}
         </td>
         <td>Transfer Bank</td>
         <td>-</td>

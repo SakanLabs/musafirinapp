@@ -151,6 +151,7 @@ export const API_ENDPOINTS = {
   INVOICE_BY_BOOKING_TEST: (bookingId: string) => `/api/invoices/test/booking/${bookingId}`,
   INVOICE_PAY: (id: string) => `/api/invoices/${id}/pay`,
   DOWNLOAD_INVOICE: (id: string) => `/api/invoices/${id}/download`,
+  BACKFILL_INVOICE_STATUS: '/api/invoices/backfill-status',
 
   // Voucher endpoints
   VOUCHERS: '/api/vouchers',
@@ -161,7 +162,7 @@ export const API_ENDPOINTS = {
   RECEIPT_BY_ID: (id: string) => `/api/receipts/${id}`,
   RECEIPT_BY_BOOKING: (bookingId: string) => `/api/receipts/booking/${bookingId}`,
   RECEIPT_BY_NUMBER: (number: string) => `/api/receipts/number/${number}`,
-  GENERATE_RECEIPT: '/api/receipts/generate',
+  GENERATE_RECEIPT: (bookingId: string | number) => `/api/receipts/generate/${bookingId}`,
   DOWNLOAD_RECEIPT: (id: string) => `/api/receipts/${id}/download`,
 
   // Reports endpoints

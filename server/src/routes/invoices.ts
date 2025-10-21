@@ -894,6 +894,72 @@ invoiceRoutes.post('/:invoiceId/pay', requireAdmin, async (c) => {
   }
 });
 
+// POST /api/invoices/backfill-status - Sync historical invoice.status with related booking payment status
+invoiceRoutes.post('/backfill-status', requireAdmin, async (c) => {
+  try {
+    const now = new Date();
 
+    const rows = await db
+      .select({
+        id: invoices.id,
+        status: invoices.status,
+        dueDate: invoices.dueDate,
+        bookingId: invoices.bookingId,
+        bookingPaymentStatus: bookings.paymentStatus,
+        totalAmount: bookings.totalAmount,
+        bookingMeta: bookings.meta,
+      })
+      .from(invoices)
+      .leftJoin(bookings, eq(invoices.bookingId, bookings.id));
+
+    let updatedCount = 0;
+    const changes: Array<{ id: number; from: string; to: string }> = [];
+
+    for (const row of rows) {
+      if (!row.bookingId) continue; // skip invoices not linked to bookings
+
+      // Derive remaining balance from booking meta
+      const meta: any = row.bookingMeta || {};
+      const payments: Array<{ amount: number | string }> = Array.isArray(meta.payments) ? meta.payments : [];
+      const paidSoFar = payments.reduce((sum, p) => {
+        const amt = typeof p.amount === 'string' ? parseFloat(p.amount as any) : (p.amount || 0);
+        return sum + (isNaN(amt) ? 0 : amt);
+      }, 0);
+      const totalAmountNum = typeof row.totalAmount === 'string' ? parseFloat(row.totalAmount as any) : (row.totalAmount as any);
+      let remainingBalance =
+        typeof meta.remainingBalance === 'number'
+          ? meta.remainingBalance
+          : typeof meta.remainingBalance === 'string'
+            ? parseFloat(meta.remainingBalance)
+            : Math.max((totalAmountNum || 0) - paidSoFar, 0);
+
+      const isOverdue = (remainingBalance > 0) && (row.dueDate ? new Date(row.dueDate as any) < now : false);
+      const newInvoiceStatus: 'draft' | 'sent' | 'paid' | 'overdue' | 'cancelled' =
+        row.bookingPaymentStatus === 'paid' ? 'paid' : isOverdue ? 'overdue' : 'sent';
+
+      if (newInvoiceStatus !== row.status) {
+        await db
+          .update(invoices)
+          .set({ status: newInvoiceStatus })
+          .where(eq(invoices.id, row.id));
+        updatedCount++;
+        changes.push({ id: row.id, from: String(row.status), to: newInvoiceStatus });
+      }
+    }
+
+    return c.json({
+      success: true,
+      data: {
+        totalProcessed: rows.length,
+        updatedCount,
+        changes,
+      },
+      message: 'Historical invoice statuses have been synced with booking payment statuses',
+    });
+  } catch (error) {
+    console.error('Error backfilling invoice statuses:', error);
+    return c.json({ error: 'Failed to backfill invoice statuses' }, 500);
+  }
+});
 
 export default invoiceRoutes;

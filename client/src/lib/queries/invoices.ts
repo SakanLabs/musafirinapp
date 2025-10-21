@@ -127,3 +127,32 @@ export function usePayInvoice() {
     },
   });
 }
+
+// Tambahkan tipe respons untuk backfill status
+export interface BackfillStatusResponse {
+  success: boolean;
+  data: {
+    totalProcessed: number;
+    updatedCount: number;
+    changes: Array<{ id: number; from: string; to: 'draft' | 'sent' | 'paid' | 'overdue' | 'cancelled' }>; 
+  };
+  message?: string;
+}
+
+// Tambahkan mutation untuk memanggil POST /api/invoices/backfill-status
+export function useBackfillInvoiceStatus() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async () => {
+      const response = await apiClient.post<{ success: boolean; data: BackfillStatusResponse['data']; message?: string }>(
+        API_ENDPOINTS.BACKFILL_INVOICE_STATUS
+      );
+      return response.data;
+    },
+    onSuccess: () => {
+      // Refresh daftar invoices agar status terbaru muncul
+      queryClient.invalidateQueries({ queryKey: invoiceKeys.lists() });
+    },
+  });
+}
