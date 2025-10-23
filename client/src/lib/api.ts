@@ -180,4 +180,13 @@ export const API_ENDPOINTS = {
   COSTS_OPERATIONAL: '/api/costs/operational',
   COSTS_OPERATIONAL_BY_ID: (id: string) => `/api/costs/operational/${id}`,
   COSTS_OPERATIONAL_BY_BOOKING: (bookingId: string) => `/api/costs/operational/booking/${bookingId}`,
+
+  // Service Orders endpoints
+  SERVICE_ORDERS: '/api/service-orders',
+  SERVICE_ORDER_BY_ID: (id: string | number) => `/api/service-orders/${id}`,
+  SERVICE_ORDER_CHECKLIST: (id: string | number) => `/api/service-orders/${id}/checklist`,
+  SERVICE_ORDER_GENERATE_INVOICE: (id: string | number) => `/api/service-orders/${id}/generate-invoice`,
+  SERVICE_ORDER_GET_INVOICE: (id: string | number) => `/api/service-orders/${id}/invoice`,
+  SERVICE_ORDER_REGENERATE_INVOICE: (id: string | number) => `/api/service-orders/${id}/regenerate-invoice`,
+  SERVICE_ORDER_UPDATE_STATUS: (id: string | number) => `/api/service-orders/${id}/status`,
 } as const;

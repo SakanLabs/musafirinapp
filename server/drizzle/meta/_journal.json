@@ -57,6 +57,27 @@
       "when": 1759660441918,
       "tag": "0007_blue_mandrill",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1761078974108,
+      "tag": "0008_lumpy_luke_cage",
+      "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1761108441330,
+      "tag": "0009_steady_slapstick",
+      "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1761109849029,
+      "tag": "0010_furry_speed_demon",
+      "breakpoints": true
     }
   ]
 }

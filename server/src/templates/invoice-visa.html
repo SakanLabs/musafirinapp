@@ -70,15 +70,6 @@
 
     <!-- Provider & Client -->
     <div class="cs-flex cs-justify-between cs-align-start cs-mb-2">
-      <!-- Provider -->
-      <div style="width:52%">
-        <p class="cs-font-semibold cs-text-gray-800 cs-mb-1">Penerbit Visa</p>
-        <div class="cs-card cs-card-compact cs-stack-tight">
-          <p class="cs-font-semibold cs-mb-0">{{provider.name}}</p>
-          <p class="cs-text-sm cs-text-gray-600">{{provider.address}}</p>
-          <p class="cs-text-sm cs-text-gray-600">Kontak: {{provider.email}} <span class="cs-text-gray-500">|</span> {{provider.phone}}</p>
-        </div>
-      </div>
 
       <!-- Client -->
       <div style="width:44%" class="cs-text-right">
@@ -86,30 +77,7 @@
         <div class="cs-card cs-card-compact cs-stack-tight">
           <p class="cs-font-semibold cs-mb-0">{{client.name}}</p>
           <p class="cs-text-sm cs-text-gray-600">{{client.email}} <span class="cs-text-gray-500"> | </span> {{client.phone}}</p>
-          <p class="cs-text-sm cs-text-gray-600">{{client.company}}</p>
         </div>
-      </div>
-    </div>
-
-    <!-- Visa Info Ringkas -->
-    <div class="cs-card cs-flex cs-justify-between cs-align-start cs-mb-2" style="flex-wrap:wrap;gap:12px;">
-      <div style="flex:1;min-width:140px;">
-        <p class="cs-text-sm cs-text-gray-600">Jenis Visa</p>
-        <p class="cs-font-semibold">{{visa.type}}</p>
-      </div>
-      <div style="flex:1;min-width:140px;">
-        <p class="cs-text-sm cs-text-gray-600">Nationality</p>
-        <p class="cs-font-semibold">{{visa.nationality}}</p>
-      </div>
-      <div style="flex:1;min-width:140px;">
-        <p class="cs-text-sm cs-text-gray-600">Estimasi Terbit</p>
-        <p class="cs-font-semibold">{{visa.processingTime}}</p>
-      </div>
-      <div style="flex:1;min-width:140px;">
-        <p class="cs-text-sm cs-text-gray-600">Mata Uang</p>
-        <p class="cs-font-semibold cs-flex cs-align-center">
-          <img src="data:image/svg+xml;base64,{{saudiRiyalSVGBase64}}" alt="SAR" class="cs-sar-icon-lg"> SAR
-        </p>
       </div>
     </div>
 
@@ -119,29 +87,23 @@
       <table class="cs-table">
         <thead>
           <tr>
-            <th style="width:40%">Item</th>
-            <th style="width:12%" class="cs-text-center">Pax</th>
-            <th style="width:16%" class="cs-num">Harga/Pax</th>
-            <th style="width:16%" class="cs-num">Biaya Lain</th>
-            <th style="width:16%" class="cs-num">Total</th>
+            <th style="width:50%">Item</th>
+            <th style="width:15%" class="cs-text-center">Pax</th>
+            <th style="width:17.5%" class="cs-num">Harga/Pax</th>
+            <th style="width:17.5%" class="cs-num">Total</th>
           </tr>
         </thead>
         <tbody>
           {{#each items}}
-          <!-- item: { name, pax, unitPrice, otherFee, lineTotal } -->
+          <!-- item: { name, pax, unitPrice, lineTotal } -->
           <tr>
             <td>
-              <div class="cs-font-semibold">{{name}}</div>
-              <div class="cs-text-sm cs-muted">{{note}}</div>
+              <div class="cs-font-semibold">Visa Umroh</div>
             </td>
             <td class="cs-text-center">{{pax}}</td>
             <td class="cs-num">
               <img src="data:image/svg+xml;base64,{{@root.saudiRiyalSVGBase64}}" alt="SAR" class="cs-sar-icon">
               {{unitPrice}}
-            </td>
-            <td class="cs-num">
-              <img src="data:image/svg+xml;base64,{{@root.saudiRiyalSVGBase64}}" alt="SAR" class="cs-sar-icon">
-              {{otherFee}}
             </td>
             <td class="cs-num">
               <div class="cs-font-semibold">
@@ -162,22 +124,6 @@
             <img src="data:image/svg+xml;base64,{{saudiRiyalSVGBase64}}" alt="SAR" class="cs-sar-icon"> {{subtotal}}
           </td>
         </tr>
-        {{#if discount}}
-        <tr>
-          <td class="cs-label">Diskon</td>
-          <td class="cs-value">
-            <img src="data:image/svg+xml;base64,{{saudiRiyalSVGBase64}}" alt="SAR" class="cs-sar-icon"> {{discount}}
-          </td>
-        </tr>
-        {{/if}}
-        {{#if serviceFee}}
-        <tr>
-          <td class="cs-label">Fee Layanan</td>
-          <td class="cs-value">
-            <img src="data:image/svg+xml;base64,{{saudiRiyalSVGBase64}}" alt="SAR" class="cs-sar-icon"> {{serviceFee}}
-          </td>
-        </tr>
-        {{/if}}
         <tr>
           <td class="cs-label" style="font-weight:700">Grand Total</td>
           <td class="cs-value" style="font-weight:700">
@@ -198,36 +144,6 @@
         </tr>
       </table>
     </div>
-
-    <!-- (Opsional) Daftar Pemohon -->
-    {{#if applicants}}
-    <div class="cs-mb-2">
-      <h3 class="cs-text-lg cs-font-bold cs-text-gray-800 cs-mb-2">Daftar Pemohon</h3>
-      <table class="cs-table">
-        <thead>
-          <tr>
-            <th style="width:26%">Nama</th>
-            <th style="width:18%">No. Paspor</th>
-            <th style="width:16%">Kebangsaan</th>
-            <th style="width:20%">Tanggal Lahir</th>
-            <th style="width:20%">Catatan</th>
-          </tr>
-        </thead>
-        <tbody>
-          {{#each applicants}}
-          <!-- applicant: { fullName, passportNo, nationality, dob, note } -->
-          <tr>
-            <td class="cs-font-semibold">{{fullName}}</td>
-            <td>{{passportNo}}</td>
-            <td>{{nationality}}</td>
-            <td>{{dob}}</td>
-            <td class="cs-text-sm cs-muted">{{note}}</td>
-          </tr>
-          {{/each}}
-        </tbody>
-      </table>
-    </div>
-    {{/if}}
 
     <!-- Instruksi Pembayaran -->
     <div class="cs-info-card">

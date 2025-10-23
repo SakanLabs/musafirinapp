@@ -269,6 +269,13 @@ export function generateReceiptNumber(): string {
   return `KWT-${year}-${timestamp}`;
 }
 
+// Generate unique service order number
+export function generateServiceOrderNumber(): string {
+  const year = new Date().getFullYear();
+  const timestamp = Date.now().toString().slice(-6);
+  return `SO-${year}-${timestamp}`;
+}
+
 // Generate receipt PDF
 export async function generateReceiptPDF(receiptData: any): Promise<string> {
   const browser = await puppeteer.launch({ headless: true });
@@ -425,4 +432,185 @@ export async function generateReceiptPDF(receiptData: any): Promise<string> {
     await browser.close();
     throw error;
   }
+}
+
+// Generate Service Order Invoice PDF
+export async function generateServiceOrderInvoicePDF(
+  invoice: any,
+  serviceOrder: any,
+  client: any,
+  customDueDate: Date | string,
+  customInvoiceDate?: Date | string
+): Promise<Buffer> {
+  const browser = await puppeteer.launch({ headless: true });
+  const page = await browser.newPage();
+
+  try {
+    // Load template directly
+    const { readFileSync } = await import('fs');
+    const { join } = await import('path');
+    const templatePath = join(process.cwd(), 'src', 'templates', 'invoice-visa.html');
+    let template = readFileSync(templatePath, 'utf-8');
+
+    // Load logo base64
+    const logoPath = join(process.cwd(), '..', 'logomusafirin.png');
+    let logoBase64 = '';
+    try {
+      const logoBuffer = readFileSync(logoPath);
+      logoBase64 = logoBuffer.toString('base64');
+    } catch (error) {
+      console.warn('Logo file not found, using empty logo');
+    }
+
+    // Load Saudi Riyal SVG icon base64 using the correct implementation
+    const saudiRiyalSVGBase64 = TemplateHelpers.getSaudiRiyalSVGBase64();
+
+    // Calculate amounts
+    const totalAmount = parseFloat(serviceOrder.totalAmount || invoice.amount || '0');
+    const subtotal = totalAmount;
+    const discount = 0;
+    const grandTotal = subtotal - discount;
+    const paidAmount = 0;
+    const balanceDue = grandTotal - paidAmount;
+
+    // Create service order item
+    const totalPeople = serviceOrder.totalPeople || 1;
+    const serviceOrderItem = {
+      name: `Visa Umroh`,
+      pax: totalPeople,
+      unitPrice: totalAmount / totalPeople,
+      lineTotal: totalAmount
+    };
+
+    // Prepare data for template matching the expected structure
+    const templateData = {
+      // Invoice header data
+      invoiceNo: invoice.number,
+      invoiceDate: new Date(customInvoiceDate || new Date()).toLocaleDateString('en-GB'),
+      dueDate: new Date(customDueDate).toLocaleDateString('en-GB'),
+      
+      // Client data
+      client: {
+        name: client.name || 'N/A',
+        email: client.email || 'N/A',
+        phone: client.phone || 'N/A'
+      },
+      
+      // Items array
+      items: [serviceOrderItem],
+      
+      // Financial data
+      subtotal: subtotal.toFixed(2),
+      discount: discount.toFixed(2),
+      grandTotal: grandTotal.toFixed(2),
+      paidAmount: paidAmount.toFixed(2),
+      balanceDue: balanceDue.toFixed(2),
+      
+      // Bank information
+      bank: {
+        bankName: 'Bank Syariah Indonesia',
+        bankCountry: 'Indonesia',
+        accountName: 'PT Thalhah Insan Rabbani',
+        accountNumberOrIBAN: '7254459741'
+      },
+      
+      // Contact information
+      billingContact: {
+        email: 'billing@musafirin.com',
+        phone: '+6285218300910'
+      },
+      
+      // Brand
+      brandName: 'Musafirin',
+      
+      // Base64 encoded images
+      logoBase64: logoBase64,
+      saudiRiyalSVGBase64: saudiRiyalSVGBase64
+    };
+
+    // Replace template variables
+    let renderedHtml = template
+      // Invoice header
+      .replace(/\{\{invoiceNo\}\}/g, templateData.invoiceNo)
+      .replace(/\{\{invoiceDate\}\}/g, templateData.invoiceDate)
+      .replace(/\{\{dueDate\}\}/g, templateData.dueDate)
+      
+      // Client information
+      .replace(/\{\{client\.name\}\}/g, templateData.client.name)
+      .replace(/\{\{client\.email\}\}/g, templateData.client.email)
+      .replace(/\{\{client\.phone\}\}/g, templateData.client.phone)
+      
+      // Financial totals
+      .replace(/\{\{subtotal\}\}/g, templateData.subtotal)
+      .replace(/\{\{discount\}\}/g, templateData.discount)
+      .replace(/\{\{grandTotal\}\}/g, templateData.grandTotal)
+      .replace(/\{\{paidAmount\}\}/g, templateData.paidAmount)
+      .replace(/\{\{balanceDue\}\}/g, templateData.balanceDue)
+      
+      // Bank information
+      .replace(/\{\{bank\.bankName\}\}/g, templateData.bank.bankName)
+      .replace(/\{\{bank\.bankCountry\}\}/g, templateData.bank.bankCountry)
+      .replace(/\{\{bank\.accountName\}\}/g, templateData.bank.accountName)
+      .replace(/\{\{bank\.accountNumberOrIBAN\}\}/g, templateData.bank.accountNumberOrIBAN)
+      
+      // Contact information
+      .replace(/\{\{billingContact\.email\}\}/g, templateData.billingContact.email)
+      .replace(/\{\{billingContact\.phone\}\}/g, templateData.billingContact.phone)
+      
+      // Brand
+      .replace(/\{\{brandName\}\}/g, templateData.brandName)
+      
+      // Images
+      .replace(/\{\{logoBase64\}\}/g, templateData.logoBase64)
+      .replace(/\{\{saudiRiyalSVGBase64\}\}/g, templateData.saudiRiyalSVGBase64);
+
+    // Handle items loop
+    const itemsHtml = templateData.items.map(item => `
+      <tr>
+        <td>
+          <div class="cs-font-semibold">Visa Umroh</div>
+        </td>
+        <td class="cs-text-center">${item.pax}</td>
+        <td class="cs-num">
+          <img src="data:image/svg+xml;base64,${templateData.saudiRiyalSVGBase64}" class="cs-sar-icon" alt="SAR" />
+          ${item.unitPrice.toFixed(2)}
+        </td>
+        <td class="cs-num">
+          <div class="cs-font-semibold">
+            <img src="data:image/svg+xml;base64,${templateData.saudiRiyalSVGBase64}" class="cs-sar-icon" alt="SAR" />
+            ${item.lineTotal.toFixed(2)}
+          </div>
+        </td>
+      </tr>
+    `).join('');
+
+    // Replace the items loop
+    renderedHtml = renderedHtml.replace(/\{\{#each items\}\}[\s\S]*?\{\{\/each\}\}/g, itemsHtml);
+
+    await page.setContent(renderedHtml);
+    
+    const pdf = await page.pdf({
+      format: 'A4',
+      printBackground: true,
+      margin: {
+        top: '20px',
+        right: '20px',
+        bottom: '20px',
+        left: '20px'
+      }
+    });
+
+    await browser.close();
+    return Buffer.from(pdf);
+  } catch (error) {
+    await browser.close();
+    throw error;
+  }
+}
+
+// Generate unique service order invoice number
+export function generateServiceOrderInvoiceNumber(): string {
+  const year = new Date().getFullYear();
+  const timestamp = Date.now().toString().slice(-6);
+  return `SO-INV-${year}-${timestamp}`;
 }

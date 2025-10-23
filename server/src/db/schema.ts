@@ -61,6 +61,10 @@ export const bookingStatusEnum = pgEnum('booking_status', ['pending', 'confirmed
 // roomTypeEnum removed - now using varchar for flexibility
 export const invoiceStatusEnum = pgEnum('invoice_status', ['draft', 'sent', 'paid', 'overdue', 'cancelled']);
 export const mealPlanEnum = pgEnum('meal_plan', ['Breakfast', 'Half Board', 'Full Board', 'Room Only']);
+// Service Orders enums (new products: Visa Umrah, Siskopatuh)
+export const serviceOrderProductEnum = pgEnum('service_order_product', ['visa_umrah', 'siskopatuh']);
+export const serviceOrderStatusEnum = pgEnum('service_order_status', ['draft', 'submitted', 'paid', 'cancelled']);
+
 // Clients table
 export const clients = pgTable('clients', {
   id: serial('id').primaryKey(),
@@ -234,6 +238,54 @@ export const hotelCostTemplates = pgTable('hotel_cost_templates', {
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
 });
 
+// Service Orders table (generic for Visa Umrah & Siskopatuh)
+export const serviceOrders = pgTable('service_orders', {
+  id: serial('id').primaryKey(),
+  number: varchar('number', { length: 50 }).notNull().unique(), // Format: SO-YYYY-XXXX
+  clientId: integer('client_id').notNull().references(() => clients.id, { onDelete: 'cascade' }),
+  productType: serviceOrderProductEnum('product_type').notNull(),
+  status: serviceOrderStatusEnum('status').default('draft').notNull(),
+  groupLeaderName: varchar('group_leader_name', { length: 255 }).notNull(), // Penanggung Jawab Grup
+  groupLeaderPhone: varchar('group_leader_phone', { length: 50 }), // Nomor Ketua Rombongan
+  totalPeople: integer('total_people').notNull(),
+  unitPriceUSD: decimal('unit_price_usd', { precision: 10, scale: 2 }).notNull(),
+  totalPriceUSD: decimal('total_price_usd', { precision: 10, scale: 2 }).notNull(),
+  currency: varchar('currency', { length: 3 }).default('USD').notNull(),
+  exchangeRateToSAR: decimal('exchange_rate_to_sar', { precision: 10, scale: 4 }).default('3.75').notNull(),
+  totalPriceSAR: decimal('total_price_sar', { precision: 10, scale: 2 }).notNull(),
+  departureDate: timestamp('departure_date').notNull(), // Wajib, tidak ditampilkan di invoice/receipt
+  returnDate: timestamp('return_date').notNull(), // Wajib, tidak ditampilkan di invoice/receipt
+  notes: text('notes'),
+  meta: jsonb('meta'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+});
+
+// Checklist Kelengkapan Dokumen untuk Service Order
+export const serviceOrderChecklists = pgTable('service_order_checklists', {
+  id: serial('id').primaryKey(),
+  serviceOrderId: integer('service_order_id').notNull().references(() => serviceOrders.id, { onDelete: 'cascade' }),
+  items: jsonb('items').notNull(), // JSON berbentuk { passport: true/false, ktp: ..., kk: ..., hotelMakkah: ..., hotelMadinah: ..., transportAirportHotel: ..., transportMakkahToMadinah: ..., transportHotelToAirport: ..., roundTripTicket: ... }
+  remarks: text('remarks'), // Catatan tambahan admin
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+});
+
+// Service Order Invoices table
+export const serviceOrderInvoices = pgTable('service_order_invoices', {
+  id: serial('id').primaryKey(),
+  number: varchar('number', { length: 50 }).notNull().unique(), // Format: SOI-YYYY-XXXX
+  serviceOrderId: integer('service_order_id').notNull().references(() => serviceOrders.id, { onDelete: 'cascade' }),
+  amount: decimal('amount', { precision: 10, scale: 2 }).notNull(),
+  currency: varchar('currency', { length: 3 }).default('SAR').notNull(),
+  issueDate: timestamp('issue_date').notNull(),
+  dueDate: timestamp('due_date').notNull(),
+  status: invoiceStatusEnum('status').default('draft').notNull(),
+  pdfUrl: text('pdf_url'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+});
+
 
 
 // Type exports for better-auth tables
@@ -269,3 +321,9 @@ export type OperationalCost = typeof operationalCosts.$inferSelect;
 export type NewOperationalCost = typeof operationalCosts.$inferInsert;
 export type HotelCostTemplate = typeof hotelCostTemplates.$inferSelect;
 export type NewHotelCostTemplate = typeof hotelCostTemplates.$inferInsert;
+export type ServiceOrder = typeof serviceOrders.$inferSelect;
+export type NewServiceOrder = typeof serviceOrders.$inferInsert;
+export type ServiceOrderChecklist = typeof serviceOrderChecklists.$inferSelect;
+export type NewServiceOrderChecklist = typeof serviceOrderChecklists.$inferInsert;
+export type ServiceOrderInvoice = typeof serviceOrderInvoices.$inferSelect;
+export type NewServiceOrderInvoice = typeof serviceOrderInvoices.$inferInsert;

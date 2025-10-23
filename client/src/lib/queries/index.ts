@@ -6,3 +6,4 @@ export * from './reports';
 export * from './analytics';
 export * from './clients';
 export * from './deposits';
+export * from './serviceOrders';
