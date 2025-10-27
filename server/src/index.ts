@@ -16,6 +16,7 @@ import clientRoutes from "./routes/clients";
 import depositRoutes from "./routes/deposits";
 import receiptRoutes from "./routes/receipts";
 import serviceOrderRoutes from "./routes/serviceOrders";
+import transportationRoutes from "./routes/transportation";
 
 // Load environment variables
 const BETTER_AUTH_SECRET = process.env.BETTER_AUTH_SECRET;
@@ -100,6 +101,7 @@ export const app = new Hono()
   .route("/api/deposits", depositRoutes)
   .route("/api/receipts", receiptRoutes)
   .route("/api/service-orders", serviceOrderRoutes)
+  .route("/api/transportation", transportationRoutes)
   .get("/", (c) => {
     return c.text("Hello Hono!");
   })

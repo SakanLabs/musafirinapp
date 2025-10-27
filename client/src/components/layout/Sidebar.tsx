@@ -11,7 +11,8 @@ import {
   BarChart3,
   Users,
   Receipt,
-  Plane
+  Plane,
+  Car
 } from 'lucide-react'
 import { useState } from 'react'
 import { Button } from '@/components/ui/button'
@@ -41,6 +42,11 @@ const navigation = [
     name: 'Service Orders',
     href: '/service-orders',
     icon: Plane
+  },
+  {
+    name: 'Transportation',
+    href: '/transportation-bookings',
+    icon: Car
   },
   {
     name: 'Invoices',

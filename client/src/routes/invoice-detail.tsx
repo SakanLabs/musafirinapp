@@ -142,7 +142,7 @@ function InvoiceDetailPage() {
 
   // Receipts by booking & generate mutation
   const bookingIdStr = invoice ? invoice.bookingId.toString() : "";
-  const { data: receiptsForBooking = [], isLoading: receiptsLoading } = useReceiptsByBooking(bookingIdStr);
+  const { data: receiptsForBooking = [] } = useReceiptsByBooking(bookingIdStr);
   const generateReceiptMutation = useGenerateReceipt();
 
   const handleDownload = () => {

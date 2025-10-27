@@ -10,6 +10,7 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as VouchersRouteImport } from './routes/vouchers'
+import { Route as TransportationBookingsRouteImport } from './routes/transportation-bookings'
 import { Route as ServiceOrdersRouteImport } from './routes/service-orders'
 import { Route as RegisterRouteImport } from './routes/register'
 import { Route as ReceiptsRouteImport } from './routes/receipts'
@@ -18,6 +19,7 @@ import { Route as InvoicesRouteImport } from './routes/invoices'
 import { Route as InvoiceDetailRouteImport } from './routes/invoice-detail'
 import { Route as ForgotPasswordRouteImport } from './routes/forgot-password'
 import { Route as DashboardRouteImport } from './routes/dashboard'
+import { Route as CreateTransportationBookingRouteImport } from './routes/create-transportation-booking'
 import { Route as CreateServiceOrderRouteImport } from './routes/create-service-order'
 import { Route as CreateBookingRouteImport } from './routes/create-booking'
 import { Route as CostsRouteImport } from './routes/costs'
@@ -31,6 +33,8 @@ import { Route as AdminRouteImport } from './routes/admin'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as ClientsIndexRouteImport } from './routes/clients/index'
 import { Route as VouchersCreateRouteImport } from './routes/vouchers/create'
+import { Route as TransportationBookingEditTransportationBookingIdRouteImport } from './routes/transportation-booking-edit.$transportationBookingId'
+import { Route as TransportationBookingDetailTransportationBookingIdRouteImport } from './routes/transportation-booking-detail.$transportationBookingId'
 import { Route as ServiceOrdersCreateRouteImport } from './routes/service-orders/create'
 import { Route as ServiceOrdersIdRouteImport } from './routes/service-orders/$id'
 import { Route as ServiceOrderEditServiceOrderIdRouteImport } from './routes/service-order-edit.$serviceOrderId'
@@ -47,6 +51,11 @@ import { Route as BookingsBookingIdEditRouteImport } from './routes/bookings/$bo
 const VouchersRoute = VouchersRouteImport.update({
   id: '/vouchers',
   path: '/vouchers',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const TransportationBookingsRoute = TransportationBookingsRouteImport.update({
+  id: '/transportation-bookings',
+  path: '/transportation-bookings',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ServiceOrdersRoute = ServiceOrdersRouteImport.update({
@@ -89,6 +98,12 @@ const DashboardRoute = DashboardRouteImport.update({
   path: '/dashboard',
   getParentRoute: () => rootRouteImport,
 } as any)
+const CreateTransportationBookingRoute =
+  CreateTransportationBookingRouteImport.update({
+    id: '/create-transportation-booking',
+    path: '/create-transportation-booking',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const CreateServiceOrderRoute = CreateServiceOrderRouteImport.update({
   id: '/create-service-order',
   path: '/create-service-order',
@@ -154,6 +169,18 @@ const VouchersCreateRoute = VouchersCreateRouteImport.update({
   path: '/create',
   getParentRoute: () => VouchersRoute,
 } as any)
+const TransportationBookingEditTransportationBookingIdRoute =
+  TransportationBookingEditTransportationBookingIdRouteImport.update({
+    id: '/transportation-booking-edit/$transportationBookingId',
+    path: '/transportation-booking-edit/$transportationBookingId',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const TransportationBookingDetailTransportationBookingIdRoute =
+  TransportationBookingDetailTransportationBookingIdRouteImport.update({
+    id: '/transportation-booking-detail/$transportationBookingId',
+    path: '/transportation-booking-detail/$transportationBookingId',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ServiceOrdersCreateRoute = ServiceOrdersCreateRouteImport.update({
   id: '/create',
   path: '/create',
@@ -229,6 +256,7 @@ export interface FileRoutesByFullPath {
   '/costs': typeof CostsRoute
   '/create-booking': typeof CreateBookingRoute
   '/create-service-order': typeof CreateServiceOrderRoute
+  '/create-transportation-booking': typeof CreateTransportationBookingRoute
   '/dashboard': typeof DashboardRouteWithChildren
   '/forgot-password': typeof ForgotPasswordRoute
   '/invoice-detail': typeof InvoiceDetailRoute
@@ -237,6 +265,7 @@ export interface FileRoutesByFullPath {
   '/receipts': typeof ReceiptsRoute
   '/register': typeof RegisterRoute
   '/service-orders': typeof ServiceOrdersRouteWithChildren
+  '/transportation-bookings': typeof TransportationBookingsRoute
   '/vouchers': typeof VouchersRouteWithChildren
   '/auth/callback': typeof AuthCallbackRoute
   '/booking-view/$bookingId': typeof BookingViewBookingIdRoute
@@ -249,6 +278,8 @@ export interface FileRoutesByFullPath {
   '/service-order-edit/$serviceOrderId': typeof ServiceOrderEditServiceOrderIdRoute
   '/service-orders/$id': typeof ServiceOrdersIdRoute
   '/service-orders/create': typeof ServiceOrdersCreateRoute
+  '/transportation-booking-detail/$transportationBookingId': typeof TransportationBookingDetailTransportationBookingIdRoute
+  '/transportation-booking-edit/$transportationBookingId': typeof TransportationBookingEditTransportationBookingIdRoute
   '/vouchers/create': typeof VouchersCreateRoute
   '/clients/': typeof ClientsIndexRoute
   '/bookings/$bookingId/edit': typeof BookingsBookingIdEditRoute
@@ -264,6 +295,7 @@ export interface FileRoutesByTo {
   '/costs': typeof CostsRoute
   '/create-booking': typeof CreateBookingRoute
   '/create-service-order': typeof CreateServiceOrderRoute
+  '/create-transportation-booking': typeof CreateTransportationBookingRoute
   '/dashboard': typeof DashboardRouteWithChildren
   '/forgot-password': typeof ForgotPasswordRoute
   '/invoice-detail': typeof InvoiceDetailRoute
@@ -272,6 +304,7 @@ export interface FileRoutesByTo {
   '/receipts': typeof ReceiptsRoute
   '/register': typeof RegisterRoute
   '/service-orders': typeof ServiceOrdersRouteWithChildren
+  '/transportation-bookings': typeof TransportationBookingsRoute
   '/vouchers': typeof VouchersRouteWithChildren
   '/auth/callback': typeof AuthCallbackRoute
   '/booking-view/$bookingId': typeof BookingViewBookingIdRoute
@@ -284,6 +317,8 @@ export interface FileRoutesByTo {
   '/service-order-edit/$serviceOrderId': typeof ServiceOrderEditServiceOrderIdRoute
   '/service-orders/$id': typeof ServiceOrdersIdRoute
   '/service-orders/create': typeof ServiceOrdersCreateRoute
+  '/transportation-booking-detail/$transportationBookingId': typeof TransportationBookingDetailTransportationBookingIdRoute
+  '/transportation-booking-edit/$transportationBookingId': typeof TransportationBookingEditTransportationBookingIdRoute
   '/vouchers/create': typeof VouchersCreateRoute
   '/clients': typeof ClientsIndexRoute
   '/bookings/$bookingId/edit': typeof BookingsBookingIdEditRoute
@@ -301,6 +336,7 @@ export interface FileRoutesById {
   '/costs': typeof CostsRoute
   '/create-booking': typeof CreateBookingRoute
   '/create-service-order': typeof CreateServiceOrderRoute
+  '/create-transportation-booking': typeof CreateTransportationBookingRoute
   '/dashboard': typeof DashboardRouteWithChildren
   '/forgot-password': typeof ForgotPasswordRoute
   '/invoice-detail': typeof InvoiceDetailRoute
@@ -309,6 +345,7 @@ export interface FileRoutesById {
   '/receipts': typeof ReceiptsRoute
   '/register': typeof RegisterRoute
   '/service-orders': typeof ServiceOrdersRouteWithChildren
+  '/transportation-bookings': typeof TransportationBookingsRoute
   '/vouchers': typeof VouchersRouteWithChildren
   '/auth/callback': typeof AuthCallbackRoute
   '/booking-view/$bookingId': typeof BookingViewBookingIdRoute
@@ -321,6 +358,8 @@ export interface FileRoutesById {
   '/service-order-edit/$serviceOrderId': typeof ServiceOrderEditServiceOrderIdRoute
   '/service-orders/$id': typeof ServiceOrdersIdRoute
   '/service-orders/create': typeof ServiceOrdersCreateRoute
+  '/transportation-booking-detail/$transportationBookingId': typeof TransportationBookingDetailTransportationBookingIdRoute
+  '/transportation-booking-edit/$transportationBookingId': typeof TransportationBookingEditTransportationBookingIdRoute
   '/vouchers/create': typeof VouchersCreateRoute
   '/clients/': typeof ClientsIndexRoute
   '/bookings/$bookingId/edit': typeof BookingsBookingIdEditRoute
@@ -339,6 +378,7 @@ export interface FileRouteTypes {
     | '/costs'
     | '/create-booking'
     | '/create-service-order'
+    | '/create-transportation-booking'
     | '/dashboard'
     | '/forgot-password'
     | '/invoice-detail'
@@ -347,6 +387,7 @@ export interface FileRouteTypes {
     | '/receipts'
     | '/register'
     | '/service-orders'
+    | '/transportation-bookings'
     | '/vouchers'
     | '/auth/callback'
     | '/booking-view/$bookingId'
@@ -359,6 +400,8 @@ export interface FileRouteTypes {
     | '/service-order-edit/$serviceOrderId'
     | '/service-orders/$id'
     | '/service-orders/create'
+    | '/transportation-booking-detail/$transportationBookingId'
+    | '/transportation-booking-edit/$transportationBookingId'
     | '/vouchers/create'
     | '/clients/'
     | '/bookings/$bookingId/edit'
@@ -374,6 +417,7 @@ export interface FileRouteTypes {
     | '/costs'
     | '/create-booking'
     | '/create-service-order'
+    | '/create-transportation-booking'
     | '/dashboard'
     | '/forgot-password'
     | '/invoice-detail'
@@ -382,6 +426,7 @@ export interface FileRouteTypes {
     | '/receipts'
     | '/register'
     | '/service-orders'
+    | '/transportation-bookings'
     | '/vouchers'
     | '/auth/callback'
     | '/booking-view/$bookingId'
@@ -394,6 +439,8 @@ export interface FileRouteTypes {
     | '/service-order-edit/$serviceOrderId'
     | '/service-orders/$id'
     | '/service-orders/create'
+    | '/transportation-booking-detail/$transportationBookingId'
+    | '/transportation-booking-edit/$transportationBookingId'
     | '/vouchers/create'
     | '/clients'
     | '/bookings/$bookingId/edit'
@@ -410,6 +457,7 @@ export interface FileRouteTypes {
     | '/costs'
     | '/create-booking'
     | '/create-service-order'
+    | '/create-transportation-booking'
     | '/dashboard'
     | '/forgot-password'
     | '/invoice-detail'
@@ -418,6 +466,7 @@ export interface FileRouteTypes {
     | '/receipts'
     | '/register'
     | '/service-orders'
+    | '/transportation-bookings'
     | '/vouchers'
     | '/auth/callback'
     | '/booking-view/$bookingId'
@@ -430,6 +479,8 @@ export interface FileRouteTypes {
     | '/service-order-edit/$serviceOrderId'
     | '/service-orders/$id'
     | '/service-orders/create'
+    | '/transportation-booking-detail/$transportationBookingId'
+    | '/transportation-booking-edit/$transportationBookingId'
     | '/vouchers/create'
     | '/clients/'
     | '/bookings/$bookingId/edit'
@@ -447,6 +498,7 @@ export interface RootRouteChildren {
   CostsRoute: typeof CostsRoute
   CreateBookingRoute: typeof CreateBookingRoute
   CreateServiceOrderRoute: typeof CreateServiceOrderRoute
+  CreateTransportationBookingRoute: typeof CreateTransportationBookingRoute
   DashboardRoute: typeof DashboardRouteWithChildren
   ForgotPasswordRoute: typeof ForgotPasswordRoute
   InvoiceDetailRoute: typeof InvoiceDetailRoute
@@ -455,12 +507,15 @@ export interface RootRouteChildren {
   ReceiptsRoute: typeof ReceiptsRoute
   RegisterRoute: typeof RegisterRoute
   ServiceOrdersRoute: typeof ServiceOrdersRouteWithChildren
+  TransportationBookingsRoute: typeof TransportationBookingsRoute
   VouchersRoute: typeof VouchersRouteWithChildren
   AuthCallbackRoute: typeof AuthCallbackRoute
   BookingViewBookingIdRoute: typeof BookingViewBookingIdRoute
   ClientDetailClientIdRoute: typeof ClientDetailClientIdRoute
   ServiceOrderDetailServiceOrderIdRoute: typeof ServiceOrderDetailServiceOrderIdRoute
   ServiceOrderEditServiceOrderIdRoute: typeof ServiceOrderEditServiceOrderIdRoute
+  TransportationBookingDetailTransportationBookingIdRoute: typeof TransportationBookingDetailTransportationBookingIdRoute
+  TransportationBookingEditTransportationBookingIdRoute: typeof TransportationBookingEditTransportationBookingIdRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -470,6 +525,13 @@ declare module '@tanstack/react-router' {
       path: '/vouchers'
       fullPath: '/vouchers'
       preLoaderRoute: typeof VouchersRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/transportation-bookings': {
+      id: '/transportation-bookings'
+      path: '/transportation-bookings'
+      fullPath: '/transportation-bookings'
+      preLoaderRoute: typeof TransportationBookingsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/service-orders': {
@@ -526,6 +588,13 @@ declare module '@tanstack/react-router' {
       path: '/dashboard'
       fullPath: '/dashboard'
       preLoaderRoute: typeof DashboardRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/create-transportation-booking': {
+      id: '/create-transportation-booking'
+      path: '/create-transportation-booking'
+      fullPath: '/create-transportation-booking'
+      preLoaderRoute: typeof CreateTransportationBookingRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/create-service-order': {
@@ -618,6 +687,20 @@ declare module '@tanstack/react-router' {
       fullPath: '/vouchers/create'
       preLoaderRoute: typeof VouchersCreateRouteImport
       parentRoute: typeof VouchersRoute
+    }
+    '/transportation-booking-edit/$transportationBookingId': {
+      id: '/transportation-booking-edit/$transportationBookingId'
+      path: '/transportation-booking-edit/$transportationBookingId'
+      fullPath: '/transportation-booking-edit/$transportationBookingId'
+      preLoaderRoute: typeof TransportationBookingEditTransportationBookingIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/transportation-booking-detail/$transportationBookingId': {
+      id: '/transportation-booking-detail/$transportationBookingId'
+      path: '/transportation-booking-detail/$transportationBookingId'
+      fullPath: '/transportation-booking-detail/$transportationBookingId'
+      preLoaderRoute: typeof TransportationBookingDetailTransportationBookingIdRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/service-orders/create': {
       id: '/service-orders/create'
@@ -795,6 +878,7 @@ const rootRouteChildren: RootRouteChildren = {
   CostsRoute: CostsRoute,
   CreateBookingRoute: CreateBookingRoute,
   CreateServiceOrderRoute: CreateServiceOrderRoute,
+  CreateTransportationBookingRoute: CreateTransportationBookingRoute,
   DashboardRoute: DashboardRouteWithChildren,
   ForgotPasswordRoute: ForgotPasswordRoute,
   InvoiceDetailRoute: InvoiceDetailRoute,
@@ -803,12 +887,17 @@ const rootRouteChildren: RootRouteChildren = {
   ReceiptsRoute: ReceiptsRoute,
   RegisterRoute: RegisterRoute,
   ServiceOrdersRoute: ServiceOrdersRouteWithChildren,
+  TransportationBookingsRoute: TransportationBookingsRoute,
   VouchersRoute: VouchersRouteWithChildren,
   AuthCallbackRoute: AuthCallbackRoute,
   BookingViewBookingIdRoute: BookingViewBookingIdRoute,
   ClientDetailClientIdRoute: ClientDetailClientIdRoute,
   ServiceOrderDetailServiceOrderIdRoute: ServiceOrderDetailServiceOrderIdRoute,
   ServiceOrderEditServiceOrderIdRoute: ServiceOrderEditServiceOrderIdRoute,
+  TransportationBookingDetailTransportationBookingIdRoute:
+    TransportationBookingDetailTransportationBookingIdRoute,
+  TransportationBookingEditTransportationBookingIdRoute:
+    TransportationBookingEditTransportationBookingIdRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

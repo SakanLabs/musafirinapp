@@ -65,6 +65,10 @@ export const mealPlanEnum = pgEnum('meal_plan', ['Breakfast', 'Half Board', 'Ful
 export const serviceOrderProductEnum = pgEnum('service_order_product', ['visa_umrah', 'siskopatuh']);
 export const serviceOrderStatusEnum = pgEnum('service_order_status', ['draft', 'submitted', 'paid', 'cancelled']);
 
+// Transportation enums
+export const vehicleTypeEnum = pgEnum('vehicle_type', ['sedan', 'suv', 'van', 'bus', 'minibus']);
+export const transportationStatusEnum = pgEnum('transportation_status', ['pending', 'confirmed', 'completed', 'cancelled']);
+
 // Clients table
 export const clients = pgTable('clients', {
   id: serial('id').primaryKey(),
@@ -286,6 +290,82 @@ export const serviceOrderInvoices = pgTable('service_order_invoices', {
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
 });
 
+// Transportation Bookings table
+export const transportationBookings = pgTable('transportation_bookings', {
+  id: serial('id').primaryKey(),
+  number: varchar('number', { length: 50 }).notNull().unique(), // Format: TB-YYYY-XXXX
+  clientId: integer('client_id').notNull().references(() => clients.id, { onDelete: 'cascade' }),
+  customerName: varchar('customer_name', { length: 255 }).notNull(),
+  customerPhone: varchar('customer_phone', { length: 50 }),
+  customerEmail: varchar('customer_email', { length: 255 }),
+  status: transportationStatusEnum('status').default('pending').notNull(),
+  totalAmount: decimal('total_amount', { precision: 10, scale: 2 }).notNull(),
+  currency: varchar('currency', { length: 3 }).default('SAR').notNull(),
+  notes: text('notes'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+});
+
+// Transportation Routes table (one booking can have multiple routes)
+export const transportationRoutes = pgTable('transportation_routes', {
+  id: serial('id').primaryKey(),
+  transportationBookingId: integer('transportation_booking_id').notNull().references(() => transportationBookings.id, { onDelete: 'cascade' }),
+  pickupDateTime: timestamp('pickup_date_time').notNull(),
+  originLocation: varchar('origin_location', { length: 500 }).notNull(),
+  destinationLocation: varchar('destination_location', { length: 500 }).notNull(),
+  vehicleType: vehicleTypeEnum('vehicle_type').notNull(),
+  price: decimal('price', { precision: 10, scale: 2 }).notNull(),
+  currency: varchar('currency', { length: 3 }).default('SAR').notNull(),
+  driverName: varchar('driver_name', { length: 255 }),
+  driverPhone: varchar('driver_phone', { length: 50 }),
+  vehiclePlateNumber: varchar('vehicle_plate_number', { length: 50 }),
+  notes: text('notes'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+});
+
+// Transportation Invoices table
+export const transportationInvoices = pgTable('transportation_invoices', {
+  id: serial('id').primaryKey(),
+  number: varchar('number', { length: 50 }).notNull().unique(), // Format: TI-YYYY-XXXX
+  transportationBookingId: integer('transportation_booking_id').notNull().references(() => transportationBookings.id, { onDelete: 'cascade' }),
+  amount: decimal('amount', { precision: 10, scale: 2 }).notNull(),
+  currency: varchar('currency', { length: 3 }).default('SAR').notNull(),
+  issueDate: timestamp('issue_date').notNull(),
+  dueDate: timestamp('due_date').notNull(),
+  status: invoiceStatusEnum('status').default('draft').notNull(),
+  pdfUrl: text('pdf_url'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+});
+
+// Transportation Receipts table
+export const transportationReceipts = pgTable('transportation_receipts', {
+  id: serial('id').primaryKey(),
+  number: varchar('number', { length: 50 }).notNull().unique(), // Format: TR-YYYY-XXXX
+  transportationBookingId: integer('transportation_booking_id').notNull().references(() => transportationBookings.id, { onDelete: 'cascade' }),
+  transportationInvoiceId: integer('transportation_invoice_id').references(() => transportationInvoices.id, { onDelete: 'set null' }),
+  totalAmount: decimal('total_amount', { precision: 10, scale: 2 }).notNull(),
+  paidAmount: decimal('paid_amount', { precision: 10, scale: 2 }).notNull(),
+  balanceDue: decimal('balance_due', { precision: 10, scale: 2 }).notNull(),
+  currency: varchar('currency', { length: 3 }).default('SAR').notNull(),
+  issueDate: timestamp('issue_date').defaultNow().notNull(),
+  payerName: varchar('payer_name', { length: 255 }).notNull(),
+  payerEmail: varchar('payer_email', { length: 255 }),
+  payerPhone: varchar('payer_phone', { length: 50 }),
+  payerAddress: text('payer_address'),
+  bankName: varchar('bank_name', { length: 255 }),
+  bankCountry: varchar('bank_country', { length: 100 }),
+  accountName: varchar('account_name', { length: 255 }),
+  accountNumberOrIBAN: varchar('account_number_or_iban', { length: 100 }),
+  notes: text('notes'),
+  amountInWords: text('amount_in_words'),
+  pdfUrl: text('pdf_url'),
+  meta: jsonb('meta'), // For storing payment details array
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+});
+
 
 
 // Type exports for better-auth tables
@@ -327,3 +407,11 @@ export type ServiceOrderChecklist = typeof serviceOrderChecklists.$inferSelect;
 export type NewServiceOrderChecklist = typeof serviceOrderChecklists.$inferInsert;
 export type ServiceOrderInvoice = typeof serviceOrderInvoices.$inferSelect;
 export type NewServiceOrderInvoice = typeof serviceOrderInvoices.$inferInsert;
+export type TransportationBooking = typeof transportationBookings.$inferSelect;
+export type NewTransportationBooking = typeof transportationBookings.$inferInsert;
+export type TransportationRoute = typeof transportationRoutes.$inferSelect;
+export type NewTransportationRoute = typeof transportationRoutes.$inferInsert;
+export type TransportationInvoice = typeof transportationInvoices.$inferSelect;
+export type NewTransportationInvoice = typeof transportationInvoices.$inferInsert;
+export type TransportationReceipt = typeof transportationReceipts.$inferSelect;
+export type NewTransportationReceipt = typeof transportationReceipts.$inferInsert;

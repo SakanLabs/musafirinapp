@@ -8,12 +8,9 @@ import {
   FileText,
   Share,
   Calendar,
-  MapPin,
   Users,
   Phone,
-  Mail,
   Loader2,
-  Edit,
   Clock,
   Plane,
   DollarSign

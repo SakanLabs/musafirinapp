@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Modal } from "@/components/ui/modal"
 import {
   Plus,
   Eye,
@@ -18,7 +19,8 @@ import {
   Mail,
   Phone,
   MapPin,
-  Wallet
+  Wallet,
+  AlertTriangle
 } from "lucide-react"
 import { formatDate } from "@/lib/utils"
 import {
@@ -42,6 +44,12 @@ function ClientsIndexPage() {
     email: "",
     phone: "",
     address: ""
+  })
+  const [isErrorModalOpen, setIsErrorModalOpen] = useState(false)
+  const [errorModalContent, setErrorModalContent] = useState({
+    title: '',
+    message: '',
+    type: 'error' as 'error' | 'warning'
   })
 
   const { data: clients = [], isLoading, error } = useClients()
@@ -186,14 +194,32 @@ function ClientsIndexPage() {
   }
 
   const handleDeleteClient = async (clientId: number) => {
-    if (!confirm('Are you sure you want to delete this client? This action cannot be undone.')) {
+    if (!confirm('Apakah Anda yakin ingin menghapus klien ini? Tindakan ini tidak dapat dibatalkan.')) {
       return
     }
 
     try {
       await deleteClientMutation.mutateAsync(clientId)
-    } catch (error) {
-      console.error('Failed to delete client:', error)
+      alert('Klien berhasil dihapus!')
+    } catch (error: any) {
+      console.error('🔥 Failed to delete client:', error)
+      console.log('🔥 Error type:', typeof error)
+      console.log('🔥 Error constructor:', error?.constructor?.name)
+      console.log('🔥 Error message:', error?.message)
+      console.log('🔥 Error stack:', error?.stack)
+      console.log('🔥 Full error object:', JSON.stringify(error, null, 2))
+      
+      const errorMessage = error?.message || 'Failed to delete client. Please try again.'
+      console.log('🔥 Final error message to display:', errorMessage)
+      
+      // Show the actual server error message directly
+      setErrorModalContent({
+        title: 'Error',
+        message: errorMessage,
+        type: 'error'
+      })
+      
+      setIsErrorModalOpen(true)
     }
   }
 
@@ -340,6 +366,43 @@ function ClientsIndexPage() {
           </div>
         </div>
       </Drawer>
+
+      {/* Error Modal */}
+      <Modal
+        isOpen={isErrorModalOpen}
+        onClose={() => setIsErrorModalOpen(false)}
+        title={errorModalContent.title}
+        size="md"
+        footer={
+          <Button onClick={() => setIsErrorModalOpen(false)}>
+            OK
+          </Button>
+        }
+      >
+        <div className="flex items-start space-x-3">
+          <div className="flex-shrink-0">
+            <AlertTriangle 
+              className={`h-6 w-6 ${
+                errorModalContent.type === 'warning' 
+                  ? 'text-amber-500' 
+                  : 'text-red-500'
+              }`} 
+            />
+          </div>
+          <div className="flex-1">
+            <p className="text-gray-700 leading-relaxed">
+              {errorModalContent.message}
+            </p>
+            {errorModalContent.type === 'warning' && (
+              <div className="mt-3 p-3 bg-amber-50 border border-amber-200 rounded-md">
+                <p className="text-sm text-amber-800">
+                  <strong>Tips:</strong> Anda dapat melihat booking klien dengan mengklik tombol "View" untuk melihat booking mana yang perlu diselesaikan atau dibatalkan.
+                </p>
+              </div>
+            )}
+          </div>
+        </div>
+      </Modal>
     </PageLayout>
   )
 }

@@ -64,7 +64,7 @@ export function useClients() {
     queryKey: clientKeys.lists(),
     queryFn: async () => {
       try {
-        const response = await apiClient.get<ClientsResponse>(API_ENDPOINTS.CLIENTS);
+        const response = await apiClient.get<ClientsResponse>(`${API_ENDPOINTS.CLIENTS}?active=true`);
         return response.clients; // Use 'clients' property instead of 'data'
       } catch (error) {
         // If unauthorized or any error, return empty array to prevent undefined error
@@ -175,8 +175,17 @@ export function useDeleteClient() {
 
   return useMutation({
     mutationFn: async (id: number) => {
-      const response = await apiClient.delete<{success: boolean}>(`${API_ENDPOINTS.CLIENTS}/${id}`);
-      return response;
+      try {
+        console.log('🔥 useDeleteClient mutationFn called with id:', id);
+        const response = await apiClient.delete<{success: boolean}>(`${API_ENDPOINTS.CLIENTS}/${id}`);
+        console.log('🔥 useDeleteClient success response:', response);
+        return response;
+      } catch (error: any) {
+        console.log('🔥 useDeleteClient caught error:', error);
+        console.log('🔥 useDeleteClient error message:', error?.message);
+        // Re-throw the error with the original message preserved
+        throw error;
+      }
     },
     onSuccess: () => {
       // Invalidate and refetch clients list

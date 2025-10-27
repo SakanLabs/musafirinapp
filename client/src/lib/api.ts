@@ -13,7 +13,19 @@ export const apiClient = {
     });
 
     if (!response.ok) {
-      throw new Error(`API Error: ${response.status} ${response.statusText}`);
+      let errorMessage = `API Error: ${response.status} ${response.statusText}`;
+      try {
+        const responseText = await response.text();
+        try {
+          const errorData = JSON.parse(responseText);
+          errorMessage = errorData.error || errorData.message || errorMessage;
+        } catch (jsonError) {
+          // Keep default if JSON parse fails
+        }
+      } catch (readError) {
+        // Keep default if reading body fails
+      }
+      throw new Error(errorMessage);
     }
 
     return response.json();
@@ -30,7 +42,19 @@ export const apiClient = {
     });
 
     if (!response.ok) {
-      throw new Error(`API Error: ${response.status} ${response.statusText}`);
+      let errorMessage = `API Error: ${response.status} ${response.statusText}`;
+      try {
+        const responseText = await response.text();
+        try {
+          const errorData = JSON.parse(responseText);
+          errorMessage = errorData.error || errorData.message || errorMessage;
+        } catch (jsonError) {
+          // Keep default if JSON parse fails
+        }
+      } catch (readError) {
+        // Keep default if reading body fails
+      }
+      throw new Error(errorMessage);
     }
 
     return response.json();
@@ -47,7 +71,19 @@ export const apiClient = {
     });
 
     if (!response.ok) {
-      throw new Error(`API Error: ${response.status} ${response.statusText}`);
+      let errorMessage = `API Error: ${response.status} ${response.statusText}`;
+      try {
+        const responseText = await response.text();
+        try {
+          const errorData = JSON.parse(responseText);
+          errorMessage = errorData.error || errorData.message || errorMessage;
+        } catch (jsonError) {
+          // Keep default if JSON parse fails
+        }
+      } catch (readError) {
+        // Keep default if reading body fails
+      }
+      throw new Error(errorMessage);
     }
 
     return response.json();
@@ -64,7 +100,19 @@ export const apiClient = {
     });
 
     if (!response.ok) {
-      throw new Error(`API Error: ${response.status} ${response.statusText}`);
+      let errorMessage = `API Error: ${response.status} ${response.statusText}`;
+      try {
+        const responseText = await response.text();
+        try {
+          const errorData = JSON.parse(responseText);
+          errorMessage = errorData.error || errorData.message || errorMessage;
+        } catch (jsonError) {
+          // Keep default if JSON parse fails
+        }
+      } catch (readError) {
+        // Keep default if reading body fails
+      }
+      throw new Error(errorMessage);
     }
 
     return response.json();
@@ -80,7 +128,20 @@ export const apiClient = {
     });
 
     if (!response.ok) {
-      throw new Error(`API Error: ${response.status} ${response.statusText}`);
+      // Extract error message from response body without swallowing it
+      let errorMessage = `API Error: ${response.status} ${response.statusText}`;
+      try {
+        const responseText = await response.text();
+        try {
+          const errorData = JSON.parse(responseText);
+          errorMessage = errorData.error || errorData.message || errorMessage;
+        } catch (jsonError) {
+          // Keep default errorMessage if JSON parse fails
+        }
+      } catch (readError) {
+        // Keep default errorMessage if reading body fails
+      }
+      throw new Error(errorMessage);
     }
 
     return response.json();
@@ -181,7 +242,7 @@ export const API_ENDPOINTS = {
   COSTS_OPERATIONAL_BY_ID: (id: string) => `/api/costs/operational/${id}`,
   COSTS_OPERATIONAL_BY_BOOKING: (bookingId: string) => `/api/costs/operational/booking/${bookingId}`,
 
-  // Service Orders endpoints
+  // Service Orders
   SERVICE_ORDERS: '/api/service-orders',
   SERVICE_ORDER_BY_ID: (id: string | number) => `/api/service-orders/${id}`,
   SERVICE_ORDER_CHECKLIST: (id: string | number) => `/api/service-orders/${id}/checklist`,
@@ -189,4 +250,10 @@ export const API_ENDPOINTS = {
   SERVICE_ORDER_GET_INVOICE: (id: string | number) => `/api/service-orders/${id}/invoice`,
   SERVICE_ORDER_REGENERATE_INVOICE: (id: string | number) => `/api/service-orders/${id}/regenerate-invoice`,
   SERVICE_ORDER_UPDATE_STATUS: (id: string | number) => `/api/service-orders/${id}/status`,
+
+  // Transportation Bookings
+  TRANSPORTATION: '/api/transportation',
+  TRANSPORTATION_BY_ID: (id: string | number) => `/api/transportation/${id}`,
+  TRANSPORTATION_INVOICE: (id: string | number) => `/api/transportation/${id}/invoice`,
+  TRANSPORTATION_RECEIPT: (id: string | number) => `/api/transportation/${id}/receipt`,
 } as const;

@@ -130,7 +130,7 @@ export function useDeleteServiceOrder() {
   return useMutation({
     mutationFn: async (id: string | number) => {
       const res = await apiClient.delete<{ success: boolean; message: string }>(API_ENDPOINTS.SERVICE_ORDER_BY_ID(id));
-      return res.data;
+      return res;
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: serviceOrderKeys.lists() });
