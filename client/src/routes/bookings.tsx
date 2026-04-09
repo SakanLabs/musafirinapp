@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
 import { Card } from "@/components/ui/card"
-import { 
+import {
   Plus,
   Eye,
   Share,
@@ -17,16 +17,16 @@ import {
 } from "lucide-react"
 import { SARCurrency } from "@/components/ui/sar-currency"
 import { authService } from "@/lib/auth"
-import { 
-  formatCurrency, 
-  formatDate, 
-  getBookingStatusColor, 
-  shareToWhatsApp, 
-  generateBookingWhatsAppMessage 
+import {
+  formatCurrency,
+  formatDate,
+  getBookingStatusColor,
+  shareToWhatsApp,
+  generateBookingWhatsAppMessage
 } from "@/lib/utils"
 import { useBookings, useCreateBooking, type Booking, type CreateBookingData } from "@/lib/queries"
 
-export const Route = createFileRoute("/bookings")({ 
+export const Route = createFileRoute("/bookings")({
   beforeLoad: async () => {
     // Check if user is authenticated
     const isAuthenticated = await authService.isAuthenticated()
@@ -73,8 +73,8 @@ function BookingsPage() {
       header: 'Actions',
       render: (booking) => (
         <div className="flex space-x-1">
-          <Button 
-            size="sm" 
+          <Button
+            size="sm"
             variant="outline"
             onClick={() => navigate({ to: "/booking-detail", search: { id: booking.id.toString() } })}
             title="Lihat Detail Booking"
@@ -83,8 +83,8 @@ function BookingsPage() {
             <Eye className="h-4 w-4" />
             <span>Detail</span>
           </Button>
-          <Button 
-            size="sm" 
+          <Button
+            size="sm"
             variant="ghost"
             onClick={() => handleShareWhatsApp(booking)}
             title="Share ke WhatsApp"
@@ -201,7 +201,7 @@ function BookingsPage() {
       }
 
       await createBookingMutation.mutateAsync(bookingData)
-      
+
       // Reset form and close drawer
       setFormData({
         guestName: "",
@@ -244,23 +244,25 @@ function BookingsPage() {
 
   return (
     <PageLayout
-        title="Bookings"
-        subtitle="Manage hotel bookings and reservations"
-        actions={
-          <Link to="/create-booking">
-            <Button>
-              <Plus className="h-4 w-4 mr-2" />
-              Create Booking
-            </Button>
-          </Link>
-        }
-      >
+      title="Bookings"
+      subtitle="Manage hotel bookings and reservations"
+      actions={
+        <Link to="/create-booking">
+          <Button>
+            <Plus className="h-4 w-4 mr-2" />
+            Create Booking
+          </Button>
+        </Link>
+      }
+    >
       {/* Bookings Table */}
-      <DataTable
-        data={bookings}
-        columns={bookingColumns}
-        emptyMessage="No bookings found"
-      />
+      <div className="bg-white">
+        <DataTable
+          data={bookings}
+          columns={bookingColumns}
+          emptyMessage="No bookings found"
+        />
+      </div>
 
       {/* Create Booking Drawer */}
       <Drawer
@@ -403,13 +405,13 @@ function BookingsPage() {
         </div>
 
         <div className="flex justify-end space-x-3 mt-6">
-          <Button 
-            variant="outline" 
+          <Button
+            variant="outline"
             onClick={() => setIsCreateDrawerOpen(false)}
           >
             Cancel
           </Button>
-          <Button 
+          <Button
             onClick={handleCreateBooking}
             disabled={!formData.guestName || !formData.guestEmail || !formData.checkInDate || !formData.checkOutDate || !formData.roomType || !formData.totalAmount || createBookingMutation.isPending}
           >

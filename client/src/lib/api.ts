@@ -160,17 +160,17 @@ export const apiClient = {
       }
 
       const blob = await response.blob();
-      
+
       // Create download link
       const downloadUrl = window.URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = downloadUrl;
       link.download = filename;
-      
+
       // Trigger download
       document.body.appendChild(link);
       link.click();
-      
+
       // Cleanup
       document.body.removeChild(link);
       window.URL.revokeObjectURL(downloadUrl);
@@ -214,6 +214,10 @@ export const API_ENDPOINTS = {
   DOWNLOAD_INVOICE: (id: string) => `/api/invoices/${id}/download`,
   BACKFILL_INVOICE_STATUS: '/api/invoices/backfill-status',
 
+  // Booking Service Items (visa, transportasi, lainnya)
+  BOOKING_SERVICE_ITEMS: '/api/booking-service-items',
+  BOOKING_SERVICE_ITEMS_BY_BOOKING: (bookingId: string | number) => `/api/booking-service-items/booking/${bookingId}`,
+
   // Voucher endpoints
   VOUCHERS: '/api/vouchers',
   GENERATE_VOUCHER: (id: string) => `/api/vouchers/${id}/generate`,
@@ -250,6 +254,7 @@ export const API_ENDPOINTS = {
   SERVICE_ORDER_GET_INVOICE: (id: string | number) => `/api/service-orders/${id}/invoice`,
   SERVICE_ORDER_REGENERATE_INVOICE: (id: string | number) => `/api/service-orders/${id}/regenerate-invoice`,
   SERVICE_ORDER_UPDATE_STATUS: (id: string | number) => `/api/service-orders/${id}/status`,
+  SERVICE_ORDER_RECEIPT: (id: string | number) => `/api/service-orders/${id}/receipt`,
 
   // Transportation Bookings
   TRANSPORTATION: '/api/transportation',

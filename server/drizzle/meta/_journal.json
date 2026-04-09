@@ -85,6 +85,13 @@
       "when": 1761205831433,
       "tag": "0011_gifted_mad_thinker",
       "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1761596954336,
+      "tag": "0012_smooth_dragon_man",
+      "breakpoints": true
     }
   ]
 }

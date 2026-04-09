@@ -1,4 +1,5 @@
 import { createFileRoute, redirect, useNavigate } from "@tanstack/react-router";
+import { toast } from "sonner";
 import { useState } from "react";
 import { Plus, Search, Filter, Eye, Edit, FileText, Receipt, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -44,13 +45,13 @@ function TransportationBookingsPage() {
   };
 
   const filteredBookings = transportationBookings.filter((booking) => {
-    const matchesSearch = 
+    const matchesSearch =
       booking.number.toLowerCase().includes(searchTerm.toLowerCase()) ||
       booking.customerName.toLowerCase().includes(searchTerm.toLowerCase()) ||
       booking.customerPhone.includes(searchTerm);
-    
+
     const matchesStatus = statusFilter === "all" || booking.status === statusFilter;
-    
+
     return matchesSearch && matchesStatus;
   });
 
@@ -133,7 +134,7 @@ function TransportationBookingsPage() {
                         {booking.status}
                       </Badge>
                     </div>
-                    
+
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm text-gray-600">
                       <div>
                         <span className="font-medium">Customer:</span> {booking.customerName}
@@ -145,7 +146,7 @@ function TransportationBookingsPage() {
                         <span className="font-medium">Routes:</span> {booking.routeCount} rute
                       </div>
                     </div>
-                    
+
                     <div className="flex items-center justify-between mt-4">
                       <div className="text-sm text-gray-500">
                         Created: {formatDate(booking.createdAt)}
@@ -155,7 +156,7 @@ function TransportationBookingsPage() {
                       </div>
                     </div>
                   </div>
-                  
+
                   <div className="flex items-center space-x-2 ml-4">
                     <Button
                       variant="outline"
@@ -193,13 +194,19 @@ function TransportationBookingsPage() {
                             document.body.appendChild(a);
                             a.click();
                             window.URL.revokeObjectURL(url);
-                            alert('Invoice generated and downloaded successfully!');
+                            toast.success('Invoice generated and downloaded successfully!');
                           } else {
-                            alert('Failed to generate invoice');
+                            let errorMsg = 'Failed to generate invoice';
+                            try {
+                              const errData = await response.json();
+                              errorMsg = errData.error || errData.message || errorMsg;
+                            } catch (_) { }
+                            toast.error(errorMsg);
                           }
                         } catch (error) {
                           console.error('Error generating invoice:', error);
-                          alert('Error generating invoice');
+                          const msg = error instanceof Error ? error.message : 'An unexpected error occurred';
+                          toast.error(msg);
                         }
                       }}
                     >
@@ -227,13 +234,19 @@ function TransportationBookingsPage() {
                             document.body.appendChild(a);
                             a.click();
                             window.URL.revokeObjectURL(url);
-                            alert('Receipt generated and downloaded successfully!');
+                            toast.success('Receipt generated and downloaded successfully!');
                           } else {
-                            alert('Failed to generate receipt');
+                            let errorMsg = 'Failed to generate receipt';
+                            try {
+                              const errData = await response.json();
+                              errorMsg = errData.error || errData.message || errorMsg;
+                            } catch (_) { }
+                            toast.error(errorMsg);
                           }
                         } catch (error) {
                           console.error('Error generating receipt:', error);
-                          alert('Error generating receipt');
+                          const msg = error instanceof Error ? error.message : 'An unexpected error occurred';
+                          toast.error(msg);
                         }
                       }}
                     >

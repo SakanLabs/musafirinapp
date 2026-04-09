@@ -1,5 +1,6 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router"
 import { useState } from "react"
+import { toast } from "sonner"
 import { PageLayout } from "@/components/layout/PageLayout"
 import { DataTable, type Column } from "@/components/ui/data-table"
 import { Drawer } from "@/components/ui/drawer"
@@ -200,7 +201,7 @@ function ClientsIndexPage() {
 
     try {
       await deleteClientMutation.mutateAsync(clientId)
-      alert('Klien berhasil dihapus!')
+      toast.success('Klien berhasil dihapus!')
     } catch (error: any) {
       console.error('🔥 Failed to delete client:', error)
       console.log('🔥 Error type:', typeof error)
@@ -208,17 +209,17 @@ function ClientsIndexPage() {
       console.log('🔥 Error message:', error?.message)
       console.log('🔥 Error stack:', error?.stack)
       console.log('🔥 Full error object:', JSON.stringify(error, null, 2))
-      
+
       const errorMessage = error?.message || 'Failed to delete client. Please try again.'
       console.log('🔥 Final error message to display:', errorMessage)
-      
+
       // Show the actual server error message directly
       setErrorModalContent({
         title: 'Error',
         message: errorMessage,
         type: 'error'
       })
-      
+
       setIsErrorModalOpen(true)
     }
   }
@@ -381,12 +382,11 @@ function ClientsIndexPage() {
       >
         <div className="flex items-start space-x-3">
           <div className="flex-shrink-0">
-            <AlertTriangle 
-              className={`h-6 w-6 ${
-                errorModalContent.type === 'warning' 
-                  ? 'text-amber-500' 
+            <AlertTriangle
+              className={`h-6 w-6 ${errorModalContent.type === 'warning'
+                  ? 'text-amber-500'
                   : 'text-red-500'
-              }`} 
+                }`}
             />
           </div>
           <div className="flex-1">

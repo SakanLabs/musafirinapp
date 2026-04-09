@@ -100,7 +100,7 @@ export function useCreateTransportationBooking() {
   return useMutation({
     mutationFn: async (data: CreateTransportationBookingData) => {
       console.log('Creating transportation booking with data:', data);
-      
+
       const requestData = {
         customerName: data.customerName,
         customerPhone: data.customerPhone,
@@ -111,9 +111,9 @@ export function useCreateTransportationBooking() {
         notes: data.notes || null,
         routes: data.routes
       };
-      
+
       console.log('Sending request data to backend:', requestData);
-      
+
       const response = await apiClient.post<TransportationBooking>(API_ENDPOINTS.TRANSPORTATION, requestData);
       return response;
     },
@@ -163,8 +163,10 @@ export function useDeleteTransportationBooking() {
 
 // Generate invoice for transportation booking
 export function useGenerateTransportationInvoice() {
+  const queryClient = useQueryClient();
+
   return useMutation({
-    mutationFn: async (bookingId: string | number) => {
+    mutationFn: async (data: { bookingId: string | number, dueDate: string, forceRegenerate?: boolean, invoiceDate?: string }) => {
       const response = await apiClient.post<{
         id: number;
         number: string;
@@ -174,9 +176,44 @@ export function useGenerateTransportationInvoice() {
         issueDate: string;
         dueDate: string;
         status: string;
-      }>(`${API_ENDPOINTS.TRANSPORTATION}/${bookingId}/invoice`);
+        pdfUrl?: string;
+      }>(`${API_ENDPOINTS.TRANSPORTATION}/${data.bookingId}/invoice`, data);
       return response;
     },
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: [...transportationBookingKeys.detail(variables.bookingId), 'invoice'] });
+    }
+  });
+}
+
+// Get existing invoice for transportation booking (returns null if none)
+export function useTransportationInvoice(bookingId: string | number) {
+  return useQuery({
+    queryKey: [...transportationBookingKeys.detail(bookingId), 'invoice'],
+    queryFn: async () => {
+      try {
+        const response = await apiClient.get<{
+          success: boolean;
+          data: {
+            id: number;
+            number: string;
+            transportationBookingId: number;
+            amount: string;
+            currency: string;
+            issueDate: string;
+            dueDate: string;
+            status: string;
+          };
+        }>(API_ENDPOINTS.TRANSPORTATION_INVOICE(bookingId));
+        return response.data;
+      } catch (error) {
+        // If invoice does not exist, API returns 404, so return null
+        return null as any;
+      }
+    },
+    enabled: !!bookingId,
+    retry: false,
+    staleTime: 2 * 60 * 1000,
   });
 }
 

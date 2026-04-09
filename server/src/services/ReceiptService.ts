@@ -1,5 +1,5 @@
 import { db } from '../db';
-import { receipts, bookings, clients, invoices, bookingItems } from '../db/schema';
+import { receipts, bookings, clients, invoices, bookingItems, invoicePayments } from '../db/schema';
 import { eq, desc } from 'drizzle-orm';
 import { generateReceiptPDF } from '../utils/pdf';
 import { generateReceiptNumber } from '../utils/pdf';
@@ -128,7 +128,7 @@ export class ReceiptService {
       const receiptData = await this.prepareReceiptData(receipt.id);
       if (receiptData) {
         const pdfUrl = await generateReceiptPDF(receiptData);
-        
+
         // Update receipt with PDF URL
         const updatedReceipts = await db
           .update(receipts)
@@ -148,6 +148,112 @@ export class ReceiptService {
 
     } catch (error) {
       console.error('Error generating receipt:', error);
+      throw error;
+    }
+  }
+
+  // NEW: Generate a receipt for a specific invoice payment (partial payments)
+  async generateReceiptForInvoicePayment(
+    invoiceId: number,
+    payment: { amount: number; method: string; referenceNumber?: string; paidAt?: Date; description?: string }
+  ): Promise<Receipt | null> {
+    try {
+      // Fetch invoice
+      const invoiceRows = await db
+        .select()
+        .from(invoices)
+        .where(eq(invoices.id, invoiceId))
+        .limit(1);
+      if (invoiceRows.length === 0) {
+        throw new Error(`Invoice ${invoiceId} not found`);
+      }
+      const invoice = invoiceRows[0]!;
+
+      // Get booking and client
+      const bookingData = await this.getBookingWithClient(invoice.bookingId as number);
+      if (!bookingData || !bookingData.client) {
+        throw new Error(`Booking ${invoice.bookingId} not found or incomplete data`);
+      }
+      const { booking, client } = bookingData;
+
+      // Sum completed payments for this invoice to compute remaining balance AFTER this payment
+      const paymentsRows = await db
+        .select()
+        .from(invoicePayments)
+        .where(eq(invoicePayments.invoiceId, invoiceId));
+      const totalPaid = paymentsRows
+        .filter((p: any) => String(p.status) === 'completed')
+        .reduce((sum: number, p: any) => sum + (parseFloat(p.amount) || 0), 0);
+
+      const totalAmountNum = parseFloat(invoice.amount as any);
+      const balanceAfter = Math.max(totalAmountNum - totalPaid, 0);
+
+      const totalAmountStr = invoice.amount != null ? String(invoice.amount) : '0.00';
+      const balanceAfterStr = balanceAfter.toFixed(2);
+
+      // Create receipt with per-payment amount
+      const receiptNumber = generateReceiptNumber();
+      const newReceipt: NewReceipt = {
+        number: receiptNumber,
+        bookingId: booking.id,
+        invoiceId: invoice.id,
+        totalAmount: totalAmountStr,
+        paidAmount: payment.amount.toFixed(2),
+        balanceDue: balanceAfterStr,
+        currency: invoice.currency || 'SAR',
+        issueDate: payment.paidAt || new Date(),
+        payerName: client?.name || '',
+        payerEmail: client?.email || null,
+        payerPhone: client?.phone || null,
+        payerAddress: client?.address || null,
+        hotelName: booking.hotelName,
+        hotelAddress: null,
+        bankName: 'Bank Syariah Indonesia',
+        bankCountry: 'Indonesia',
+        accountName: 'PT Thalhah Insan Rabbani',
+        accountNumberOrIBAN: '7254459741',
+        notes: payment.description || null,
+        amountInWords: null,
+        pdfUrl: null,
+        meta: {
+          payment: {
+            method: payment.method,
+            referenceNumber: payment.referenceNumber || null,
+            paidAt: (payment.paidAt || new Date()).toISOString(),
+            description: payment.description || null,
+          },
+        },
+      };
+
+      const inserted = await db.insert(receipts).values(newReceipt).returning();
+      if (inserted.length === 0 || !inserted[0]) {
+        throw new Error('Failed to create receipt for payment');
+      }
+      const created = inserted[0]!;
+
+      // Prepare template data and generate PDF
+      try {
+        const receiptData = await this.prepareReceiptData(created.id);
+        if (receiptData) {
+          const pdfUrl = await generateReceiptPDF(receiptData);
+          const updated = await db
+            .update(receipts)
+            .set({ pdfUrl })
+            .where(eq(receipts.id, created.id))
+            .returning();
+          if (updated.length > 0) {
+            Object.assign(created, updated[0]!);
+          } else {
+            created.pdfUrl = pdfUrl;
+          }
+        }
+      } catch (pdfError) {
+        console.error('Non-fatal error generating PDF for receipt:', pdfError);
+      }
+
+      return created;
+    } catch (error) {
+      console.error('Error generating per-payment receipt:', error);
       throw error;
     }
   }
@@ -173,8 +279,7 @@ export class ReceiptService {
       .from(receipts)
       .where(eq(receipts.id, receiptId))
       .limit(1);
-
-    return result.length > 0 ? (result[0] || null) : null;
+    return result[0] ?? null;
   }
 
   private async getBookingWithClient(bookingId: number) {
@@ -188,11 +293,7 @@ export class ReceiptService {
       .where(eq(bookings.id, bookingId))
       .limit(1);
 
-    if (result.length === 0 || !result[0] || !result[0].booking || !result[0].client) {
-      return null;
-    }
-
-    return result[0];
+    return result.length > 0 ? result[0] : null;
   }
 
   private async getInvoiceForBooking(bookingId: number) {
@@ -202,7 +303,7 @@ export class ReceiptService {
       .where(eq(invoices.bookingId, bookingId))
       .limit(1);
 
-    return result.length > 0 ? result[0] : null;
+    return result[0] ?? null;
   }
 
   private calculatePaidAmount(booking: any): string {
@@ -245,18 +346,14 @@ export class ReceiptService {
         ? items.map((it: any) => `${it.roomCount} ${it.roomType} ${booking.mealPlan}`).join(', ')
         : undefined;
 
-      // Calculate actual paid amount from booking payments
-      const actualPaidAmount = parseFloat(this.calculatePaidAmount(booking));
-      const totalAmount = parseFloat(receipt.totalAmount);
-      const balanceDue = totalAmount - actualPaidAmount;
-
+      // Use stored receipt amounts (supports per-payment receipts)
       return {
         receipt: {
           number: receipt.number,
           issueDate: receipt.issueDate.toLocaleDateString('id-ID'),
           totalAmount: receipt.totalAmount,
-          paidAmount: actualPaidAmount.toFixed(2),
-          balanceDue: balanceDue.toFixed(2),
+          paidAmount: receipt.paidAmount,
+          balanceDue: receipt.balanceDue,
           currency: receipt.currency,
           amountInWords: receipt.amountInWords,
           notes: receipt.notes,

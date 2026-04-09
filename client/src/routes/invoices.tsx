@@ -1,22 +1,24 @@
-import { createFileRoute, Link } from "@tanstack/react-router"
+import { createFileRoute, Link, Outlet } from "@tanstack/react-router"
+import { toast } from "sonner"
 import { PageLayout } from "@/components/layout/PageLayout"
 import { DataTable, Column } from "@/components/ui/data-table"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { 
+import {
   FileText,
   Download,
   Eye,
   Plus,
   Filter,
-  Loader2
+  Loader2,
+  Trash2
 } from "lucide-react"
 import { formatCurrency, formatDate } from "@/lib/utils"
-import { useInvoices, type Invoice, useBackfillInvoiceStatus } from "@/lib/queries/invoices"
+import { useInvoices, type Invoice, useBackfillInvoiceStatus, useDeleteInvoice } from "@/lib/queries/invoices"
 import { useEffect, useState } from "react"
 import { authService } from "@/lib/auth"
 
-export const Route = createFileRoute("/invoices")({ 
+export const Route = createFileRoute("/invoices")({
   component: InvoicesPage
 })
 
@@ -31,6 +33,9 @@ function InvoicesPage() {
   const { mutateAsync: backfillStatus, isPending } = useBackfillInvoiceStatus()
   const [syncSummary, setSyncSummary] = useState<{ totalProcessed: number; updatedCount: number } | null>(null)
   const [syncError, setSyncError] = useState<string | null>(null)
+
+  // Delete invoice mutation
+  const { mutateAsync: deleteInvoice, isPending: isDeleting } = useDeleteInvoice()
 
   useEffect(() => {
     let mounted = true
@@ -61,8 +66,8 @@ function InvoicesPage() {
       key: 'bookingId',
       header: 'Booking ID',
       render: (invoice) => (
-        <Link 
-          to="/booking-view/$bookingId" 
+        <Link
+          to="/booking-view/$bookingId"
           params={{ bookingId: invoice.bookingId.toString() }}
           className="text-blue-600 hover:text-blue-800 underline"
         >
@@ -107,29 +112,56 @@ function InvoicesPage() {
     {
       key: 'actions',
       header: 'Actions',
-      render: (invoice) => (
-        <div className="flex space-x-2">
-          <Link
-            to="/invoice-detail"
-            search={{ id: invoice.id.toString() }}
-            className="inline-flex items-center justify-center rounded-md hover:bg-gray-100 px-2 py-1"
-            title="View Invoice Detail"
-          >
-            <Eye className="h-4 w-4" />
-          </Link>
-          <Button
-            size="sm"
-            variant="ghost"
-            onClick={() => window.open(`http://localhost:3000/api/invoices/by-number/${invoice.number}`, '_blank')}
-            title="Download PDF"
-          >
-            <Download className="h-4 w-4" />
-          </Button>
-        </div>
-      ),
+      render: (invoice) => {
+        let detailLink = `/invoice-detail?id=${invoice.id}`;
+        if (invoice.number.startsWith('TI-')) {
+          detailLink = `/transportation-booking-detail/${invoice.bookingId}`;
+        } else if (invoice.number.startsWith('SOI-')) {
+          detailLink = `/service-order-detail/${invoice.bookingId}`;
+        }
+
+        return (
+          <div className="flex space-x-2">
+            <Link
+              to={detailLink as any}
+              className="inline-flex items-center justify-center rounded-md hover:bg-gray-100 px-2 py-1"
+              title="View Detail"
+            >
+              <Eye className="h-4 w-4" />
+            </Link>
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={() => window.open(`http://localhost:3000/api/invoices/by-number/${invoice.number}`, '_blank')}
+              title="Download PDF"
+            >
+              <Download className="h-4 w-4" />
+            </Button>
+            {isAdmin && (
+              <Button
+                size="sm"
+                variant="destructive"
+                title="Delete Invoice"
+                onClick={async () => {
+                  const confirmed = window.confirm(`Hapus invoice ${invoice.number}? Semua payments akan ikut terhapus, receipts akan tidak terhubung.`)
+                  if (!confirmed) return
+                  try {
+                    await deleteInvoice(invoice.id.toString())
+                  } catch (err) {
+                    console.error('Failed to delete invoice:', err)
+                    toast.error(err instanceof Error ? err.message : 'Failed to delete invoice')
+                  }
+                }}
+              >
+                {isDeleting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+              </Button>
+            )}
+          </div>
+        );
+      },
       width: 'w-24'
     }
-  ]
+  ];
 
 
 
@@ -168,7 +200,7 @@ function InvoicesPage() {
             <Filter className="h-4 w-4 mr-2" />
             Filter
           </Button>
-          <Link to="/invoices/create">
+          <Link to="/create-invoice">
             <Button>
               <Plus className="h-4 w-4 mr-2" />
               Create Invoice
@@ -196,6 +228,7 @@ function InvoicesPage() {
         </div>
       }
     >
+      <Outlet />
       {/* Summary Cards */}
       {syncSummary && (
         <div className="mb-4 text-sm text-gray-700">

@@ -21,6 +21,8 @@ import { Route as ForgotPasswordRouteImport } from './routes/forgot-password'
 import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as CreateTransportationBookingRouteImport } from './routes/create-transportation-booking'
 import { Route as CreateServiceOrderRouteImport } from './routes/create-service-order'
+import { Route as CreateReceiptRouteImport } from './routes/create-receipt'
+import { Route as CreateInvoiceRouteImport } from './routes/create-invoice'
 import { Route as CreateBookingRouteImport } from './routes/create-booking'
 import { Route as CostsRouteImport } from './routes/costs'
 import { Route as ClientsRouteImport } from './routes/clients'
@@ -39,7 +41,6 @@ import { Route as ServiceOrdersCreateRouteImport } from './routes/service-orders
 import { Route as ServiceOrdersIdRouteImport } from './routes/service-orders/$id'
 import { Route as ServiceOrderEditServiceOrderIdRouteImport } from './routes/service-order-edit.$serviceOrderId'
 import { Route as ServiceOrderDetailServiceOrderIdRouteImport } from './routes/service-order-detail.$serviceOrderId'
-import { Route as InvoicesCreateRouteImport } from './routes/invoices/create'
 import { Route as DashboardUserRouteImport } from './routes/dashboard/user'
 import { Route as DashboardAdminRouteImport } from './routes/dashboard/admin'
 import { Route as ClientsCreateRouteImport } from './routes/clients/create'
@@ -107,6 +108,16 @@ const CreateTransportationBookingRoute =
 const CreateServiceOrderRoute = CreateServiceOrderRouteImport.update({
   id: '/create-service-order',
   path: '/create-service-order',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CreateReceiptRoute = CreateReceiptRouteImport.update({
+  id: '/create-receipt',
+  path: '/create-receipt',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CreateInvoiceRoute = CreateInvoiceRouteImport.update({
+  id: '/create-invoice',
+  path: '/create-invoice',
   getParentRoute: () => rootRouteImport,
 } as any)
 const CreateBookingRoute = CreateBookingRouteImport.update({
@@ -203,11 +214,6 @@ const ServiceOrderDetailServiceOrderIdRoute =
     path: '/service-order-detail/$serviceOrderId',
     getParentRoute: () => rootRouteImport,
   } as any)
-const InvoicesCreateRoute = InvoicesCreateRouteImport.update({
-  id: '/create',
-  path: '/create',
-  getParentRoute: () => InvoicesRoute,
-} as any)
 const DashboardUserRoute = DashboardUserRouteImport.update({
   id: '/user',
   path: '/user',
@@ -255,12 +261,14 @@ export interface FileRoutesByFullPath {
   '/clients': typeof ClientsRouteWithChildren
   '/costs': typeof CostsRoute
   '/create-booking': typeof CreateBookingRoute
+  '/create-invoice': typeof CreateInvoiceRoute
+  '/create-receipt': typeof CreateReceiptRoute
   '/create-service-order': typeof CreateServiceOrderRoute
   '/create-transportation-booking': typeof CreateTransportationBookingRoute
   '/dashboard': typeof DashboardRouteWithChildren
   '/forgot-password': typeof ForgotPasswordRoute
   '/invoice-detail': typeof InvoiceDetailRoute
-  '/invoices': typeof InvoicesRouteWithChildren
+  '/invoices': typeof InvoicesRoute
   '/login': typeof LoginRoute
   '/receipts': typeof ReceiptsRoute
   '/register': typeof RegisterRoute
@@ -273,7 +281,6 @@ export interface FileRoutesByFullPath {
   '/clients/create': typeof ClientsCreateRoute
   '/dashboard/admin': typeof DashboardAdminRoute
   '/dashboard/user': typeof DashboardUserRoute
-  '/invoices/create': typeof InvoicesCreateRoute
   '/service-order-detail/$serviceOrderId': typeof ServiceOrderDetailServiceOrderIdRoute
   '/service-order-edit/$serviceOrderId': typeof ServiceOrderEditServiceOrderIdRoute
   '/service-orders/$id': typeof ServiceOrdersIdRoute
@@ -294,12 +301,14 @@ export interface FileRoutesByTo {
   '/clear-auth-cache': typeof ClearAuthCacheRoute
   '/costs': typeof CostsRoute
   '/create-booking': typeof CreateBookingRoute
+  '/create-invoice': typeof CreateInvoiceRoute
+  '/create-receipt': typeof CreateReceiptRoute
   '/create-service-order': typeof CreateServiceOrderRoute
   '/create-transportation-booking': typeof CreateTransportationBookingRoute
   '/dashboard': typeof DashboardRouteWithChildren
   '/forgot-password': typeof ForgotPasswordRoute
   '/invoice-detail': typeof InvoiceDetailRoute
-  '/invoices': typeof InvoicesRouteWithChildren
+  '/invoices': typeof InvoicesRoute
   '/login': typeof LoginRoute
   '/receipts': typeof ReceiptsRoute
   '/register': typeof RegisterRoute
@@ -312,7 +321,6 @@ export interface FileRoutesByTo {
   '/clients/create': typeof ClientsCreateRoute
   '/dashboard/admin': typeof DashboardAdminRoute
   '/dashboard/user': typeof DashboardUserRoute
-  '/invoices/create': typeof InvoicesCreateRoute
   '/service-order-detail/$serviceOrderId': typeof ServiceOrderDetailServiceOrderIdRoute
   '/service-order-edit/$serviceOrderId': typeof ServiceOrderEditServiceOrderIdRoute
   '/service-orders/$id': typeof ServiceOrdersIdRoute
@@ -335,12 +343,14 @@ export interface FileRoutesById {
   '/clients': typeof ClientsRouteWithChildren
   '/costs': typeof CostsRoute
   '/create-booking': typeof CreateBookingRoute
+  '/create-invoice': typeof CreateInvoiceRoute
+  '/create-receipt': typeof CreateReceiptRoute
   '/create-service-order': typeof CreateServiceOrderRoute
   '/create-transportation-booking': typeof CreateTransportationBookingRoute
   '/dashboard': typeof DashboardRouteWithChildren
   '/forgot-password': typeof ForgotPasswordRoute
   '/invoice-detail': typeof InvoiceDetailRoute
-  '/invoices': typeof InvoicesRouteWithChildren
+  '/invoices': typeof InvoicesRoute
   '/login': typeof LoginRoute
   '/receipts': typeof ReceiptsRoute
   '/register': typeof RegisterRoute
@@ -353,7 +363,6 @@ export interface FileRoutesById {
   '/clients/create': typeof ClientsCreateRoute
   '/dashboard/admin': typeof DashboardAdminRoute
   '/dashboard/user': typeof DashboardUserRoute
-  '/invoices/create': typeof InvoicesCreateRoute
   '/service-order-detail/$serviceOrderId': typeof ServiceOrderDetailServiceOrderIdRoute
   '/service-order-edit/$serviceOrderId': typeof ServiceOrderEditServiceOrderIdRoute
   '/service-orders/$id': typeof ServiceOrdersIdRoute
@@ -377,6 +386,8 @@ export interface FileRouteTypes {
     | '/clients'
     | '/costs'
     | '/create-booking'
+    | '/create-invoice'
+    | '/create-receipt'
     | '/create-service-order'
     | '/create-transportation-booking'
     | '/dashboard'
@@ -395,7 +406,6 @@ export interface FileRouteTypes {
     | '/clients/create'
     | '/dashboard/admin'
     | '/dashboard/user'
-    | '/invoices/create'
     | '/service-order-detail/$serviceOrderId'
     | '/service-order-edit/$serviceOrderId'
     | '/service-orders/$id'
@@ -416,6 +426,8 @@ export interface FileRouteTypes {
     | '/clear-auth-cache'
     | '/costs'
     | '/create-booking'
+    | '/create-invoice'
+    | '/create-receipt'
     | '/create-service-order'
     | '/create-transportation-booking'
     | '/dashboard'
@@ -434,7 +446,6 @@ export interface FileRouteTypes {
     | '/clients/create'
     | '/dashboard/admin'
     | '/dashboard/user'
-    | '/invoices/create'
     | '/service-order-detail/$serviceOrderId'
     | '/service-order-edit/$serviceOrderId'
     | '/service-orders/$id'
@@ -456,6 +467,8 @@ export interface FileRouteTypes {
     | '/clients'
     | '/costs'
     | '/create-booking'
+    | '/create-invoice'
+    | '/create-receipt'
     | '/create-service-order'
     | '/create-transportation-booking'
     | '/dashboard'
@@ -474,7 +487,6 @@ export interface FileRouteTypes {
     | '/clients/create'
     | '/dashboard/admin'
     | '/dashboard/user'
-    | '/invoices/create'
     | '/service-order-detail/$serviceOrderId'
     | '/service-order-edit/$serviceOrderId'
     | '/service-orders/$id'
@@ -497,12 +509,14 @@ export interface RootRouteChildren {
   ClientsRoute: typeof ClientsRouteWithChildren
   CostsRoute: typeof CostsRoute
   CreateBookingRoute: typeof CreateBookingRoute
+  CreateInvoiceRoute: typeof CreateInvoiceRoute
+  CreateReceiptRoute: typeof CreateReceiptRoute
   CreateServiceOrderRoute: typeof CreateServiceOrderRoute
   CreateTransportationBookingRoute: typeof CreateTransportationBookingRoute
   DashboardRoute: typeof DashboardRouteWithChildren
   ForgotPasswordRoute: typeof ForgotPasswordRoute
   InvoiceDetailRoute: typeof InvoiceDetailRoute
-  InvoicesRoute: typeof InvoicesRouteWithChildren
+  InvoicesRoute: typeof InvoicesRoute
   LoginRoute: typeof LoginRoute
   ReceiptsRoute: typeof ReceiptsRoute
   RegisterRoute: typeof RegisterRoute
@@ -602,6 +616,20 @@ declare module '@tanstack/react-router' {
       path: '/create-service-order'
       fullPath: '/create-service-order'
       preLoaderRoute: typeof CreateServiceOrderRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/create-receipt': {
+      id: '/create-receipt'
+      path: '/create-receipt'
+      fullPath: '/create-receipt'
+      preLoaderRoute: typeof CreateReceiptRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/create-invoice': {
+      id: '/create-invoice'
+      path: '/create-invoice'
+      fullPath: '/create-invoice'
+      preLoaderRoute: typeof CreateInvoiceRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/create-booking': {
@@ -730,13 +758,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ServiceOrderDetailServiceOrderIdRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/invoices/create': {
-      id: '/invoices/create'
-      path: '/create'
-      fullPath: '/invoices/create'
-      preLoaderRoute: typeof InvoicesCreateRouteImport
-      parentRoute: typeof InvoicesRoute
-    }
     '/dashboard/user': {
       id: '/dashboard/user'
       path: '/user'
@@ -828,18 +849,6 @@ const DashboardRouteWithChildren = DashboardRoute._addFileChildren(
   DashboardRouteChildren,
 )
 
-interface InvoicesRouteChildren {
-  InvoicesCreateRoute: typeof InvoicesCreateRoute
-}
-
-const InvoicesRouteChildren: InvoicesRouteChildren = {
-  InvoicesCreateRoute: InvoicesCreateRoute,
-}
-
-const InvoicesRouteWithChildren = InvoicesRoute._addFileChildren(
-  InvoicesRouteChildren,
-)
-
 interface ServiceOrdersRouteChildren {
   ServiceOrdersIdRoute: typeof ServiceOrdersIdRoute
   ServiceOrdersCreateRoute: typeof ServiceOrdersCreateRoute
@@ -877,12 +886,14 @@ const rootRouteChildren: RootRouteChildren = {
   ClientsRoute: ClientsRouteWithChildren,
   CostsRoute: CostsRoute,
   CreateBookingRoute: CreateBookingRoute,
+  CreateInvoiceRoute: CreateInvoiceRoute,
+  CreateReceiptRoute: CreateReceiptRoute,
   CreateServiceOrderRoute: CreateServiceOrderRoute,
   CreateTransportationBookingRoute: CreateTransportationBookingRoute,
   DashboardRoute: DashboardRouteWithChildren,
   ForgotPasswordRoute: ForgotPasswordRoute,
   InvoiceDetailRoute: InvoiceDetailRoute,
-  InvoicesRoute: InvoicesRouteWithChildren,
+  InvoicesRoute: InvoicesRoute,
   LoginRoute: LoginRoute,
   ReceiptsRoute: ReceiptsRoute,
   RegisterRoute: RegisterRoute,

@@ -290,6 +290,33 @@ export const serviceOrderInvoices = pgTable('service_order_invoices', {
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
 });
 
+// Service Order Receipts table
+export const serviceOrderReceipts = pgTable('service_order_receipts', {
+  id: serial('id').primaryKey(),
+  number: varchar('number', { length: 50 }).notNull().unique(), // Format: SOR-YYYY-XXXX
+  serviceOrderId: integer('service_order_id').notNull().references(() => serviceOrders.id, { onDelete: 'cascade' }),
+  serviceOrderInvoiceId: integer('service_order_invoice_id').references(() => serviceOrderInvoices.id, { onDelete: 'set null' }),
+  totalAmount: decimal('total_amount', { precision: 10, scale: 2 }).notNull(),
+  paidAmount: decimal('paid_amount', { precision: 10, scale: 2 }).notNull(),
+  balanceDue: decimal('balance_due', { precision: 10, scale: 2 }).notNull(),
+  currency: varchar('currency', { length: 3 }).default('SAR').notNull(),
+  issueDate: timestamp('issue_date').defaultNow().notNull(),
+  payerName: varchar('payer_name', { length: 255 }).notNull(),
+  payerEmail: varchar('payer_email', { length: 255 }),
+  payerPhone: varchar('payer_phone', { length: 50 }),
+  payerAddress: text('payer_address'),
+  bankName: varchar('bank_name', { length: 255 }),
+  bankCountry: varchar('bank_country', { length: 100 }),
+  accountName: varchar('account_name', { length: 255 }),
+  accountNumberOrIBAN: varchar('account_number_or_iban', { length: 100 }),
+  notes: text('notes'),
+  amountInWords: text('amount_in_words'),
+  pdfUrl: text('pdf_url'),
+  meta: jsonb('meta'), // For storing payment details array
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+});
+
 // Transportation Bookings table
 export const transportationBookings = pgTable('transportation_bookings', {
   id: serial('id').primaryKey(),
@@ -366,6 +393,51 @@ export const transportationReceipts = pgTable('transportation_receipts', {
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
 });
 
+// Transportation Vouchers table
+export const transportationVouchers = pgTable('transportation_vouchers', {
+  id: serial('id').primaryKey(),
+  number: varchar('number', { length: 50 }).notNull().unique(), // Format: TV-YYYY-XXXX
+  transportationBookingId: integer('transportation_booking_id').notNull().references(() => transportationBookings.id, { onDelete: 'cascade' }),
+  issueDate: timestamp('issue_date').defaultNow().notNull(),
+  pdfUrl: text('pdf_url'),
+  meta: jsonb('meta'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+});
+
+
+// Additional enums and tables for multi-service booking and partial payments
+export const serviceItemTypeEnum = pgEnum('service_item_type', ['visa_umrah', 'transportasi', 'other']);
+
+// Generic service items attached to a hotel booking (e.g. Visa Umrah, Transportation/Bus Full Trip)
+export const bookingServiceItems = pgTable('booking_service_items', {
+  id: serial('id').primaryKey(),
+  bookingId: integer('booking_id').notNull().references(() => bookings.id, { onDelete: 'cascade' }),
+  serviceType: serviceItemTypeEnum('service_type').notNull(),
+  description: varchar('description', { length: 255 }).notNull(),
+  quantity: integer('quantity').default(1).notNull(),
+  unitPrice: decimal('unit_price', { precision: 10, scale: 2 }).notNull(),
+  subtotal: decimal('subtotal', { precision: 10, scale: 2 }).notNull(), // quantity * unitPrice
+  notes: text('notes'),
+  meta: jsonb('meta'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+});
+
+// Payments against invoices to support partial payments
+export const invoicePayments = pgTable('invoice_payments', {
+  id: serial('id').primaryKey(),
+  invoiceId: integer('invoice_id').notNull().references(() => invoices.id, { onDelete: 'cascade' }),
+  amount: decimal('amount', { precision: 10, scale: 2 }).notNull(),
+  currency: varchar('currency', { length: 3 }).default('SAR').notNull(),
+  method: varchar('method', { length: 50 }), // e.g. bank_transfer, cash, card
+  referenceNumber: varchar('reference_number', { length: 100 }),
+  paidAt: timestamp('paid_at').notNull(),
+  status: depositTransactionStatusEnum('status').default('completed').notNull(), // reuse existing enum (pending/completed/cancelled/failed)
+  meta: jsonb('meta'), // optional payment metadata (bank account used, IBAN, etc.)
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+});
 
 
 // Type exports for better-auth tables
@@ -415,3 +487,11 @@ export type TransportationInvoice = typeof transportationInvoices.$inferSelect;
 export type NewTransportationInvoice = typeof transportationInvoices.$inferInsert;
 export type TransportationReceipt = typeof transportationReceipts.$inferSelect;
 export type NewTransportationReceipt = typeof transportationReceipts.$inferInsert;
+export type TransportationVoucher = typeof transportationVouchers.$inferSelect;
+export type NewTransportationVoucher = typeof transportationVouchers.$inferInsert;
+export type BookingServiceItem = typeof bookingServiceItems.$inferSelect;
+export type NewBookingServiceItem = typeof bookingServiceItems.$inferInsert;
+export type InvoicePayment = typeof invoicePayments.$inferSelect;
+export type NewInvoicePayment = typeof invoicePayments.$inferInsert;
+export type ServiceOrderReceipt = typeof serviceOrderReceipts.$inferSelect;
+export type NewServiceOrderReceipt = typeof serviceOrderReceipts.$inferInsert;

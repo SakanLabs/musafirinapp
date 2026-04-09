@@ -1,4 +1,5 @@
 import { createFileRoute, redirect, useNavigate } from "@tanstack/react-router";
+import { toast } from "sonner";
 import { ArrowLeft, Edit, FileText, Receipt, Trash2, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -6,8 +7,9 @@ import { Badge } from "@/components/ui/badge";
 import { PageLayout } from "@/components/layout/PageLayout";
 import { formatCurrency, formatDate } from "@/lib/utils";
 import { authService } from "@/lib/auth";
-import { useTransportationBooking, useDeleteTransportationBooking, useGenerateTransportationInvoice, useGenerateTransportationReceipt } from "@/lib/queries/transportationBookings";
-
+import { useTransportationBooking, useDeleteTransportationBooking, useGenerateTransportationInvoice, useGenerateTransportationReceipt, useTransportationInvoice } from "@/lib/queries/transportationBookings";
+import { DueDateModal } from "@/components/modals/DueDateModal";
+import { useState } from "react";
 // Helper functions
 const getStatusBadgeVariant = (status: string) => {
   switch (status) {
@@ -44,6 +46,9 @@ function TransportationBookingDetailPage() {
   const deleteBookingMutation = useDeleteTransportationBooking();
   const generateInvoiceMutation = useGenerateTransportationInvoice();
   const generateReceiptMutation = useGenerateTransportationReceipt();
+  const { data: existingInvoice } = useTransportationInvoice(transportationBookingId);
+
+  const [isDueDateModalOpen, setIsDueDateModalOpen] = useState(false);
 
   const getVehicleTypeLabel = (type: string) => {
     switch (type) {
@@ -66,44 +71,68 @@ function TransportationBookingDetailPage() {
 
   const handleDelete = async () => {
     if (!transportationBooking) return;
-    
+
     const confirmed = window.confirm(
       `Are you sure you want to delete transportation booking ${transportationBooking.number}? This action cannot be undone.`
     );
-    
+
     if (confirmed) {
       try {
         await deleteBookingMutation.mutateAsync(transportationBookingId);
-        alert('Transportation booking deleted successfully!');
+        toast.success('Transportation booking deleted successfully!');
         navigate({ to: '/transportation-bookings' });
       } catch (error) {
         console.error('Error deleting transportation booking:', error);
-        alert('Failed to delete transportation booking');
+        const msg = error instanceof Error ? error.message : 'An unexpected error occurred';
+        toast.error(msg);
       }
     }
   };
 
-  const handleGenerateInvoice = async () => {
+  const handleGenerateInvoice = () => {
+    setIsDueDateModalOpen(true);
+  };
+
+  const handleDueDateSubmit = async (dueDate: string) => {
     if (!transportationBooking) return;
-    
+
     try {
-      await generateInvoiceMutation.mutateAsync(transportationBookingId);
-      alert('Invoice generated successfully!');
+      await generateInvoiceMutation.mutateAsync({
+        bookingId: transportationBookingId,
+        dueDate,
+        forceRegenerate: !!existingInvoice
+      });
+      setIsDueDateModalOpen(false);
+
+      const message = existingInvoice
+        ? "Invoice berhasil digenerate ulang! Anda akan diarahkan ke halaman invoices."
+        : "Invoice berhasil digenerate! Anda akan diarahkan ke halaman invoices.";
+
+      toast.success(message);
+
+      navigate({ to: '/invoices' });
     } catch (error) {
       console.error('Error generating invoice:', error);
-      alert('Failed to generate invoice');
+      const msg = error instanceof Error ? error.message : 'An unexpected error occurred';
+      toast.error(msg);
     }
   };
 
   const handleGenerateReceipt = async () => {
     if (!transportationBooking) return;
-    
+
     try {
-      await generateReceiptMutation.mutateAsync(transportationBookingId);
-      alert('Receipt generated successfully!');
+      const resp = await generateReceiptMutation.mutateAsync(transportationBookingId);
+      toast.success('Receipt generated successfully!');
+      // Assuming Resp could be shaped like { id, number } or direct object
+      const receiptNumber = (resp as any).number || (resp as any).data?.number;
+      if (receiptNumber) {
+        window.open(`http://localhost:3000/api/transportation/receipt/${receiptNumber}`, '_blank');
+      }
     } catch (error) {
       console.error('Error generating receipt:', error);
-      alert('Failed to generate receipt');
+      const msg = error instanceof Error ? error.message : 'An unexpected error occurred';
+      toast.error(msg);
     }
   };
 
@@ -172,7 +201,7 @@ function TransportationBookingDetailPage() {
           <div className="flex items-center space-x-2">
             <Button variant="outline" size="sm" onClick={handleGenerateInvoice}>
               <FileText className="h-4 w-4 mr-2" />
-              Generate Invoice
+              {existingInvoice ? "Generate Ulang Invoice" : "Generate Invoice"}
             </Button>
             <Button variant="outline" size="sm" onClick={handleGenerateReceipt}>
               <Receipt className="h-4 w-4 mr-2" />
@@ -277,6 +306,13 @@ function TransportationBookingDetailPage() {
           </div>
         </Card>
       </div>
+
+      <DueDateModal
+        isOpen={isDueDateModalOpen}
+        onClose={() => setIsDueDateModalOpen(false)}
+        onSubmit={handleDueDateSubmit}
+        isLoading={generateInvoiceMutation.isPending}
+      />
     </PageLayout>
   );
 }

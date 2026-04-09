@@ -1,11 +1,11 @@
 import { Hono } from 'hono';
 import { eq, desc } from 'drizzle-orm';
 import { db } from '../db';
-import { invoices, bookings, clients, bookingItems, bookingItemPricingPeriods, clientDeposits, depositTransactions } from '../db/schema';
+import { invoices, bookings, clients, bookingItems, bookingItemPricingPeriods, clientDeposits, depositTransactions, bookingServiceItems, invoicePayments, transportationInvoices, transportationBookings, serviceOrderInvoices, serviceOrders } from '../db/schema';
 import { requireAdmin } from '../middleware/auth';
 import { generateInvoiceNumber, generateInvoicePDF, uploadToMinio, checkFileExistsInMinio, deleteFromMinio } from '../utils/pdf';
 import { TemplateHelpers } from '../utils/template';
-import type { NewInvoice, NewDepositTransaction } from '../db/schema';
+import type { NewInvoice, NewDepositTransaction, NewInvoicePayment } from '../db/schema';
 import { ReceiptService } from '../services/ReceiptService';
 
 const invoiceRoutes = new Hono();
@@ -62,9 +62,9 @@ invoiceRoutes.get('/booking/:bookingId', requireAdmin, async (c) => {
           // Extract filename from URL (e.g., "invoices/INV-2025-885598.pdf")
           const urlParts = pdfUrl.split('/');
           const fileName = urlParts.slice(-2).join('/'); // Get "invoices/filename.pdf"
-          
+
           const fileExists = await checkFileExistsInMinio(fileName);
-          
+
           if (fileExists) {
             return c.json({
               success: true,
@@ -76,7 +76,7 @@ invoiceRoutes.get('/booking/:bookingId', requireAdmin, async (c) => {
             await db
               .delete(invoices)
               .where(eq(invoices.id, currentInvoice.id));
-            
+
             console.log(`PDF file not found for invoice ${currentInvoice.number}, regenerating...`);
           }
         }
@@ -117,7 +117,19 @@ invoiceRoutes.get('/booking/:bookingId', requireAdmin, async (c) => {
       .from(bookingItems)
       .where(eq(bookingItems.bookingId, bookingId));
 
-    console.log('Raw booking items from database:', items.map(item => ({
+    // Fetch extra service items (e.g., visa umrah, transportation)
+    const extraServiceItems = await db
+      .select()
+      .from(bookingServiceItems)
+      .where(eq(bookingServiceItems.bookingId, bookingId));
+
+    // Calculate extra service items total
+    const extraTotal = (extraServiceItems || []).reduce((sum, s) => {
+      const sub = Number((s as any).subtotal ?? 0);
+      return sum + (isNaN(sub) ? 0 : sub);
+    }, 0);
+
+    console.log('Raw booking items from database (POST):', items.map(item => ({
       id: item.id,
       roomType: item.roomType,
       roomCount: item.roomCount,
@@ -134,20 +146,20 @@ invoiceRoutes.get('/booking/:bookingId', requireAdmin, async (c) => {
             .select()
             .from(bookingItemPricingPeriods)
             .where(eq(bookingItemPricingPeriods.bookingItemId, item.id));
-          
-          console.log(`Pricing periods for item ${item.id}:`, pricingPeriods);
-          
+
+          console.log(`Pricing periods for item ${item.id} (POST):`, pricingPeriods);
+
           return {
             ...item,
             pricingPeriods
           };
         }
-        console.log(`Item ${item.id} has no pricing periods, returning as-is`);
+        console.log(`Item ${item.id} has no pricing periods (POST), returning as-is`);
         return item;
       })
     );
 
-    console.log('Final items with pricing periods:', itemsWithPricingPeriods.map(item => ({
+    console.log('Final items with pricing periods (POST):', itemsWithPricingPeriods.map(item => ({
       id: item.id,
       roomType: item.roomType,
       unitPrice: item.unitPrice,
@@ -165,7 +177,7 @@ invoiceRoutes.get('/booking/:bookingId', requireAdmin, async (c) => {
       id: 0, // temporary ID
       number: invoiceNumber,
       bookingId: bookingId,
-      amount: bookingData.totalAmount,
+      amount: (Number(bookingData.totalAmount) || 0) + extraTotal,
       currency: 'SAR',
       issueDate: new Date(), // Use current date as invoice date
       dueDate: customDueDate, // Use the provided due date
@@ -204,7 +216,8 @@ invoiceRoutes.get('/booking/:bookingId', requireAdmin, async (c) => {
       },
       itemsWithPricingPeriods,
       customDueDate,
-      new Date() // Use current date as invoice date
+      new Date(), // Use current date as invoice date
+      extraServiceItems
     );
 
     // Upload to MinIO and save to database
@@ -222,7 +235,7 @@ invoiceRoutes.get('/booking/:bookingId', requireAdmin, async (c) => {
     const newInvoice: NewInvoice = {
       number: invoiceNumber,
       bookingId: bookingId,
-      amount: bookingData.totalAmount,
+      amount: ((Number(bookingData.totalAmount) || 0) + extraTotal).toFixed(2),
       currency: 'SAR',
       issueDate: issueDate,
       dueDate: dueDate,
@@ -244,6 +257,57 @@ invoiceRoutes.get('/booking/:bookingId', requireAdmin, async (c) => {
   } catch (error) {
     console.error('Error in get-or-create-invoice:', error);
     return c.json({ error: 'Failed to get or create invoice' }, 500);
+  }
+});
+
+/**
+ * DELETE /api/invoices/:invoiceId
+ * Hapus invoice beserta file PDF di MinIO.
+ * Catatan:
+ * - Pembayaran (invoicePayments) akan terhapus otomatis (ON DELETE CASCADE).
+ * - Receipt yang terkait akan diset invoiceId = NULL (ON DELETE SET NULL).
+ */
+invoiceRoutes.delete('/:invoiceId', requireAdmin, async (c) => {
+  try {
+    const invoiceId = parseInt(c.req.param('invoiceId'));
+    if (!invoiceId || isNaN(invoiceId)) {
+      return c.json({ error: 'Invalid invoice ID' }, 400);
+    }
+
+    // Ambil invoice terlebih dahulu
+    const existing = await db
+      .select()
+      .from(invoices)
+      .where(eq(invoices.id, invoiceId))
+      .limit(1);
+
+    if (existing.length === 0) {
+      return c.json({ error: 'Invoice not found' }, 404);
+    }
+
+    const invoice = existing[0]!;
+
+    // Hapus file PDF dari MinIO jika ada
+    if (invoice.pdfUrl) {
+      const urlParts = invoice.pdfUrl.split('/');
+      const fileName = urlParts.slice(-2).join('/'); // e.g. "invoices/INV-XXXX.pdf"
+      try {
+        await deleteFromMinio(fileName);
+      } catch (err) {
+        console.warn(`Failed to delete invoice PDF ${fileName}:`, err);
+      }
+    }
+
+    // Hapus invoice dari database (payments akan cascade, receipts set null)
+    await db.delete(invoices).where(eq(invoices.id, invoiceId));
+
+    return c.json({
+      success: true,
+      message: 'Invoice deleted successfully',
+    });
+  } catch (error) {
+    console.error('Error deleting invoice:', error);
+    return c.json({ error: 'Failed to delete invoice' }, 500);
   }
 });
 
@@ -269,12 +333,64 @@ invoiceRoutes.get('/', requireAdmin, async (c) => {
       })
       .from(invoices)
       .leftJoin(bookings, eq(invoices.bookingId, bookings.id))
-      .leftJoin(clients, eq(bookings.clientId, clients.id))
-      .orderBy(desc(invoices.issueDate));
+      .leftJoin(clients, eq(bookings.clientId, clients.id));
+
+    const allTransportationInvoices = await db
+      .select({
+        id: transportationInvoices.id,
+        number: transportationInvoices.number,
+        bookingId: transportationInvoices.transportationBookingId,
+        amount: transportationInvoices.amount,
+        currency: transportationInvoices.currency,
+        issueDate: transportationInvoices.issueDate,
+        dueDate: transportationInvoices.dueDate,
+        status: transportationInvoices.status,
+        pdfUrl: transportationInvoices.pdfUrl,
+        bookingCode: transportationBookings.number,
+        clientName: clients.name,
+        clientEmail: clients.email,
+        hotelName: transportationBookings.customerName, // Use as a placeholder or 'Transportation'
+        city: transportationBookings.status, // Use as a placeholder or 'N/A'
+      })
+      .from(transportationInvoices)
+      .leftJoin(transportationBookings, eq(transportationInvoices.transportationBookingId, transportationBookings.id))
+      .leftJoin(clients, eq(transportationBookings.clientId, clients.id));
+
+    const allServiceOrderInvoices = await db
+      .select({
+        id: serviceOrderInvoices.id,
+        number: serviceOrderInvoices.number,
+        bookingId: serviceOrderInvoices.serviceOrderId,
+        amount: serviceOrderInvoices.amount,
+        currency: serviceOrderInvoices.currency,
+        issueDate: serviceOrderInvoices.issueDate,
+        dueDate: serviceOrderInvoices.dueDate,
+        status: serviceOrderInvoices.status,
+        pdfUrl: serviceOrderInvoices.pdfUrl,
+        bookingCode: serviceOrders.number,
+        clientName: clients.name,
+        clientEmail: clients.email,
+        hotelName: serviceOrders.productType, // Use as a placeholder
+        city: serviceOrders.status, // Use as a placeholder
+      })
+      .from(serviceOrderInvoices)
+      .leftJoin(serviceOrders, eq(serviceOrderInvoices.serviceOrderId, serviceOrders.id))
+      .leftJoin(clients, eq(serviceOrders.clientId, clients.id));
+
+    // Combine and sort by issueDate descending
+    const combinedInvoices = [
+      ...allInvoices,
+      ...allTransportationInvoices.map(inv => ({ ...inv, hotelName: 'Transportation' })),
+      ...allServiceOrderInvoices.map(inv => ({ ...inv, hotelName: 'Service Order' }))
+    ].sort((a, b) => {
+      const dateA = a.issueDate ? new Date(a.issueDate).getTime() : 0;
+      const dateB = b.issueDate ? new Date(b.issueDate).getTime() : 0;
+      return dateB - dateA;
+    });
 
     return c.json({
       success: true,
-      data: allInvoices,
+      data: combinedInvoices,
     });
   } catch (error) {
     console.error('Error fetching invoices:', error);
@@ -293,12 +409,12 @@ invoiceRoutes.post('/:bookingId/generate', requireAdmin, async (c) => {
 
     // Get invoiceDate and required dueDate from request body
     const body = await c.req.json().catch(() => ({}));
-    
+
     // Validate required dueDate
     if (!body.dueDate) {
       return c.json({ error: 'dueDate is required' }, 400);
     }
-    
+
     const customInvoiceDate = body.invoiceDate ? new Date(body.invoiceDate) : new Date();
     const customDueDate = new Date(body.dueDate);
     const forceRegenerate = body.forceRegenerate === true;
@@ -342,7 +458,7 @@ invoiceRoutes.post('/:bookingId/generate', requireAdmin, async (c) => {
       await db
         .delete(invoices)
         .where(eq(invoices.id, existingInvoice[0].id));
-      
+
       console.log(`Replacing existing invoice for booking ${bookingId}, deleted invoice ${existingInvoice[0].number}`);
     }
 
@@ -361,6 +477,18 @@ invoiceRoutes.post('/:bookingId/generate', requireAdmin, async (c) => {
       unitPriceType: typeof item.unitPrice
     })));
 
+    // Fetch extra service items (e.g., visa umrah, transportation)
+    const extraServiceItems = await db
+      .select()
+      .from(bookingServiceItems)
+      .where(eq(bookingServiceItems.bookingId, bookingId));
+
+    // Calculate extra service items total
+    const extraTotal = (extraServiceItems || []).reduce((sum, s) => {
+      const sub = Number((s as any).subtotal ?? 0);
+      return sum + (isNaN(sub) ? 0 : sub);
+    }, 0);
+
     // Get pricing periods for items that have them
     const itemsWithPricingPeriods = await Promise.all(
       items.map(async (item) => {
@@ -369,9 +497,9 @@ invoiceRoutes.post('/:bookingId/generate', requireAdmin, async (c) => {
             .select()
             .from(bookingItemPricingPeriods)
             .where(eq(bookingItemPricingPeriods.bookingItemId, item.id));
-          
+
           console.log(`Pricing periods for item ${item.id} (POST):`, pricingPeriods);
-          
+
           return {
             ...item,
             pricingPeriods
@@ -400,10 +528,10 @@ invoiceRoutes.post('/:bookingId/generate', requireAdmin, async (c) => {
       id: 0, // temporary ID
       number: invoiceNumber,
       bookingId: bookingId,
-      amount: bookingData.totalAmount,
+      amount: (Number(bookingData.totalAmount) || 0) + extraTotal,
       currency: 'SAR',
-      issueDate: new Date(),
-      dueDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days from now
+      issueDate: customInvoiceDate,
+      dueDate: customDueDate,
       status: 'draft' as const,
       pdfUrl: null,
     };
@@ -439,7 +567,8 @@ invoiceRoutes.post('/:bookingId/generate', requireAdmin, async (c) => {
       },
       itemsWithPricingPeriods,
       customDueDate,
-      customInvoiceDate
+      customInvoiceDate,
+      extraServiceItems
     );
 
     // Upload to MinIO and save to database
@@ -457,7 +586,7 @@ invoiceRoutes.post('/:bookingId/generate', requireAdmin, async (c) => {
     const newInvoice: NewInvoice = {
       number: invoiceNumber,
       bookingId: bookingId,
-      amount: bookingData.totalAmount,
+      amount: ((Number(bookingData.totalAmount) || 0) + extraTotal).toFixed(2),
       currency: 'SAR',
       issueDate: issueDate,
       dueDate: dueDate,
@@ -491,26 +620,29 @@ invoiceRoutes.get('/by-number/:number', requireAdmin, async (c) => {
       return c.json({ error: 'Invoice number is required' }, 400);
     }
 
-    // Find invoice by number
-    const invoice = await db
-      .select()
-      .from(invoices)
-      .where(eq(invoices.number, invoiceNumber))
-      .limit(1);
+    let pdfUrl: string | null = null;
 
-    if (invoice.length === 0) {
-      return c.json({ error: 'Invoice not found' }, 404);
+    if (invoiceNumber.startsWith('TI-')) {
+      const invoice = await db.select().from(transportationInvoices).where(eq(transportationInvoices.number, invoiceNumber)).limit(1);
+      if (invoice.length === 0) return c.json({ error: 'Invoice not found' }, 404);
+      pdfUrl = invoice[0]!.pdfUrl;
+    } else if (invoiceNumber.startsWith('SOI-')) {
+      const invoice = await db.select().from(serviceOrderInvoices).where(eq(serviceOrderInvoices.number, invoiceNumber)).limit(1);
+      if (invoice.length === 0) return c.json({ error: 'Invoice not found' }, 404);
+      pdfUrl = invoice[0]!.pdfUrl;
+    } else {
+      const invoice = await db.select().from(invoices).where(eq(invoices.number, invoiceNumber)).limit(1);
+      if (invoice.length === 0) return c.json({ error: 'Invoice not found' }, 404);
+      pdfUrl = invoice[0]!.pdfUrl;
     }
 
-    const invoiceData = invoice[0]!;
-
-    if (!invoiceData.pdfUrl) {
+    if (!pdfUrl) {
       return c.json({ error: 'PDF not available for this invoice' }, 404);
     }
 
     // Redirect to MinIO URL or serve the PDF directly
     // For now, we'll redirect to the MinIO URL
-    return c.redirect(invoiceData.pdfUrl);
+    return c.redirect(pdfUrl);
   } catch (error) {
     console.error('Error serving invoice PDF:', error);
     return c.json({ error: 'Failed to serve invoice PDF' }, 500);
@@ -587,10 +719,10 @@ invoiceRoutes.post('/:invoiceId/pay', requireAdmin, async (c) => {
 
     const allowedMethods = ['bank_transfer', 'deposit', 'cash'];
     if (!method || !allowedMethods.includes(method)) {
-      return c.json({ error: 'Invalid or missing payment method' }, 400);
+      return c.json({ error: 'Invalid or missing payment method. Allowed: bank_transfer, deposit, cash' }, 400);
     }
     if (amountNum === undefined || isNaN(amountNum) || amountNum <= 0) {
-      return c.json({ error: 'Invalid payment amount' }, 400);
+      return c.json({ error: 'Payment amount must be a positive number' }, 400);
     }
 
     // Fetch invoice with linked booking/client details
@@ -640,7 +772,7 @@ invoiceRoutes.post('/:invoiceId/pay', requireAdmin, async (c) => {
           : Math.max(totalAmountNum - paidSoFar, 0);
 
     if (remainingBalance <= 0) {
-      return c.json({ error: 'Invoice/booking is already fully paid' }, 400);
+      return c.json({ error: 'Invoice is already fully paid. No remaining balance.' }, 400);
     }
 
     const nowIso = new Date().toISOString();
@@ -648,6 +780,7 @@ invoiceRoutes.post('/:invoiceId/pay', requireAdmin, async (c) => {
     const updated = await db.transaction(async (tx) => {
       let newRemaining = remainingBalance;
       let newPaymentStatus: 'unpaid' | 'partial' | 'paid' | 'overdue' = invoiceRow.bookingPaymentStatus || 'unpaid';
+      let paidThisTxn = 0;
 
       if (method === 'deposit') {
         // Ensure deposit record exists
@@ -676,6 +809,7 @@ invoiceRoutes.post('/:invoiceId/pay', requireAdmin, async (c) => {
 
         const currentBalance = parseFloat(depositRows[0]!.currentBalance);
         const depositUsed = Math.min(amountNum as number, remainingBalance);
+        paidThisTxn = depositUsed;
 
         if (currentBalance < depositUsed) {
           throw new Error(`INSUFFICIENT_DEPOSIT:${currentBalance}:${depositUsed}`);
@@ -737,6 +871,7 @@ invoiceRoutes.post('/:invoiceId/pay', requireAdmin, async (c) => {
       } else if (method === 'bank_transfer' || method === 'cash') {
         const payAmt = Math.min(amountNum as number, remainingBalance);
         const surplusCredit = Math.max((amountNum as number) - remainingBalance, 0);
+        paidThisTxn = payAmt;
 
         // Update booking meta payments for the payment part
         newRemaining = Math.max(remainingBalance - payAmt, 0);
@@ -818,6 +953,19 @@ invoiceRoutes.post('/:invoiceId/pay', requireAdmin, async (c) => {
         }
       }
 
+      // Record payment in invoice_payments
+      const paymentRecord: NewInvoicePayment = {
+        invoiceId,
+        amount: paidThisTxn.toString(),
+        currency: String(invoiceRow.currency || 'SAR'),
+        method,
+        referenceNumber: referenceNumber || undefined,
+        paidAt: new Date(nowIso),
+        status: 'completed',
+        meta: { description: description || null, bookingCode: invoiceRow.bookingCode } as any,
+      };
+      await tx.insert(invoicePayments).values(paymentRecord);
+
       // Update invoice status based on booking payment status and due date
       const now = new Date();
       const isOverdue = (newRemaining > 0) && (invoiceRow.dueDate ? new Date(invoiceRow.dueDate as any) < now : false);
@@ -829,20 +977,17 @@ invoiceRoutes.post('/:invoiceId/pay', requireAdmin, async (c) => {
         .set({ status: newInvoiceStatus })
         .where(eq(invoices.id, invoiceId));
 
-      // Auto-generate receipt if invoice is now fully paid
-      if (newInvoiceStatus === 'paid') {
-        try {
-          // Check if receipt already exists for this booking
-          const existingReceipts = await receiptService.getReceiptsByBooking(bookingId);
-          if (existingReceipts.length === 0) {
-            // Generate receipt automatically
-            await receiptService.generateReceiptForBooking(bookingId);
-            console.log(`Auto-generated receipt for booking ${bookingId} after invoice ${invoiceId} was marked as paid`);
-          }
-        } catch (receiptError) {
-          console.error(`Failed to auto-generate receipt for booking ${bookingId}:`, receiptError);
-          // Don't fail the payment process if receipt generation fails
-        }
+      // Auto-generate receipt for this payment
+      try {
+        await new ReceiptService().generateReceiptForInvoicePayment(invoiceId, {
+          amount: paidThisTxn,
+          method,
+          referenceNumber,
+          paidAt: new Date(nowIso),
+          description,
+        });
+      } catch (receiptError) {
+        console.error(`Failed to generate receipt for payment of invoice ${invoiceId}:`, receiptError);
       }
 
       // Return updated invoice detail (same shape as GET /api/invoices/:id)
@@ -890,7 +1035,7 @@ invoiceRoutes.post('/:invoiceId/pay', requireAdmin, async (c) => {
         400
       );
     }
-    return c.json({ error: 'Failed to record payment' }, 500);
+    return c.json({ error: 'Failed to record payment. Please try again or contact support.' }, 500);
   }
 });
 

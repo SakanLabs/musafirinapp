@@ -9,7 +9,7 @@ export interface InvoiceTemplateData {
   invoiceDate: string;
   dueDate: string;
   templateName?: string;
-  
+
   hotelName: string;
   hotelAddress: string;
   guest: {
@@ -17,13 +17,13 @@ export interface InvoiceTemplateData {
     email: string;
     phone: string;
   };
-  
+
   checkIn: string;
   checkOut: string;
   totalNights: number;
   currency: string;
   mealPlanLabel: string;
-  
+
   items: Array<{
     roomType: string;
     mealPlan: string;
@@ -31,6 +31,11 @@ export interface InvoiceTemplateData {
     nights: number;
     roomRate: string;
     lineTotal: string;
+    // For combined template custom display
+    productName?: string;
+    detailText?: string;
+    nightsDisplay?: string; // "Variable" | "-" | number as string
+    unitPriceVariable?: boolean; // true -> show "Variable" in template
     notes?: string;
     hasPricingPeriods?: boolean;
     pricingPeriods?: Array<{
@@ -41,21 +46,21 @@ export interface InvoiceTemplateData {
       subtotal: string;
     }>;
   }>;
-  
+
   subtotal: string;
   taxAmount: string;
   serviceFee: string;
   grandTotal: string;
   paidAmount: string;
   balanceDue: string;
-  
+
   payments: Array<{
     method: string;
     date: string;
     transactionId: string;
     amount: number;
   }>;
-  
+
   bank: {
     bankName: string;
     bankCountry: string;
@@ -63,12 +68,12 @@ export interface InvoiceTemplateData {
     accountNumberOrIBAN: string;
     swift: string;
   };
-  
+
   billingContact: {
     email: string;
     phone: string;
   };
-  
+
   terms: {
     downPaymentPercent: number;
     settlementDeadline: string;
@@ -76,7 +81,7 @@ export interface InvoiceTemplateData {
     policyCheckInTime: string;
     policyCheckOutTime: string;
   };
-  
+
   notes?: string;
 }
 
@@ -121,7 +126,7 @@ export class TemplateEngine {
   private static instance: TemplateEngine;
   private templateCache: Map<string, string> = new Map();
 
-  private constructor() {}
+  private constructor() { }
 
   public static getInstance(): TemplateEngine {
     if (!TemplateEngine.instance) {
@@ -149,12 +154,139 @@ export class TemplateEngine {
   }
 
   /**
+   * Find the matching {{/each}} for a {{#each}} block, accounting for nesting.
+   * Returns the index of the start of the matching {{/each}} tag,
+   * or -1 if not found.
+   */
+  private findMatchingEachClose(template: string, startAfter: number): number {
+    let depth = 1;
+    let pos = startAfter;
+
+    while (pos < template.length && depth > 0) {
+      const nextOpen = template.indexOf('{{#each ', pos);
+      const nextClose = template.indexOf('{{/each}}', pos);
+
+      if (nextClose === -1) {
+        // No closing tag found
+        return -1;
+      }
+
+      if (nextOpen !== -1 && nextOpen < nextClose) {
+        // Found a nested {{#each}} before the next {{/each}}
+        depth++;
+        pos = nextOpen + 8; // skip past "{{#each "
+      } else {
+        // Found {{/each}}
+        depth--;
+        if (depth === 0) {
+          return nextClose;
+        }
+        pos = nextClose + 9; // skip past "{{/each}}"
+      }
+    }
+
+    return -1;
+  }
+
+  /**
+   * Process a single item template within a loop iteration.
+   * Handles nested {{#each}}, {{#if}}/{{else}}, placeholders, and @root references.
+   */
+  private processItemTemplate(itemHtml: string, item: any, rootData: any): string {
+    // 1. Recursively process nested {{#each}} blocks first
+    itemHtml = this.processEachBlocks(itemHtml, item, rootData);
+
+    // 2. Handle else blocks {{#if variable}}...{{else}}...{{/if}}
+    itemHtml = itemHtml.replace(/\{\{#if\s+(\w+)\}\}([\s\S]*?)\{\{else\}\}([\s\S]*?)\{\{\/if\}\}/g, (condMatch: string, condKey: string, ifContent: string, elseContent: string) => {
+      return item[condKey] ? ifContent : elseContent;
+    });
+
+    // 3. Handle conditional blocks without else {{#if variable}}...{{/if}}
+    itemHtml = itemHtml.replace(/\{\{#if\s+(\w+)\}\}([\s\S]*?)\{\{\/if\}\}/g, (condMatch: string, condKey: string, condContent: string) => {
+      return item[condKey] ? condContent : '';
+    });
+
+    // 4. Handle @root references (before item-level placeholders)
+    itemHtml = itemHtml.replace(/\{\{@root\.(\w+)\}\}/g, (rootMatch: string, rootKey: string) => {
+      return rootData[rootKey] !== undefined ? String(rootData[rootKey]) : rootMatch;
+    });
+
+    // 5. Replace item-level placeholders {{variable}}
+    itemHtml = itemHtml.replace(/\{\{(\w+)\}\}/g, (itemMatch: string, itemKey: string) => {
+      const value = item[itemKey];
+      if (value !== undefined && value !== null) {
+        return String(value);
+      }
+      return itemMatch;
+    });
+
+    return itemHtml;
+  }
+
+  /**
+   * Process all {{#each}} blocks in the template, with support for nesting.
+   * Uses depth-counting to find matching {{#each}}/{{/each}} pairs.
+   */
+  private processEachBlocks(template: string, data: any, rootData?: any): string {
+    const root = rootData || data;
+    let result = '';
+    let pos = 0;
+
+    while (pos < template.length) {
+      const eachOpenStart = template.indexOf('{{#each ', pos);
+
+      if (eachOpenStart === -1) {
+        // No more {{#each}} blocks, append the rest
+        result += template.substring(pos);
+        break;
+      }
+
+      // Append everything before this {{#each}}
+      result += template.substring(pos, eachOpenStart);
+
+      // Find the end of the opening tag: {{#each key}}
+      const eachOpenEnd = template.indexOf('}}', eachOpenStart);
+      if (eachOpenEnd === -1) {
+        // Malformed tag, append as-is
+        result += template.substring(eachOpenStart);
+        break;
+      }
+
+      // Extract the array key
+      const key = template.substring(eachOpenStart + 8, eachOpenEnd).trim();
+      const bodyStart = eachOpenEnd + 2;
+
+      // Find the matching {{/each}}
+      const closeStart = this.findMatchingEachClose(template, bodyStart);
+      if (closeStart === -1) {
+        // No matching close, append as-is
+        result += template.substring(eachOpenStart);
+        break;
+      }
+
+      const itemTemplate = template.substring(bodyStart, closeStart);
+      const array = data[key];
+
+      if (Array.isArray(array)) {
+        result += array.map(item => {
+          return this.processItemTemplate(itemTemplate, item, root);
+        }).join('');
+      }
+      // else: array is not found or not an array -> output nothing
+
+      pos = closeStart + 9; // skip past "{{/each}}"
+    }
+
+    return result;
+  }
+
+  /**
    * Replace placeholders in template with actual data
    */
   private replacePlaceholders(template: string, data: any): string {
     let result = template;
 
-    // Handle simple placeholders {{variable}}
+    // Handle simple placeholders {{variable}} (top-level only, before loops)
     result = result.replace(/\{\{(\w+)\}\}/g, (match, key) => {
       const value = data[key];
       if (value !== undefined && value !== null) {
@@ -163,45 +295,12 @@ export class TemplateEngine {
       return match;
     });
 
-    // Handle conditional blocks {{#if variable}}...{{/if}}
+    // Handle each loops with proper nesting support
+    result = this.processEachBlocks(result, data);
+
+    // Handle top-level conditional blocks {{#if variable}}...{{/if}} (no else)
     result = result.replace(/\{\{#if\s+(\w+)\}\}([\s\S]*?)\{\{\/if\}\}/g, (match, key, content) => {
       return data[key] ? content : '';
-    });
-
-    // Handle each loops {{#each array}}...{{/each}}
-    result = result.replace(/\{\{#each\s+(\w+)\}\}([\s\S]*?)\{\{\/each\}\}/g, (match, key, itemTemplate) => {
-      const array = data[key];
-      if (!Array.isArray(array)) {
-        return '';
-      }
-
-      return array.map(item => {
-        let itemHtml = itemTemplate;
-        
-        // Handle conditional blocks within the loop {{#if variable}}...{{/if}}
-         itemHtml = itemHtml.replace(/\{\{#if\s+(\w+)\}\}([\s\S]*?)\{\{\/if\}\}/g, (condMatch: string, condKey: string, condContent: string) => {
-           return item[condKey] ? condContent : '';
-         });
-         
-         // Handle else blocks {{#if variable}}...{{else}}...{{/if}}
-         itemHtml = itemHtml.replace(/\{\{#if\s+(\w+)\}\}([\s\S]*?)\{\{else\}\}([\s\S]*?)\{\{\/if\}\}/g, (condMatch: string, condKey: string, ifContent: string, elseContent: string) => {
-           return item[condKey] ? ifContent : elseContent;
-         });
-        
-        // Replace placeholders within the loop
-        itemHtml = itemHtml.replace(/\{\{(\w+)\}\}/g, (itemMatch: string, itemKey: string) => {
-          const value = item[itemKey];
-          if (value !== undefined && value !== null) {
-            return String(value);
-          }
-          return itemMatch;
-        });
-        // Handle @root references
-        itemHtml = itemHtml.replace(/\{\{@root\.(\w+)\}\}/g, (rootMatch: string, rootKey: string) => {
-          return data[rootKey] !== undefined ? String(data[rootKey]) : rootMatch;
-        });
-        return itemHtml;
-      }).join('');
     });
 
     // Handle nested property access {{object.property}}
@@ -313,10 +412,10 @@ export class TemplateHelpers {
     if (amount === null || amount === undefined || amount === '') {
       return '0.00';
     }
-    
+
     const numAmount = typeof amount === 'string' ? parseFloat(amount) : Number(amount);
     const validAmount = isNaN(numAmount) ? 0 : numAmount;
-    
+
     return validAmount.toFixed(2);
   }
 
@@ -350,13 +449,14 @@ export class TemplateHelpers {
     client: any,
     bookingItems: any[],
     customDueDate: Date | string,
-    customInvoiceDate?: Date | string
+    customInvoiceDate?: Date | string,
+    extraServiceItems: any[] = []
   ): InvoiceTemplateData {
     const checkInDate = this.formatDate(booking.checkIn);
     const checkOutDate = this.formatDate(booking.checkOut);
     const totalNights = this.calculateDuration(booking.checkIn, booking.checkOut);
     const mealPlanLabel = this.formatMealPlan(booking.mealPlan);
-    
+
     // Map legacy room type codes to readable names (for backward compatibility)
     // New room types will use their original names directly
     const roomTypeMap: { [key: string]: string } = {
@@ -364,7 +464,7 @@ export class TemplateHelpers {
       'TPL': 'Triple',
       'Quad': 'Quad'
     };
-    
+
     // Map booking items to invoice items and calculate totals
     let subtotalAmount = 0;
     const items = bookingItems.map((item) => {
@@ -372,24 +472,24 @@ export class TemplateHelpers {
       let lineTotal = 0;
       let roomRatePerNight = 0;
       let pricingPeriods: any[] = [];
-      
+
       if (item.hasPricingPeriods && item.pricingPeriods && item.pricingPeriods.length > 0) {
         console.log('Processing item with pricing periods:', {
           roomType: item.roomType,
           pricingPeriodsCount: item.pricingPeriods.length
         });
-        
+
         // Item has pricing periods - use them for calculations
         pricingPeriods = item.pricingPeriods.map((period: any) => {
-          const unitPrice = typeof period.unitPrice === 'string' 
-            ? parseFloat(period.unitPrice) 
+          const unitPrice = typeof period.unitPrice === 'string'
+            ? parseFloat(period.unitPrice)
             : Number(period.unitPrice);
-          const periodSubtotal = typeof period.subtotal === 'string' 
-            ? parseFloat(period.subtotal) 
+          const periodSubtotal = typeof period.subtotal === 'string'
+            ? parseFloat(period.subtotal)
             : Number(period.subtotal);
-          
+
           lineTotal += periodSubtotal;
-          
+
           return {
             startDate: this.formatDate(period.startDate),
             endDate: this.formatDate(period.endDate),
@@ -398,7 +498,7 @@ export class TemplateHelpers {
             subtotal: TemplateHelpers.formatCurrency(periodSubtotal)
           };
         });
-        
+
         // For pricing periods, roomRate is shown as "Variable" in template
         roomRatePerNight = 0; // Not used when hasPricingPeriods is true
       } else {
@@ -410,15 +510,15 @@ export class TemplateHelpers {
           totalNights,
           hasPricingPeriods: item.hasPricingPeriods
         });
-        
-        const unitPriceValue = typeof item.unitPrice === 'string' 
-          ? parseFloat(item.unitPrice) 
+
+        const unitPriceValue = typeof item.unitPrice === 'string'
+          ? parseFloat(item.unitPrice)
           : Number(item.unitPrice);
         const unitPrice = isNaN(unitPriceValue) ? 0 : unitPriceValue;
-        
+
         roomRatePerNight = unitPrice;
         lineTotal = unitPrice * quantity * totalNights;
-        
+
         console.log('Calculated values for non-pricing-period item:', {
           unitPriceValue,
           unitPrice,
@@ -428,19 +528,19 @@ export class TemplateHelpers {
           isValidCalculation: !isNaN(lineTotal) && lineTotal > 0
         });
       }
-      
+
       subtotalAmount += lineTotal;
-      
+
       const formattedRoomRate = TemplateHelpers.formatCurrency(roomRatePerNight) || '0.00';
       const formattedLineTotal = TemplateHelpers.formatCurrency(lineTotal) || '0.00';
-      
+
       console.log('Creating finalItem with hasPricingPeriods:', {
         itemHasPricingPeriods: item.hasPricingPeriods,
         itemHasPricingPeriodsType: typeof item.hasPricingPeriods,
         pricingPeriodsLength: item.pricingPeriods?.length || 0,
         finalHasPricingPeriods: item.hasPricingPeriods || false
       });
-      
+
       const finalItem = {
         roomType: roomTypeMap[item.roomType] || item.roomType || 'Standard Room',
         mealPlan: this.formatMealPlan(booking.mealPlan) || 'No Meal',
@@ -448,10 +548,15 @@ export class TemplateHelpers {
         nights: totalNights || 0,
         roomRate: formattedRoomRate,
         lineTotal: formattedLineTotal,
+        // Business rules for combined invoice display
+        productName: booking.hotelName || 'Hotel',
+        detailText: `${roomTypeMap[item.roomType] || item.roomType} • ${this.formatDate(booking.checkIn)} - ${this.formatDate(booking.checkOut)}`,
+        nightsDisplay: (item.hasPricingPeriods ? 'Variable' : String(totalNights || 0)),
+        unitPriceVariable: !!item.hasPricingPeriods,
         hasPricingPeriods: item.hasPricingPeriods || false,
         pricingPeriods: pricingPeriods || []
       };
-      
+
       console.log('Final item data sent to template:', {
         roomType: finalItem.roomType,
         roomRate: finalItem.roomRate,
@@ -461,20 +566,75 @@ export class TemplateHelpers {
         nights: finalItem.nights,
         pricingPeriodsCount: finalItem.pricingPeriods.length
       });
-      
+
       return finalItem;
     });
+
+    // Append extra service items (e.g., Visa Umrah, Transportation) to invoice items
+    const serviceTypeLabelMap: Record<string, string> = {
+      visa_umrah: 'Visa Umrah',
+      transportasi: 'Transportation/Bus Full Trip',
+      other: 'Other Service',
+    };
+    const mappedServiceItems = (extraServiceItems || []).map((sItem: any, idx: number) => {
+      const qty = sItem.quantity || 1;
+      const unitPriceVal = typeof sItem.unitPrice === 'string' ? parseFloat(sItem.unitPrice) : Number(sItem.unitPrice);
+      const subtotalVal = typeof sItem.subtotal === 'string' ? parseFloat(sItem.subtotal) : Number(sItem.subtotal);
+      const lineTotal = isNaN(subtotalVal) ? qty * (isNaN(unitPriceVal) ? 0 : unitPriceVal) : subtotalVal;
+      subtotalAmount += lineTotal;
+      const isVisaUmrah = sItem.serviceType === 'visa_umrah';
+      const isTransportasi = sItem.serviceType === 'transportasi';
+      const productName = isVisaUmrah
+        ? 'Visa Umrah'
+        : isTransportasi
+          ? (sItem.meta?.vehicleType || 'Transportasi')
+          : (serviceTypeLabelMap[sItem.serviceType] || 'Service');
+      const detailText = isVisaUmrah
+        ? 'Visa Umrah'
+        : isTransportasi
+          ? (sItem.meta?.route || sItem.description || '-')
+          : (sItem.description || '-');
+      console.log('Mapping extra service item to invoice row:', {
+        index: idx,
+        raw: sItem,
+        qty,
+        unitPriceVal,
+        subtotalVal,
+        computedLineTotal: lineTotal,
+        productName,
+        detailText,
+        isVisaUmrah,
+        isTransportasi
+      });
+      return {
+        roomType: serviceTypeLabelMap[sItem.serviceType] || sItem.serviceType || 'Service',
+        mealPlan: '-',
+        quantity: qty,
+        nights: 0,
+        roomRate: TemplateHelpers.formatCurrency(unitPriceVal),
+        lineTotal: TemplateHelpers.formatCurrency(lineTotal),
+        productName,
+        detailText,
+        nightsDisplay: '-',
+        unitPriceVariable: false,
+        hasPricingPeriods: false,
+        pricingPeriods: []
+      };
+    });
+
+    // Merge items arrays
+    const allItems = [...items, ...mappedServiceItems];
 
     // Calculate totals
     const subtotal = subtotalAmount;
     const taxAmount = 0; // Default to 0, can be calculated based on business rules
     const serviceFee = 0; // Default to 0, can be calculated based on business rules
     const grandTotal = subtotal + taxAmount + serviceFee;
-    
+
     // Process payments from booking meta or create default based on payment status
     let payments: any[] = [];
     let paidAmount = 0;
-    
+
     // Check if payments exist in booking meta
     if (booking.meta && booking.meta.payments) {
       payments = booking.meta.payments.map((p: any) => ({
@@ -504,11 +664,11 @@ export class TemplateHelpers {
         }];
       }
     }
-    
+
     const balanceDue = grandTotal - paidAmount;
 
     // Determine hotel address based on city
-    const hotelAddress = booking.city === 'Makkah' 
+    const hotelAddress = booking.city === 'Makkah'
       ? 'Central Area, Makkah, Saudi Arabia'
       : 'Central Area, Madinah, Saudi Arabia';
 
@@ -521,7 +681,7 @@ export class TemplateHelpers {
       invoiceNo: invoice.number,
       invoiceDate: this.formatDate(customInvoiceDate || invoice.createdAt || new Date()),
       dueDate: this.formatDate(customDueDate),
-      
+
       hotelName: booking.hotelName || 'Hotel Name',
       hotelAddress,
       guest: {
@@ -529,24 +689,24 @@ export class TemplateHelpers {
         email: client.email,
         phone: client.phone || ''
       },
-      
+
       checkIn: checkInDate,
       checkOut: checkOutDate,
       totalNights,
       currency: invoice.currency || 'SAR',
       mealPlanLabel,
-      
-      items,
-      
+
+      items: allItems,
+
       subtotal: TemplateHelpers.formatCurrency(subtotal),
       taxAmount: TemplateHelpers.formatCurrency(taxAmount),
       serviceFee: TemplateHelpers.formatCurrency(serviceFee),
       grandTotal: TemplateHelpers.formatCurrency(grandTotal),
       paidAmount: TemplateHelpers.formatCurrency(paidAmount),
       balanceDue: TemplateHelpers.formatCurrency(balanceDue),
-      
+
       payments,
-      
+
       bank: {
         bankName: "Bank Syariah Indonesia",
         bankCountry: "Indonesia",
@@ -554,12 +714,12 @@ export class TemplateHelpers {
         accountNumberOrIBAN: "7254459741",
         swift: ""
       },
-      
+
       billingContact: {
         email: "hotel@musafirin.co",
         phone: "+6281235623973"
       },
-      
+
       terms: {
         downPaymentPercent: 30,
         settlementDeadline: this.formatDate(customDueDate),
@@ -567,19 +727,26 @@ export class TemplateHelpers {
         policyCheckInTime: "15:00",
         policyCheckOutTime: "12:00"
       },
-      
+
       notes: "Harap bawa ID saat check-in."
     };
-    
-    // Determine which template to use based on pricing periods
-    const hasAnyPricingPeriods = items.some(item => item.hasPricingPeriods);
-    const templateName = hasAnyPricingPeriods ? 'invoice.html' : 'invoice-simple.html';
-    
+
+    // Determine which template to use
+    // 1) Combined invoice when there are hotel items (nights > 0) AND service items (nights == 0)
+    // 2) Hotel with variable pricing -> invoice.html
+    // 3) Simple hotel (flat rate) -> invoice-simple.html
+    const hasAnyPricingPeriods = allItems.some(item => item.hasPricingPeriods);
+    const hasHotelItems = allItems.some(item => (item.nights || 0) > 0);
+    const hasServiceItems = allItems.some(item => (item.nights || 0) === 0);
+    const templateName = (hasHotelItems && hasServiceItems)
+      ? 'invoice-combined.html'
+      : (hasAnyPricingPeriods ? 'invoice.html' : 'invoice-simple.html');
+
     console.log('Final data being sent to template:', {
       templateName,
-      itemsCount: finalData.items.length,
+      itemsCount: allItems.length,
       hasAnyPricingPeriods,
-      items: finalData.items.map((item, index) => ({
+      items: allItems.map((item, index) => ({
         index,
         roomType: item.roomType,
         roomRate: item.roomRate,
@@ -590,12 +757,16 @@ export class TemplateHelpers {
         hasPricingPeriodsType: typeof item.hasPricingPeriods,
         pricingPeriodsCount: item.pricingPeriods?.length || 0,
         quantity: item.quantity,
-        nights: item.nights
+        nights: item.nights,
+        productName: item.productName,
+        detailText: item.detailText,
+        nightsDisplay: item.nightsDisplay,
+        unitPriceVariable: item.unitPriceVariable
       })),
       subtotal: finalData.subtotal,
       grandTotal: finalData.grandTotal
     });
-    
+
     return {
       ...finalData,
       templateName
@@ -632,7 +803,7 @@ export class TemplateHelpers {
     const roomsDetail = bookingItems.map(item => {
       let remarks = '';
       let pricingPeriods: any[] = [];
-      
+
       if (item.hasPricingPeriods && item.pricingPeriods && item.pricingPeriods.length > 0) {
         remarks = 'Variable pricing periods - see details';
         pricingPeriods = item.pricingPeriods.map((period: any) => ({
@@ -644,7 +815,7 @@ export class TemplateHelpers {
       } else {
         remarks = `${duration} nights total`;
       }
-      
+
       return {
         roomType: item.roomType,
         mealPlan: this.formatMealPlan(booking.mealPlan),

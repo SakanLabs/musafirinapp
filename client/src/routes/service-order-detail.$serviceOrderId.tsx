@@ -1,9 +1,10 @@
 import { createFileRoute, redirect, useNavigate } from "@tanstack/react-router"
+import { toast } from "sonner"
 import { PageLayout } from "@/components/layout/PageLayout"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { 
+import {
   ArrowLeft,
   FileText,
   Share,
@@ -41,18 +42,18 @@ export const Route = createFileRoute("/service-order-detail/$serviceOrderId")({
 function ServiceOrderDetailPage() {
   const { serviceOrderId } = Route.useParams()
   const navigate = useNavigate()
-  
+
   // State for modals
   const [isDueDateModalOpen, setIsDueDateModalOpen] = useState(false)
   const [isStatusModalOpen, setIsStatusModalOpen] = useState(false)
   const [isRegenerateMode, setIsRegenerateMode] = useState(false)
-  
+
   // Fetch service order data using TanStack Query
   const { data: serviceOrder, isLoading, error } = useServiceOrder(serviceOrderId)
-  
+
   // Check if invoice already exists
   const { data: existingInvoice, isLoading: isInvoiceLoading } = useServiceOrderInvoice(serviceOrderId)
-  
+
   // Mutations
   const deleteServiceOrder = useDeleteServiceOrder()
   const generateInvoice = useGenerateServiceOrderInvoice()
@@ -65,26 +66,27 @@ function ServiceOrderDetailPage() {
 
   const handleDelete = async () => {
     if (!serviceOrder) return
-    
+
     const confirmed = window.confirm(
       `Are you sure you want to delete service order ${serviceOrder.number}? This action cannot be undone.`
     )
-    
+
     if (confirmed) {
       try {
         await deleteServiceOrder.mutateAsync(serviceOrderId)
-        alert('Service order deleted successfully!')
+        toast.success('Service order deleted successfully!')
         navigate({ to: '/service-orders' })
       } catch (error) {
         console.error('Error deleting service order:', error)
-        alert('Failed to delete service order. Please try again.')
+        const msg = error instanceof Error ? error.message : 'An unexpected error occurred'
+        toast.error(msg)
       }
     }
   }
 
   const handleShareWhatsApp = () => {
     if (!serviceOrder) return
-    
+
     const message = `Service Order Details:
 SO Number: ${serviceOrder.number || 'N/A'}
 Client: ${serviceOrder.clientName || 'N/A'}
@@ -95,33 +97,34 @@ Total People: ${serviceOrder.totalPeople || 0}
 Departure: ${serviceOrder.departureDate ? formatDate(serviceOrder.departureDate) : 'N/A'}
 Return: ${serviceOrder.returnDate ? formatDate(serviceOrder.returnDate) : 'N/A'}
 Total: ${serviceOrder.totalPriceUSD ? formatCurrency(serviceOrder.totalPriceUSD, 'USD') : 'N/A'}`
-    
+
     const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(message)}`
     window.open(whatsappUrl, '_blank')
   }
 
   const handleInvoiceSubmit = async (dueDate: string) => {
     if (!serviceOrder) return
-    
+
     try {
       if (isRegenerateMode) {
         await regenerateInvoice.mutateAsync({
           serviceOrderId,
           customDueDate: dueDate
         })
-        alert('Invoice regenerated successfully!')
+        toast.success('Invoice regenerated successfully!')
       } else {
         await generateInvoice.mutateAsync({
           serviceOrderId,
           customDueDate: dueDate
         })
-        alert('Invoice generated successfully!')
+        toast.success('Invoice generated successfully!')
       }
       setIsDueDateModalOpen(false)
       setIsRegenerateMode(false)
     } catch (error) {
       console.error('Error with invoice:', error)
-      alert(`Failed to ${isRegenerateMode ? 'regenerate' : 'generate'} invoice. Please try again.`)
+      const msg = error instanceof Error ? error.message : `Failed to ${isRegenerateMode ? 'regenerate' : 'generate'} invoice`
+      toast.error(msg)
     }
   }
 
@@ -143,17 +146,18 @@ Total: ${serviceOrder.totalPriceUSD ? formatCurrency(serviceOrder.totalPriceUSD,
 
   const handleUpdateStatus = async (status: ServiceOrderStatus) => {
     if (!serviceOrder) return
-    
+
     try {
       await updateStatus.mutateAsync({
         serviceOrderId,
         status
       })
       setIsStatusModalOpen(false)
-      alert('Status updated successfully!')
+      toast.success('Status updated successfully!')
     } catch (error) {
       console.error('Error updating status:', error)
-      alert('Failed to update status. Please try again.')
+      const msg = error instanceof Error ? error.message : 'An unexpected error occurred'
+      toast.error(msg)
     }
   }
 
@@ -183,8 +187,8 @@ Total: ${serviceOrder.totalPriceUSD ? formatCurrency(serviceOrder.totalPriceUSD,
         {/* Header */}
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-4">
-            <Button 
-              variant="outline" 
+            <Button
+              variant="outline"
               size="sm"
               onClick={() => navigate({ to: "/service-orders" })}
             >
@@ -235,34 +239,34 @@ Total: ${serviceOrder.totalPriceUSD ? formatCurrency(serviceOrder.totalPriceUSD,
                   View Invoice
                 </Button>
                 <Button
-                   variant="outline"
-                   size="sm"
-                   onClick={openRegenerateModal}
-                   disabled={regenerateInvoice.isPending}
-                 >
-                   {regenerateInvoice.isPending ? (
-                     <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                   ) : (
-                     <RefreshCw className="h-4 w-4 mr-2" />
-                   )}
-                   Regenerate Invoice
-                 </Button>
-               </>
-             ) : (
-               // Show Generate button if no invoice exists
-               <Button
-                 variant="outline"
-                 size="sm"
-                 onClick={openGenerateModal}
-                 disabled={generateInvoice.isPending || isInvoiceLoading}
-               >
-                 {generateInvoice.isPending ? (
-                   <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                 ) : (
-                   <Receipt className="h-4 w-4 mr-2" />
-                 )}
-                 Generate Invoice
-               </Button>
+                  variant="outline"
+                  size="sm"
+                  onClick={openRegenerateModal}
+                  disabled={regenerateInvoice.isPending}
+                >
+                  {regenerateInvoice.isPending ? (
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  ) : (
+                    <RefreshCw className="h-4 w-4 mr-2" />
+                  )}
+                  Regenerate Invoice
+                </Button>
+              </>
+            ) : (
+              // Show Generate button if no invoice exists
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={openGenerateModal}
+                disabled={generateInvoice.isPending || isInvoiceLoading}
+              >
+                {generateInvoice.isPending ? (
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                ) : (
+                  <Receipt className="h-4 w-4 mr-2" />
+                )}
+                Generate Invoice
+              </Button>
             )}
             <Button
               variant="outline"
@@ -285,7 +289,7 @@ Total: ${serviceOrder.totalPriceUSD ? formatCurrency(serviceOrder.totalPriceUSD,
           <CardHeader>
             <CardTitle className="flex items-center justify-between">
               <span>Order Status</span>
-              <Badge 
+              <Badge
                 className={getStatusColor(serviceOrder.status)}
               >
                 {serviceOrder.status}

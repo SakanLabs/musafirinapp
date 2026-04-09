@@ -156,3 +156,20 @@ export function useBackfillInvoiceStatus() {
     },
   });
 }
+
+// Hapus invoice
+export function useDeleteInvoice() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const response = await apiClient.delete<{ success: boolean; message?: string }>(API_ENDPOINTS.INVOICE_BY_ID(id));
+      return response;
+    },
+    onSuccess: (_res, id) => {
+      // Invalidasi daftar dan detail invoice
+      queryClient.invalidateQueries({ queryKey: invoiceKeys.lists() });
+      queryClient.invalidateQueries({ queryKey: invoiceKeys.detail(id) });
+    },
+  });
+}

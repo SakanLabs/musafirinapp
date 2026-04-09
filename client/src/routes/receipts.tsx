@@ -1,28 +1,30 @@
-import { createFileRoute, redirect } from "@tanstack/react-router"
+import { createFileRoute, redirect, Link } from "@tanstack/react-router"
+import { toast } from "sonner"
 import { PageLayout } from "@/components/layout/PageLayout"
 import { DataTable, Column } from "@/components/ui/data-table"
 import { Button } from "@/components/ui/button"
-import { 
+import {
   Receipt as ReceiptIcon,
   Download,
   Eye,
   Filter,
   Loader2,
-  FileText
+  FileText,
+  Plus
 } from "lucide-react"
 import { formatCurrency, formatDate } from "@/lib/utils"
 import { useReceipts, type Receipt } from "@/lib/queries/receipts"
 import { useState } from "react"
 import { authService } from "@/lib/auth"
 
-export const Route = createFileRoute("/receipts")({ 
+export const Route = createFileRoute("/receipts")({
   beforeLoad: async () => {
     // Check if user is authenticated
     const isAuthenticated = await authService.isAuthenticated()
     if (!isAuthenticated) {
       throw redirect({ to: '/login' })
     }
-    
+
     // Check if user is admin
     const isAdmin = await authService.isAdmin()
     if (!isAdmin) {
@@ -35,10 +37,10 @@ export const Route = createFileRoute("/receipts")({
 function ReceiptsPage() {
   const [currentPage, setCurrentPage] = useState(1)
   const [pageSize] = useState(10)
-  
+
   // Fetch receipts using TanStack Query
   const { data: receiptsResponse, isLoading, error } = useReceipts(currentPage, pageSize)
-  
+
   const receipts = receiptsResponse?.data || []
   const pagination = receiptsResponse?.pagination
 
@@ -91,7 +93,7 @@ function ReceiptsPage() {
             variant="ghost"
             onClick={() => {
               // For now, just show receipt info in alert
-              alert(`Receipt ${receipt.number}\nClient: ${receipt.clientName}\nAmount: ${formatCurrency(receipt.amount, receipt.currency)}\nBooking: ${receipt.bookingCode}`)
+              toast.info(`Receipt ${receipt.number} — Client: ${receipt.clientName}, Amount: ${formatCurrency(receipt.amount, receipt.currency)}, Booking: ${receipt.bookingCode}`)
             }}
             title="View Receipt Detail"
           >
@@ -124,6 +126,12 @@ function ReceiptsPage() {
           <Button variant="outline">
             <Filter className="h-4 w-4 mr-2" />
             Filter
+          </Button>
+          <Button asChild>
+            <Link to="/create-receipt">
+              <Plus className="h-4 w-4 mr-2" />
+              Create Receipt
+            </Link>
           </Button>
         </div>
       }
@@ -190,7 +198,7 @@ function ReceiptsPage() {
               columns={receiptColumns}
               emptyMessage="No receipts found"
             />
-            
+
             {/* Pagination */}
             {pagination && pagination.totalPages > 1 && (
               <div className="px-6 py-4 border-t border-gray-200 flex items-center justify-between">

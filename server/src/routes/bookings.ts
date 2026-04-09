@@ -99,7 +99,8 @@ bookingRoutes.get('/', requireAdmin, async (c) => {
 // GET /api/bookings/:id - Get booking by ID
 bookingRoutes.get('/:id', requireAdmin, async (c) => {
   try {
-    const bookingId = parseInt(c.req.param('id'));
+    const idParam = c.req.param('id').replace(/["']/g, '');
+    const bookingId = parseInt(idParam);
 
     if (!bookingId || isNaN(bookingId)) {
       return c.json({ error: 'Invalid booking ID' }, 400);
@@ -136,7 +137,7 @@ bookingRoutes.get('/:id', requireAdmin, async (c) => {
     }
 
     const bookingData = result[0];
-    
+
     if (!bookingData) {
       return c.json({ error: 'Booking not found' }, 404);
     }
@@ -155,7 +156,7 @@ bookingRoutes.get('/:id', requireAdmin, async (c) => {
             .select()
             .from(bookingItemPricingPeriods)
             .where(eq(bookingItemPricingPeriods.bookingItemId, item.id));
-          
+
           return {
             ...item,
             pricingPeriods
@@ -205,7 +206,7 @@ bookingRoutes.post('/', requireAdmin, async (c) => {
 
     // Validate required fields
     if (!client?.name || !client?.email || !booking?.hotelName || !booking?.city || !booking?.checkIn || !booking?.checkOut || !items?.length) {
-      return c.json({ error: 'Missing required fields' }, 400);
+      return c.json({ error: 'Missing required fields: client (name, email), booking (hotelName, city, checkIn, checkOut), and items are required' }, 400);
     }
 
     // Validate payment payload (optional but must be correct if provided)
@@ -213,10 +214,10 @@ bookingRoutes.post('/', requireAdmin, async (c) => {
     const paymentMethod = payment?.method as 'bank_transfer' | 'deposit' | 'cash' | undefined;
     const paymentAmount = payment?.amount !== undefined ? parseFloat(payment.amount) : undefined;
     if (paymentMethod && !allowedMethods.includes(paymentMethod)) {
-      return c.json({ error: 'Invalid payment method' }, 400);
+      return c.json({ error: 'Invalid payment method. Allowed: bank_transfer, deposit, cash' }, 400);
     }
     if (paymentMethod && (paymentAmount === undefined || isNaN(paymentAmount) || paymentAmount <= 0)) {
-      return c.json({ error: 'Invalid payment amount' }, 400);
+      return c.json({ error: 'Payment amount must be a positive number' }, 400);
     }
 
     // Start transaction
@@ -241,7 +242,7 @@ bookingRoutes.post('/', requireAdmin, async (c) => {
               email: client.email,
             })
             .where(eq(clients.id, clientRecord.id));
-          
+
           clientRecord = { ...clientRecord, name: client.name, phone: client.phone, email: client.email };
         }
       } else {
@@ -250,12 +251,12 @@ bookingRoutes.post('/', requireAdmin, async (c) => {
           email: client.email,
           phone: client.phone || null,
         };
-        
+
         const [insertedClient] = await tx
           .insert(clients)
           .values(newClient)
           .returning();
-        
+
         clientRecord = insertedClient!;
       }
 
@@ -415,7 +416,7 @@ bookingRoutes.post('/', requireAdmin, async (c) => {
       for (let i = 0; i < items.length; i++) {
         const item = items[i];
         const insertedItem = insertedItems[i];
-        
+
         if (item.hasPricingPeriods && item.pricingPeriods && Array.isArray(item.pricingPeriods)) {
           const pricingPeriodsData: NewBookingItemPricingPeriod[] = item.pricingPeriods.map((period: any) => ({
             bookingItemId: insertedItem!.id,
@@ -544,14 +545,15 @@ bookingRoutes.post('/', requireAdmin, async (c) => {
     }, 201);
   } catch (error) {
     console.error('Error creating booking:', error);
-    return c.json({ error: 'Failed to create booking' }, 500);
+    return c.json({ error: 'Failed to create booking. Please try again or contact support.' }, 500);
   }
 });
 
 // PUT /api/bookings/:id - Update booking with full data
 bookingRoutes.put('/:id', requireAdmin, async (c) => {
   try {
-    const bookingId = parseInt(c.req.param('id'));
+    const idParam = c.req.param('id').replace(/["']/g, '');
+    const bookingId = parseInt(idParam);
     const body = await c.req.json();
 
     if (!bookingId || isNaN(bookingId)) {
@@ -559,16 +561,16 @@ bookingRoutes.put('/:id', requireAdmin, async (c) => {
     }
 
     // Validate required fields
-    const { 
-      guestName, 
-      guestEmail, 
-      guestPhone, 
-      checkInDate, 
-      checkOutDate, 
-      roomType, 
+    const {
+      guestName,
+      guestEmail,
+      guestPhone,
+      checkInDate,
+      checkOutDate,
+      roomType,
       mealPlan,
-      numberOfGuests, 
-      totalAmount, 
+      numberOfGuests,
+      totalAmount,
       status,
       specialRequests,
       hotelCostPerNight,
@@ -577,7 +579,7 @@ bookingRoutes.put('/:id', requireAdmin, async (c) => {
     } = body;
 
     if (!guestName || !guestEmail || !guestPhone || !checkInDate || !checkOutDate || !numberOfGuests || !totalAmount) {
-      return c.json({ error: 'Missing required fields' }, 400);
+      return c.json({ error: 'Missing required fields: hotelName, checkIn, checkOut, and items are required' }, 400);
     }
 
     // Support both legacy single room format and new multiple rooms format
@@ -604,7 +606,7 @@ bookingRoutes.put('/:id', requireAdmin, async (c) => {
     }
 
     const clientId = existingBooking[0]?.clientId;
-    
+
     if (!clientId) {
       return c.json({ error: 'Client not found for booking' }, 404);
     }
@@ -664,16 +666,19 @@ bookingRoutes.put('/:id', requireAdmin, async (c) => {
 
     // Insert new items for each room
     for (const room of roomsData) {
+      const hasPricingPeriods = room.pricingPeriods && room.pricingPeriods.length > 0;
+
       const [newItem] = await db.insert(bookingItems).values({
         bookingId: bookingId,
         roomType: room.roomType as 'DBL' | 'TPL' | 'Quad',
         roomCount: room.roomCount || 1,
         unitPrice: room.unitPrice.toString(),
         hotelCostPrice: room.hotelCostPrice ? room.hotelCostPrice.toString() : '0',
+        hasPricingPeriods: hasPricingPeriods,
       }).returning();
 
       // Insert pricing periods if they exist
-      if (room.pricingPeriods && room.pricingPeriods.length > 0 && newItem) {
+      if (hasPricingPeriods && newItem) {
         const pricingPeriodsData = room.pricingPeriods.map((period: any) => ({
           bookingItemId: newItem.id,
           startDate: new Date(period.startDate),
@@ -770,14 +775,15 @@ bookingRoutes.put('/:id', requireAdmin, async (c) => {
     });
   } catch (error) {
     console.error('Error updating booking:', error);
-    return c.json({ error: 'Failed to update booking' }, 500);
+    return c.json({ error: 'Failed to update booking. Please try again or contact support.' }, 500);
   }
 });
 
 // PATCH /api/bookings/:id - Update booking status and hotel confirmation number
 bookingRoutes.patch('/:id', requireAdmin, async (c) => {
   try {
-    const bookingId = parseInt(c.req.param('id'));
+    const idParam = c.req.param('id').replace(/["']/g, '');
+    const bookingId = parseInt(idParam);
     const body = await c.req.json();
     const { paymentStatus, bookingStatus, hotelConfirmationNo } = body;
 
@@ -840,6 +846,30 @@ bookingRoutes.patch('/:id', requireAdmin, async (c) => {
       .where(eq(bookings.id, bookingId))
       .returning();
 
+    // Sync invoice status when paymentStatus changes
+    if (paymentStatus) {
+      const inv = await db
+        .select({ id: invoices.id, dueDate: invoices.dueDate })
+        .from(invoices)
+        .where(eq(invoices.bookingId, bookingId))
+        .limit(1);
+
+      if (inv.length > 0) {
+        const now = new Date();
+        const isOverdue = paymentStatus !== 'paid' &&
+          inv[0]!.dueDate != null && new Date(inv[0]!.dueDate as any) < now;
+        const newInvoiceStatus: 'draft' | 'sent' | 'paid' | 'overdue' | 'cancelled' =
+          paymentStatus === 'paid' ? 'paid'
+            : isOverdue ? 'overdue'
+              : 'sent';
+
+        await db
+          .update(invoices)
+          .set({ status: newInvoiceStatus })
+          .where(eq(invoices.id, inv[0]!.id));
+      }
+    }
+
     return c.json({
       success: true,
       data: updatedBooking,
@@ -862,7 +892,8 @@ bookingRoutes.patch('/:id', requireAdmin, async (c) => {
  */
 bookingRoutes.post('/:id/pay', requireAdmin, async (c) => {
   try {
-    const bookingId = parseInt(c.req.param('id'));
+    const idParam = c.req.param('id').replace(/["']/g, '');
+    const bookingId = parseInt(idParam);
     if (!bookingId || isNaN(bookingId)) {
       return c.json({ error: 'Invalid booking ID' }, 400);
     }
@@ -875,10 +906,10 @@ bookingRoutes.post('/:id/pay', requireAdmin, async (c) => {
 
     const allowedMethods = ['bank_transfer', 'deposit', 'cash'];
     if (!method || !allowedMethods.includes(method)) {
-      return c.json({ error: 'Invalid or missing payment method' }, 400);
+      return c.json({ error: 'Invalid or missing payment method. Allowed: bank_transfer, deposit, cash' }, 400);
     }
     if (amountNum === undefined || isNaN(amountNum) || amountNum <= 0) {
-      return c.json({ error: 'Invalid payment amount' }, 400);
+      return c.json({ error: 'Payment amount must be a positive number' }, 400);
     }
 
     // Fetch booking (needs clientId, totalAmount, paymentStatus, meta, code)
@@ -931,7 +962,7 @@ bookingRoutes.post('/:id/pay', requireAdmin, async (c) => {
           : Math.max(totalAmountNum - paidSoFar, 0);
 
     if (remainingBalance <= 0) {
-      return c.json({ error: 'Booking is already fully paid' }, 400);
+      return c.json({ error: 'Booking is already fully paid. No remaining balance.' }, 400);
     }
 
     const nowIso = new Date().toISOString();
@@ -1219,7 +1250,8 @@ bookingRoutes.post('/:id/pay', requireAdmin, async (c) => {
 // DELETE /api/bookings/:id - Delete booking and related records
 bookingRoutes.delete('/:id', requireAdmin, async (c) => {
   try {
-    const bookingId = parseInt(c.req.param('id'));
+    const idParam = c.req.param('id').replace(/["']/g, '');
+    const bookingId = parseInt(idParam);
 
     if (!bookingId || isNaN(bookingId)) {
       return c.json({ error: 'Invalid booking ID' }, 400);

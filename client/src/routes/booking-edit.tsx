@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { SARAmount, SaudiRiyalIcon } from "@/components/ui/sar-currency"
-import { 
+import {
   ArrowLeft,
   Save,
   Loader2,
@@ -37,7 +37,7 @@ export const Route = createFileRoute("/booking-edit")({
 function EditBookingPage() {
   const { id } = Route.useSearch()
   const navigate = useNavigate()
-  
+
   // Fetch booking data using TanStack Query
   const { data: booking, isLoading, error } = useBooking(id)
   const updateBookingMutation = useUpdateBooking()
@@ -58,30 +58,17 @@ function EditBookingPage() {
     status: 'pending' as 'pending' | 'confirmed' | 'cancelled'
   })
 
-  const [rooms, setRooms] = useState<CreateBookingRoomItem[]>([
-    {
-      roomType: "",
-      roomCount: 1,
-      unitPrice: 0,
-      hotelCostPrice: 0
-    }
-  ])
+  const [rooms, setRooms] = useState<CreateBookingRoomItem[]>([])
 
   const [hasPricingPeriods, setHasPricingPeriods] = useState(false)
-  const [pricingPeriods, setPricingPeriods] = useState<PricingPeriod[]>([
-    {
-      startDate: "",
-      endDate: "",
-      nights: 0,
-      unitPrice: 0,
-      hotelCostPrice: 0,
-      subtotal: 0
-    }
-  ])
+  const [pricingPeriods, setPricingPeriods] = useState<PricingPeriod[]>([])
 
   // Initialize form data when booking data is loaded
   useEffect(() => {
     if (booking) {
+      console.log('🔍 Booking data loaded:', booking)
+      console.log('📦 Booking items:', booking.items)
+
       setFormData({
         guestName: booking.clientName || '',
         guestEmail: booking.clientEmail || '',
@@ -99,34 +86,54 @@ function EditBookingPage() {
 
       // Initialize rooms from booking items
       if (booking.items && booking.items.length > 0) {
-        const bookingRooms: CreateBookingRoomItem[] = booking.items.map(item => ({
-          roomType: item.roomType,
-          roomCount: item.roomCount,
-          unitPrice: parseFloat(item.unitPrice),
-          hotelCostPrice: parseFloat(item.hotelCostPrice || '0'),
-          hasPricingPeriods: item.hasPricingPeriods || false,
-          pricingPeriods: item.pricingPeriods ? item.pricingPeriods.map(period => ({
-            ...period,
-            startDate: period.startDate ? period.startDate.split('T')[0] : '',
-            endDate: period.endDate ? period.endDate.split('T')[0] : '',
-            unitPrice: period.unitPrice,
-            hotelCostPrice: period.hotelCostPrice,
-            subtotal: period.subtotal
-          })) : []
-        }))
+        const bookingRooms: CreateBookingRoomItem[] = booking.items.map(item => {
+          console.log('🏨 Processing item:', item)
+          console.log('💰 Has pricing periods?', item.hasPricingPeriods)
+          console.log('📅 Pricing periods:', item.pricingPeriods)
+
+          return {
+            roomType: item.roomType,
+            roomCount: item.roomCount,
+            unitPrice: parseFloat(item.unitPrice),
+            hotelCostPrice: parseFloat(item.hotelCostPrice || '0'),
+            hasPricingPeriods: item.hasPricingPeriods || false,
+            pricingPeriods: item.pricingPeriods ? item.pricingPeriods.map(period => ({
+              ...period,
+              startDate: period.startDate ? period.startDate.split('T')[0] : '',
+              endDate: period.endDate ? period.endDate.split('T')[0] : '',
+              unitPrice: period.unitPrice,
+              hotelCostPrice: period.hotelCostPrice,
+              subtotal: period.subtotal
+            })) : []
+          }
+        })
+
+        console.log('✅ Processed rooms:', bookingRooms)
         setRooms(bookingRooms)
 
         // Check if any room has pricing periods
         const hasAnyPricingPeriods = bookingRooms.some(room => room.hasPricingPeriods && room.pricingPeriods && room.pricingPeriods.length > 0)
+        console.log('🎯 Has any pricing periods?', hasAnyPricingPeriods)
         setHasPricingPeriods(hasAnyPricingPeriods)
 
         // If there are pricing periods, use the first room's pricing periods as the global periods
         if (hasAnyPricingPeriods && bookingRooms[0].pricingPeriods) {
+          console.log('📋 Setting global pricing periods:', bookingRooms[0].pricingPeriods)
           setPricingPeriods(bookingRooms[0].pricingPeriods)
         }
-        
+
         // Calculate total amount based on current rooms
         setTimeout(() => updateTotalAmount(bookingRooms), 0)
+      } else {
+        console.log('⚠️ No items found, initializing default room')
+        // If no items exist, initialize with a default room
+        const defaultRoom: CreateBookingRoomItem = {
+          roomType: "",
+          roomCount: 1,
+          unitPrice: 0,
+          hotelCostPrice: 0
+        }
+        setRooms([defaultRoom])
       }
     }
   }, [booking])
@@ -158,7 +165,7 @@ function EditBookingPage() {
   }
 
   const updateRoom = (index: number, field: keyof CreateBookingRoomItem, value: any) => {
-    const updatedRooms = rooms.map((room, i) => 
+    const updatedRooms = rooms.map((room, i) =>
       i === index ? { ...room, [field]: value } : room
     )
     setRooms(updatedRooms)
@@ -176,7 +183,7 @@ function EditBookingPage() {
       subtotal: 0
     }
     setPricingPeriods(prev => [...prev, newPeriod])
-    
+
     // Update all rooms with the new pricing period
     const updatedRooms = rooms.map(room => ({
       ...room,
@@ -190,7 +197,7 @@ function EditBookingPage() {
     if (pricingPeriods.length > 1) {
       const updatedPeriods = pricingPeriods.filter((_, i) => i !== index)
       setPricingPeriods(updatedPeriods)
-      
+
       // Update all rooms
       const updatedRooms = rooms.map(room => ({
         ...room,
@@ -205,7 +212,7 @@ function EditBookingPage() {
     const updatedPeriods = pricingPeriods.map((period, i) => {
       if (i === index) {
         const updatedPeriod = { ...period, [field]: value }
-        
+
         // Auto-calculate nights and subtotal when dates or price change
         if (field === 'startDate' || field === 'endDate') {
           if (updatedPeriod.startDate && updatedPeriod.endDate) {
@@ -217,14 +224,14 @@ function EditBookingPage() {
         } else if (field === 'unitPrice' || field === 'nights') {
           updatedPeriod.subtotal = updatedPeriod.unitPrice * updatedPeriod.nights
         }
-        
+
         return updatedPeriod
       }
       return period
     })
-    
+
     setPricingPeriods(updatedPeriods)
-    
+
     // Update all rooms with the new pricing periods
     const updatedRooms = rooms.map(room => ({
       ...room,
@@ -250,14 +257,14 @@ function EditBookingPage() {
         return total + (room.unitPrice * room.roomCount * nights);
       }
     }, 0);
-    
+
     setFormData(prev => ({ ...prev, totalAmount }))
   }
 
   // Toggle pricing periods
   const togglePricingPeriods = (enabled: boolean) => {
     setHasPricingPeriods(enabled)
-    
+
     if (enabled) {
       // Enable pricing periods for all rooms
       const updatedRooms = rooms.map(room => ({
@@ -281,9 +288,9 @@ function EditBookingPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    
+
     if (!booking) return
-    
+
     try {
       // Use the new format that supports multiple rooms and pricing periods
       const bookingData: UpdateBookingData = {
@@ -303,9 +310,9 @@ function EditBookingPage() {
           pricingPeriods: room.pricingPeriods || []
         }))
       }
-      
+
       await updateBookingMutation.mutateAsync(bookingData)
-      
+
       navigate({ to: `/booking-view/${booking.id}` })
     } catch (error) {
       console.error('Error updating booking:', error)
@@ -341,6 +348,17 @@ function EditBookingPage() {
       <PageLayout title="Error" subtitle="Failed to load booking details">
         <div className="text-center text-red-600 p-8">
           {error?.message || "Booking not found"}
+        </div>
+      </PageLayout>
+    )
+  }
+
+  // Wait for rooms to be initialized from booking data
+  if (rooms.length === 0) {
+    return (
+      <PageLayout title="Loading..." subtitle="Initializing booking data">
+        <div className="flex items-center justify-center h-64">
+          <Loader2 className="h-8 w-8 animate-spin" />
         </div>
       </PageLayout>
     )
@@ -423,7 +441,7 @@ function EditBookingPage() {
                     />
                   </div>
                 </div>
-                
+
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Hotel Name</label>
@@ -549,7 +567,7 @@ function EditBookingPage() {
                           </Button>
                         )}
                       </div>
-                      
+
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
                           <label className="block text-sm font-medium text-gray-700 mb-1">Start Date</label>
@@ -570,7 +588,7 @@ function EditBookingPage() {
                           />
                         </div>
                       </div>
-                      
+
                       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                         <div>
                           <label className="block text-sm font-medium text-gray-700 mb-1">Nights</label>
@@ -605,7 +623,7 @@ function EditBookingPage() {
                           />
                         </div>
                       </div>
-                      
+
                       <div className="bg-gray-50 p-3 rounded-md">
                         <div className="flex items-center justify-between">
                           <span className="text-sm font-medium text-gray-700">Period Subtotal:</span>
@@ -655,7 +673,7 @@ function EditBookingPage() {
                         </Button>
                       )}
                     </div>
-                    
+
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">Room Type</label>
@@ -677,7 +695,7 @@ function EditBookingPage() {
                         />
                       </div>
                     </div>
-                    
+
                     {!hasPricingPeriods && (
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>

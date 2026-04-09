@@ -1,4 +1,5 @@
 import { createFileRoute, redirect, useNavigate } from "@tanstack/react-router";
+import { toast } from "sonner";
 import { useState, useEffect } from "react";
 import { ArrowLeft, Plus, Trash2, Save, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -101,23 +102,23 @@ function TransportationBookingEditPage() {
   };
 
   const updateRoute = (routeId: string | number, field: keyof RouteData, value: string | number) => {
-    setRoutes(routes.map(route => 
+    setRoutes(routes.map(route =>
       route.id.toString() === routeId.toString() ? { ...route, [field]: value } : route
     ));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     // Validation
     if (!formData.customerName || !formData.customerPhone) {
-      alert("Please fill in all required customer information.");
+      toast.warning("Please fill in all required customer information.");
       return;
     }
 
     for (const route of routes) {
       if (!route.pickupDateTime || !route.originLocation || !route.destinationLocation) {
-        alert("Please fill in all required route information.");
+        toast.warning("Please fill in all required route information.");
         return;
       }
     }
@@ -147,7 +148,8 @@ function TransportationBookingEditPage() {
       navigate({ to: `/transportation-booking-detail/${transportationBookingId}` });
     } catch (error) {
       console.error('Error updating transportation booking:', error);
-      alert('Failed to update transportation booking. Please try again.');
+      const msg = error instanceof Error ? error.message : 'An unexpected error occurred';
+      toast.error(msg);
     }
   };
 

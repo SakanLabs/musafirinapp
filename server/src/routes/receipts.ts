@@ -33,10 +33,11 @@ receiptRoutes.get('/', requireAdmin, async (c) => {
         // Join with booking and invoice data
         bookingCode: bookings.code,
         invoiceNumber: invoices.number,
+        clientName: receipts.payerName,
       })
       .from(receipts)
       .leftJoin(invoices, eq(receipts.invoiceId, invoices.id))
-      .leftJoin(bookings, eq(invoices.bookingId, bookings.id))
+      .leftJoin(bookings, eq(receipts.bookingId, bookings.id))
       .orderBy(desc(receipts.createdAt))
       .limit(limit)
       .offset(offset);

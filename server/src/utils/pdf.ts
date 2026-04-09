@@ -44,14 +44,15 @@ export async function generateInvoicePDF(
   client: any,
   bookingItems: any[],
   customDueDate: Date | string,
-  customInvoiceDate?: Date | string
+  customInvoiceDate?: Date | string,
+  extraServiceItems: any[] = []
 ): Promise<Buffer> {
   const browser = await puppeteer.launch({ headless: true });
   const page = await browser.newPage();
 
   // Prepare data for template
-  const templateData = TemplateHelpers.prepareInvoiceData(invoice, booking, client, bookingItems, customDueDate, customInvoiceDate);
-  
+  const templateData = TemplateHelpers.prepareInvoiceData(invoice, booking, client, bookingItems, customDueDate, customInvoiceDate, extraServiceItems);
+
   // Render HTML using template engine
   const html = templateEngine.renderInvoice(templateData);
 
@@ -93,10 +94,10 @@ export async function generateVoucherPDF(
   const __dirname = dirname(__filename);
 
   // Helper function to format date
-   function formatDate(date: Date | string): string {
-     const d = typeof date === 'string' ? new Date(date) : date;
-     return d.toLocaleDateString('en-CA'); // en-CA gives YYYY-MM-DD format
-   }
+  function formatDate(date: Date | string): string {
+    const d = typeof date === 'string' ? new Date(date) : date;
+    return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' }); // DD MONTH YYYY
+  }
 
   // Helper function to calculate nights
   function calculateNights(checkIn: Date, checkOut: Date): number {
@@ -136,10 +137,10 @@ export async function generateVoucherPDF(
 
     // Calculate totals from booking items
     totalRooms: bookingItems.reduce((sum, item) => sum + item.roomCount, 0),
-    
+
     // Stay details
-     checkIn: formatDate(booking.checkIn ?? new Date()),
-     checkOut: formatDate(booking.checkOut ?? new Date()),
+    checkIn: formatDate(booking.checkIn ?? new Date()),
+    checkOut: formatDate(booking.checkOut ?? new Date()),
     policyCheckInTime: "16:00",
     policyCheckOutTime: "12:00",
     nights: calculateNights(booking.checkIn, booking.checkOut),
@@ -174,7 +175,7 @@ export async function generateVoucherPDF(
   const templatePath = join(__dirname, '../templates/voucher.html');
   const templateContent = readFileSync(templatePath, 'utf-8');
   const template = Handlebars.compile(templateContent);
-  
+
   // Generate HTML
   const html = template(voucherData);
 
@@ -202,7 +203,7 @@ export async function uploadToMinio(
 ): Promise<string> {
   try {
     await ensureBucketExists();
-    
+
     await minioClient.putObject(BUCKET_NAME, fileName, buffer, buffer.length, {
       'Content-Type': contentType,
     });
@@ -213,6 +214,125 @@ export async function uploadToMinio(
   } catch (error) {
     console.error('Error uploading to MinIO:', error);
     throw new Error('Failed to upload file');
+  }
+}
+
+// Generate Service Order Receipt PDF
+export async function generateServiceOrderReceiptPDF(
+  receiptReq: any,
+  serviceOrderReq: any,
+  clientReq: any,
+  invoiceReq: any
+): Promise<Buffer> {
+  const browser = await puppeteer.launch({ headless: true });
+  const page = await browser.newPage();
+
+  try {
+    const { readFileSync } = await import('fs');
+    const { join } = await import('path');
+    const templatePath = join(process.cwd(), 'src', 'templates', 'kwitansi.html');
+    let template = readFileSync(templatePath, 'utf-8');
+
+    const logoPath = join(process.cwd(), '..', 'logomusafirin.png');
+    let logoBase64 = '';
+    try {
+      logoBase64 = readFileSync(logoPath).toString('base64');
+    } catch (e) { }
+
+    const saudiRiyalPath = join(process.cwd(), 'client', 'Saudi_Riyal_Symbol.svg');
+    let saudiRiyalSVGBase64 = '';
+    try {
+      saudiRiyalSVGBase64 = readFileSync(saudiRiyalPath).toString('base64');
+    } catch (e) { }
+
+    const signaturePath = join(process.cwd(), 'public', 'ttd.png');
+    let signatureBase64 = '';
+    try {
+      signatureBase64 = readFileSync(signaturePath).toString('base64');
+    } catch (e) { }
+
+    let renderedHtml = template;
+    const formatDate = (date: any) => {
+      if (!date) return '';
+      const d = typeof date === 'string' ? new Date(date) : date;
+      return d.toLocaleDateString('en-CA');
+    };
+
+    const receiptDateStr = formatDate(receiptReq.issueDate || receiptReq.createdAt || new Date());
+
+    // Replace text templates
+    renderedHtml = renderedHtml.replace(/\{\{receiptNo\}\}/g, receiptReq.number || '');
+    renderedHtml = renderedHtml.replace(/\{\{receiptDate\}\}/g, receiptDateStr);
+
+    renderedHtml = renderedHtml.replace(/\{\{payer\.name\}\}/g, receiptReq.payerName || clientReq.name || '');
+    renderedHtml = renderedHtml.replace(/\{\{payer\.email\}\}/g, clientReq.email || '-');
+    renderedHtml = renderedHtml.replace(/\{\{payer\.phone\}\}/g, clientReq.phone || '-');
+    renderedHtml = renderedHtml.replace(/\{\{payer\.address\}\}/g, '-');
+
+    renderedHtml = renderedHtml.replace(/\{\{invoice\.invoiceNo\}\}/g, invoiceReq?.number || '-');
+    renderedHtml = renderedHtml.replace(/\{\{invoice\.invoiceDate\}\}/g, invoiceReq?.issueDate ? formatDate(invoiceReq.issueDate) : '-');
+
+    renderedHtml = renderedHtml.replace(/\{\{hotelName\}\}/g, serviceOrderReq.productType || 'Service Order');
+    renderedHtml = renderedHtml.replace(/\{\{hotelAddress\}\}/g, '');
+
+    renderedHtml = renderedHtml.replace(/\{\{totals\.invoiceAmount\}\}/g, receiptReq.totalAmount || '0');
+    renderedHtml = renderedHtml.replace(/\{\{totals\.paidAmount\}\}/g, receiptReq.paidAmount || '0');
+    renderedHtml = renderedHtml.replace(/\{\{totals\.balanceDue\}\}/g, receiptReq.balanceDue || '0');
+    renderedHtml = renderedHtml.replace(/\{\{amountInWords\}\}/g, '');
+
+    renderedHtml = renderedHtml.replace(/\{\{bank\.bankName\}\}/g, 'Bank Syariah Indonesia');
+    renderedHtml = renderedHtml.replace(/\{\{bank\.bankCountry\}\}/g, 'Indonesia');
+    renderedHtml = renderedHtml.replace(/\{\{bank\.accountName\}\}/g, 'PT Thalhah Insan Rabbani');
+    renderedHtml = renderedHtml.replace(/\{\{bank\.accountNumberOrIBAN\}\}/g, '7254459741');
+
+    renderedHtml = renderedHtml.replace(/\{\{notes\}\}/g, serviceOrderReq.notes || '');
+    renderedHtml = renderedHtml.replace(/\{\{brandName\}\}/g, 'Musafirin');
+
+    renderedHtml = renderedHtml.replace(/\{\{logoBase64\}\}/g, logoBase64);
+    renderedHtml = renderedHtml.replace(/\{\{saudiRiyalSVGBase64\}\}/g, saudiRiyalSVGBase64);
+    renderedHtml = renderedHtml.replace(/\{\{signatureBase64\}\}/g, signatureBase64);
+
+    renderedHtml = renderedHtml.replace(/\{\{#if amountInWords\}\}[\s\S]*?\{\{\/if\}\}/g, '');
+    if (!serviceOrderReq.notes) {
+      renderedHtml = renderedHtml.replace(/\{\{#if notes\}\}[\s\S]*?\{\{\/if\}\}/g, '');
+    } else {
+      renderedHtml = renderedHtml.replace(/\{\{#if notes\}\}/g, '');
+      renderedHtml = renderedHtml.replace(/\{\{\/if\}\}/g, '');
+    }
+
+    const serviceDetails = `
+        <div class="cs-text-sm cs-text-gray-700">Type: ${serviceOrderReq.productType || ''}</div>
+        <div class="cs-text-sm cs-text-gray-500">Group Leader: ${serviceOrderReq.groupLeaderName || ''}</div>
+        <div class="cs-text-sm cs-text-gray-500">Total People: ${serviceOrderReq.totalPeople || '1'}</div>
+    `;
+    const paymentRow = `
+      <tr>
+        <td>
+          <div class="cs-font-semibold">Service Order Payment</div>
+          <div class="cs-text-sm cs-text-gray-500">${receiptDateStr}</div>
+          ${serviceDetails}
+        </td>
+        <td>Transfer Bank</td>
+        <td>-</td>
+        <td class="cs-num">
+          <img src="data:image/svg+xml;base64,${saudiRiyalSVGBase64}" class="cs-sar-icon" alt="SAR" />
+          ${receiptReq.paidAmount || '0'}
+        </td>
+      </tr>
+    `;
+    renderedHtml = renderedHtml.replace(/\{\{#each payments\}\}[\s\S]*?\{\{\/each\}\}/g, paymentRow);
+
+    await page.setContent(renderedHtml);
+    const pdf = await page.pdf({
+      format: 'A4',
+      printBackground: true,
+      margin: { top: '20px', right: '20px', bottom: '20px', left: '20px' }
+    });
+    await browser.close();
+    return Buffer.from(pdf);
+  } catch (error) {
+    await browser.close();
+    throw error;
   }
 }
 
@@ -320,50 +440,50 @@ export async function generateReceiptPDF(receiptData: any): Promise<string> {
 
     // Comprehensive template replacement
     let renderedHtml = template;
-    
+
     // Basic receipt info
     renderedHtml = renderedHtml.replace(/\{\{receiptNo\}\}/g, receiptData.receipt?.number || '');
     renderedHtml = renderedHtml.replace(/\{\{receiptDate\}\}/g, receiptData.receipt?.issueDate || '');
-    
+
     // Payer information
     renderedHtml = renderedHtml.replace(/\{\{payer\.name\}\}/g, receiptData.payer?.name || '');
     renderedHtml = renderedHtml.replace(/\{\{payer\.email\}\}/g, receiptData.payer?.email || '');
     renderedHtml = renderedHtml.replace(/\{\{payer\.phone\}\}/g, receiptData.payer?.phone || '');
     renderedHtml = renderedHtml.replace(/\{\{payer\.address\}\}/g, receiptData.payer?.address || '');
-    
+
     // Invoice information
     renderedHtml = renderedHtml.replace(/\{\{invoice\.invoiceNo\}\}/g, receiptData.receipt?.number || '');
     renderedHtml = renderedHtml.replace(/\{\{invoice\.invoiceDate\}\}/g, receiptData.receipt?.issueDate || '');
-    
+
     // Hotel information
     renderedHtml = renderedHtml.replace(/\{\{hotelName\}\}/g, receiptData.booking?.hotelName || receiptData.hotel?.name || '');
     renderedHtml = renderedHtml.replace(/\{\{hotelAddress\}\}/g, receiptData.hotel?.address || '');
-    
+
     // Totals
     renderedHtml = renderedHtml.replace(/\{\{totals\.invoiceAmount\}\}/g, receiptData.receipt?.totalAmount || '0');
     renderedHtml = renderedHtml.replace(/\{\{totals\.paidAmount\}\}/g, receiptData.receipt?.paidAmount || '0');
     renderedHtml = renderedHtml.replace(/\{\{totals\.balanceDue\}\}/g, receiptData.receipt?.balanceDue || '0');
-    
+
     // Amount in words
     renderedHtml = renderedHtml.replace(/\{\{amountInWords\}\}/g, receiptData.receipt?.amountInWords || '');
-    
+
     // Bank information
     renderedHtml = renderedHtml.replace(/\{\{bank\.bankName\}\}/g, receiptData.bank?.name || '');
     renderedHtml = renderedHtml.replace(/\{\{bank\.bankCountry\}\}/g, receiptData.bank?.country || '');
     renderedHtml = renderedHtml.replace(/\{\{bank\.accountName\}\}/g, receiptData.bank?.accountName || '');
     renderedHtml = renderedHtml.replace(/\{\{bank\.accountNumberOrIBAN\}\}/g, receiptData.bank?.accountNumber || '');
-    
+
     // Notes
     renderedHtml = renderedHtml.replace(/\{\{notes\}\}/g, receiptData.receipt?.notes || '');
-    
+
     // Brand information
     renderedHtml = renderedHtml.replace(/\{\{brandName\}\}/g, receiptData.brand?.name || 'Musafirin');
-    
+
     // Logo and icons
     renderedHtml = renderedHtml.replace(/\{\{logoBase64\}\}/g, logoBase64);
     renderedHtml = renderedHtml.replace(/\{\{saudiRiyalSVGBase64\}\}/g, saudiRiyalSVGBase64);
     renderedHtml = renderedHtml.replace(/\{\{signatureBase64\}\}/g, signatureBase64);
-    
+
     // Handle conditional blocks (simple implementation)
     // Remove {{#if amountInWords}} blocks if no amount in words
     if (!receiptData.receipt?.amountInWords) {
@@ -372,7 +492,7 @@ export async function generateReceiptPDF(receiptData: any): Promise<string> {
       renderedHtml = renderedHtml.replace(/\{\{#if amountInWords\}\}/g, '');
       renderedHtml = renderedHtml.replace(/\{\{\/if\}\}/g, '');
     }
-    
+
     // Remove {{#if notes}} blocks if no notes
     if (!receiptData.receipt?.notes) {
       renderedHtml = renderedHtml.replace(/\{\{#if notes\}\}[\s\S]*?\{\{\/if\}\}/g, '');
@@ -380,7 +500,7 @@ export async function generateReceiptPDF(receiptData: any): Promise<string> {
       renderedHtml = renderedHtml.replace(/\{\{#if notes\}\}/g, '');
       renderedHtml = renderedHtml.replace(/\{\{\/if\}\}/g, '');
     }
-    
+
     // Handle payments loop (simple implementation for now)
     // Build hotel details under payment row
     const hotelDetails = `
@@ -404,12 +524,12 @@ export async function generateReceiptPDF(receiptData: any): Promise<string> {
         </td>
       </tr>
     `;
-    
+
     // Replace the payments loop
     renderedHtml = renderedHtml.replace(/\{\{#each payments\}\}[\s\S]*?\{\{\/each\}\}/g, paymentRow);
 
     await page.setContent(renderedHtml);
-    
+
     const pdf = await page.pdf({
       format: 'A4',
       printBackground: true,
@@ -488,24 +608,24 @@ export async function generateServiceOrderInvoicePDF(
       invoiceNo: invoice.number,
       invoiceDate: new Date(customInvoiceDate || new Date()).toLocaleDateString('en-GB'),
       dueDate: new Date(customDueDate).toLocaleDateString('en-GB'),
-      
+
       // Client data
       client: {
         name: client.name || 'N/A',
         email: client.email || 'N/A',
         phone: client.phone || 'N/A'
       },
-      
+
       // Items array
       items: [serviceOrderItem],
-      
+
       // Financial data
       subtotal: subtotal.toFixed(2),
       discount: discount.toFixed(2),
       grandTotal: grandTotal.toFixed(2),
       paidAmount: paidAmount.toFixed(2),
       balanceDue: balanceDue.toFixed(2),
-      
+
       // Bank information
       bank: {
         bankName: 'Bank Syariah Indonesia',
@@ -513,16 +633,16 @@ export async function generateServiceOrderInvoicePDF(
         accountName: 'PT Thalhah Insan Rabbani',
         accountNumberOrIBAN: '7254459741'
       },
-      
+
       // Contact information
       billingContact: {
         email: 'billing@musafirin.com',
         phone: '+6285218300910'
       },
-      
+
       // Brand
       brandName: 'Musafirin',
-      
+
       // Base64 encoded images
       logoBase64: logoBase64,
       saudiRiyalSVGBase64: saudiRiyalSVGBase64
@@ -534,32 +654,32 @@ export async function generateServiceOrderInvoicePDF(
       .replace(/\{\{invoiceNo\}\}/g, templateData.invoiceNo)
       .replace(/\{\{invoiceDate\}\}/g, templateData.invoiceDate)
       .replace(/\{\{dueDate\}\}/g, templateData.dueDate)
-      
+
       // Client information
       .replace(/\{\{client\.name\}\}/g, templateData.client.name)
       .replace(/\{\{client\.email\}\}/g, templateData.client.email)
       .replace(/\{\{client\.phone\}\}/g, templateData.client.phone)
-      
+
       // Financial totals
       .replace(/\{\{subtotal\}\}/g, templateData.subtotal)
       .replace(/\{\{discount\}\}/g, templateData.discount)
       .replace(/\{\{grandTotal\}\}/g, templateData.grandTotal)
       .replace(/\{\{paidAmount\}\}/g, templateData.paidAmount)
       .replace(/\{\{balanceDue\}\}/g, templateData.balanceDue)
-      
+
       // Bank information
       .replace(/\{\{bank\.bankName\}\}/g, templateData.bank.bankName)
       .replace(/\{\{bank\.bankCountry\}\}/g, templateData.bank.bankCountry)
       .replace(/\{\{bank\.accountName\}\}/g, templateData.bank.accountName)
       .replace(/\{\{bank\.accountNumberOrIBAN\}\}/g, templateData.bank.accountNumberOrIBAN)
-      
+
       // Contact information
       .replace(/\{\{billingContact\.email\}\}/g, templateData.billingContact.email)
       .replace(/\{\{billingContact\.phone\}\}/g, templateData.billingContact.phone)
-      
+
       // Brand
       .replace(/\{\{brandName\}\}/g, templateData.brandName)
-      
+
       // Images
       .replace(/\{\{logoBase64\}\}/g, templateData.logoBase64)
       .replace(/\{\{saudiRiyalSVGBase64\}\}/g, templateData.saudiRiyalSVGBase64);
@@ -588,7 +708,7 @@ export async function generateServiceOrderInvoicePDF(
     renderedHtml = renderedHtml.replace(/\{\{#each items\}\}[\s\S]*?\{\{\/each\}\}/g, itemsHtml);
 
     await page.setContent(renderedHtml);
-    
+
     const pdf = await page.pdf({
       format: 'A4',
       printBackground: true,
@@ -613,4 +733,350 @@ export function generateServiceOrderInvoiceNumber(): string {
   const year = new Date().getFullYear();
   const timestamp = Date.now().toString().slice(-6);
   return `SO-INV-${year}-${timestamp}`;
+}
+
+// Generate Transportation Invoice PDF
+export async function generateTransportationInvoicePDF(
+  invoice: any,
+  booking: any,
+  client: any,
+  routes: any[]
+): Promise<Buffer> {
+  const browser = await puppeteer.launch({ headless: true });
+  const page = await browser.newPage();
+
+  try {
+    // Import required modules for Handlebars template
+    const { readFileSync } = await import('fs');
+    const { join } = await import('path');
+    const Handlebars = await import('handlebars');
+    const templatePath = join(process.cwd(), 'src', 'templates', 'transportation-invoice.html');
+    const templateHtml = readFileSync(templatePath, 'utf-8');
+    const template = Handlebars.compile(templateHtml);
+
+    // Load logo base64
+    const logoPath = join(process.cwd(), '..', 'logomusafirin.png');
+    let logoBase64 = '';
+    try {
+      const logoBuffer = readFileSync(logoPath);
+      logoBase64 = logoBuffer.toString('base64');
+    } catch (error) {
+      console.warn('Logo file not found, using empty logo');
+    }
+
+    // Load Saudi Riyal SVG icon base64
+    const saudiRiyalSVGBase64 = TemplateHelpers.getSaudiRiyalSVGBase64();
+
+    // Format dates
+    const formatDate = (date: any) => {
+      if (!date) return '';
+      const d = typeof date === 'string' ? new Date(date) : date;
+      return d.toLocaleDateString('en-CA');
+    };
+
+    const formatDateTime = (date: any) => {
+      if (!date) return '';
+      const d = typeof date === 'string' ? new Date(date) : date;
+      return d.toLocaleString('en-CA');
+    };
+
+    // Prepare data
+    const totalAmount = parseFloat(invoice.amount || booking.totalAmount || '0');
+
+    // Determine vehicle type, driver name, driver phone from the first route or combine them
+    const firstRoute = routes[0] || {};
+
+    const templateData = {
+      invoiceNo: invoice.number,
+      invoiceDate: formatDate(invoice.issueDate),
+      dueDate: formatDate(invoice.dueDate),
+      client: {
+        name: client.name,
+        email: client.email || booking.customerEmail || '-',
+        phone: client.phone || booking.customerPhone || '-',
+      },
+      vehicleType: firstRoute.vehicleType || '-',
+      driverName: firstRoute.driverName || '-',
+      driverPhone: firstRoute.driverPhone || '-',
+      vehiclePlateNumber: firstRoute.vehiclePlateNumber || '-',
+      pickupDateTime: firstRoute.pickupDateTime ? formatDateTime(firstRoute.pickupDateTime) : '-',
+      originLocation: firstRoute.originLocation || '-',
+      destinationLocation: firstRoute.destinationLocation || '-',
+      routes: routes.map(r => ({
+        ...r,
+        pickupDateTime: r.pickupDateTime ? formatDateTime(r.pickupDateTime) : '-',
+        price: parseFloat(r.price).toFixed(2),
+      })),
+      subtotal: totalAmount.toFixed(2),
+      grandTotal: totalAmount.toFixed(2),
+      paidAmount: '0.00',
+      balanceDue: totalAmount.toFixed(2),
+
+      bank: {
+        bankName: 'Bank Syariah Indonesia',
+        bankCountry: 'Indonesia',
+        accountName: 'PT Thalhah Insan Rabbani',
+        accountNumberOrIBAN: '7254459741',
+        swift: '-'
+      },
+      billingContact: {
+        email: 'billing@musafirin.com',
+        phone: '+6285218300910'
+      },
+      brandName: 'Musafirin',
+      logoBase64,
+      saudiRiyalSVGBase64
+    };
+
+    const renderedHtml = template(templateData);
+
+    await page.setContent(renderedHtml);
+
+    const pdf = await page.pdf({
+      format: 'A4',
+      printBackground: true,
+      margin: {
+        top: '20px',
+        right: '20px',
+        bottom: '20px',
+        left: '20px'
+      }
+    });
+
+    await browser.close();
+    return Buffer.from(pdf);
+  } catch (error) {
+    await browser.close();
+    throw error;
+  }
+}
+
+// Generate Transportation Receipt PDF
+export async function generateTransportationReceiptPDF(
+  receipt: any,
+  booking: any,
+  client: any,
+  routes: any[],
+  invoice: any
+): Promise<Buffer> {
+  const browser = await puppeteer.launch({ headless: true });
+  const page = await browser.newPage();
+
+  try {
+    // Import required modules for Handlebars template
+    const { readFileSync } = await import('fs');
+    const { join } = await import('path');
+    const Handlebars = await import('handlebars');
+    const templatePath = join(process.cwd(), 'src', 'templates', 'transportation-receipt.html');
+    const templateHtml = readFileSync(templatePath, 'utf-8');
+    const template = Handlebars.compile(templateHtml);
+
+    // Load logo base64
+    const logoPath = join(process.cwd(), '..', 'logomusafirin.png');
+    let logoBase64 = '';
+    try {
+      const logoBuffer = readFileSync(logoPath);
+      logoBase64 = logoBuffer.toString('base64');
+    } catch (error) {
+      console.warn('Logo file not found, using empty logo');
+    }
+
+    // Load Saudi Riyal SVG icon base64
+    const saudiRiyalSVGBase64 = TemplateHelpers.getSaudiRiyalSVGBase64();
+
+    // Format dates
+    const formatDate = (date: any) => {
+      if (!date) return '';
+      const d = typeof date === 'string' ? new Date(date) : date;
+      return d.toLocaleDateString('en-CA');
+    };
+
+    const formatDateTime = (date: any) => {
+      if (!date) return '';
+      const d = typeof date === 'string' ? new Date(date) : date;
+      return d.toLocaleString('en-CA');
+    };
+
+    // Determine vehicle type, driver name, driver phone from the first route or combine them
+    const firstRoute = routes[0] || {};
+    const totalAmount = parseFloat(receipt.totalAmount || booking.totalAmount || '0');
+
+    // ToWords functionality (simplified for transportation or import from elsewhere if needed)
+    // For now, using a placeholder or a simple toString
+    const amountInWords = receipt.amountInWords || `${totalAmount} SAR Only`;
+
+    const templateData = {
+      receiptNo: receipt.number,
+      receiptDate: formatDate(receipt.issueDate || receipt.createdAt || new Date()),
+      payer: {
+        name: client.name || receipt.payerName,
+        email: client.email || booking.customerEmail || '-',
+        phone: client.phone || booking.customerPhone || '-',
+        address: '-'
+      },
+      invoice: {
+        invoiceNo: invoice?.number || '-',
+        invoiceDate: invoice?.issueDate ? formatDate(invoice.issueDate) : '-'
+      },
+      transportationDetails: {
+        route: firstRoute.originLocation ? `${firstRoute.originLocation} → ${firstRoute.destinationLocation}` : '-',
+        originLocation: firstRoute.originLocation || '-',
+        destinationLocation: firstRoute.destinationLocation || '-',
+        pickupDateTime: firstRoute.pickupDateTime ? formatDateTime(firstRoute.pickupDateTime) : '-',
+        vehicleType: firstRoute.vehicleType || '-',
+        driverName: firstRoute.driverName || '-',
+        driverPhone: firstRoute.driverPhone || '-',
+        vehiclePlateNumber: firstRoute.vehiclePlateNumber || '-',
+        notes: booking.notes || ''
+      },
+      payments: [
+        {
+          label: 'Pembayaran Transportasi',
+          date: formatDate(receipt.createdAt || new Date()),
+          method: 'Transfer',
+          transactionId: '-',
+          amount: totalAmount.toFixed(2),
+          transportationDetails: null
+        }
+      ],
+      totalInvoiceAmount: totalAmount.toFixed(2),
+      totalPaidAmount: totalAmount.toFixed(2),
+      balanceDue: '0.00',
+      notes: receipt.notes || '',
+      billingContact: {
+        email: 'billing@musafirin.com',
+        phone: '+6285218300910'
+      },
+      logoBase64,
+      saudiRiyalSVGBase64
+    };
+
+    const renderedHtml = template(templateData);
+
+    await page.setContent(renderedHtml);
+
+    const pdf = await page.pdf({
+      format: 'A4',
+      printBackground: true,
+      margin: {
+        top: '20px',
+        right: '20px',
+        bottom: '20px',
+        left: '20px'
+      }
+    });
+
+    await browser.close();
+    return Buffer.from(pdf);
+  } catch (error) {
+    await browser.close();
+    throw error;
+  }
+}
+
+// Generate Transportation Voucher PDF
+export async function generateTransportationVoucherPDF(
+  voucher: any,
+  booking: any,
+  client: any,
+  routes: any[]
+): Promise<Buffer> {
+  const browser = await puppeteer.launch({ headless: true });
+  const page = await browser.newPage();
+
+  try {
+    const { readFileSync } = await import('fs');
+    const { join } = await import('path');
+    const Handlebars = await import('handlebars');
+    // We will use transportation-voucher.html
+    const templatePath = join(process.cwd(), 'src', 'templates', 'transportation-voucher.html');
+    let templateHtml = '';
+    try {
+      templateHtml = readFileSync(templatePath, 'utf-8');
+    } catch {
+      console.warn('transportation-voucher.html not found, falling back to voucher.html');
+      templateHtml = readFileSync(join(process.cwd(), 'src', 'templates', 'voucher.html'), 'utf-8');
+    }
+    const template = Handlebars.compile(templateHtml);
+
+    const logoPath = join(process.cwd(), '..', 'logomusafirin.png');
+    let logoBase64 = '';
+    try {
+      const logoBuffer = readFileSync(logoPath);
+      logoBase64 = logoBuffer.toString('base64');
+    } catch (error) {
+      console.warn('Logo file not found');
+    }
+
+    const formatDate = (date: any) => {
+      if (!date) return '';
+      const d = typeof date === 'string' ? new Date(date) : date;
+      return d.toLocaleDateString('en-CA');
+    };
+
+    const formatDateTime = (date: any) => {
+      if (!date) return '';
+      const d = typeof date === 'string' ? new Date(date) : date;
+      return d.toLocaleString('en-CA');
+    };
+
+    const firstRoute = routes[0] || {};
+
+    const templateData = {
+      voucherNo: voucher.number,
+      issueDate: formatDate(voucher.issueDate || voucher.createdAt || new Date()),
+      guest: {
+        name: client.name || booking.customerName,
+        phone: client.phone || booking.customerPhone || '-',
+        email: client.email || booking.customerEmail || '-'
+      },
+      bookingNo: booking.id, // Or booking code
+      bookingNotes: booking.notes,
+      routeInfo: firstRoute.originLocation ? `${firstRoute.originLocation} → ${firstRoute.destinationLocation}` : '-',
+      firstPickupDateTime: firstRoute.pickupDateTime ? formatDateTime(firstRoute.pickupDateTime) : '-',
+      vehicleType: firstRoute.vehicleType || '-',
+      driverName: firstRoute.driverName || '-',
+      driverPhone: firstRoute.driverPhone || '-',
+      vehiclePlateNumber: firstRoute.vehiclePlateNumber || '-',
+      routes: routes.map((r, i) => ({
+        index: i + 1,
+        origin: r.originLocation,
+        destination: r.destinationLocation,
+        pickupDateTime: r.pickupDateTime ? formatDateTime(r.pickupDateTime) : '-',
+        vehicleType: r.vehicleType,
+        driverName: r.driverName || '-',
+        driverPhone: r.driverPhone || '-',
+        vehiclePlate: r.vehiclePlateNumber || '-'
+      })),
+      companyInfo: {
+        name: 'PT Thalhah Insan Rabbani',
+        brand: 'Musafirin',
+        address: 'Gdg. Nifa, Kav 1-2, Jl. RS. Fatmawati No. 39, Cilandak, Jakarta Selatan',
+        phone: '+6285218300910',
+        email: 'billing@musafirin.com'
+      },
+      logoBase64
+    };
+
+    const renderedHtml = template(templateData);
+
+    await page.setContent(renderedHtml);
+
+    const pdf = await page.pdf({
+      format: 'A4',
+      printBackground: true,
+      margin: {
+        top: '20px',
+        right: '20px',
+        bottom: '20px',
+        left: '20px'
+      }
+    });
+
+    await browser.close();
+    return Buffer.from(pdf);
+  } catch (error) {
+    await browser.close();
+    throw error;
+  }
 }

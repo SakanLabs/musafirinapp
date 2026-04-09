@@ -23,6 +23,7 @@ interface DataTableProps<T> {
   };
   onSort?: (key: string, direction: 'asc' | 'desc') => void;
   emptyMessage?: string;
+  noCard?: boolean;
 }
 
 export function DataTable<T extends object>({
@@ -31,7 +32,8 @@ export function DataTable<T extends object>({
   loading = false,
   pagination,
   onSort,
-  emptyMessage = "No data available"
+  emptyMessage = "No data available",
+  noCard = false
 }: DataTableProps<T>) {
   const [sortConfig, setSortConfig] = useState<{
     key: string;
@@ -40,11 +42,11 @@ export function DataTable<T extends object>({
 
   const handleSort = (key: string) => {
     let direction: 'asc' | 'desc' = 'asc';
-    
+
     if (sortConfig && sortConfig.key === key && sortConfig.direction === 'asc') {
       direction = 'desc';
     }
-    
+
     setSortConfig({ key, direction });
     onSort?.(key, direction);
   };
@@ -53,8 +55,8 @@ export function DataTable<T extends object>({
     if (!sortConfig || sortConfig.key !== key) {
       return <ArrowUpDown className="h-4 w-4" />;
     }
-    
-    return sortConfig.direction === 'asc' 
+
+    return sortConfig.direction === 'asc'
       ? <ArrowUp className="h-4 w-4" />
       : <ArrowDown className="h-4 w-4" />;
   };
@@ -63,48 +65,55 @@ export function DataTable<T extends object>({
     if (column.render) {
       return column.render(item);
     }
-    
+
     const value = item[column.key as keyof T];
     return value?.toString() || '-';
   };
 
   if (loading) {
-    return (
-      <Card className="overflow-hidden">
-        <div className="animate-pulse">
-          <div className="border-b border-gray-200 bg-gray-50 px-6 py-3">
+    const pulseContent = (
+      <div className="animate-pulse">
+        <div className="border-b border-gray-200 bg-gray-50 px-6 py-3">
+          <div className="flex space-x-4">
+            {columns.map((_, index) => (
+              <div key={index} className="h-4 bg-gray-200 rounded flex-1"></div>
+            ))}
+          </div>
+        </div>
+        {Array.from({ length: 5 }).map((_, index) => (
+          <div key={index} className="border-b border-gray-200 px-6 py-4">
             <div className="flex space-x-4">
-              {columns.map((_, index) => (
-                <div key={index} className="h-4 bg-gray-200 rounded flex-1"></div>
+              {columns.map((_, colIndex) => (
+                <div key={colIndex} className="h-4 bg-gray-200 rounded flex-1"></div>
               ))}
             </div>
           </div>
-          {Array.from({ length: 5 }).map((_, index) => (
-            <div key={index} className="border-b border-gray-200 px-6 py-4">
-              <div className="flex space-x-4">
-                {columns.map((_, colIndex) => (
-                  <div key={colIndex} className="h-4 bg-gray-200 rounded flex-1"></div>
-                ))}
-              </div>
-            </div>
-          ))}
-        </div>
+        ))}
+      </div>
+    );
+
+    return noCard ? (
+      <div className="overflow-hidden">
+        {pulseContent}
+      </div>
+    ) : (
+      <Card className="overflow-hidden">
+        {pulseContent}
       </Card>
     );
   }
 
-  return (
-    <Card className="overflow-hidden">
+  const content = (
+    <>
       <div className="overflow-x-auto">
-        <table className="min-w-full divide-y divide-gray-200">
+        <table className="min-w-full divide-y divide-gray-200 w-full">
           <thead className="bg-gray-50">
             <tr>
               {columns.map((column) => (
                 <th
                   key={column.key.toString()}
-                  className={`px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider ${
-                    column.width || ''
-                  }`}
+                  className={`px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider ${column.width || ''
+                    }`}
                 >
                   {column.sortable ? (
                     <button
@@ -212,6 +221,16 @@ export function DataTable<T extends object>({
           </div>
         </div>
       )}
+    </>
+  );
+
+  return noCard ? (
+    <div className="overflow-x-auto w-full">
+      {content}
+    </div>
+  ) : (
+    <Card className="overflow-hidden">
+      {content}
     </Card>
   );
 }

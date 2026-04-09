@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { toast } from "sonner";
 import { createFileRoute } from "@tanstack/react-router";
 import { PageLayout } from "@/components/layout/PageLayout";
 import { Button } from "@/components/ui/button";
@@ -18,8 +19,8 @@ export const Route = createFileRoute("/invoice-detail")({
       typeof search.id === "string"
         ? search.id
         : search.id !== undefined
-        ? String(search.id)
-        : "";
+          ? String(search.id)
+          : "";
     // Handle quoted ids like '"6"' and percent-encoded quotes like '%226%22'
     if (id.startsWith('"') && id.endsWith('"')) {
       id = id.slice(1, -1);
@@ -154,10 +155,10 @@ function InvoiceDetailPage() {
     if (!invoice) return;
     try {
       const receipt = await generateReceiptMutation.mutateAsync(invoice.bookingId);
-      alert(`Receipt generated successfully: ${receipt.number}`);
+      toast.success(`Receipt generated successfully: ${receipt.number}`);
     } catch (err: any) {
       console.error('Failed to generate receipt:', err);
-      alert(err?.message || 'Failed to generate receipt');
+      toast.error(err?.message || 'Failed to generate receipt');
     }
   };
 
@@ -166,7 +167,7 @@ function InvoiceDetailPage() {
     if (!invoice) return;
     const amt = parseFloat(payForm.amount);
     if (isNaN(amt) || amt <= 0) {
-      alert("Enter a valid payment amount");
+      toast.warning("Enter a valid payment amount");
       return;
     }
     try {
@@ -183,10 +184,11 @@ function InvoiceDetailPage() {
         referenceNumber: "",
         description: "",
       });
-      alert("Payment recorded successfully");
+      toast.success("Payment recorded successfully");
     } catch (err) {
       console.error("Failed to record payment:", err);
-      alert("Failed to record payment");
+      const msg = err instanceof Error ? err.message : "An unexpected error occurred";
+      toast.error(msg);
     }
   };
 
@@ -238,7 +240,7 @@ function InvoiceDetailPage() {
             Download PDF
           </Button>
           {isAdmin && invoice.status === 'paid' && (receiptsForBooking?.length ?? 0) === 0 && (
-            <Button 
+            <Button
               onClick={handleGenerateReceipt}
               disabled={generateReceiptMutation.isPending}
               title="Generate receipt for this booking (requires paid invoice)"
@@ -247,7 +249,7 @@ function InvoiceDetailPage() {
             </Button>
           )}
           {isAdmin && (receiptsForBooking?.length ?? 0) > 0 && (
-            <Button 
+            <Button
               variant="secondary"
               onClick={() => {
                 const r = receiptsForBooking[0];

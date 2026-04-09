@@ -1,4 +1,5 @@
 import { createFileRoute, redirect, useNavigate } from "@tanstack/react-router"
+import { toast } from "sonner"
 import { PageLayout } from "@/components/layout/PageLayout"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -86,18 +87,19 @@ function EditBookingPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    
+
     try {
       await updateBookingMutation.mutateAsync({
         id: bookingId,
         ...formData
       })
-      
+
 
       navigate({ to: `/bookings/${bookingId}` })
     } catch (error) {
       console.error('Error updating booking:', error)
-      alert("Failed to update booking. Please try again.")
+      const msg = error instanceof Error ? error.message : 'An unexpected error occurred'
+      toast.error(msg)
     }
   }
 
@@ -139,7 +141,7 @@ function EditBookingPage() {
             <X className="h-4 w-4 mr-2" />
             Cancel
           </Button>
-          <Button 
+          <Button
             onClick={handleSubmit}
             disabled={updateBookingMutation.isPending}
           >
@@ -239,9 +241,9 @@ function EditBookingPage() {
                 </div>
                 <div>
                   <label htmlFor="roomType" className="block text-sm font-medium mb-1">Room Type *</label>
-                  <select 
+                  <select
                     id="roomType"
-                    value={formData.roomType} 
+                    value={formData.roomType}
                     onChange={(e) => handleInputChange('roomType', e.target.value)}
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                     required
@@ -287,9 +289,9 @@ function EditBookingPage() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label htmlFor="status" className="block text-sm font-medium mb-1">Booking Status</label>
-                  <select 
+                  <select
                     id="status"
-                    value={formData.status} 
+                    value={formData.status}
                     onChange={(e) => handleInputChange('status', e.target.value)}
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                   >

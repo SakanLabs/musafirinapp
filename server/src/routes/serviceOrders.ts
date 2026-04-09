@@ -1,10 +1,10 @@
 import { Hono } from 'hono';
 import { eq, desc } from 'drizzle-orm';
 import { db } from '../db';
-import { clients, serviceOrders, serviceOrderChecklists, serviceOrderInvoices } from '../db/schema';
-import type { NewServiceOrder, NewServiceOrderInvoice } from '../db/schema';
+import { clients, serviceOrders, serviceOrderChecklists, serviceOrderInvoices, serviceOrderReceipts } from '../db/schema';
+import type { NewServiceOrder, NewServiceOrderInvoice, NewServiceOrderReceipt } from '../db/schema';
 import { requireAdmin } from '../middleware/auth';
-import { generateServiceOrderNumber, generateServiceOrderInvoicePDF, generateServiceOrderInvoiceNumber, uploadToMinio } from '../utils/pdf';
+import { generateServiceOrderNumber, generateServiceOrderInvoicePDF, generateServiceOrderInvoiceNumber, uploadToMinio, generateServiceOrderReceiptPDF } from '../utils/pdf';
 
 const serviceOrderRoutes = new Hono();
 
@@ -592,7 +592,7 @@ serviceOrderRoutes.patch('/:id/status', requireAdmin, async (c) => {
     // Update status
     const [updatedServiceOrder] = await db
       .update(serviceOrders)
-      .set({ 
+      .set({
         status: status as any,
         updatedAt: new Date()
       })
@@ -607,6 +607,98 @@ serviceOrderRoutes.patch('/:id/status', requireAdmin, async (c) => {
   } catch (error) {
     console.error('Error updating service order status:', error);
     return c.json({ error: 'Failed to update service order status' }, 500);
+  }
+});
+
+// POST /api/service-orders/:id/receipt - Generate receipt
+serviceOrderRoutes.post('/:id/receipt', requireAdmin, async (c) => {
+  try {
+    const id = parseInt(c.req.param('id'));
+
+    const serviceOrderData = await db
+      .select({
+        order: serviceOrders,
+        client: clients,
+      })
+      .from(serviceOrders)
+      .leftJoin(clients, eq(serviceOrders.clientId, clients.id))
+      .where(eq(serviceOrders.id, id))
+      .limit(1);
+
+    if (serviceOrderData.length === 0) {
+      return c.json({ error: 'Service order not found' }, 404);
+    }
+
+    const orderReq = serviceOrderData[0]?.order;
+    const clientReq = serviceOrderData[0]?.client;
+
+    if (!orderReq || !clientReq) {
+      return c.json({ error: 'Service order or client data not found' }, 404);
+    }
+
+    // Check if receipt already exists for this service order
+    const existingReceipt = await db
+      .select()
+      .from(serviceOrderReceipts)
+      .where(eq(serviceOrderReceipts.serviceOrderId, id))
+      .limit(1);
+
+    // If an existing receipt is found, delete it first
+    if (existingReceipt.length > 0 && existingReceipt[0]) {
+      await db
+        .delete(serviceOrderReceipts)
+        .where(eq(serviceOrderReceipts.id, existingReceipt[0].id));
+    }
+
+    // Fetch invoice for this service order
+    const invoiceQuery = await db
+      .select()
+      .from(serviceOrderInvoices)
+      .where(eq(serviceOrderInvoices.serviceOrderId, id))
+      .limit(1);
+
+    const invoiceData = invoiceQuery.length > 0 ? invoiceQuery[0] : null;
+
+    // Generate receipt number
+    const receiptNumber = `SOR-${new Date().getFullYear()}-${String(Date.now()).slice(-6)}`;
+
+    const newReceipt: NewServiceOrderReceipt = {
+      serviceOrderId: id,
+      number: receiptNumber,
+      totalAmount: orderReq.totalPriceSAR || '0',
+      paidAmount: orderReq.totalPriceSAR || '0',
+      balanceDue: '0',
+      currency: 'SAR',
+      payerName: clientReq.name || 'Unknown',
+      pdfUrl: '', // To be filled after upload
+    };
+
+    // Generate PDF
+    const pdfBuffer = await generateServiceOrderReceiptPDF(
+      newReceipt,
+      orderReq,
+      clientReq,
+      invoiceData
+    );
+
+    // Upload to MinIO
+    const pdfUrl = await uploadToMinio(
+      `service-order-receipts/${receiptNumber}.pdf`,
+      pdfBuffer,
+      'application/pdf'
+    );
+
+    newReceipt.pdfUrl = pdfUrl;
+
+    const [createdReceipt] = await db
+      .insert(serviceOrderReceipts)
+      .values(newReceipt)
+      .returning();
+
+    return c.json(createdReceipt, 201);
+  } catch (error) {
+    console.error('Error creating service order receipt:', error);
+    return c.json({ error: 'Failed to create service order receipt' }, 500);
   }
 });
 

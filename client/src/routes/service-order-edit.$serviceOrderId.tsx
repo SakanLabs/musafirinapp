@@ -1,4 +1,5 @@
 import { createFileRoute, redirect, useNavigate } from "@tanstack/react-router"
+import { toast } from "sonner"
 import { useState, useEffect } from "react"
 import { PageLayout } from "@/components/layout/PageLayout"
 import { Button } from "@/components/ui/button"
@@ -40,7 +41,7 @@ export const Route = createFileRoute("/service-order-edit/$serviceOrderId")({
 function EditServiceOrderPage() {
   const { serviceOrderId } = Route.useParams()
   const navigate = useNavigate()
-  
+
   // Fetch service order and clients data
   const { data: serviceOrder, isLoading: isLoadingOrder } = useServiceOrder(serviceOrderId)
   const { data: clients, isLoading: isLoadingClients } = useClients()
@@ -103,7 +104,7 @@ function EditServiceOrderPage() {
       ...prev,
       [field]: value
     }))
-    
+
     // Clear error for this field
     if (errors[field]) {
       setErrors(prev => ({
@@ -115,13 +116,13 @@ function EditServiceOrderPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    
+
     if (!validateForm()) {
       return
     }
 
     setIsSubmitting(true)
-    
+
     try {
       const updateData = {
         ...formData,
@@ -134,12 +135,13 @@ function EditServiceOrderPage() {
         id: serviceOrderId,
         data: updateData
       })
-      
-      alert('Service order updated successfully!')
+
+      toast.success('Service order updated successfully!')
       navigate({ to: `/service-order-detail/${serviceOrderId}` })
     } catch (error) {
       console.error('Error updating service order:', error)
-      alert('Failed to update service order. Please try again.')
+      const msg = error instanceof Error ? error.message : 'An unexpected error occurred'
+      toast.error(msg)
     } finally {
       setIsSubmitting(false)
     }
@@ -160,8 +162,8 @@ function EditServiceOrderPage() {
       <PageLayout title="Edit Service Order" subtitle="Service order not found">
         <div className="text-center py-8">
           <p>Service order not found.</p>
-          <Button 
-            variant="outline" 
+          <Button
+            variant="outline"
             onClick={() => navigate({ to: "/service-orders" })}
             className="mt-4"
           >
@@ -178,8 +180,8 @@ function EditServiceOrderPage() {
       <div className="space-y-6">
         {/* Header */}
         <div className="flex items-center justify-between">
-          <Button 
-            variant="outline" 
+          <Button
+            variant="outline"
             size="sm"
             onClick={() => navigate({ to: `/service-order-detail/${serviceOrderId}` })}
           >

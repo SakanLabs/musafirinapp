@@ -1,5 +1,6 @@
 import { createFileRoute, redirect, Link, useNavigate } from "@tanstack/react-router"
 import { useState } from "react"
+import { toast } from "sonner"
 import { PageLayout } from "@/components/layout/PageLayout"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -7,7 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { DueDateModal } from "@/components/modals/DueDateModal"
 import { UpdateBookingStatusModal } from "@/components/modals/UpdateBookingStatusModal"
 import { Modal } from "@/components/ui/modal"
-import { 
+import {
   ArrowLeft,
   FileText,
   Ticket,
@@ -25,8 +26,8 @@ import {
 } from "lucide-react"
 import { SARCurrency } from "@/components/ui/sar-currency"
 import { authService } from "@/lib/auth"
-import { 
-  formatCurrency, 
+import {
+  formatCurrency,
   formatDate
 } from "@/lib/utils"
 import { useBooking, useGenerateInvoice, useGenerateVoucher, useRegenerateVoucher, useUpdateBookingStatus, useDeleteBooking } from "@/lib/queries"
@@ -64,7 +65,10 @@ const getPaymentStatusColor = (status: string) => {
 
 export const Route = createFileRoute("/booking-detail")({
   validateSearch: (search: Record<string, unknown>) => {
-    const id = search.id as string;
+    let id = search.id as string;
+    if (id) {
+      id = id.replace(/["']/g, '');
+    }
     if (!id) {
       throw new Error('Booking ID is required');
     }
@@ -89,7 +93,7 @@ function BookingDetailPage() {
   const [isUpdateStatusModalOpen, setIsUpdateStatusModalOpen] = useState(false)
   const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false)
   const [isSuccessModalOpen, setIsSuccessModalOpen] = useState(false)
-  
+
   // Fetch booking data using TanStack Query
   const { data: booking, isLoading, error } = useBooking(id)
   const generateInvoiceMutation = useGenerateInvoice()
@@ -97,7 +101,7 @@ function BookingDetailPage() {
   const regenerateVoucherMutation = useRegenerateVoucher()
   const updateBookingStatusMutation = useUpdateBookingStatus()
   const deleteBookingMutation = useDeleteBooking()
-  
+
   // Check if invoice and voucher already exist
   const { data: existingInvoice } = useCheckInvoiceExists(id)
   const { data: existingVoucher } = useCheckVoucherExists(id)
@@ -109,59 +113,61 @@ function BookingDetailPage() {
 
   const handleDueDateSubmit = async (dueDate: string) => {
     try {
-      await generateInvoiceMutation.mutateAsync({ 
-        bookingId: id, 
-        dueDate 
+      await generateInvoiceMutation.mutateAsync({
+        bookingId: id,
+        dueDate
       })
-      
-      const message = existingInvoice 
+
+      const message = existingInvoice
         ? "Invoice berhasil digenerate ulang! Anda akan diarahkan ke halaman invoices."
         : "Invoice berhasil digenerate! Anda akan diarahkan ke halaman invoices."
-      
-      alert(message)
+
+      toast.success(message)
       setIsDueDateModalOpen(false)
-      
+
       // Redirect to invoices page
       navigate({ to: '/invoices' })
     } catch (error) {
       console.error("Failed to generate invoice:", error)
-      alert("Gagal generate invoice. Silakan coba lagi.")
+      const msg = error instanceof Error ? error.message : "Gagal generate invoice"
+      toast.error(msg)
     }
   }
 
   const handleGenerateVoucher = async () => {
     if (!booking || !id) {
-      alert("Booking data tidak tersedia")
+      toast.warning("Booking data tidak tersedia")
       return
     }
 
     try {
       if (existingVoucher) {
         // If voucher already exists, regenerate it
-        await regenerateVoucherMutation.mutateAsync({ 
-          bookingId: id.toString(), 
-          guestName: booking.clientName 
+        await regenerateVoucherMutation.mutateAsync({
+          bookingId: id.toString(),
+          guestName: booking.clientName
         })
 
-        alert("Voucher berhasil digenerate ulang dan diunduh!")
+        toast.success("Voucher berhasil digenerate ulang dan diunduh!")
       } else {
         // If no voucher exists, generate new one
-        await generateVoucherMutation.mutateAsync({ 
-          bookingId: id.toString(), 
-          guestName: booking.clientName 
+        await generateVoucherMutation.mutateAsync({
+          bookingId: id.toString(),
+          guestName: booking.clientName
         })
-        
-        alert("Voucher berhasil digenerate dan diunduh!")
+
+        toast.success("Voucher berhasil digenerate dan diunduh!")
       }
     } catch (error) {
       console.error("Failed to generate voucher:", error)
-      alert("Gagal generate voucher. Silakan coba lagi.")
+      const msg = error instanceof Error ? error.message : "Gagal generate voucher"
+      toast.error(msg)
     }
   }
 
   const handleShareWhatsApp = () => {
     if (!booking) return
-    
+
     const message = `Booking Details:\nGuest: ${booking.clientName}\nCode: ${booking.code}\nHotel: ${booking.hotelName}\nCheck-in: ${formatDate(booking.checkIn)}\nCheck-out: ${formatDate(booking.checkOut)}\nTotal: ${formatCurrency(booking.totalAmount.toString(), 'SAR')}`
     const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(message)}`
     window.open(whatsappUrl, '_blank')
@@ -182,10 +188,11 @@ function BookingDetailPage() {
         ...updateData
       })
       setIsUpdateStatusModalOpen(false)
-      alert("Status booking berhasil diupdate!")
+      toast.success("Status booking berhasil diupdate!")
     } catch (error) {
       console.error("Failed to update booking status:", error)
-      alert("Gagal update status booking. Silakan coba lagi.")
+      const msg = error instanceof Error ? error.message : "Gagal update status booking"
+      toast.error(msg)
     }
   }
 
@@ -196,7 +203,8 @@ function BookingDetailPage() {
       setIsSuccessModalOpen(true)
     } catch (error) {
       console.error("Failed to delete booking:", error)
-      alert("Gagal menghapus booking. Silakan coba lagi.")
+      const msg = error instanceof Error ? error.message : "Gagal menghapus booking"
+      toast.error(msg)
     }
   }
 
@@ -285,20 +293,20 @@ function BookingDetailPage() {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <label className="text-sm font-medium text-gray-500">Name</label>
-                    <p className="text-gray-900">{booking.clientName}</p>
+                    <p className="text-gray-900">{booking.clientName || 'N/A'}</p>
                   </div>
                   <div>
                     <label className="text-sm font-medium text-gray-500">Email</label>
                     <div className="flex items-center">
                       <Mail className="h-4 w-4 mr-2 text-gray-400" />
-                      <p className="text-gray-900">{booking.clientEmail}</p>
+                      <p className="text-gray-900">{booking.clientEmail || 'N/A'}</p>
                     </div>
                   </div>
                   <div>
                     <label className="text-sm font-medium text-gray-500">Phone</label>
                     <div className="flex items-center">
                       <Phone className="h-4 w-4 mr-2 text-gray-400" />
-                      <p className="text-gray-900">{booking.clientPhone}</p>
+                      <p className="text-gray-900">{booking.clientPhone || 'N/A'}</p>
                     </div>
                   </div>
                 </div>
@@ -338,8 +346,7 @@ function BookingDetailPage() {
                   <div>
                     <label className="text-sm font-medium text-gray-500">Total Amount</label>
                     <div className="flex items-center">
-                      <SARCurrency amount={booking.totalAmount.toString()} iconSize={16} className="mr-2 text-gray-400" />
-                      <p className="text-gray-900 font-semibold">{formatCurrency(booking.totalAmount.toString(), 'SAR')}</p>
+                      <SARCurrency amount={booking.totalAmount.toString()} iconSize={16} className="text-gray-900 font-semibold" />
                     </div>
                   </div>
                 </div>
