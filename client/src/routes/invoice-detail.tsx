@@ -11,7 +11,7 @@ import { formatCurrency, formatDate } from "@/lib/utils";
 import { useInvoice, usePayInvoice, type Invoice } from "@/lib/queries/invoices";
 import { useReceiptsByBooking, useGenerateReceipt } from "@/lib/queries/receipts";
 import { authService } from "@/lib/auth";
-import { FileText, Download, Banknote, CalendarDays, Loader2, Info } from "lucide-react";
+import { FileText, Download, Banknote, CalendarDays, Loader2, Info, MessageCircle } from "lucide-react";
 
 export const Route = createFileRoute("/invoice-detail")({
   validateSearch: (search: Record<string, unknown>) => {
@@ -151,6 +151,27 @@ function InvoiceDetailPage() {
     window.open(`http://localhost:3000/api/invoices/by-number/${invoice.number}`, "_blank");
   };
 
+  const handleShareWhatsApp = () => {
+    if (!invoice) return;
+    const pdfUrl = `${window.location.origin.replace(':5173', ':3000')}/api/invoices/by-number/${invoice.number}`;
+    const message = [
+      `Assalamu'alaikum *${invoice.clientName}* 🙏`,
+      ``,
+      `Berikut kami kirimkan invoice untuk pemesanan Anda:`,
+      ``,
+      `🏨 ${invoice.hotelName}, ${invoice.city}`,
+      `📝 No. Invoice: *${invoice.number}*`,
+      `💰 Total: *${formatCurrency(invoice.amount, invoice.currency)}*`,
+      `📅 Jatuh Tempo: ${formatDate(invoice.dueDate)}`,
+      ``,
+      `Silakan download invoice PDF di sini:`,
+      `${pdfUrl}`,
+      ``,
+      `Jika ada pertanyaan, jangan ragu untuk menghubungi kami. Terima kasih ❤️`,
+    ].join('\n');
+    window.open(`https://wa.me/?text=${encodeURIComponent(message)}`, '_blank');
+  };
+
   const handleGenerateReceipt = async () => {
     if (!invoice) return;
     try {
@@ -238,6 +259,10 @@ function InvoiceDetailPage() {
           <Button variant="outline" onClick={handleDownload}>
             <Download className="h-4 w-4 mr-2" />
             Download PDF
+          </Button>
+          <Button variant="outline" onClick={handleShareWhatsApp} className="text-green-600 border-green-200 hover:bg-green-50 hover:text-green-700">
+            <MessageCircle className="h-4 w-4 mr-2" />
+            Kirim via WA
           </Button>
           {isAdmin && invoice.status === 'paid' && (receiptsForBooking?.length ?? 0) === 0 && (
             <Button

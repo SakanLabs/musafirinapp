@@ -11,7 +11,8 @@ import {
   Plus,
   Filter,
   Loader2,
-  Trash2
+  Trash2,
+  MessageCircle
 } from "lucide-react"
 import { formatCurrency, formatDate } from "@/lib/utils"
 import { useInvoices, type Invoice, useBackfillInvoiceStatus, useDeleteInvoice } from "@/lib/queries/invoices"
@@ -136,6 +137,30 @@ function InvoicesPage() {
               title="Download PDF"
             >
               <Download className="h-4 w-4" />
+            </Button>
+            <Button
+              size="sm"
+              variant="ghost"
+              className="text-green-600 hover:text-green-700 hover:bg-green-50"
+              onClick={() => {
+                const pdfUrl = `${window.location.origin.replace(':5173', ':3000')}/api/invoices/by-number/${invoice.number}`;
+                const msg = [
+                  `Assalamu'alaikum *${invoice.clientName}* 🙏`,
+                  ``,
+                  `Berikut invoice untuk pemesanan Anda:`,
+                  `🏨 ${invoice.hotelName}`,
+                  `📝 *${invoice.number}*`,
+                  `💰 Total: *${formatCurrency(invoice.amount, invoice.currency)}*`,
+                  ``,
+                  `Download PDF: ${pdfUrl}`,
+                  ``,
+                  `Ada pertanyaan? Hubungi kami ya ❤️`,
+                ].join('\n');
+                window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`, '_blank');
+              }}
+              title="Kirim via WhatsApp"
+            >
+              <MessageCircle className="h-4 w-4" />
             </Button>
             {isAdmin && (
               <Button

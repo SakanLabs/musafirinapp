@@ -1,0 +1,1 @@
+ALTER TABLE "hotel_pricing_periods" ADD COLUMN "meal_plan" varchar(50) DEFAULT 'Room Only' NOT NULL;

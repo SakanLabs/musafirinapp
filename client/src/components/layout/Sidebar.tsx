@@ -12,7 +12,9 @@ import {
   Users,
   Receipt,
   Plane,
-  Car
+  Car,
+  Building,
+  Map
 } from 'lucide-react'
 import { useState } from 'react'
 import { Button } from '@/components/ui/button'
@@ -62,6 +64,16 @@ const navigation = [
     name: 'Vouchers',
     href: '/vouchers',
     icon: Ticket
+  },
+  {
+    name: 'Master Hotels',
+    href: '/master-hotels',
+    icon: Building
+  },
+  {
+    name: 'Master Transport',
+    href: '/master-transport',
+    icon: Map
   }
 ]
 

@@ -1,4 +1,4 @@
-import { pgTable, text, timestamp, boolean, varchar, serial, integer, decimal, jsonb, pgEnum } from 'drizzle-orm/pg-core';
+import { pgTable, text, timestamp, boolean, varchar, serial, integer, decimal, jsonb, pgEnum, date } from 'drizzle-orm/pg-core';
 
 // User table for better-auth
 export const user = pgTable('user', {
@@ -242,6 +242,39 @@ export const hotelCostTemplates = pgTable('hotel_cost_templates', {
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
 });
 
+// Master Data: Hotels
+export const hotels = pgTable('hotels', {
+  id: serial('id').primaryKey(),
+  name: varchar('name', { length: 255 }).notNull(),
+  city: cityEnum('city').notNull(),
+  address: text('address'),
+  starRating: integer('star_rating'),
+  contactPerson: varchar('contact_person', { length: 150 }),
+  contactPhone: varchar('contact_phone', { length: 50 }),
+  supplierName: varchar('supplier_name', { length: 255 }),
+  picName: varchar('pic_name', { length: 255 }),
+  picContact: varchar('pic_contact', { length: 255 }),
+  isActive: boolean('is_active').default(true).notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+});
+
+// Master Data: Hotel Pricing Periods
+export const hotelPricingPeriods = pgTable('hotel_pricing_periods', {
+  id: serial('id').primaryKey(),
+  hotelId: integer('hotel_id').notNull().references(() => hotels.id, { onDelete: 'cascade' }),
+  roomType: varchar('room_type', { length: 255 }).notNull(),
+  mealPlan: varchar('meal_plan', { length: 50 }).notNull().default('Room Only'),
+  startDate: timestamp('start_date').notNull(),
+  endDate: timestamp('end_date').notNull(),
+  costPrice: decimal('cost_price', { precision: 10, scale: 2 }).notNull(),
+  sellingPrice: decimal('selling_price', { precision: 10, scale: 2 }).notNull(),
+  currency: varchar('currency', { length: 3 }).default('SAR').notNull(),
+  isActive: boolean('is_active').default(true).notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+});
+
 // Service Orders table (generic for Visa Umrah & Siskopatuh)
 export const serviceOrders = pgTable('service_orders', {
   id: serial('id').primaryKey(),
@@ -347,6 +380,34 @@ export const transportationRoutes = pgTable('transportation_routes', {
   driverPhone: varchar('driver_phone', { length: 50 }),
   vehiclePlateNumber: varchar('vehicle_plate_number', { length: 50 }),
   notes: text('notes'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+});
+
+// Master Data: Transportation Routes Master
+export const transportationRoutesMaster = pgTable('transportation_routes_master', {
+  id: serial('id').primaryKey(),
+  originLocation: varchar('origin_location', { length: 500 }).notNull(),
+  destinationLocation: varchar('destination_location', { length: 500 }).notNull(),
+  supplierName: varchar('supplier_name', { length: 255 }),
+  picName: varchar('pic_name', { length: 255 }),
+  picContact: varchar('pic_contact', { length: 255 }),
+  isActive: boolean('is_active').default(true).notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+});
+
+// Master Data: Transportation Route Pricing Periods
+export const transportationRoutePricingPeriods = pgTable('transportation_route_pricing_periods', {
+  id: serial('id').primaryKey(),
+  transportationRouteMasterId: integer('transportation_route_master_id').notNull().references(() => transportationRoutesMaster.id, { onDelete: 'cascade' }),
+  vehicleType: vehicleTypeEnum('vehicle_type').notNull(),
+  startDate: date('start_date', { mode: 'date' }).notNull(),
+  endDate: date('end_date', { mode: 'date' }).notNull(),
+  costPrice: decimal('cost_price', { precision: 10, scale: 2 }).notNull(),
+  sellingPrice: decimal('selling_price', { precision: 10, scale: 2 }).notNull(),
+  currency: varchar('currency', { length: 3 }).default('SAR').notNull(),
+  isActive: boolean('is_active').default(true).notNull(),
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
 });
@@ -495,3 +556,11 @@ export type InvoicePayment = typeof invoicePayments.$inferSelect;
 export type NewInvoicePayment = typeof invoicePayments.$inferInsert;
 export type ServiceOrderReceipt = typeof serviceOrderReceipts.$inferSelect;
 export type NewServiceOrderReceipt = typeof serviceOrderReceipts.$inferInsert;
+export type Hotel = typeof hotels.$inferSelect;
+export type NewHotel = typeof hotels.$inferInsert;
+export type HotelPricingPeriod = typeof hotelPricingPeriods.$inferSelect;
+export type NewHotelPricingPeriod = typeof hotelPricingPeriods.$inferInsert;
+export type TransportationRouteMaster = typeof transportationRoutesMaster.$inferSelect;
+export type NewTransportationRouteMaster = typeof transportationRoutesMaster.$inferInsert;
+export type TransportationRoutePricingPeriod = typeof transportationRoutePricingPeriods.$inferSelect;
+export type NewTransportationRoutePricingPeriod = typeof transportationRoutePricingPeriods.$inferInsert;

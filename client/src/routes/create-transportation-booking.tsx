@@ -11,6 +11,8 @@ import { PageLayout } from "@/components/layout/PageLayout";
 import { authService } from "@/lib/auth";
 import { useClients } from "@/lib/queries/clients";
 import { useCreateTransportationBooking } from "@/lib/queries/transportationBookings";
+import { useTransportRoutes } from "@/lib/queries/master";
+import { apiClient } from "@/lib/api";
 
 export const Route = createFileRoute("/create-transportation-booking")({
   beforeLoad: async () => {
@@ -36,6 +38,7 @@ interface TransportationRoute {
 function CreateTransportationBookingPage() {
   const navigate = useNavigate();
   const { data: clients = [], isLoading: isClientsLoading } = useClients();
+  const { data: masterRoutes = [], isLoading: isMasterRoutesLoading } = useTransportRoutes();
   const createTransportationBooking = useCreateTransportationBooking();
   const [selectedClientId, setSelectedClientId] = useState("");
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -149,6 +152,78 @@ function CreateTransportationBookingPage() {
         ? { ...route, [field]: value }
         : route
     ));
+  };
+
+  const handleMasterRouteSelection = (routeId: string, masterRouteId: string) => {
+    if (!masterRouteId) return;
+    const selectedMaster = masterRoutes.find(r => r.id.toString() === masterRouteId);
+    if (selectedMaster) {
+      setRoutes(prev => prev.map(route =>
+        route.id === routeId
+          ? {
+              ...route,
+              origin: selectedMaster.originLocation,
+              destination: selectedMaster.destinationLocation,
+            }
+          : route
+      ));
+      toast.info('Origin & Destination diisi. Silakan pilih Tanggal dan Jenis Kendaraan, lalu klik tombol ⚡ untuk Auto-Fill harga.', { id: `master-${routeId}` });
+    }
+  };
+
+  const autoFillTransportPricing = async (routeId: string) => {
+    const routeIndex = routes.findIndex(r => r.id === routeId);
+    if (routeIndex === -1) return;
+    
+    const route = routes[routeIndex];
+    if (!route.origin || !route.destination || !route.pickupDate || !route.vehicleType) {
+      toast.error('Silakan lengkapi Lokasi Asal, Tujuan, Tanggal, dan Jenis Kendaraan terlebih dahulu.');
+      return;
+    }
+
+    const matchedMaster = masterRoutes.find(r => 
+      r.originLocation.toLowerCase() === route.origin.toLowerCase() && 
+      r.destinationLocation.toLowerCase() === route.destination.toLowerCase()
+    );
+
+    if (!matchedMaster) {
+      toast.error('Master Route tidak ditemukan untuk Lokasi Asal dan Tujuan ini.');
+      return;
+    }
+
+    const toastId = toast.loading('Mengambil harga dari Master Data...');
+    
+    try {
+      const response = await apiClient.get<any>(`/api/master/transport-routes/${matchedMaster.id}/pricing`);
+      const periods = Array.isArray(response) ? response : (response as any).data || [];
+      
+      const pickupTime = new Date(route.pickupDate);
+      
+      const activePeriod = periods.find((p: any) => {
+        const start = new Date(p.startDate);
+        const end = new Date(p.endDate);
+        return p.vehicleType.toLowerCase() === route.vehicleType.toLowerCase() && 
+               p.isActive &&
+               start <= pickupTime && 
+               end >= pickupTime;
+      });
+
+      if (!activePeriod) {
+        toast.error(`Tidak ada harga Master/Musim aktif untuk jenis kendaraan ${route.vehicleType} pada tanggal tersebut.`, { id: toastId });
+        return;
+      }
+
+      setRoutes(prev => prev.map(r => 
+        r.id === routeId 
+          ? { ...r, price: String(activePeriod.sellingPrice) } 
+          : r
+      ));
+      
+      toast.success('Harga otomatis diisi dari Master Data!', { id: toastId });
+
+    } catch (e) {
+      toast.error('Gagal mengambil harga otomatis.', { id: toastId });
+    }
   };
 
   const addRoute = () => {
@@ -473,6 +548,23 @@ function CreateTransportationBookingPage() {
                       )}
                     </div>
 
+                    <div className="mb-4 bg-gray-50 border border-gray-200 p-3 rounded-md">
+                      <Label htmlFor={`masterRoute-${route.id}`} className="text-gray-700">Pilih dari Master Data (Opsional)</Label>
+                      <select
+                        id={`masterRoute-${route.id}`}
+                        onChange={(e) => handleMasterRouteSelection(route.id, e.target.value)}
+                        className="mt-1 w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+                        disabled={isMasterRoutesLoading}
+                      >
+                        <option value="">-- Isi Manual --</option>
+                        {masterRoutes.map((mr) => (
+                          <option key={mr.id} value={mr.id.toString()}>
+                            {mr.originLocation} → {mr.destinationLocation}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                       <div>
                         <Label htmlFor={`pickupDate-${route.id}`}>Tanggal Penjemputan *</Label>
@@ -533,16 +625,28 @@ function CreateTransportationBookingPage() {
                       </div>
                       <div>
                         <Label htmlFor={`price-${route.id}`}>Harga (SAR) *</Label>
-                        <Input
-                          id={`price-${route.id}`}
-                          type="number"
-                          step="0.01"
-                          min="0"
-                          value={route.price}
-                          onChange={(e) => handleRouteChange(route.id, "price", e.target.value)}
-                          placeholder="0.00"
-                          required
-                        />
+                        <div className="flex space-x-2 mt-1">
+                          <Input
+                            id={`price-${route.id}`}
+                            type="number"
+                            step="0.01"
+                            min="0"
+                            value={route.price}
+                            onChange={(e) => handleRouteChange(route.id, "price", e.target.value)}
+                            placeholder="0.00"
+                            required
+                            className="flex-1"
+                          />
+                          <Button 
+                            type="button" 
+                            variant="secondary" 
+                            onClick={() => autoFillTransportPricing(route.id)}
+                            title="Auto-Fill dari Master Data"
+                            className="px-3"
+                          >
+                            ⚡
+                          </Button>
+                        </div>
                       </div>
                     </div>
 

@@ -92,6 +92,34 @@
       "when": 1761596954336,
       "tag": "0012_smooth_dragon_man",
       "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1775743038035,
+      "tag": "0013_bent_warstar",
+      "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "7",
+      "when": 1775770342356,
+      "tag": "0014_tiny_shadow_king",
+      "breakpoints": true
+    },
+    {
+      "idx": 15,
+      "version": "7",
+      "when": 1775803315616,
+      "tag": "0015_wet_ulik",
+      "breakpoints": true
+    },
+    {
+      "idx": 16,
+      "version": "7",
+      "when": 1775810560681,
+      "tag": "0016_flat_nova",
+      "breakpoints": true
     }
   ]
 }

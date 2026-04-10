@@ -14,6 +14,8 @@ import { Route as TransportationBookingsRouteImport } from './routes/transportat
 import { Route as ServiceOrdersRouteImport } from './routes/service-orders'
 import { Route as RegisterRouteImport } from './routes/register'
 import { Route as ReceiptsRouteImport } from './routes/receipts'
+import { Route as MasterTransportRouteImport } from './routes/master-transport'
+import { Route as MasterHotelsRouteImport } from './routes/master-hotels'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as InvoicesRouteImport } from './routes/invoices'
 import { Route as InvoiceDetailRouteImport } from './routes/invoice-detail'
@@ -22,6 +24,8 @@ import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as CreateTransportationBookingRouteImport } from './routes/create-transportation-booking'
 import { Route as CreateServiceOrderRouteImport } from './routes/create-service-order'
 import { Route as CreateReceiptRouteImport } from './routes/create-receipt'
+import { Route as CreateMasterTransportRouteImport } from './routes/create-master-transport'
+import { Route as CreateMasterHotelRouteImport } from './routes/create-master-hotel'
 import { Route as CreateInvoiceRouteImport } from './routes/create-invoice'
 import { Route as CreateBookingRouteImport } from './routes/create-booking'
 import { Route as CostsRouteImport } from './routes/costs'
@@ -41,12 +45,20 @@ import { Route as ServiceOrdersCreateRouteImport } from './routes/service-orders
 import { Route as ServiceOrdersIdRouteImport } from './routes/service-orders/$id'
 import { Route as ServiceOrderEditServiceOrderIdRouteImport } from './routes/service-order-edit.$serviceOrderId'
 import { Route as ServiceOrderDetailServiceOrderIdRouteImport } from './routes/service-order-detail.$serviceOrderId'
+import { Route as MasterTransportEditRouteIdRouteImport } from './routes/master-transport-edit.$routeId'
+import { Route as MasterTransportDetailRouteIdRouteImport } from './routes/master-transport-detail.$routeId'
+import { Route as MasterHotelEditHotelIdRouteImport } from './routes/master-hotel-edit.$hotelId'
+import { Route as MasterHotelDetailHotelIdRouteImport } from './routes/master-hotel-detail.$hotelId'
 import { Route as DashboardUserRouteImport } from './routes/dashboard/user'
 import { Route as DashboardAdminRouteImport } from './routes/dashboard/admin'
+import { Route as CreateTransportPricingRouteIdRouteImport } from './routes/create-transport-pricing.$routeId'
+import { Route as CreateHotelPricingHotelIdRouteImport } from './routes/create-hotel-pricing.$hotelId'
 import { Route as ClientsCreateRouteImport } from './routes/clients/create'
 import { Route as ClientDetailClientIdRouteImport } from './routes/client-detail.$clientId'
 import { Route as BookingViewBookingIdRouteImport } from './routes/booking-view.$bookingId'
 import { Route as AuthCallbackRouteImport } from './routes/auth/callback'
+import { Route as EditTransportPricingRouteIdPricingIdRouteImport } from './routes/edit-transport-pricing.$routeId.$pricingId'
+import { Route as EditHotelPricingHotelIdPricingIdRouteImport } from './routes/edit-hotel-pricing.$hotelId.$pricingId'
 import { Route as BookingsBookingIdEditRouteImport } from './routes/bookings/$bookingId/edit'
 
 const VouchersRoute = VouchersRouteImport.update({
@@ -72,6 +84,16 @@ const RegisterRoute = RegisterRouteImport.update({
 const ReceiptsRoute = ReceiptsRouteImport.update({
   id: '/receipts',
   path: '/receipts',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const MasterTransportRoute = MasterTransportRouteImport.update({
+  id: '/master-transport',
+  path: '/master-transport',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const MasterHotelsRoute = MasterHotelsRouteImport.update({
+  id: '/master-hotels',
+  path: '/master-hotels',
   getParentRoute: () => rootRouteImport,
 } as any)
 const LoginRoute = LoginRouteImport.update({
@@ -113,6 +135,16 @@ const CreateServiceOrderRoute = CreateServiceOrderRouteImport.update({
 const CreateReceiptRoute = CreateReceiptRouteImport.update({
   id: '/create-receipt',
   path: '/create-receipt',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CreateMasterTransportRoute = CreateMasterTransportRouteImport.update({
+  id: '/create-master-transport',
+  path: '/create-master-transport',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CreateMasterHotelRoute = CreateMasterHotelRouteImport.update({
+  id: '/create-master-hotel',
+  path: '/create-master-hotel',
   getParentRoute: () => rootRouteImport,
 } as any)
 const CreateInvoiceRoute = CreateInvoiceRouteImport.update({
@@ -214,6 +246,29 @@ const ServiceOrderDetailServiceOrderIdRoute =
     path: '/service-order-detail/$serviceOrderId',
     getParentRoute: () => rootRouteImport,
   } as any)
+const MasterTransportEditRouteIdRoute =
+  MasterTransportEditRouteIdRouteImport.update({
+    id: '/master-transport-edit/$routeId',
+    path: '/master-transport-edit/$routeId',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const MasterTransportDetailRouteIdRoute =
+  MasterTransportDetailRouteIdRouteImport.update({
+    id: '/master-transport-detail/$routeId',
+    path: '/master-transport-detail/$routeId',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const MasterHotelEditHotelIdRoute = MasterHotelEditHotelIdRouteImport.update({
+  id: '/master-hotel-edit/$hotelId',
+  path: '/master-hotel-edit/$hotelId',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const MasterHotelDetailHotelIdRoute =
+  MasterHotelDetailHotelIdRouteImport.update({
+    id: '/master-hotel-detail/$hotelId',
+    path: '/master-hotel-detail/$hotelId',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const DashboardUserRoute = DashboardUserRouteImport.update({
   id: '/user',
   path: '/user',
@@ -224,6 +279,18 @@ const DashboardAdminRoute = DashboardAdminRouteImport.update({
   path: '/admin',
   getParentRoute: () => DashboardRoute,
 } as any)
+const CreateTransportPricingRouteIdRoute =
+  CreateTransportPricingRouteIdRouteImport.update({
+    id: '/create-transport-pricing/$routeId',
+    path: '/create-transport-pricing/$routeId',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const CreateHotelPricingHotelIdRoute =
+  CreateHotelPricingHotelIdRouteImport.update({
+    id: '/create-hotel-pricing/$hotelId',
+    path: '/create-hotel-pricing/$hotelId',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ClientsCreateRoute = ClientsCreateRouteImport.update({
   id: '/create',
   path: '/create',
@@ -244,6 +311,18 @@ const AuthCallbackRoute = AuthCallbackRouteImport.update({
   path: '/auth/callback',
   getParentRoute: () => rootRouteImport,
 } as any)
+const EditTransportPricingRouteIdPricingIdRoute =
+  EditTransportPricingRouteIdPricingIdRouteImport.update({
+    id: '/edit-transport-pricing/$routeId/$pricingId',
+    path: '/edit-transport-pricing/$routeId/$pricingId',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const EditHotelPricingHotelIdPricingIdRoute =
+  EditHotelPricingHotelIdPricingIdRouteImport.update({
+    id: '/edit-hotel-pricing/$hotelId/$pricingId',
+    path: '/edit-hotel-pricing/$hotelId/$pricingId',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const BookingsBookingIdEditRoute = BookingsBookingIdEditRouteImport.update({
   id: '/$bookingId/edit',
   path: '/$bookingId/edit',
@@ -262,6 +341,8 @@ export interface FileRoutesByFullPath {
   '/costs': typeof CostsRoute
   '/create-booking': typeof CreateBookingRoute
   '/create-invoice': typeof CreateInvoiceRoute
+  '/create-master-hotel': typeof CreateMasterHotelRoute
+  '/create-master-transport': typeof CreateMasterTransportRoute
   '/create-receipt': typeof CreateReceiptRoute
   '/create-service-order': typeof CreateServiceOrderRoute
   '/create-transportation-booking': typeof CreateTransportationBookingRoute
@@ -270,6 +351,8 @@ export interface FileRoutesByFullPath {
   '/invoice-detail': typeof InvoiceDetailRoute
   '/invoices': typeof InvoicesRoute
   '/login': typeof LoginRoute
+  '/master-hotels': typeof MasterHotelsRoute
+  '/master-transport': typeof MasterTransportRoute
   '/receipts': typeof ReceiptsRoute
   '/register': typeof RegisterRoute
   '/service-orders': typeof ServiceOrdersRouteWithChildren
@@ -279,8 +362,14 @@ export interface FileRoutesByFullPath {
   '/booking-view/$bookingId': typeof BookingViewBookingIdRoute
   '/client-detail/$clientId': typeof ClientDetailClientIdRoute
   '/clients/create': typeof ClientsCreateRoute
+  '/create-hotel-pricing/$hotelId': typeof CreateHotelPricingHotelIdRoute
+  '/create-transport-pricing/$routeId': typeof CreateTransportPricingRouteIdRoute
   '/dashboard/admin': typeof DashboardAdminRoute
   '/dashboard/user': typeof DashboardUserRoute
+  '/master-hotel-detail/$hotelId': typeof MasterHotelDetailHotelIdRoute
+  '/master-hotel-edit/$hotelId': typeof MasterHotelEditHotelIdRoute
+  '/master-transport-detail/$routeId': typeof MasterTransportDetailRouteIdRoute
+  '/master-transport-edit/$routeId': typeof MasterTransportEditRouteIdRoute
   '/service-order-detail/$serviceOrderId': typeof ServiceOrderDetailServiceOrderIdRoute
   '/service-order-edit/$serviceOrderId': typeof ServiceOrderEditServiceOrderIdRoute
   '/service-orders/$id': typeof ServiceOrdersIdRoute
@@ -290,6 +379,8 @@ export interface FileRoutesByFullPath {
   '/vouchers/create': typeof VouchersCreateRoute
   '/clients/': typeof ClientsIndexRoute
   '/bookings/$bookingId/edit': typeof BookingsBookingIdEditRoute
+  '/edit-hotel-pricing/$hotelId/$pricingId': typeof EditHotelPricingHotelIdPricingIdRoute
+  '/edit-transport-pricing/$routeId/$pricingId': typeof EditTransportPricingRouteIdPricingIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -302,6 +393,8 @@ export interface FileRoutesByTo {
   '/costs': typeof CostsRoute
   '/create-booking': typeof CreateBookingRoute
   '/create-invoice': typeof CreateInvoiceRoute
+  '/create-master-hotel': typeof CreateMasterHotelRoute
+  '/create-master-transport': typeof CreateMasterTransportRoute
   '/create-receipt': typeof CreateReceiptRoute
   '/create-service-order': typeof CreateServiceOrderRoute
   '/create-transportation-booking': typeof CreateTransportationBookingRoute
@@ -310,6 +403,8 @@ export interface FileRoutesByTo {
   '/invoice-detail': typeof InvoiceDetailRoute
   '/invoices': typeof InvoicesRoute
   '/login': typeof LoginRoute
+  '/master-hotels': typeof MasterHotelsRoute
+  '/master-transport': typeof MasterTransportRoute
   '/receipts': typeof ReceiptsRoute
   '/register': typeof RegisterRoute
   '/service-orders': typeof ServiceOrdersRouteWithChildren
@@ -319,8 +414,14 @@ export interface FileRoutesByTo {
   '/booking-view/$bookingId': typeof BookingViewBookingIdRoute
   '/client-detail/$clientId': typeof ClientDetailClientIdRoute
   '/clients/create': typeof ClientsCreateRoute
+  '/create-hotel-pricing/$hotelId': typeof CreateHotelPricingHotelIdRoute
+  '/create-transport-pricing/$routeId': typeof CreateTransportPricingRouteIdRoute
   '/dashboard/admin': typeof DashboardAdminRoute
   '/dashboard/user': typeof DashboardUserRoute
+  '/master-hotel-detail/$hotelId': typeof MasterHotelDetailHotelIdRoute
+  '/master-hotel-edit/$hotelId': typeof MasterHotelEditHotelIdRoute
+  '/master-transport-detail/$routeId': typeof MasterTransportDetailRouteIdRoute
+  '/master-transport-edit/$routeId': typeof MasterTransportEditRouteIdRoute
   '/service-order-detail/$serviceOrderId': typeof ServiceOrderDetailServiceOrderIdRoute
   '/service-order-edit/$serviceOrderId': typeof ServiceOrderEditServiceOrderIdRoute
   '/service-orders/$id': typeof ServiceOrdersIdRoute
@@ -330,6 +431,8 @@ export interface FileRoutesByTo {
   '/vouchers/create': typeof VouchersCreateRoute
   '/clients': typeof ClientsIndexRoute
   '/bookings/$bookingId/edit': typeof BookingsBookingIdEditRoute
+  '/edit-hotel-pricing/$hotelId/$pricingId': typeof EditHotelPricingHotelIdPricingIdRoute
+  '/edit-transport-pricing/$routeId/$pricingId': typeof EditTransportPricingRouteIdPricingIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -344,6 +447,8 @@ export interface FileRoutesById {
   '/costs': typeof CostsRoute
   '/create-booking': typeof CreateBookingRoute
   '/create-invoice': typeof CreateInvoiceRoute
+  '/create-master-hotel': typeof CreateMasterHotelRoute
+  '/create-master-transport': typeof CreateMasterTransportRoute
   '/create-receipt': typeof CreateReceiptRoute
   '/create-service-order': typeof CreateServiceOrderRoute
   '/create-transportation-booking': typeof CreateTransportationBookingRoute
@@ -352,6 +457,8 @@ export interface FileRoutesById {
   '/invoice-detail': typeof InvoiceDetailRoute
   '/invoices': typeof InvoicesRoute
   '/login': typeof LoginRoute
+  '/master-hotels': typeof MasterHotelsRoute
+  '/master-transport': typeof MasterTransportRoute
   '/receipts': typeof ReceiptsRoute
   '/register': typeof RegisterRoute
   '/service-orders': typeof ServiceOrdersRouteWithChildren
@@ -361,8 +468,14 @@ export interface FileRoutesById {
   '/booking-view/$bookingId': typeof BookingViewBookingIdRoute
   '/client-detail/$clientId': typeof ClientDetailClientIdRoute
   '/clients/create': typeof ClientsCreateRoute
+  '/create-hotel-pricing/$hotelId': typeof CreateHotelPricingHotelIdRoute
+  '/create-transport-pricing/$routeId': typeof CreateTransportPricingRouteIdRoute
   '/dashboard/admin': typeof DashboardAdminRoute
   '/dashboard/user': typeof DashboardUserRoute
+  '/master-hotel-detail/$hotelId': typeof MasterHotelDetailHotelIdRoute
+  '/master-hotel-edit/$hotelId': typeof MasterHotelEditHotelIdRoute
+  '/master-transport-detail/$routeId': typeof MasterTransportDetailRouteIdRoute
+  '/master-transport-edit/$routeId': typeof MasterTransportEditRouteIdRoute
   '/service-order-detail/$serviceOrderId': typeof ServiceOrderDetailServiceOrderIdRoute
   '/service-order-edit/$serviceOrderId': typeof ServiceOrderEditServiceOrderIdRoute
   '/service-orders/$id': typeof ServiceOrdersIdRoute
@@ -372,6 +485,8 @@ export interface FileRoutesById {
   '/vouchers/create': typeof VouchersCreateRoute
   '/clients/': typeof ClientsIndexRoute
   '/bookings/$bookingId/edit': typeof BookingsBookingIdEditRoute
+  '/edit-hotel-pricing/$hotelId/$pricingId': typeof EditHotelPricingHotelIdPricingIdRoute
+  '/edit-transport-pricing/$routeId/$pricingId': typeof EditTransportPricingRouteIdPricingIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -387,6 +502,8 @@ export interface FileRouteTypes {
     | '/costs'
     | '/create-booking'
     | '/create-invoice'
+    | '/create-master-hotel'
+    | '/create-master-transport'
     | '/create-receipt'
     | '/create-service-order'
     | '/create-transportation-booking'
@@ -395,6 +512,8 @@ export interface FileRouteTypes {
     | '/invoice-detail'
     | '/invoices'
     | '/login'
+    | '/master-hotels'
+    | '/master-transport'
     | '/receipts'
     | '/register'
     | '/service-orders'
@@ -404,8 +523,14 @@ export interface FileRouteTypes {
     | '/booking-view/$bookingId'
     | '/client-detail/$clientId'
     | '/clients/create'
+    | '/create-hotel-pricing/$hotelId'
+    | '/create-transport-pricing/$routeId'
     | '/dashboard/admin'
     | '/dashboard/user'
+    | '/master-hotel-detail/$hotelId'
+    | '/master-hotel-edit/$hotelId'
+    | '/master-transport-detail/$routeId'
+    | '/master-transport-edit/$routeId'
     | '/service-order-detail/$serviceOrderId'
     | '/service-order-edit/$serviceOrderId'
     | '/service-orders/$id'
@@ -415,6 +540,8 @@ export interface FileRouteTypes {
     | '/vouchers/create'
     | '/clients/'
     | '/bookings/$bookingId/edit'
+    | '/edit-hotel-pricing/$hotelId/$pricingId'
+    | '/edit-transport-pricing/$routeId/$pricingId'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -427,6 +554,8 @@ export interface FileRouteTypes {
     | '/costs'
     | '/create-booking'
     | '/create-invoice'
+    | '/create-master-hotel'
+    | '/create-master-transport'
     | '/create-receipt'
     | '/create-service-order'
     | '/create-transportation-booking'
@@ -435,6 +564,8 @@ export interface FileRouteTypes {
     | '/invoice-detail'
     | '/invoices'
     | '/login'
+    | '/master-hotels'
+    | '/master-transport'
     | '/receipts'
     | '/register'
     | '/service-orders'
@@ -444,8 +575,14 @@ export interface FileRouteTypes {
     | '/booking-view/$bookingId'
     | '/client-detail/$clientId'
     | '/clients/create'
+    | '/create-hotel-pricing/$hotelId'
+    | '/create-transport-pricing/$routeId'
     | '/dashboard/admin'
     | '/dashboard/user'
+    | '/master-hotel-detail/$hotelId'
+    | '/master-hotel-edit/$hotelId'
+    | '/master-transport-detail/$routeId'
+    | '/master-transport-edit/$routeId'
     | '/service-order-detail/$serviceOrderId'
     | '/service-order-edit/$serviceOrderId'
     | '/service-orders/$id'
@@ -455,6 +592,8 @@ export interface FileRouteTypes {
     | '/vouchers/create'
     | '/clients'
     | '/bookings/$bookingId/edit'
+    | '/edit-hotel-pricing/$hotelId/$pricingId'
+    | '/edit-transport-pricing/$routeId/$pricingId'
   id:
     | '__root__'
     | '/'
@@ -468,6 +607,8 @@ export interface FileRouteTypes {
     | '/costs'
     | '/create-booking'
     | '/create-invoice'
+    | '/create-master-hotel'
+    | '/create-master-transport'
     | '/create-receipt'
     | '/create-service-order'
     | '/create-transportation-booking'
@@ -476,6 +617,8 @@ export interface FileRouteTypes {
     | '/invoice-detail'
     | '/invoices'
     | '/login'
+    | '/master-hotels'
+    | '/master-transport'
     | '/receipts'
     | '/register'
     | '/service-orders'
@@ -485,8 +628,14 @@ export interface FileRouteTypes {
     | '/booking-view/$bookingId'
     | '/client-detail/$clientId'
     | '/clients/create'
+    | '/create-hotel-pricing/$hotelId'
+    | '/create-transport-pricing/$routeId'
     | '/dashboard/admin'
     | '/dashboard/user'
+    | '/master-hotel-detail/$hotelId'
+    | '/master-hotel-edit/$hotelId'
+    | '/master-transport-detail/$routeId'
+    | '/master-transport-edit/$routeId'
     | '/service-order-detail/$serviceOrderId'
     | '/service-order-edit/$serviceOrderId'
     | '/service-orders/$id'
@@ -496,6 +645,8 @@ export interface FileRouteTypes {
     | '/vouchers/create'
     | '/clients/'
     | '/bookings/$bookingId/edit'
+    | '/edit-hotel-pricing/$hotelId/$pricingId'
+    | '/edit-transport-pricing/$routeId/$pricingId'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -510,6 +661,8 @@ export interface RootRouteChildren {
   CostsRoute: typeof CostsRoute
   CreateBookingRoute: typeof CreateBookingRoute
   CreateInvoiceRoute: typeof CreateInvoiceRoute
+  CreateMasterHotelRoute: typeof CreateMasterHotelRoute
+  CreateMasterTransportRoute: typeof CreateMasterTransportRoute
   CreateReceiptRoute: typeof CreateReceiptRoute
   CreateServiceOrderRoute: typeof CreateServiceOrderRoute
   CreateTransportationBookingRoute: typeof CreateTransportationBookingRoute
@@ -518,6 +671,8 @@ export interface RootRouteChildren {
   InvoiceDetailRoute: typeof InvoiceDetailRoute
   InvoicesRoute: typeof InvoicesRoute
   LoginRoute: typeof LoginRoute
+  MasterHotelsRoute: typeof MasterHotelsRoute
+  MasterTransportRoute: typeof MasterTransportRoute
   ReceiptsRoute: typeof ReceiptsRoute
   RegisterRoute: typeof RegisterRoute
   ServiceOrdersRoute: typeof ServiceOrdersRouteWithChildren
@@ -526,10 +681,18 @@ export interface RootRouteChildren {
   AuthCallbackRoute: typeof AuthCallbackRoute
   BookingViewBookingIdRoute: typeof BookingViewBookingIdRoute
   ClientDetailClientIdRoute: typeof ClientDetailClientIdRoute
+  CreateHotelPricingHotelIdRoute: typeof CreateHotelPricingHotelIdRoute
+  CreateTransportPricingRouteIdRoute: typeof CreateTransportPricingRouteIdRoute
+  MasterHotelDetailHotelIdRoute: typeof MasterHotelDetailHotelIdRoute
+  MasterHotelEditHotelIdRoute: typeof MasterHotelEditHotelIdRoute
+  MasterTransportDetailRouteIdRoute: typeof MasterTransportDetailRouteIdRoute
+  MasterTransportEditRouteIdRoute: typeof MasterTransportEditRouteIdRoute
   ServiceOrderDetailServiceOrderIdRoute: typeof ServiceOrderDetailServiceOrderIdRoute
   ServiceOrderEditServiceOrderIdRoute: typeof ServiceOrderEditServiceOrderIdRoute
   TransportationBookingDetailTransportationBookingIdRoute: typeof TransportationBookingDetailTransportationBookingIdRoute
   TransportationBookingEditTransportationBookingIdRoute: typeof TransportationBookingEditTransportationBookingIdRoute
+  EditHotelPricingHotelIdPricingIdRoute: typeof EditHotelPricingHotelIdPricingIdRoute
+  EditTransportPricingRouteIdPricingIdRoute: typeof EditTransportPricingRouteIdPricingIdRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -567,6 +730,20 @@ declare module '@tanstack/react-router' {
       path: '/receipts'
       fullPath: '/receipts'
       preLoaderRoute: typeof ReceiptsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/master-transport': {
+      id: '/master-transport'
+      path: '/master-transport'
+      fullPath: '/master-transport'
+      preLoaderRoute: typeof MasterTransportRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/master-hotels': {
+      id: '/master-hotels'
+      path: '/master-hotels'
+      fullPath: '/master-hotels'
+      preLoaderRoute: typeof MasterHotelsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/login': {
@@ -623,6 +800,20 @@ declare module '@tanstack/react-router' {
       path: '/create-receipt'
       fullPath: '/create-receipt'
       preLoaderRoute: typeof CreateReceiptRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/create-master-transport': {
+      id: '/create-master-transport'
+      path: '/create-master-transport'
+      fullPath: '/create-master-transport'
+      preLoaderRoute: typeof CreateMasterTransportRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/create-master-hotel': {
+      id: '/create-master-hotel'
+      path: '/create-master-hotel'
+      fullPath: '/create-master-hotel'
+      preLoaderRoute: typeof CreateMasterHotelRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/create-invoice': {
@@ -758,6 +949,34 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ServiceOrderDetailServiceOrderIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/master-transport-edit/$routeId': {
+      id: '/master-transport-edit/$routeId'
+      path: '/master-transport-edit/$routeId'
+      fullPath: '/master-transport-edit/$routeId'
+      preLoaderRoute: typeof MasterTransportEditRouteIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/master-transport-detail/$routeId': {
+      id: '/master-transport-detail/$routeId'
+      path: '/master-transport-detail/$routeId'
+      fullPath: '/master-transport-detail/$routeId'
+      preLoaderRoute: typeof MasterTransportDetailRouteIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/master-hotel-edit/$hotelId': {
+      id: '/master-hotel-edit/$hotelId'
+      path: '/master-hotel-edit/$hotelId'
+      fullPath: '/master-hotel-edit/$hotelId'
+      preLoaderRoute: typeof MasterHotelEditHotelIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/master-hotel-detail/$hotelId': {
+      id: '/master-hotel-detail/$hotelId'
+      path: '/master-hotel-detail/$hotelId'
+      fullPath: '/master-hotel-detail/$hotelId'
+      preLoaderRoute: typeof MasterHotelDetailHotelIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/dashboard/user': {
       id: '/dashboard/user'
       path: '/user'
@@ -771,6 +990,20 @@ declare module '@tanstack/react-router' {
       fullPath: '/dashboard/admin'
       preLoaderRoute: typeof DashboardAdminRouteImport
       parentRoute: typeof DashboardRoute
+    }
+    '/create-transport-pricing/$routeId': {
+      id: '/create-transport-pricing/$routeId'
+      path: '/create-transport-pricing/$routeId'
+      fullPath: '/create-transport-pricing/$routeId'
+      preLoaderRoute: typeof CreateTransportPricingRouteIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/create-hotel-pricing/$hotelId': {
+      id: '/create-hotel-pricing/$hotelId'
+      path: '/create-hotel-pricing/$hotelId'
+      fullPath: '/create-hotel-pricing/$hotelId'
+      preLoaderRoute: typeof CreateHotelPricingHotelIdRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/clients/create': {
       id: '/clients/create'
@@ -798,6 +1031,20 @@ declare module '@tanstack/react-router' {
       path: '/auth/callback'
       fullPath: '/auth/callback'
       preLoaderRoute: typeof AuthCallbackRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/edit-transport-pricing/$routeId/$pricingId': {
+      id: '/edit-transport-pricing/$routeId/$pricingId'
+      path: '/edit-transport-pricing/$routeId/$pricingId'
+      fullPath: '/edit-transport-pricing/$routeId/$pricingId'
+      preLoaderRoute: typeof EditTransportPricingRouteIdPricingIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/edit-hotel-pricing/$hotelId/$pricingId': {
+      id: '/edit-hotel-pricing/$hotelId/$pricingId'
+      path: '/edit-hotel-pricing/$hotelId/$pricingId'
+      fullPath: '/edit-hotel-pricing/$hotelId/$pricingId'
+      preLoaderRoute: typeof EditHotelPricingHotelIdPricingIdRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/bookings/$bookingId/edit': {
@@ -887,6 +1134,8 @@ const rootRouteChildren: RootRouteChildren = {
   CostsRoute: CostsRoute,
   CreateBookingRoute: CreateBookingRoute,
   CreateInvoiceRoute: CreateInvoiceRoute,
+  CreateMasterHotelRoute: CreateMasterHotelRoute,
+  CreateMasterTransportRoute: CreateMasterTransportRoute,
   CreateReceiptRoute: CreateReceiptRoute,
   CreateServiceOrderRoute: CreateServiceOrderRoute,
   CreateTransportationBookingRoute: CreateTransportationBookingRoute,
@@ -895,6 +1144,8 @@ const rootRouteChildren: RootRouteChildren = {
   InvoiceDetailRoute: InvoiceDetailRoute,
   InvoicesRoute: InvoicesRoute,
   LoginRoute: LoginRoute,
+  MasterHotelsRoute: MasterHotelsRoute,
+  MasterTransportRoute: MasterTransportRoute,
   ReceiptsRoute: ReceiptsRoute,
   RegisterRoute: RegisterRoute,
   ServiceOrdersRoute: ServiceOrdersRouteWithChildren,
@@ -903,12 +1154,21 @@ const rootRouteChildren: RootRouteChildren = {
   AuthCallbackRoute: AuthCallbackRoute,
   BookingViewBookingIdRoute: BookingViewBookingIdRoute,
   ClientDetailClientIdRoute: ClientDetailClientIdRoute,
+  CreateHotelPricingHotelIdRoute: CreateHotelPricingHotelIdRoute,
+  CreateTransportPricingRouteIdRoute: CreateTransportPricingRouteIdRoute,
+  MasterHotelDetailHotelIdRoute: MasterHotelDetailHotelIdRoute,
+  MasterHotelEditHotelIdRoute: MasterHotelEditHotelIdRoute,
+  MasterTransportDetailRouteIdRoute: MasterTransportDetailRouteIdRoute,
+  MasterTransportEditRouteIdRoute: MasterTransportEditRouteIdRoute,
   ServiceOrderDetailServiceOrderIdRoute: ServiceOrderDetailServiceOrderIdRoute,
   ServiceOrderEditServiceOrderIdRoute: ServiceOrderEditServiceOrderIdRoute,
   TransportationBookingDetailTransportationBookingIdRoute:
     TransportationBookingDetailTransportationBookingIdRoute,
   TransportationBookingEditTransportationBookingIdRoute:
     TransportationBookingEditTransportationBookingIdRoute,
+  EditHotelPricingHotelIdPricingIdRoute: EditHotelPricingHotelIdPricingIdRoute,
+  EditTransportPricingRouteIdPricingIdRoute:
+    EditTransportPricingRouteIdPricingIdRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

@@ -1,6 +1,6 @@
 import { createFileRoute, redirect, useNavigate } from "@tanstack/react-router"
 import { toast } from "sonner"
-import { useEffect, useState } from "react"
+import { useEffect, useState, useMemo } from "react"
 import { PageLayout } from "@/components/layout/PageLayout"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -20,6 +20,7 @@ import {
 import { authService } from "@/lib/auth"
 import { useCreateBooking, type CreateBookingData, type CreateBookingRoomItem, type PricingPeriod } from "@/lib/queries/bookings"
 import { useClients } from "@/lib/queries"
+import { useHotels, useHotelPricing } from "@/lib/queries/master"
 
 export const Route = createFileRoute("/create-booking")({
   beforeLoad: async () => {
@@ -36,7 +37,10 @@ function CreateBookingPage() {
   const navigate = useNavigate()
   const createBookingMutation = useCreateBooking()
   const { data: clients = [], isLoading: isClientsLoading } = useClients()
+  const { data: masterHotels = [], isLoading: isHotelsLoading } = useHotels()
   const [selectedClientId, setSelectedClientId] = useState("")
+  const [selectedMasterHotelId, setSelectedMasterHotelId] = useState("")
+  const { data: hotelPricingPeriods = [] } = useHotelPricing(Number(selectedMasterHotelId))
 
   const [formData, setFormData] = useState({
     guestName: "",
@@ -57,6 +61,14 @@ function CreateBookingPage() {
     paymentMethod: "",
     paymentAmount: 0,
   })
+
+  const availableRoomTypes = useMemo(() => {
+    if (!hotelPricingPeriods || hotelPricingPeriods.length === 0) return [];
+    // Only show room types that have the current meal plan configured, or show all if Meal Plan is somehow empty
+    const filtered = hotelPricingPeriods.filter(p => !formData.mealPlan || p.mealPlan === formData.mealPlan);
+    const types = new Set(filtered.map(p => p.roomType));
+    return Array.from(types);
+  }, [hotelPricingPeriods, formData.mealPlan]);
 
   const [rooms, setRooms] = useState<CreateBookingRoomItem[]>([
     {
@@ -147,6 +159,25 @@ function CreateBookingPage() {
         guestEmail: "",
         guestPhone: "",
         client: ""
+      }))
+    }
+  }
+
+  const handleMasterHotelSelection = (value: string) => {
+    setSelectedMasterHotelId(value)
+    if (!value) return
+
+    const selectedHotel = masterHotels.find(h => h.id.toString() === value)
+    if (selectedHotel) {
+      setFormData(prev => ({
+        ...prev,
+        hotelName: selectedHotel.name,
+        city: selectedHotel.city
+      }))
+      setErrors(prev => ({
+        ...prev,
+        hotelName: "",
+        city: ""
       }))
     }
   }
@@ -334,6 +365,94 @@ function CreateBookingPage() {
       return diffDays
     }
     return 0
+  }
+
+  const autoFillRoomPricing = (index: number) => {
+    const rootRooms = [...rooms];
+    const room = rootRooms[index];
+    if (!selectedMasterHotelId || !formData.checkInDate || !formData.checkOutDate) {
+      toast.error('Please ensure Master Hotel, Check-in, and Check-out dates are selected first.');
+      return;
+    }
+    if (!room.roomType) {
+      toast.error('Please select a Room Type to use auto-fill.');
+      return;
+    }
+
+    const checkIn = new Date(formData.checkInDate);
+    const checkOut = new Date(formData.checkOutDate);
+    
+    const matchedPeriods = hotelPricingPeriods.filter(p => 
+      p.roomType.toLowerCase() === room.roomType.toLowerCase() && 
+      p.mealPlan === formData.mealPlan &&
+      p.isActive
+    );
+
+    if (matchedPeriods.length === 0) {
+      toast.warning(`No Master Pricing found for ${room.roomType} with Meal Plan ${formData.mealPlan}.`);
+      return;
+    }
+
+    matchedPeriods.sort((a, b) => new Date(a.startDate).getTime() - new Date(b.startDate).getTime());
+
+    const generatedPeriods: PricingPeriod[] = [];
+    let currentDate = new Date(checkIn);
+    
+    while (currentDate < checkOut) {
+      const activeMaster = matchedPeriods.find(p => {
+        const start = new Date(p.startDate);
+        const end = new Date(p.endDate);
+        return currentDate >= start && currentDate <= end;
+      });
+
+      if (!activeMaster) {
+        toast.error(`Pricing gap detected on ${currentDate.toLocaleDateString()}. Automatic slice aborted.`);
+        return;
+      }
+
+      let subNights = 1;
+      let nextDate = new Date(currentDate);
+      nextDate.setDate(nextDate.getDate() + 1);
+      const activeMasterEnd = new Date(activeMaster.endDate);
+
+      while (nextDate < checkOut && nextDate <= activeMasterEnd) {
+        subNights++;
+        nextDate.setDate(nextDate.getDate() + 1);
+      }
+
+      generatedPeriods.push({
+        startDate: currentDate.toISOString().split('T')[0],
+        endDate: nextDate.toISOString().split('T')[0],
+        nights: subNights,
+        unitPrice: Number(activeMaster.sellingPrice),
+        hotelCostPrice: Number(activeMaster.costPrice),
+        subtotal: Number(activeMaster.sellingPrice) * subNights
+      });
+
+      currentDate = nextDate;
+    }
+
+    if (generatedPeriods.length === 0) return;
+
+    if (generatedPeriods.length === 1) {
+      rootRooms[index] = {
+        ...room,
+        hasPricingPeriods: false,
+        unitPrice: generatedPeriods[0].unitPrice,
+        hotelCostPrice: generatedPeriods[0].hotelCostPrice,
+        pricingPeriods: undefined
+      };
+    } else {
+      rootRooms[index] = {
+        ...room,
+        hasPricingPeriods: true,
+        pricingPeriods: generatedPeriods
+      };
+    }
+
+    setRooms(rootRooms);
+    updateTotalAmount(rootRooms);
+    toast.success(`Pricing automatically assigned for Room ${index + 1}`);
   }
 
   const addRoom = () => {
@@ -613,6 +732,28 @@ function CreateBookingPage() {
               <h3 className="text-lg font-semibold">Hotel Information</h3>
             </div>
 
+            <div className="mb-6 bg-blue-50 border border-blue-100 p-4 rounded-md">
+              <label className="block text-sm font-medium text-blue-900 mb-2">
+                Quick Select from Master Data
+              </label>
+              <select
+                value={selectedMasterHotelId}
+                onChange={(e) => handleMasterHotelSelection(e.target.value)}
+                className="w-full px-3 py-2 border border-blue-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+                disabled={isHotelsLoading}
+              >
+                <option value="">-- Custom Hotel Entry --</option>
+                {masterHotels.map(hotel => (
+                  <option key={hotel.id} value={hotel.id.toString()}>
+                    {hotel.name} ({hotel.city}) {hotel.starRating ? ` - ${hotel.starRating} Stars` : ''}
+                  </option>
+                ))}
+              </select>
+              {masterHotels.length === 0 && !isHotelsLoading && (
+                <p className="text-xs text-blue-600 mt-2">No master hotels configured. Using custom entry.</p>
+              )}
+            </div>
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -729,12 +870,26 @@ function CreateBookingPage() {
                           <label className="block text-xs font-medium text-gray-600 mb-1">
                             Room Type *
                           </label>
-                          <Input
-                            value={room.roomType}
-                            onChange={(e) => updateRoom(index, 'roomType', e.target.value)}
-                            placeholder="e.g., Deluxe Double"
-                            className={errors[`room_${index}_type`] ? "border-red-500" : ""}
-                          />
+                          {availableRoomTypes.length > 0 ? (
+                            <select
+                              value={room.roomType}
+                              title="Select Room Type"
+                              onChange={(e) => updateRoom(index, 'roomType', e.target.value)}
+                              className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white ${errors[`room_${index}_type`] ? "border-red-500" : "border-gray-300"}`}
+                            >
+                              <option value="">Select Room Type</option>
+                              {availableRoomTypes.map(type => (
+                                <option key={type} value={type}>{type}</option>
+                              ))}
+                            </select>
+                          ) : (
+                            <Input
+                              value={room.roomType}
+                              onChange={(e) => updateRoom(index, 'roomType', e.target.value)}
+                              placeholder="e.g., Deluxe Double"
+                              className={errors[`room_${index}_type`] ? "border-red-500" : ""}
+                            />
+                          )}
                           {errors[`room_${index}_type`] && (
                             <p className="text-red-500 text-xs mt-1">{errors[`room_${index}_type`]}</p>
                           )}
@@ -790,6 +945,15 @@ function CreateBookingPage() {
                           )}
                         </div>
                       </div>
+
+                      {/* Auto Fill Action */}
+                      {selectedMasterHotelId && hotelPricingPeriods.length > 0 && (
+                        <div className="mt-4 flex justify-end">
+                          <Button type="button" variant="secondary" size="sm" onClick={() => autoFillRoomPricing(index)} className="bg-blue-50 text-blue-700 hover:bg-blue-100 border border-blue-200">
+                            ⚡ Auto-Fill Pricing from Master
+                          </Button>
+                        </div>
+                      )}
 
                       {/* Pricing Periods Toggle */}
                       <div className="mt-4 pt-3 border-t border-gray-200">
