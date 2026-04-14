@@ -26,7 +26,6 @@ function TransportationBookingsPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
 
-  // Fetch transportation bookings from API
   const { data: transportationBookings = [], isLoading, error } = useTransportationBookings();
 
   const getStatusColor = (status: string) => {
@@ -55,23 +54,23 @@ function TransportationBookingsPage() {
     return matchesSearch && matchesStatus;
   });
 
+  const actions = (
+    <Button
+      onClick={() => navigate({ to: "/create-transportation-booking" })}
+      className="flex items-center gap-2"
+    >
+      <Plus className="h-4 w-4" />
+      Buat Pemesanan
+    </Button>
+  );
+
   return (
-    <PageLayout title="Pemesanan Transportasi">
+    <PageLayout
+      title="Pemesanan Transportasi"
+      subtitle="Kelola pemesanan layanan transportasi"
+      actions={actions}
+    >
       <div className="space-y-6">
-        {/* Header */}
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900">Pemesanan Transportasi</h1>
-            <p className="text-gray-600">Kelola pemesanan layanan transportasi</p>
-          </div>
-          <Button
-            onClick={() => navigate({ to: "/create-transportation-booking" })}
-            className="flex items-center space-x-2"
-          >
-            <Plus className="h-4 w-4" />
-            <span>Buat Pemesanan</span>
-          </Button>
-        </div>
 
         {/* Filters */}
         <Card className="p-4">

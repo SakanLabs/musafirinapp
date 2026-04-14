@@ -14,7 +14,8 @@ import {
   Plane,
   Car,
   Building,
-  Map
+  Map,
+  Shield
 } from 'lucide-react'
 import { useState } from 'react'
 import { Button } from '@/components/ui/button'
@@ -74,6 +75,11 @@ const navigation = [
     name: 'Master Transport',
     href: '/master-transport',
     icon: Map
+  },
+  {
+    name: 'User Management',
+    href: '/admin',
+    icon: Shield
   }
 ]
 

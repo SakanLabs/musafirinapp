@@ -1,4 +1,4 @@
-import { createFileRoute, redirect } from "@tanstack/react-router"
+import { createFileRoute, redirect, useNavigate } from "@tanstack/react-router"
 import { PageLayout } from "@/components/layout/PageLayout"
 import { StatCard } from "@/components/ui/stat-card"
 import { DataTable, Column } from "@/components/ui/data-table"
@@ -14,7 +14,9 @@ import {
   Eye,
   Share,
   Plus,
-  Loader2
+  Loader2,
+  Car,
+  Plane
 } from "lucide-react"
 
 import { formatCurrency, formatDate, getBookingStatusColor, shareToWhatsApp, generateBookingWhatsAppMessage } from "@/lib/utils"
@@ -33,7 +35,7 @@ export const Route = createFileRoute("/dashboard/admin")({
 })
 
 function AdminDashboard() {
-  // Fetch dashboard data using TanStack Query
+  const navigate = useNavigate();
   const { data: dashboardData, isLoading, error } = useDashboardSummary();
 
   // Show loading state
@@ -128,7 +130,11 @@ function AdminDashboard() {
       header: 'Actions',
       render: (booking) => (
         <div className="flex space-x-2">
-          <Button size="sm" variant="ghost">
+          <Button 
+            size="sm" 
+            variant="ghost"
+            onClick={() => navigate({ to: "/booking-detail", search: { id: booking.id.toString() } })}
+          >
             <Eye className="h-4 w-4" />
           </Button>
           <Button 
@@ -163,7 +169,7 @@ function AdminDashboard() {
       title="Dashboard"
       subtitle="Hotel Booking Management Overview"
       actions={
-        <Button>
+        <Button onClick={() => navigate({ to: "/create-booking" })}>
           <Plus className="h-4 w-4 mr-2" />
           New Booking
         </Button>
@@ -216,7 +222,7 @@ function AdminDashboard() {
       <div className="mb-8">
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-lg font-semibold text-gray-900">Recent Bookings</h2>
-          <Button variant="outline" size="sm">
+          <Button variant="outline" size="sm" onClick={() => navigate({ to: "/bookings" })}>
             View All
           </Button>
         </div>
@@ -229,17 +235,17 @@ function AdminDashboard() {
       </div>
 
       {/* Quick Actions */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <div className="bg-white rounded-lg border border-gray-200 p-6">
           <div className="flex items-center space-x-3 mb-4">
             <div className="bg-blue-100 p-2 rounded-lg">
-              <Hotel className="h-6 w-6 text-blue-600" />
+              <Calendar className="h-6 w-6 text-blue-600" />
             </div>
-            <h3 className="text-lg font-semibold text-gray-900">Manage Hotels</h3>
+            <h3 className="text-lg font-semibold text-gray-900">Manage Bookings</h3>
           </div>
-          <p className="text-gray-600 mb-4">Add, edit, or remove hotels from your inventory.</p>
-          <Button variant="outline" className="w-full">
-            Manage Hotels
+          <p className="text-gray-600 mb-4">View and manage hotel bookings.</p>
+          <Button variant="outline" className="w-full" onClick={() => navigate({ to: "/bookings" })}>
+            View Bookings
           </Button>
         </div>
 
@@ -251,7 +257,7 @@ function AdminDashboard() {
             <h3 className="text-lg font-semibold text-gray-900">Client Management</h3>
           </div>
           <p className="text-gray-600 mb-4">View and manage your client database.</p>
-          <Button variant="outline" className="w-full">
+          <Button variant="outline" className="w-full" onClick={() => navigate({ to: "/clients" })}>
             Manage Clients
           </Button>
         </div>
@@ -259,13 +265,26 @@ function AdminDashboard() {
         <div className="bg-white rounded-lg border border-gray-200 p-6">
           <div className="flex items-center space-x-3 mb-4">
             <div className="bg-purple-100 p-2 rounded-lg">
-              <TrendingUp className="h-6 w-6 text-purple-600" />
+              <Car className="h-6 w-6 text-purple-600" />
             </div>
-            <h3 className="text-lg font-semibold text-gray-900">Reports</h3>
+            <h3 className="text-lg font-semibold text-gray-900">Transportation</h3>
           </div>
-          <p className="text-gray-600 mb-4">Generate detailed reports and analytics.</p>
-          <Button variant="outline" className="w-full">
-            View Reports
+          <p className="text-gray-600 mb-4">Manage transportation bookings.</p>
+          <Button variant="outline" className="w-full" onClick={() => navigate({ to: "/transportation-bookings" })}>
+            View Transportation
+          </Button>
+        </div>
+
+        <div className="bg-white rounded-lg border border-gray-200 p-6">
+          <div className="flex items-center space-x-3 mb-4">
+            <div className="bg-amber-100 p-2 rounded-lg">
+              <Plane className="h-6 w-6 text-amber-600" />
+            </div>
+            <h3 className="text-lg font-semibold text-gray-900">Service Orders</h3>
+          </div>
+          <p className="text-gray-600 mb-4">Manage Visa Umrah & Siskopatuh orders.</p>
+          <Button variant="outline" className="w-full" onClick={() => navigate({ to: "/service-orders" })}>
+            View Orders
           </Button>
         </div>
       </div>

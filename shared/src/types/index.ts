@@ -1,6 +1,7 @@
-export type ApiResponse = {
+export type ApiResponse<T = unknown> = {
   message: string;
-  success: true;
+  success: boolean;
+  data?: T;
 }
 
 // Export all analytics types

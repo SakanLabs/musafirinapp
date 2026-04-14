@@ -1,5 +1,6 @@
 import { Hono } from "hono";
 import { cors } from "hono/cors";
+import { logger } from "hono/logger";
 import type { ApiResponse } from "shared/dist";
 import { betterAuth } from "better-auth";
 import { admin } from "better-auth/plugins";
@@ -19,6 +20,10 @@ import serviceOrderRoutes from "./routes/serviceOrders";
 import transportationRoutes from "./routes/transportation";
 import bookingServiceItemsRoutes from "./routes/bookingServiceItems";
 import masterRoutes from "./routes/master";
+import publicProductsRoutes from "./routes/publicProducts";
+import publicCheckoutRoutes from "./routes/publicCheckout";
+import publicBookingsRoutes from "./routes/publicBookings";
+import userRoutes from "./routes/users";
 
 // Load environment variables
 const BETTER_AUTH_SECRET = process.env.BETTER_AUTH_SECRET;
@@ -41,7 +46,7 @@ const auth = betterAuth({
   }),
   secret: BETTER_AUTH_SECRET,
   baseURL: "http://localhost:3000",
-  trustedOrigins: ["http://localhost:5173", "http://localhost:5174"],
+  trustedOrigins: ["http://localhost:5173", "http://localhost:5174", "http://localhost:3001"],
   session: {
     cookieCache: {
       enabled: true,
@@ -76,8 +81,9 @@ const auth = betterAuth({
 });
 
 export const app = new Hono()
+  .use(logger())
   .use(cors({
-    origin: ["http://localhost:5173", "http://localhost:5174"],
+    origin: ["http://localhost:5173", "http://localhost:5174", "http://localhost:3001"],
     credentials: true,
     allowMethods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
     allowHeaders: ["Content-Type", "Authorization"],
@@ -106,6 +112,10 @@ export const app = new Hono()
   .route("/api/transportation", transportationRoutes)
   .route("/api/booking-service-items", bookingServiceItemsRoutes)
   .route("/api/master", masterRoutes)
+  .route("/api/public/products", publicProductsRoutes)
+  .route("/api/public/checkout", publicCheckoutRoutes)
+  .route("/api/public/bookings", publicBookingsRoutes)
+  .route("/api/users", userRoutes)
   .get("/", (c) => {
     return c.text("Hello Hono!");
   })
