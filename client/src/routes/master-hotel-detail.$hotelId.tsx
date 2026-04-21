@@ -200,7 +200,8 @@ function MasterHotelDetailPage() {
                           <th className="py-3 px-6 font-medium">Room Type</th>
                           <th className="py-3 px-6 font-medium">Meal Plan</th>
                           <th className="py-3 px-6 font-medium">Base Cost</th>
-                          <th className="py-3 px-6 font-medium">Retail Selling Price</th>
+                          <th className="py-3 px-6 font-medium">Direct Price</th>
+                          <th className="py-3 px-6 font-medium">Agent Price</th>
                           <th className="py-3 px-6 font-medium text-right">Actions</th>
                         </tr>
                       </thead>
@@ -227,6 +228,7 @@ function MasterHotelDetailPage() {
                                 <td className="py-3 px-6 text-gray-700 font-medium">{item.mealPlan || 'Room Only'}</td>
                                 <td className="py-3 px-6 text-gray-600">{item.currency} {item.costPrice}</td>
                                 <td className="py-3 px-6 text-gray-600">{item.currency} {item.sellingPrice}</td>
+                                <td className="py-3 px-6 text-green-600 font-medium">{item.currency} {item.agentPrice || '0'}</td>
                                 <td className="py-3 px-6 text-right">
                                   <div className="flex justify-end space-x-2">
                                     <Button

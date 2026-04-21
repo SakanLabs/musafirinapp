@@ -9,7 +9,7 @@ import {
   transportationVouchers,
   clients
 } from '../db/schema';
-import { requireAdmin } from '../middleware/auth';
+import { requireAdmin, requireAdminOrFinance, requireFinance } from '../middleware/auth';
 import type {
   NewTransportationBooking,
   NewTransportationRoute,
@@ -278,7 +278,7 @@ transportationApp.delete('/:id', requireAdmin, async (c) => {
 });
 
 // GET /api/transportation/:id/invoice - Get existing invoice for transportation booking
-transportationApp.get('/:id/invoice', requireAdmin, async (c) => {
+transportationApp.get('/:id/invoice', requireAdminOrFinance, async (c) => {
   try {
     const id = parseInt(c.req.param('id'));
 
@@ -303,8 +303,40 @@ transportationApp.get('/:id/invoice', requireAdmin, async (c) => {
   }
 });
 
+// GET /api/transportation/invoice/:number - Serve transportation invoice PDF
+transportationApp.get('/invoice/:number', requireAdminOrFinance, async (c) => {
+  try {
+    const invoiceNumber = c.req.param('number');
+
+    if (!invoiceNumber) {
+      return c.json({ error: 'Invoice number is required' }, 400);
+    }
+
+    const invoice = await db
+      .select()
+      .from(transportationInvoices)
+      .where(eq(transportationInvoices.number, invoiceNumber))
+      .limit(1);
+
+    if (invoice.length === 0) {
+      return c.json({ error: 'Transportation invoice not found' }, 404);
+    }
+
+    const invoiceData = invoice[0]!;
+
+    if (!invoiceData.pdfUrl) {
+      return c.json({ error: 'PDF not available for this invoice' }, 404);
+    }
+
+    return c.redirect(invoiceData.pdfUrl);
+  } catch (error) {
+    console.error('Error serving transportation invoice PDF:', error);
+    return c.json({ error: 'Failed to serve transportation invoice PDF' }, 500);
+  }
+});
+
 // POST /api/transportation/:id/invoice - Generate invoice
-transportationApp.post('/:id/invoice', requireAdmin, async (c) => {
+transportationApp.post('/:id/invoice', requireAdminOrFinance, async (c) => {
   try {
     const id = parseInt(c.req.param('id'));
 
@@ -354,7 +386,7 @@ transportationApp.post('/:id/invoice', requireAdmin, async (c) => {
     const customDueDate = body.dueDate ? new Date(body.dueDate) : new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
 
     // Generate invoice number
-    const invoiceNumber = `TI - ${new Date().getFullYear()} -${String(Date.now()).slice(-6)} `;
+    const invoiceNumber = `TI-${new Date().getFullYear()}-${String(Date.now()).slice(-6)}`;
 
     const newInvoice: NewTransportationInvoice = {
       transportationBookingId: id,
@@ -377,7 +409,7 @@ transportationApp.post('/:id/invoice', requireAdmin, async (c) => {
 
     // Upload to MinIO
     const pdfUrl = await uploadToMinio(
-      `transportation - invoices / ${invoiceNumber}.pdf`,
+      `transportation-invoices/${invoiceNumber}.pdf`,
       pdfBuffer,
       'application/pdf'
     );
@@ -397,7 +429,7 @@ transportationApp.post('/:id/invoice', requireAdmin, async (c) => {
 });
 
 // POST /api/transportation/:id/receipt - Generate receipt
-transportationApp.post('/:id/receipt', requireAdmin, async (c) => {
+transportationApp.post('/:id/receipt', requireFinance, async (c) => {
   try {
     const id = parseInt(c.req.param('id'));
 
@@ -451,7 +483,7 @@ transportationApp.post('/:id/receipt', requireAdmin, async (c) => {
     const invoiceData = invoiceQuery.length > 0 ? invoiceQuery[0] : null;
 
     // Generate receipt number
-    const receiptNumber = `TR - ${new Date().getFullYear()} -${String(Date.now()).slice(-6)} `;
+    const receiptNumber = `TR-${new Date().getFullYear()}-${String(Date.now()).slice(-6)}`;
 
     const newReceipt: NewTransportationReceipt = {
       transportationBookingId: id,
@@ -475,7 +507,7 @@ transportationApp.post('/:id/receipt', requireAdmin, async (c) => {
 
     // Upload to MinIO
     const pdfUrl = await uploadToMinio(
-      `transportation - receipts / ${receiptNumber}.pdf`,
+      `transportation-receipts/${receiptNumber}.pdf`,
       pdfBuffer,
       'application/pdf'
     );
@@ -495,7 +527,7 @@ transportationApp.post('/:id/receipt', requireAdmin, async (c) => {
 });
 
 // GET /api/transportation/receipt/:number - Serve receipt PDF
-transportationApp.get('/receipt/:number', requireAdmin, async (c) => {
+transportationApp.get('/receipt/:number', requireFinance, async (c) => {
   try {
     const receiptNumber = c.req.param('number');
 

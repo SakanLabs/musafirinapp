@@ -22,6 +22,19 @@ export async function ensureBucketExists() {
     if (!exists) {
       await minioClient.makeBucket(BUCKET_NAME);
     }
+    // Set bucket policy to public read
+    await minioClient.setBucketPolicy(BUCKET_NAME, JSON.stringify({
+      Version: '2012-10-17',
+      Statement: [
+        {
+          Sid: 'PublicReadGetObject',
+          Effect: 'Allow',
+          Principal: '*',
+          Action: ['s3:GetObject'],
+          Resource: [`arn:aws:s3:::${BUCKET_NAME}/*`]
+        }
+      ]
+    }));
   } catch (error) {
     console.error('Error ensuring bucket exists:', error);
   }

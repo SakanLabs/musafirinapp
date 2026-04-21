@@ -41,9 +41,9 @@ function CreateHotelPricingPage() {
   })
 
   const [roomConfigs, setRoomConfigs] = useState([
-    { id: '1', roomType: 'Double', mealPlan: 'Room Only', costPrice: 0, sellingPrice: 0 },
-    { id: '2', roomType: 'Triple', mealPlan: 'Room Only', costPrice: 0, sellingPrice: 0 },
-    { id: '3', roomType: 'Quad', mealPlan: 'Room Only', costPrice: 0, sellingPrice: 0 }
+    { id: '1', roomType: 'Double', mealPlan: 'Room Only', costPrice: 0, sellingPrice: 0, agentPrice: 0 },
+    { id: '2', roomType: 'Triple', mealPlan: 'Room Only', costPrice: 0, sellingPrice: 0, agentPrice: 0 },
+    { id: '3', roomType: 'Quad', mealPlan: 'Room Only', costPrice: 0, sellingPrice: 0, agentPrice: 0 }
   ])
 
   const handlePeriodChange = (field: string, value: string | boolean) => {
@@ -59,7 +59,7 @@ function CreateHotelPricingPage() {
   const addRoomConfig = () => {
     setRoomConfigs(prev => [
       ...prev,
-      { id: Date.now().toString(), roomType: '', mealPlan: 'Room Only', costPrice: 0, sellingPrice: 0 }
+      { id: Date.now().toString(), roomType: '', mealPlan: 'Room Only', costPrice: 0, sellingPrice: 0, agentPrice: 0 }
     ])
   }
 
@@ -110,7 +110,8 @@ function CreateHotelPricingPage() {
               currency: periodData.currency,
               isActive: periodData.isActive,
               costPrice: String(room.costPrice),
-              sellingPrice: String(room.sellingPrice)
+              sellingPrice: String(room.sellingPrice),
+              agentPrice: String(room.agentPrice)
             }
           })
         )
@@ -207,10 +208,19 @@ function CreateHotelPricingPage() {
                 <div key={p.id} className="bg-white p-3 rounded-md border border-blue-100 flex flex-col shadow-sm">
                   <span className="font-bold text-gray-800">{p.roomType}</span>
                   <span className="text-gray-500 mb-2">{p.mealPlan}</span>
-                  <div className="flex justify-between mt-auto pt-2 border-t border-gray-100">
-                    <span className="text-xs text-gray-400">Cost: {p.currency} {p.costPrice}</span>
+                  <div className="flex justify-between mt-auto pt-2 border-t border-gray-100 text-xs">
+                    <span className="text-gray-400">Cost: {p.currency} {p.costPrice}</span>
+                  </div>
+                  <div className="flex justify-between text-xs">
+                    <span className="text-gray-500">Direct:</span>
                     <span className="font-semibold text-blue-700">{p.currency} {p.sellingPrice}</span>
                   </div>
+                  {Number(p.agentPrice) > 0 && (
+                    <div className="flex justify-between text-xs">
+                      <span className="text-gray-500">Agent:</span>
+                      <span className="font-semibold text-green-700">{p.currency} {p.agentPrice}</span>
+                    </div>
+                  )}
                 </div>
               ))}
             </div>
@@ -265,8 +275,8 @@ function CreateHotelPricingPage() {
                   />
                 </div>
 
-                <div className="w-full md:w-1/4">
-                  <Label>Selling Price</Label>
+                <div className="w-full md:w-1/5">
+                  <Label>Selling Price (Direct)</Label>
                   <Input
                     type="number"
                     min="0"
@@ -274,6 +284,18 @@ function CreateHotelPricingPage() {
                     value={room.sellingPrice}
                     onChange={(e) => handleRoomChange(room.id, 'sellingPrice', parseFloat(e.target.value) || 0)}
                     required
+                  />
+                </div>
+
+                <div className="w-full md:w-1/5">
+                  <Label>Agent Price</Label>
+                  <Input
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    value={room.agentPrice}
+                    onChange={(e) => handleRoomChange(room.id, 'agentPrice', parseFloat(e.target.value) || 0)}
+                    placeholder="0"
                   />
                 </div>
 

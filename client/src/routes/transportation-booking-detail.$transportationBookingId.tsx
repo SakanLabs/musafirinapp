@@ -97,7 +97,7 @@ function TransportationBookingDetailPage() {
     if (!transportationBooking) return;
 
     try {
-      await generateInvoiceMutation.mutateAsync({
+      const result = await generateInvoiceMutation.mutateAsync({
         bookingId: transportationBookingId,
         dueDate,
         forceRegenerate: !!existingInvoice
@@ -105,12 +105,16 @@ function TransportationBookingDetailPage() {
       setIsDueDateModalOpen(false);
 
       const message = existingInvoice
-        ? "Invoice berhasil digenerate ulang! Anda akan diarahkan ke halaman invoices."
-        : "Invoice berhasil digenerate! Anda akan diarahkan ke halaman invoices.";
+        ? "Invoice berhasil digenerate ulang!"
+        : "Invoice berhasil digenerate!";
 
       toast.success(message);
 
-      navigate({ to: '/invoices' });
+      // Open the invoice PDF
+      if (result?.number) {
+        const invoiceNumber = result.number.trim();
+        window.open(`http://localhost:3000/api/transportation/invoice/${encodeURIComponent(invoiceNumber)}`, '_blank');
+      }
     } catch (error) {
       console.error('Error generating invoice:', error);
       const msg = error instanceof Error ? error.message : 'An unexpected error occurred';

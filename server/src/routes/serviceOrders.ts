@@ -3,7 +3,7 @@ import { eq, desc } from 'drizzle-orm';
 import { db } from '../db';
 import { clients, serviceOrders, serviceOrderChecklists, serviceOrderInvoices, serviceOrderReceipts } from '../db/schema';
 import type { NewServiceOrder, NewServiceOrderInvoice, NewServiceOrderReceipt } from '../db/schema';
-import { requireAdmin } from '../middleware/auth';
+import { requireAdmin, requireAdminOrFinance, requireFinance } from '../middleware/auth';
 import { generateServiceOrderNumber, generateServiceOrderInvoicePDF, generateServiceOrderInvoiceNumber, uploadToMinio, generateServiceOrderReceiptPDF } from '../utils/pdf';
 
 const serviceOrderRoutes = new Hono();
@@ -255,7 +255,7 @@ serviceOrderRoutes.post('/:id/checklist', requireAdmin, async (c) => {
 });
 
 // POST /api/service-orders/:id/generate-invoice - Generate invoice for service order
-serviceOrderRoutes.post('/:id/generate-invoice', requireAdmin, async (c) => {
+serviceOrderRoutes.post('/:id/generate-invoice', requireAdminOrFinance, async (c) => {
   try {
     const serviceOrderId = parseInt(c.req.param('id'));
     const body = await c.req.json();
@@ -393,7 +393,7 @@ serviceOrderRoutes.post('/:id/generate-invoice', requireAdmin, async (c) => {
 });
 
 // GET /api/service-orders/:id/invoice - Get existing invoice for service order
-serviceOrderRoutes.get('/:id/invoice', requireAdmin, async (c) => {
+serviceOrderRoutes.get('/:id/invoice', requireAdminOrFinance, async (c) => {
   try {
     const serviceOrderId = parseInt(c.req.param('id'));
 
@@ -426,7 +426,7 @@ serviceOrderRoutes.get('/:id/invoice', requireAdmin, async (c) => {
 });
 
 // POST /api/service-orders/:id/regenerate-invoice - Regenerate invoice for service order (replace existing)
-serviceOrderRoutes.post('/:id/regenerate-invoice', requireAdmin, async (c) => {
+serviceOrderRoutes.post('/:id/regenerate-invoice', requireAdminOrFinance, async (c) => {
   try {
     const serviceOrderId = parseInt(c.req.param('id'));
     const body = await c.req.json();
@@ -611,7 +611,7 @@ serviceOrderRoutes.patch('/:id/status', requireAdmin, async (c) => {
 });
 
 // POST /api/service-orders/:id/receipt - Generate receipt
-serviceOrderRoutes.post('/:id/receipt', requireAdmin, async (c) => {
+serviceOrderRoutes.post('/:id/receipt', requireFinance, async (c) => {
   try {
     const id = parseInt(c.req.param('id'));
 

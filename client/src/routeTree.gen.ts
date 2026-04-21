@@ -49,7 +49,6 @@ import { Route as MasterTransportEditRouteIdRouteImport } from './routes/master-
 import { Route as MasterTransportDetailRouteIdRouteImport } from './routes/master-transport-detail.$routeId'
 import { Route as MasterHotelEditHotelIdRouteImport } from './routes/master-hotel-edit.$hotelId'
 import { Route as MasterHotelDetailHotelIdRouteImport } from './routes/master-hotel-detail.$hotelId'
-import { Route as DashboardUserRouteImport } from './routes/dashboard/user'
 import { Route as DashboardAdminRouteImport } from './routes/dashboard/admin'
 import { Route as CreateTransportPricingRouteIdRouteImport } from './routes/create-transport-pricing.$routeId'
 import { Route as CreateHotelPricingHotelIdRouteImport } from './routes/create-hotel-pricing.$hotelId'
@@ -269,11 +268,6 @@ const MasterHotelDetailHotelIdRoute =
     path: '/master-hotel-detail/$hotelId',
     getParentRoute: () => rootRouteImport,
   } as any)
-const DashboardUserRoute = DashboardUserRouteImport.update({
-  id: '/user',
-  path: '/user',
-  getParentRoute: () => DashboardRoute,
-} as any)
 const DashboardAdminRoute = DashboardAdminRouteImport.update({
   id: '/admin',
   path: '/admin',
@@ -365,7 +359,6 @@ export interface FileRoutesByFullPath {
   '/create-hotel-pricing/$hotelId': typeof CreateHotelPricingHotelIdRoute
   '/create-transport-pricing/$routeId': typeof CreateTransportPricingRouteIdRoute
   '/dashboard/admin': typeof DashboardAdminRoute
-  '/dashboard/user': typeof DashboardUserRoute
   '/master-hotel-detail/$hotelId': typeof MasterHotelDetailHotelIdRoute
   '/master-hotel-edit/$hotelId': typeof MasterHotelEditHotelIdRoute
   '/master-transport-detail/$routeId': typeof MasterTransportDetailRouteIdRoute
@@ -417,7 +410,6 @@ export interface FileRoutesByTo {
   '/create-hotel-pricing/$hotelId': typeof CreateHotelPricingHotelIdRoute
   '/create-transport-pricing/$routeId': typeof CreateTransportPricingRouteIdRoute
   '/dashboard/admin': typeof DashboardAdminRoute
-  '/dashboard/user': typeof DashboardUserRoute
   '/master-hotel-detail/$hotelId': typeof MasterHotelDetailHotelIdRoute
   '/master-hotel-edit/$hotelId': typeof MasterHotelEditHotelIdRoute
   '/master-transport-detail/$routeId': typeof MasterTransportDetailRouteIdRoute
@@ -471,7 +463,6 @@ export interface FileRoutesById {
   '/create-hotel-pricing/$hotelId': typeof CreateHotelPricingHotelIdRoute
   '/create-transport-pricing/$routeId': typeof CreateTransportPricingRouteIdRoute
   '/dashboard/admin': typeof DashboardAdminRoute
-  '/dashboard/user': typeof DashboardUserRoute
   '/master-hotel-detail/$hotelId': typeof MasterHotelDetailHotelIdRoute
   '/master-hotel-edit/$hotelId': typeof MasterHotelEditHotelIdRoute
   '/master-transport-detail/$routeId': typeof MasterTransportDetailRouteIdRoute
@@ -526,7 +517,6 @@ export interface FileRouteTypes {
     | '/create-hotel-pricing/$hotelId'
     | '/create-transport-pricing/$routeId'
     | '/dashboard/admin'
-    | '/dashboard/user'
     | '/master-hotel-detail/$hotelId'
     | '/master-hotel-edit/$hotelId'
     | '/master-transport-detail/$routeId'
@@ -578,7 +568,6 @@ export interface FileRouteTypes {
     | '/create-hotel-pricing/$hotelId'
     | '/create-transport-pricing/$routeId'
     | '/dashboard/admin'
-    | '/dashboard/user'
     | '/master-hotel-detail/$hotelId'
     | '/master-hotel-edit/$hotelId'
     | '/master-transport-detail/$routeId'
@@ -631,7 +620,6 @@ export interface FileRouteTypes {
     | '/create-hotel-pricing/$hotelId'
     | '/create-transport-pricing/$routeId'
     | '/dashboard/admin'
-    | '/dashboard/user'
     | '/master-hotel-detail/$hotelId'
     | '/master-hotel-edit/$hotelId'
     | '/master-transport-detail/$routeId'
@@ -977,13 +965,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof MasterHotelDetailHotelIdRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/dashboard/user': {
-      id: '/dashboard/user'
-      path: '/user'
-      fullPath: '/dashboard/user'
-      preLoaderRoute: typeof DashboardUserRouteImport
-      parentRoute: typeof DashboardRoute
-    }
     '/dashboard/admin': {
       id: '/dashboard/admin'
       path: '/admin'
@@ -1084,12 +1065,10 @@ const ClientsRouteWithChildren =
 
 interface DashboardRouteChildren {
   DashboardAdminRoute: typeof DashboardAdminRoute
-  DashboardUserRoute: typeof DashboardUserRoute
 }
 
 const DashboardRouteChildren: DashboardRouteChildren = {
   DashboardAdminRoute: DashboardAdminRoute,
-  DashboardUserRoute: DashboardUserRoute,
 }
 
 const DashboardRouteWithChildren = DashboardRoute._addFileChildren(

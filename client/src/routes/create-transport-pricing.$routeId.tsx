@@ -39,8 +39,8 @@ function CreateTransportPricingPage() {
   })
 
   const [vehicleConfigs, setVehicleConfigs] = useState([
-    { id: '1', vehicleType: 'sedan', costPrice: 0, sellingPrice: 0 },
-    { id: '2', vehicleType: 'suv', costPrice: 0, sellingPrice: 0 }
+    { id: '1', vehicleType: 'sedan', costPrice: 0, sellingPrice: 0, agentPrice: 0 },
+    { id: '2', vehicleType: 'suv', costPrice: 0, sellingPrice: 0, agentPrice: 0 }
   ])
 
   const handlePeriodChange = (field: string, value: string | boolean) => {
@@ -56,7 +56,7 @@ function CreateTransportPricingPage() {
   const addVehicleConfig = () => {
     setVehicleConfigs(prev => [
       ...prev,
-      { id: Date.now().toString(), vehicleType: 'van', costPrice: 0, sellingPrice: 0 }
+      { id: Date.now().toString(), vehicleType: 'van', costPrice: 0, sellingPrice: 0, agentPrice: 0 }
     ])
   }
 
@@ -98,7 +98,8 @@ function CreateTransportPricingPage() {
               currency: periodData.currency,
               isActive: periodData.isActive,
               costPrice: String(vehicle.costPrice),
-              sellingPrice: String(vehicle.sellingPrice)
+              sellingPrice: String(vehicle.sellingPrice),
+              agentPrice: String(vehicle.agentPrice)
             }
           })
         )
@@ -223,8 +224,8 @@ function CreateTransportPricingPage() {
                   />
                 </div>
 
-                <div className="w-full md:w-1/4">
-                  <Label>Selling Price</Label>
+                <div className="w-full md:w-1/5">
+                  <Label>Selling Price (Direct)</Label>
                   <Input
                     type="number"
                     min="0"
@@ -232,6 +233,18 @@ function CreateTransportPricingPage() {
                     value={vehicle.sellingPrice}
                     onChange={(e) => handleVehicleChange(vehicle.id, 'sellingPrice', parseFloat(e.target.value) || 0)}
                     required
+                  />
+                </div>
+
+                <div className="w-full md:w-1/5">
+                  <Label>Agent Price</Label>
+                  <Input
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    value={vehicle.agentPrice}
+                    onChange={(e) => handleVehicleChange(vehicle.id, 'agentPrice', parseFloat(e.target.value) || 0)}
+                    placeholder="0"
                   />
                 </div>
 

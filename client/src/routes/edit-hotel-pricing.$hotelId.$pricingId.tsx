@@ -32,6 +32,7 @@ function EditHotelPricingPage() {
     endDate: "",
     costPrice: 0,
     sellingPrice: 0,
+    agentPrice: 0,
     currency: "SAR",
     isActive: true
   })
@@ -47,6 +48,7 @@ function EditHotelPricingPage() {
           endDate: new Date(period.endDate).toISOString().split('T')[0],
           costPrice: Number(period.costPrice),
           sellingPrice: Number(period.sellingPrice),
+          agentPrice: Number(period.agentPrice) || 0,
           currency: period.currency,
           isActive: period.isActive
         })
@@ -78,7 +80,8 @@ function EditHotelPricingPage() {
         data: {
           ...formData,
           costPrice: String(formData.costPrice),
-          sellingPrice: String(formData.sellingPrice)
+          sellingPrice: String(formData.sellingPrice),
+          agentPrice: String(formData.agentPrice)
         }
       })
       toast.success('Pricing period updated successfully')
@@ -176,7 +179,7 @@ function EditHotelPricingPage() {
               </div>
 
               <div>
-                <Label htmlFor="sellingPrice">Retail Selling Price *</Label>
+                <Label htmlFor="sellingPrice">Selling Price (Direct) *</Label>
                 <Input
                   id="sellingPrice"
                   type="number"
@@ -185,6 +188,19 @@ function EditHotelPricingPage() {
                   value={formData.sellingPrice}
                   onChange={(e) => handleInputChange('sellingPrice', parseFloat(e.target.value) || 0)}
                   required
+                />
+              </div>
+
+              <div>
+                <Label htmlFor="agentPrice">Agent Price</Label>
+                <Input
+                  id="agentPrice"
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  value={formData.agentPrice}
+                  onChange={(e) => handleInputChange('agentPrice', parseFloat(e.target.value) || 0)}
+                  placeholder="Price for agents"
                 />
               </div>
 

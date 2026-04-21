@@ -2,8 +2,8 @@ import { Hono } from 'hono'
 import { createClient } from '@supabase/supabase-js'
 import { db } from '../db'
 import { user } from '../db/schema'
-import { eq } from 'drizzle-orm'
-import { requireAdmin } from '../middleware/auth'
+import { eq, desc } from 'drizzle-orm'
+import { requireOwner } from '../middleware/auth'
 import type { ApiResponse } from 'shared/dist'
 
 const supabase = createClient(
@@ -21,10 +21,42 @@ interface CreateUserRequest {
   name: string
   email: string
   password: string
+  userType?: 'direct' | 'agent'
+  role?: 'user' | 'admin' | 'owner' | 'finance'
 }
 
 const app = new Hono()
-  .use('/*', requireAdmin)
+  .use('/*', requireOwner)
+
+  .get('/', async (c) => {
+    try {
+      const allUsers = await db.select({
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+        userType: user.userType,
+        banned: user.banned,
+        emailVerified: user.emailVerified,
+        createdAt: user.createdAt,
+        updatedAt: user.updatedAt
+      })
+      .from(user)
+      .orderBy(desc(user.createdAt))
+
+      return c.json<ApiResponse>({
+        success: true,
+        message: 'Users fetched successfully',
+        data: allUsers
+      }, 200)
+    } catch (error) {
+      console.error('Error fetching users:', error)
+      return c.json<ApiResponse>({
+        success: false,
+        message: 'Failed to fetch users'
+      }, 500)
+    }
+  })
 
   .post('/', async (c) => {
     try {
@@ -73,7 +105,8 @@ const app = new Hono()
         name: body.name,
         email: body.email,
         emailVerified: false,
-        role: 'user',
+        role: body.role && ['user', 'admin', 'owner', 'finance'].includes(body.role) ? body.role : 'user',
+        userType: body.userType || 'direct',
         banned: false,
         createdAt: now,
         updatedAt: now
@@ -112,6 +145,53 @@ const app = new Hono()
       return c.json<ApiResponse>({
         success: false,
         message: 'Failed to create user'
+      }, 500)
+    }
+  })
+
+  .put('/:id', async (c) => {
+    try {
+      const userId = c.req.param('id')
+      const body = await c.req.json()
+
+      const existingUser = await db.query.user.findFirst({
+        where: eq(user.id, userId)
+      })
+
+      if (!existingUser) {
+        return c.json<ApiResponse>({
+          success: false,
+          message: 'User not found'
+        }, 404)
+      }
+
+      if (body.userType && !['direct', 'agent'].includes(body.userType)) {
+        return c.json<ApiResponse>({
+          success: false,
+          message: 'Invalid user type. Must be "direct" or "agent"'
+        }, 400)
+      }
+
+      const updateData: any = {
+        updatedAt: new Date()
+      }
+
+      if (body.name) updateData.name = body.name
+      if (body.userType) updateData.userType = body.userType
+      if (body.role && ['user', 'admin', 'finance', 'owner'].includes(body.role)) updateData.role = body.role
+
+      await db.update(user).set(updateData).where(eq(user.id, userId))
+
+      return c.json<ApiResponse>({
+        success: true,
+        message: 'User updated successfully'
+      }, 200)
+
+    } catch (error) {
+      console.error('Error updating user:', error)
+      return c.json<ApiResponse>({
+        success: false,
+        message: 'Failed to update user'
       }, 500)
     }
   })

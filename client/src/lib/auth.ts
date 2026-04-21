@@ -1,7 +1,7 @@
 // Better Auth integration
 import { authClient, getSession } from './auth-client'
 
-export type UserRole = 'user' | 'admin'
+export type UserRole = 'user' | 'admin' | 'owner' | 'finance'
 
 export interface User {
   id: string
@@ -69,8 +69,8 @@ const sessionToUser = (session: BetterAuthSession | null): User | null => {
   // Map database roles to our UserRole type
   let role: UserRole = 'user'; // default
   if (user.role) {
-    if (user.role === 'admin') {
-      role = 'admin';
+    if (['admin', 'owner', 'finance'].includes(user.role)) {
+      role = user.role as UserRole;
     } else {
       role = 'user'; // other roles map to 'user'
     }
@@ -169,7 +169,19 @@ export const authService = {
 
   // Check if user is admin
   isAdmin: async (): Promise<boolean> => {
-    return await authService.hasRole('admin')
+    const role = (await authService.getCurrentUser())?.role
+    return role === 'admin' || role === 'owner'
+  },
+
+  // Check if user is owner
+  isOwner: async (): Promise<boolean> => {
+    return await authService.hasRole('owner')
+  },
+
+  // Check if user is finance
+  isFinance: async (): Promise<boolean> => {
+    const role = (await authService.getCurrentUser())?.role
+    return role === 'finance' || role === 'owner'
   },
 
   // Check if user is regular user
@@ -189,7 +201,7 @@ export const authService = {
     const user = await authService.getCurrentUser()
     if (!user) return '/login'
     
-    return user.role === 'admin' ? '/dashboard/admin' : '/dashboard/user'
+    return '/dashboard/admin'
   },
 
   // Google OAuth sign in
@@ -221,8 +233,29 @@ export const requireAuth = async () => {
 
 export const requireAdmin = async () => {
   await requireAuth()
-  if (!(await authService.isAdmin())) {
+  if (!(await authService.isAdmin()) && !(await authService.isOwner())) {
     throw new Error('Admin access required')
+  }
+}
+
+export const requireOwner = async () => {
+  await requireAuth()
+  if (!(await authService.isOwner())) {
+    throw new Error('Owner access required')
+  }
+}
+
+export const requireFinance = async () => {
+  await requireAuth()
+  if (!(await authService.isFinance()) && !(await authService.isOwner())) {
+    throw new Error('Finance access required')
+  }
+}
+
+export const requireAdminOrFinance = async () => {
+  await requireAuth()
+  if (!(await authService.isAdmin()) && !(await authService.isFinance()) && !(await authService.isOwner())) {
+    throw new Error('Admin or Finance access required')
   }
 }
 

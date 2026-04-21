@@ -2,7 +2,7 @@ import { Hono } from 'hono';
 import { eq, desc } from 'drizzle-orm';
 import { db } from '../db';
 import { invoices, bookings, clients, bookingItems, bookingItemPricingPeriods, clientDeposits, depositTransactions, bookingServiceItems, invoicePayments, transportationInvoices, transportationBookings, serviceOrderInvoices, serviceOrders } from '../db/schema';
-import { requireAdmin } from '../middleware/auth';
+import { requireAdminOrFinance } from '../middleware/auth';
 import { generateInvoiceNumber, generateInvoicePDF, uploadToMinio, checkFileExistsInMinio, deleteFromMinio } from '../utils/pdf';
 import { TemplateHelpers } from '../utils/template';
 import type { NewInvoice, NewDepositTransaction, NewInvoicePayment } from '../db/schema';
@@ -14,7 +14,7 @@ const receiptService = new ReceiptService();
 
 
 // GET /api/invoices/booking/:bookingId - Get or create invoice for booking
-invoiceRoutes.get('/booking/:bookingId', requireAdmin, async (c) => {
+invoiceRoutes.get('/booking/:bookingId', requireAdminOrFinance, async (c) => {
   try {
     const bookingId = parseInt(c.req.param('bookingId'));
     const dueDateParam = c.req.query('dueDate');
@@ -267,7 +267,7 @@ invoiceRoutes.get('/booking/:bookingId', requireAdmin, async (c) => {
  * - Pembayaran (invoicePayments) akan terhapus otomatis (ON DELETE CASCADE).
  * - Receipt yang terkait akan diset invoiceId = NULL (ON DELETE SET NULL).
  */
-invoiceRoutes.delete('/:invoiceId', requireAdmin, async (c) => {
+invoiceRoutes.delete('/:invoiceId', requireAdminOrFinance, async (c) => {
   try {
     const invoiceId = parseInt(c.req.param('invoiceId'));
     if (!invoiceId || isNaN(invoiceId)) {
@@ -312,7 +312,7 @@ invoiceRoutes.delete('/:invoiceId', requireAdmin, async (c) => {
 });
 
 // GET /api/invoices - List all invoices
-invoiceRoutes.get('/', requireAdmin, async (c) => {
+invoiceRoutes.get('/', requireAdminOrFinance, async (c) => {
   try {
     const allInvoices = await db
       .select({
@@ -399,7 +399,7 @@ invoiceRoutes.get('/', requireAdmin, async (c) => {
 });
 
 // POST /api/invoices/:bookingId/generate - Generate invoice for booking
-invoiceRoutes.post('/:bookingId/generate', requireAdmin, async (c) => {
+invoiceRoutes.post('/:bookingId/generate', requireAdminOrFinance, async (c) => {
   try {
     const bookingId = parseInt(c.req.param('bookingId'));
 
@@ -612,7 +612,7 @@ invoiceRoutes.post('/:bookingId/generate', requireAdmin, async (c) => {
 });
 
 // GET /api/invoices/by-number/:number - Serve invoice PDF
-invoiceRoutes.get('/by-number/:number', requireAdmin, async (c) => {
+invoiceRoutes.get('/by-number/:number', requireAdminOrFinance, async (c) => {
   try {
     const invoiceNumber = c.req.param('number');
 
@@ -652,7 +652,7 @@ invoiceRoutes.get('/by-number/:number', requireAdmin, async (c) => {
 /**
  * GET /api/invoices/:id - Get invoice by ID with booking/client details
  */
-invoiceRoutes.get('/:id', requireAdmin, async (c) => {
+invoiceRoutes.get('/:id', requireAdminOrFinance, async (c) => {
   try {
     const invoiceId = parseInt(c.req.param('id'));
     if (!invoiceId || isNaN(invoiceId)) {
@@ -704,7 +704,7 @@ invoiceRoutes.get('/:id', requireAdmin, async (c) => {
  * Supported methods: 'bank_transfer' | 'deposit' | 'cash'
  * Behavior mirrors booking payment with invoice existence enforcement.
  */
-invoiceRoutes.post('/:invoiceId/pay', requireAdmin, async (c) => {
+invoiceRoutes.post('/:invoiceId/pay', requireAdminOrFinance, async (c) => {
   try {
     const invoiceId = parseInt(c.req.param('invoiceId'));
     if (!invoiceId || isNaN(invoiceId)) {
@@ -1040,7 +1040,7 @@ invoiceRoutes.post('/:invoiceId/pay', requireAdmin, async (c) => {
 });
 
 // POST /api/invoices/backfill-status - Sync historical invoice.status with related booking payment status
-invoiceRoutes.post('/backfill-status', requireAdmin, async (c) => {
+invoiceRoutes.post('/backfill-status', requireAdminOrFinance, async (c) => {
   try {
     const now = new Date();
 

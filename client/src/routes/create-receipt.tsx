@@ -26,9 +26,9 @@ export const Route = createFileRoute('/create-receipt')({
             throw redirect({ to: '/login' });
         }
 
-        // Check if user is admin
-        const isAdmin = await authService.isAdmin();
-        if (!isAdmin) {
+        // Check if user is finance
+        const isFinance = await authService.isFinance();
+        if (!isFinance) {
             throw redirect({ to: '/dashboard' });
         }
     },

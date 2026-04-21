@@ -8,6 +8,7 @@ export const user = pgTable('user', {
   emailVerified: boolean('emailVerified').default(false).notNull(),
   image: text('image'),
   role: text('role').default('user').notNull(), // Added for admin plugin
+  userType: text('userType').default('direct').notNull(), // 'direct' or 'agent'
   banned: boolean('banned').default(false).notNull(), // Added for admin plugin
   banReason: text('banReason'),
   banExpires: timestamp('banExpires'),
@@ -268,7 +269,8 @@ export const hotelPricingPeriods = pgTable('hotel_pricing_periods', {
   startDate: timestamp('start_date').notNull(),
   endDate: timestamp('end_date').notNull(),
   costPrice: decimal('cost_price', { precision: 10, scale: 2 }).notNull(),
-  sellingPrice: decimal('selling_price', { precision: 10, scale: 2 }).notNull(),
+  sellingPrice: decimal('selling_price', { precision: 10, scale: 2 }).notNull(), // Price for direct customers
+  agentPrice: decimal('agent_price', { precision: 10, scale: 2 }).default('0').notNull(), // Price for agents
   currency: varchar('currency', { length: 3 }).default('SAR').notNull(),
   isActive: boolean('is_active').default(true).notNull(),
   createdAt: timestamp('created_at').defaultNow().notNull(),
@@ -280,6 +282,7 @@ export const serviceOrders = pgTable('service_orders', {
   id: serial('id').primaryKey(),
   number: varchar('number', { length: 50 }).notNull().unique(), // Format: SO-YYYY-XXXX
   clientId: integer('client_id').notNull().references(() => clients.id, { onDelete: 'cascade' }),
+  userId: text('user_id').references(() => user.id, { onDelete: 'set null' }), // User who created (for pricing)
   productType: serviceOrderProductEnum('product_type').notNull(),
   status: serviceOrderStatusEnum('status').default('draft').notNull(),
   groupLeaderName: varchar('group_leader_name', { length: 255 }).notNull(), // Penanggung Jawab Grup
@@ -287,9 +290,12 @@ export const serviceOrders = pgTable('service_orders', {
   totalPeople: integer('total_people').notNull(),
   unitPriceUSD: decimal('unit_price_usd', { precision: 10, scale: 2 }).notNull(),
   totalPriceUSD: decimal('total_price_usd', { precision: 10, scale: 2 }).notNull(),
+  agentUnitPriceUSD: decimal('agent_unit_price_usd', { precision: 10, scale: 2 }).default('0').notNull(),
+  agentTotalPriceUSD: decimal('agent_total_price_usd', { precision: 10, scale: 2 }).default('0').notNull(),
   currency: varchar('currency', { length: 3 }).default('USD').notNull(),
   exchangeRateToSAR: decimal('exchange_rate_to_sar', { precision: 10, scale: 4 }).default('3.75').notNull(),
   totalPriceSAR: decimal('total_price_sar', { precision: 10, scale: 2 }).notNull(),
+  agentTotalPriceSAR: decimal('agent_total_price_sar', { precision: 10, scale: 2 }).default('0').notNull(),
   departureDate: timestamp('departure_date').notNull(), // Wajib, tidak ditampilkan di invoice/receipt
   returnDate: timestamp('return_date').notNull(), // Wajib, tidak ditampilkan di invoice/receipt
   notes: text('notes'),
@@ -405,7 +411,8 @@ export const transportationRoutePricingPeriods = pgTable('transportation_route_p
   startDate: date('start_date', { mode: 'date' }).notNull(),
   endDate: date('end_date', { mode: 'date' }).notNull(),
   costPrice: decimal('cost_price', { precision: 10, scale: 2 }).notNull(),
-  sellingPrice: decimal('selling_price', { precision: 10, scale: 2 }).notNull(),
+  sellingPrice: decimal('selling_price', { precision: 10, scale: 2 }).notNull(), // Price for direct customers
+  agentPrice: decimal('agent_price', { precision: 10, scale: 2 }).default('0').notNull(), // Price for agents
   currency: varchar('currency', { length: 3 }).default('SAR').notNull(),
   isActive: boolean('is_active').default(true).notNull(),
   createdAt: timestamp('created_at').defaultNow().notNull(),

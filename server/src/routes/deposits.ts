@@ -2,12 +2,12 @@ import { Hono } from 'hono';
 import { db } from '../db/index.js';
 import { clients, clientDeposits, depositTransactions } from '../db/schema.js';
 import { eq, desc, sql, and } from 'drizzle-orm';
-import { requireAdmin } from '../middleware/auth.js';
+import { requireFinance } from '../middleware/auth.js';
 
 const app = new Hono();
 
 // GET /deposits/clients/:clientId/balance - Get client deposit balance
-app.get('/clients/:clientId/balance', requireAdmin, async (c) => {
+app.get('/clients/:clientId/balance', requireFinance, async (c) => {
   try {
     const clientId = parseInt(c.req.param('clientId'));
     
@@ -73,7 +73,7 @@ app.get('/clients/:clientId/balance', requireAdmin, async (c) => {
 });
 
 // POST /deposits/clients/:clientId/add - Add deposit to client account
-app.post('/clients/:clientId/add', requireAdmin, async (c) => {
+app.post('/clients/:clientId/add', requireFinance, async (c) => {
   try {
     const clientId = parseInt(c.req.param('clientId'));
     const body = await c.req.json();
@@ -180,7 +180,7 @@ app.post('/clients/:clientId/add', requireAdmin, async (c) => {
 });
 
 // GET /deposits/clients/:clientId/transactions - Get client transaction history
-app.get('/clients/:clientId/transactions', requireAdmin, async (c) => {
+app.get('/clients/:clientId/transactions', requireFinance, async (c) => {
   try {
     const clientId = parseInt(c.req.param('clientId'));
     const page = parseInt(c.req.query('page') || '1');
@@ -239,7 +239,7 @@ app.get('/clients/:clientId/transactions', requireAdmin, async (c) => {
 });
 
 // POST /deposits/clients/:clientId/refund - Process refund for client
-app.post('/clients/:clientId/refund', requireAdmin, async (c) => {
+app.post('/clients/:clientId/refund', requireFinance, async (c) => {
   try {
     const clientId = parseInt(c.req.param('clientId'));
     const body = await c.req.json();
@@ -334,7 +334,7 @@ app.post('/clients/:clientId/refund', requireAdmin, async (c) => {
 });
 
 // POST /deposits/clients/:clientId/adjustment - Process balance adjustment
-app.post('/clients/:clientId/adjustment', requireAdmin, async (c) => {
+app.post('/clients/:clientId/adjustment', requireFinance, async (c) => {
   try {
     const clientId = parseInt(c.req.param('clientId'));
     const body = await c.req.json();
@@ -437,7 +437,7 @@ app.post('/clients/:clientId/adjustment', requireAdmin, async (c) => {
 });
 
 // PATCH /deposits/clients/:clientId/transactions/:transactionId - Edit a deposit transaction (metadata and amount)
-app.patch('/clients/:clientId/transactions/:transactionId', requireAdmin, async (c) => {
+app.patch('/clients/:clientId/transactions/:transactionId', requireFinance, async (c) => {
   try {
     const clientId = parseInt(c.req.param('clientId'));
     const transactionId = parseInt(c.req.param('transactionId'));
@@ -595,7 +595,7 @@ app.patch('/clients/:clientId/transactions/:transactionId', requireAdmin, async 
 });
 
 // DELETE /deposits/clients/:clientId/transactions/:transactionId - Delete a transaction and reverse its effect
-app.delete('/clients/:clientId/transactions/:transactionId', requireAdmin, async (c) => {
+app.delete('/clients/:clientId/transactions/:transactionId', requireFinance, async (c) => {
   try {
     const clientId = parseInt(c.req.param('clientId'));
     const transactionId = parseInt(c.req.param('transactionId'));
@@ -688,7 +688,7 @@ app.delete('/clients/:clientId/transactions/:transactionId', requireAdmin, async
 });
 
 // GET /deposits/summary - Get overall deposit summary statistics
-app.get('/summary', requireAdmin, async (c) => {
+app.get('/summary', requireFinance, async (c) => {
   try {
     // Get overall statistics
     const summary = await db

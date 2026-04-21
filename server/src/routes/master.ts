@@ -133,6 +133,7 @@ app.post('/hotels/:id/pricing', requireAdmin, async (c) => {
       endDate: new Date(body.endDate),
       costPrice: body.costPrice.toString(),
       sellingPrice: body.sellingPrice.toString(),
+      agentPrice: body.agentPrice?.toString() || '0',
       currency: body.currency || 'SAR',
       isActive: body.isActive !== undefined ? body.isActive : true,
       createdAt: new Date(),
@@ -160,6 +161,7 @@ app.put('/hotels/:hotelId/pricing/:id', requireAdmin, async (c) => {
     if (body.endDate) updateData.endDate = new Date(body.endDate);
     if (body.costPrice !== undefined) updateData.costPrice = body.costPrice.toString();
     if (body.sellingPrice !== undefined) updateData.sellingPrice = body.sellingPrice.toString();
+    if (body.agentPrice !== undefined) updateData.agentPrice = body.agentPrice.toString();
 
     const updatedPricing = await db.update(hotelPricingPeriods).set(updateData)
       .where(and(eq(hotelPricingPeriods.id, id), eq(hotelPricingPeriods.hotelId, hotelId)))
@@ -317,6 +319,7 @@ app.post('/transport-routes/:id/pricing', requireAdmin, async (c) => {
       endDate: new Date(body.endDate),
       costPrice: body.costPrice.toString(),
       sellingPrice: body.sellingPrice.toString(),
+      agentPrice: body.agentPrice?.toString() || '0',
       currency: body.currency || 'SAR',
       isActive: body.isActive !== undefined ? body.isActive : true,
       createdAt: new Date(),
@@ -344,6 +347,7 @@ app.put('/transport-routes/:routeId/pricing/:id', requireAdmin, async (c) => {
     if (body.endDate) updateData.endDate = new Date(body.endDate);
     if (body.costPrice !== undefined) updateData.costPrice = body.costPrice.toString();
     if (body.sellingPrice !== undefined) updateData.sellingPrice = body.sellingPrice.toString();
+    if (body.agentPrice !== undefined) updateData.agentPrice = body.agentPrice.toString();
 
     const updatedPricing = await db.update(transportationRoutePricingPeriods).set(updateData)
       .where(and(eq(transportationRoutePricingPeriods.id, id), eq(transportationRoutePricingPeriods.transportationRouteMasterId, routeId)))

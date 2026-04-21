@@ -26,6 +26,7 @@ export interface HotelPricingPeriod {
   endDate: string;
   costPrice: string;
   sellingPrice: string;
+  agentPrice: string;
   currency: string;
   isActive: boolean;
 }
@@ -50,6 +51,7 @@ export interface TransportationRoutePricingPeriod {
   endDate: string;
   costPrice: string;
   sellingPrice: string;
+  agentPrice: string;
   currency: string;
   isActive: boolean;
 }

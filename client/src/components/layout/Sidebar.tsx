@@ -1,5 +1,6 @@
 import { Link, useLocation } from '@tanstack/react-router'
 import { cn } from '@/lib/utils'
+import { authService, UserRole } from '@/lib/auth'
 import {
   LayoutDashboard,
   Calendar,
@@ -17,69 +18,81 @@ import {
   Map,
   Shield
 } from 'lucide-react'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
 
 const navigation = [
   {
     name: 'Dashboard',
     href: '/dashboard/admin',
-    icon: LayoutDashboard
+    icon: LayoutDashboard,
+    roles: ['admin', 'owner', 'finance']
   },
   {
     name: 'Analytics',
     href: '/analytics',
-    icon: BarChart3
+    icon: BarChart3,
+    roles: ['admin', 'owner', 'finance']
   },
   {
     name: 'Bookings',
     href: '/bookings',
-    icon: Calendar
+    icon: Calendar,
+    roles: ['admin', 'owner']
   },
   {
     name: 'Clients',
     href: '/clients',
-    icon: Users
+    icon: Users,
+    roles: ['admin', 'owner', 'finance']
   },
   {
     name: 'Service Orders',
     href: '/service-orders',
-    icon: Plane
+    icon: Plane,
+    roles: ['admin', 'owner']
   },
   {
     name: 'Transportation',
     href: '/transportation-bookings',
-    icon: Car
+    icon: Car,
+    roles: ['admin', 'owner']
   },
   {
     name: 'Invoices',
     href: '/invoices',
-    icon: FileText
+    icon: FileText,
+    roles: ['admin', 'owner', 'finance']
   },
   {
     name: 'Receipts',
     href: '/receipts',
-    icon: Receipt
+    icon: Receipt,
+    roles: ['owner', 'finance']
   },
   {
     name: 'Vouchers',
     href: '/vouchers',
-    icon: Ticket
+    icon: Ticket,
+    roles: ['admin', 'owner']
   },
   {
     name: 'Master Hotels',
     href: '/master-hotels',
-    icon: Building
+    icon: Building,
+    roles: ['admin', 'owner']
   },
   {
     name: 'Master Transport',
     href: '/master-transport',
-    icon: Map
+    icon: Map,
+    roles: ['admin', 'owner']
   },
   {
-    name: 'User Management',
+    name: 'Staff Management',
     href: '/admin',
-    icon: Shield
+    icon: Shield,
+    roles: ['owner']
   }
 ]
 
@@ -90,6 +103,17 @@ interface SidebarProps {
 export function Sidebar({ className }: SidebarProps) {
   const location = useLocation()
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
+  const [userRole, setUserRole] = useState<UserRole>('user')
+
+  useEffect(() => {
+    authService.getCurrentUser().then(user => {
+      if (user) setUserRole(user.role)
+    })
+  }, [])
+
+  // In the real code this is inside the component, but we will fix the import properly later if need be.
+  // Actually useEffect is already imported from lucide-react? No, line 20 imports useState from react.
+
 
   return (
     <>
@@ -134,7 +158,7 @@ export function Sidebar({ className }: SidebarProps) {
 
           {/* Navigation */}
           <nav className="flex-1 px-4 py-6 space-y-2">
-            {navigation.map((item) => {
+            {navigation.filter(item => item.roles.includes(userRole)).map((item) => {
               const isActive = location.pathname === item.href || 
                              (item.href !== '/dashboard/admin' && location.pathname.startsWith(item.href))
               

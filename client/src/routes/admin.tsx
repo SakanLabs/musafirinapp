@@ -17,8 +17,8 @@ export const Route = createFileRoute('/admin')({
       throw redirect({ to: '/login' })
     }
     
-    const isAdmin = await authService.isAdmin()
-    if (!isAdmin) {
+    const isOwner = await authService.isOwner()
+    if (!isOwner) {
       throw redirect({ to: '/dashboard' })
     }
   },
@@ -29,7 +29,8 @@ interface User {
   id: string
   name: string
   email: string
-  role: 'user' | 'admin'
+  role: 'user' | 'admin' | 'owner' | 'finance'
+  userType: 'direct' | 'agent'
   createdAt: string
 }
 
@@ -38,7 +39,14 @@ function AdminPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [showCreateModal, setShowCreateModal] = useState(false)
-  const [createForm, setCreateForm] = useState({ name: '', email: '', password: '' })
+  const [createForm, setCreateForm] = useState({ 
+    name: '', 
+    email: '', 
+    password: '', 
+    accountCategory: 'staff' as 'customer' | 'staff',
+    userType: 'direct' as 'direct' | 'agent',
+    role: 'admin' as 'user' | 'admin' | 'owner' | 'finance'
+  })
   const [createError, setCreateError] = useState<string | null>(null)
   const [createLoading, setCreateLoading] = useState(false)
 
@@ -51,23 +59,24 @@ function AdminPage() {
       setLoading(true)
       setError(null)
       
-      const response = await admin.listUsers({
-        query: {
-          limit: 100,
-          offset: 0
-        }
+      const response = await fetch(`${API_URL}/api/users`, {
+        credentials: 'include'
       })
       
+      const data = await response.json()
       
-      if (response.data?.users) {
-        const mappedUsers: User[] = (response.data.users as Record<string, unknown>[]).map((user) => ({
-          id: String(user.id),
-          name: String(user.name || user.email || 'Unknown'),
-          email: String(user.email || ''),
-          role: (user.role === 'admin' ? 'admin' : 'user') as 'user' | 'admin',
-          createdAt: String(user.createdAt || new Date().toISOString())
+      if (data.success) {
+        const mappedUsers: User[] = data.data.map((u: any) => ({
+          id: String(u.id),
+          name: String(u.name || u.email || 'Unknown'),
+          email: String(u.email || ''),
+          role: (u.role && ['admin', 'owner', 'finance'].includes(u.role) ? u.role : 'user') as 'user' | 'admin' | 'owner' | 'finance',
+          userType: (u.userType === 'agent' ? 'agent' : 'direct') as 'direct' | 'agent',
+          createdAt: String(u.createdAt || new Date().toISOString())
         }))
         setUsers(mappedUsers)
+      } else {
+        setError(data.message || 'Failed to load users')
       }
     } catch (err) {
       console.error('Error loading users:', err)
@@ -89,7 +98,13 @@ function AdminPage() {
           'Content-Type': 'application/json'
         },
         credentials: 'include',
-        body: JSON.stringify(createForm)
+        body: JSON.stringify({
+          name: createForm.name,
+          email: createForm.email,
+          password: createForm.password,
+          userType: createForm.accountCategory === 'customer' ? createForm.userType : 'direct',
+          role: createForm.accountCategory === 'staff' ? createForm.role : 'user'
+        })
       })
 
       const data = await response.json()
@@ -100,7 +115,7 @@ function AdminPage() {
       }
 
       setShowCreateModal(false)
-      setCreateForm({ name: '', email: '', password: '' })
+      setCreateForm({ name: '', email: '', password: '', accountCategory: 'staff', userType: 'direct', role: 'admin' })
       await loadUsers()
     } catch (err) {
       console.error('Error creating user:', err)
@@ -110,16 +125,27 @@ function AdminPage() {
     }
   }
 
-  const updateUserRole = async (userId: string, newRole: string) => {
+  const updateUser = async (userId: string, data: { role?: string; userType?: string }) => {
     try {
-      await admin.setRole({
-        userId,
-        role: newRole as 'user' | 'admin'
+      const response = await fetch(`${API_URL}/api/users/${userId}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        credentials: 'include',
+        body: JSON.stringify(data)
       })
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        setError(errorData.message || 'Failed to update user')
+        return
+      }
+
       await loadUsers()
     } catch (err) {
-      console.error('Error updating user role:', err)
-      setError('Failed to update user role')
+      console.error('Error updating user:', err)
+      setError('Failed to update user')
     }
   }
 
@@ -173,8 +199,8 @@ function AdminPage() {
 
   return (
     <PageLayout
-      title="User Management"
-      subtitle="Manage users and their roles"
+      title="Staff Management"
+      subtitle="Manage staff accounts and their roles"
       actions={actions}
     >
       {error && (
@@ -192,6 +218,9 @@ function AdminPage() {
                   User
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Type
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Role
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -205,7 +234,7 @@ function AdminPage() {
             <tbody className="bg-white divide-y divide-gray-200">
               {loading ? (
                 <tr>
-                  <td colSpan={4} className="px-6 py-12 text-center">
+                  <td colSpan={5} className="px-6 py-12 text-center">
                     <div className="flex flex-col items-center gap-2">
                       <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
                       <p className="text-gray-500">Loading users...</p>
@@ -226,26 +255,31 @@ function AdminPage() {
                     </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-                      user.role === 'admin' 
-                        ? 'bg-red-100 text-red-800' 
-                        : 'bg-green-100 text-green-800'
-                    }`}>
-                      {user.role}
-                    </span>
+                    <select
+                      value={user.userType}
+                      onChange={(e) => updateUser(user.id, { userType: e.target.value })}
+                      className="border border-gray-300 rounded-md px-2 py-1 text-sm"
+                    >
+                      <option value="direct">Direct</option>
+                      <option value="agent">Agent</option>
+                    </select>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <select
+                      value={user.role}
+                      onChange={(e) => updateUser(user.id, { role: e.target.value })}
+                      className="border border-gray-300 rounded-md px-2 py-1 text-sm"
+                    >
+                      <option value="user">User</option>
+                      <option value="admin">Admin</option>
+                      <option value="finance">Finance</option>
+                      <option value="owner">Owner</option>
+                    </select>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                     {new Date(user.createdAt).toLocaleDateString()}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                    <select
-                      value={user.role}
-                      onChange={(e) => updateUserRole(user.id, e.target.value)}
-                      className="border border-gray-300 rounded-md px-2 py-1 text-sm mr-2"
-                    >
-                      <option value="user">User</option>
-                      <option value="admin">Admin</option>
-                    </select>
                     <Button
                       variant="ghost"
                       size="sm"
@@ -281,7 +315,7 @@ function AdminPage() {
       {showCreateModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <Card className="bg-white rounded-lg p-6 w-full max-w-md">
-            <h3 className="text-lg font-semibold mb-4">Create New User</h3>
+            <h3 className="text-lg font-semibold mb-4">Create New Account</h3>
             
             {createError && (
               <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-md text-red-700 text-sm">
@@ -312,7 +346,7 @@ function AdminPage() {
                 />
               </div>
 
-              <div className="mb-6">
+              <div className="mb-4">
                 <label className="block text-sm font-medium text-gray-700 mb-1">Password</label>
                 <Input
                   type="password"
@@ -324,6 +358,57 @@ function AdminPage() {
                 />
               </div>
 
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-700 mb-1">Account Category</label>
+                <div className="flex gap-4">
+                  <label className="flex items-center">
+                    <input
+                      type="radio"
+                      className="mr-2"
+                      checked={createForm.accountCategory === 'customer'}
+                      onChange={() => setCreateForm({ ...createForm, accountCategory: 'customer' })}
+                    />
+                    Customer
+                  </label>
+                  <label className="flex items-center">
+                    <input
+                      type="radio"
+                      className="mr-2"
+                      checked={createForm.accountCategory === 'staff'}
+                      onChange={() => setCreateForm({ ...createForm, accountCategory: 'staff' })}
+                    />
+                    Staff
+                  </label>
+                </div>
+              </div>
+
+              {createForm.accountCategory === 'customer' ? (
+                <div className="mb-6">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Pricing Tiers/User Type</label>
+                  <select
+                    value={createForm.userType}
+                    onChange={(e) => setCreateForm({ ...createForm, userType: e.target.value as 'direct' | 'agent' })}
+                    className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  >
+                    <option value="direct">Direct - Harga regular untuk customer</option>
+                    <option value="agent">Agent - Harga khusus untuk agen/reseller</option>
+                  </select>
+                </div>
+              ) : (
+                <div className="mb-6">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Staff Role</label>
+                  <select
+                    value={createForm.role}
+                    onChange={(e) => setCreateForm({ ...createForm, role: e.target.value as any })}
+                    className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  >
+                    <option value="admin">Admin - (Booking, Master Data, Invoices, Vouchers)</option>
+                    <option value="finance">Finance - (Invoices, Receipts, Clients, Analytics)</option>
+                    <option value="owner">Owner - (Full Access & User Management)</option>
+                  </select>
+                </div>
+              )}
+
               <div className="flex justify-end gap-2">
                 <Button
                   type="button"
@@ -331,7 +416,7 @@ function AdminPage() {
                   onClick={() => {
                     setShowCreateModal(false)
                     setCreateError(null)
-                    setCreateForm({ name: '', email: '', password: '' })
+                    setCreateForm({ name: '', email: '', password: '', accountCategory: 'staff', userType: 'direct', role: 'admin' })
                   }}
                   disabled={createLoading}
                 >

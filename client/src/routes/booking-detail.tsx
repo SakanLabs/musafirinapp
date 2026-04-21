@@ -233,6 +233,24 @@ function BookingDetailPage() {
     )
   }
 
+  // Calculate nights for subtotal calculation
+  const checkInDate = new Date(booking.checkIn);
+  const checkOutDate = new Date(booking.checkOut);
+  const diffTime = checkOutDate.getTime() - checkInDate.getTime();
+  const nights = Math.max(1, Math.ceil(diffTime / (1000 * 60 * 60 * 24)));
+
+  // Calculate dynamic grand total to ensure synchronization with UI items
+  const calculatedGrandTotal = booking.items && booking.items.length > 0 
+    ? booking.items.reduce((sum, item) => {
+        if (item.hasPricingPeriods && item.pricingPeriods && item.pricingPeriods.length > 0) {
+          const itemTotal = item.pricingPeriods.reduce((pSum, p) => pSum + p.subtotal, 0) * item.roomCount;
+          return sum + itemTotal;
+        } else {
+          return sum + (Number(item.unitPrice) * Number(item.roomCount) * nights);
+        }
+      }, 0)
+    : Number(booking.totalAmount);
+
   return (
     <PageLayout title="Booking Details" subtitle={`Booking Code: ${booking.code}`}>
       <div className="space-y-6">
@@ -346,7 +364,7 @@ function BookingDetailPage() {
                   <div>
                     <label className="text-sm font-medium text-gray-500">Total Amount</label>
                     <div className="flex items-center">
-                      <SARCurrency amount={booking.totalAmount.toString()} iconSize={16} className="text-gray-900 font-semibold" />
+                      <SARCurrency amount={calculatedGrandTotal.toString()} iconSize={16} className="text-gray-900 font-semibold" />
                     </div>
                   </div>
                 </div>
@@ -380,9 +398,9 @@ function BookingDetailPage() {
                                   </div>
                                 )}
                                 <div>
-                                  <label className="text-xs font-medium text-gray-500">Subtotal</label>
+                                  <label className="text-xs font-medium text-gray-500">Subtotal ({nights} nights)</label>
                                   <p className="text-sm text-gray-900 font-semibold">
-                                    {formatCurrency((Number(item.unitPrice) * Number(item.roomCount)).toString(), 'SAR')}
+                                    {formatCurrency((Number(item.unitPrice) * Number(item.roomCount) * nights).toString(), 'SAR')}
                                   </p>
                                 </div>
                               </>
@@ -475,6 +493,14 @@ function BookingDetailPage() {
                     </Badge>
                   </div>
                 </div>
+                {booking.hotelConfirmationNo && (
+                  <div>
+                    <label className="text-sm font-medium text-gray-500">Hotel Confirmation No.</label>
+                    <p className="mt-1 text-gray-900 font-mono bg-gray-100 px-3 py-2 rounded">
+                      {booking.hotelConfirmationNo}
+                    </p>
+                  </div>
+                )}
               </CardContent>
             </Card>
           </div>
@@ -503,6 +529,14 @@ function BookingDetailPage() {
                     </Badge>
                   </div>
                 </div>
+                {booking.hotelConfirmationNo && (
+                  <div>
+                    <label className="text-sm font-medium text-gray-500">Hotel Confirmation No.</label>
+                    <p className="mt-1 text-gray-900 font-mono bg-gray-100 px-2 py-1 rounded text-sm">
+                      {booking.hotelConfirmationNo}
+                    </p>
+                  </div>
+                )}
               </CardContent>
             </Card>
 
