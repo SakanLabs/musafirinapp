@@ -21,12 +21,14 @@ import { Route as InvoicesRouteImport } from './routes/invoices'
 import { Route as InvoiceDetailRouteImport } from './routes/invoice-detail'
 import { Route as ForgotPasswordRouteImport } from './routes/forgot-password'
 import { Route as DashboardRouteImport } from './routes/dashboard'
+import { Route as CustomLaRequestsRouteImport } from './routes/custom-la-requests'
 import { Route as CreateTransportationBookingRouteImport } from './routes/create-transportation-booking'
 import { Route as CreateServiceOrderRouteImport } from './routes/create-service-order'
 import { Route as CreateReceiptRouteImport } from './routes/create-receipt'
 import { Route as CreateMasterTransportRouteImport } from './routes/create-master-transport'
 import { Route as CreateMasterHotelRouteImport } from './routes/create-master-hotel'
 import { Route as CreateInvoiceRouteImport } from './routes/create-invoice'
+import { Route as CreateCustomLaRouteImport } from './routes/create-custom-la'
 import { Route as CreateBookingRouteImport } from './routes/create-booking'
 import { Route as CostsRouteImport } from './routes/costs'
 import { Route as ClientsRouteImport } from './routes/clients'
@@ -50,12 +52,15 @@ import { Route as MasterTransportDetailRouteIdRouteImport } from './routes/maste
 import { Route as MasterHotelEditHotelIdRouteImport } from './routes/master-hotel-edit.$hotelId'
 import { Route as MasterHotelDetailHotelIdRouteImport } from './routes/master-hotel-detail.$hotelId'
 import { Route as DashboardAdminRouteImport } from './routes/dashboard/admin'
+import { Route as CustomLaQuotationIdRouteImport } from './routes/custom-la-quotation.$id'
+import { Route as CustomLaDetailIdRouteImport } from './routes/custom-la-detail.$id'
 import { Route as CreateTransportPricingRouteIdRouteImport } from './routes/create-transport-pricing.$routeId'
 import { Route as CreateHotelPricingHotelIdRouteImport } from './routes/create-hotel-pricing.$hotelId'
 import { Route as ClientsCreateRouteImport } from './routes/clients/create'
 import { Route as ClientDetailClientIdRouteImport } from './routes/client-detail.$clientId'
 import { Route as BookingViewBookingIdRouteImport } from './routes/booking-view.$bookingId'
 import { Route as AuthCallbackRouteImport } from './routes/auth/callback'
+import { Route as CustomLaQuotationRouteImport } from './routes/custom-la-quotation.'
 import { Route as EditTransportPricingRouteIdPricingIdRouteImport } from './routes/edit-transport-pricing.$routeId.$pricingId'
 import { Route as EditHotelPricingHotelIdPricingIdRouteImport } from './routes/edit-hotel-pricing.$hotelId.$pricingId'
 import { Route as BookingsBookingIdEditRouteImport } from './routes/bookings/$bookingId/edit'
@@ -120,6 +125,11 @@ const DashboardRoute = DashboardRouteImport.update({
   path: '/dashboard',
   getParentRoute: () => rootRouteImport,
 } as any)
+const CustomLaRequestsRoute = CustomLaRequestsRouteImport.update({
+  id: '/custom-la-requests',
+  path: '/custom-la-requests',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const CreateTransportationBookingRoute =
   CreateTransportationBookingRouteImport.update({
     id: '/create-transportation-booking',
@@ -149,6 +159,11 @@ const CreateMasterHotelRoute = CreateMasterHotelRouteImport.update({
 const CreateInvoiceRoute = CreateInvoiceRouteImport.update({
   id: '/create-invoice',
   path: '/create-invoice',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CreateCustomLaRoute = CreateCustomLaRouteImport.update({
+  id: '/create-custom-la',
+  path: '/create-custom-la',
   getParentRoute: () => rootRouteImport,
 } as any)
 const CreateBookingRoute = CreateBookingRouteImport.update({
@@ -273,6 +288,16 @@ const DashboardAdminRoute = DashboardAdminRouteImport.update({
   path: '/admin',
   getParentRoute: () => DashboardRoute,
 } as any)
+const CustomLaQuotationIdRoute = CustomLaQuotationIdRouteImport.update({
+  id: '/custom-la-quotation/$id',
+  path: '/custom-la-quotation/$id',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CustomLaDetailIdRoute = CustomLaDetailIdRouteImport.update({
+  id: '/custom-la-detail/$id',
+  path: '/custom-la-detail/$id',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const CreateTransportPricingRouteIdRoute =
   CreateTransportPricingRouteIdRouteImport.update({
     id: '/create-transport-pricing/$routeId',
@@ -305,6 +330,11 @@ const AuthCallbackRoute = AuthCallbackRouteImport.update({
   path: '/auth/callback',
   getParentRoute: () => rootRouteImport,
 } as any)
+const CustomLaQuotationRoute = CustomLaQuotationRouteImport.update({
+  id: '/custom-la-quotation/',
+  path: '/custom-la-quotation/',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const EditTransportPricingRouteIdPricingIdRoute =
   EditTransportPricingRouteIdPricingIdRouteImport.update({
     id: '/edit-transport-pricing/$routeId/$pricingId',
@@ -334,12 +364,14 @@ export interface FileRoutesByFullPath {
   '/clients': typeof ClientsRouteWithChildren
   '/costs': typeof CostsRoute
   '/create-booking': typeof CreateBookingRoute
+  '/create-custom-la': typeof CreateCustomLaRoute
   '/create-invoice': typeof CreateInvoiceRoute
   '/create-master-hotel': typeof CreateMasterHotelRoute
   '/create-master-transport': typeof CreateMasterTransportRoute
   '/create-receipt': typeof CreateReceiptRoute
   '/create-service-order': typeof CreateServiceOrderRoute
   '/create-transportation-booking': typeof CreateTransportationBookingRoute
+  '/custom-la-requests': typeof CustomLaRequestsRoute
   '/dashboard': typeof DashboardRouteWithChildren
   '/forgot-password': typeof ForgotPasswordRoute
   '/invoice-detail': typeof InvoiceDetailRoute
@@ -352,12 +384,15 @@ export interface FileRoutesByFullPath {
   '/service-orders': typeof ServiceOrdersRouteWithChildren
   '/transportation-bookings': typeof TransportationBookingsRoute
   '/vouchers': typeof VouchersRouteWithChildren
+  '/custom-la-quotation': typeof CustomLaQuotationRoute
   '/auth/callback': typeof AuthCallbackRoute
   '/booking-view/$bookingId': typeof BookingViewBookingIdRoute
   '/client-detail/$clientId': typeof ClientDetailClientIdRoute
   '/clients/create': typeof ClientsCreateRoute
   '/create-hotel-pricing/$hotelId': typeof CreateHotelPricingHotelIdRoute
   '/create-transport-pricing/$routeId': typeof CreateTransportPricingRouteIdRoute
+  '/custom-la-detail/$id': typeof CustomLaDetailIdRoute
+  '/custom-la-quotation/$id': typeof CustomLaQuotationIdRoute
   '/dashboard/admin': typeof DashboardAdminRoute
   '/master-hotel-detail/$hotelId': typeof MasterHotelDetailHotelIdRoute
   '/master-hotel-edit/$hotelId': typeof MasterHotelEditHotelIdRoute
@@ -385,12 +420,14 @@ export interface FileRoutesByTo {
   '/clear-auth-cache': typeof ClearAuthCacheRoute
   '/costs': typeof CostsRoute
   '/create-booking': typeof CreateBookingRoute
+  '/create-custom-la': typeof CreateCustomLaRoute
   '/create-invoice': typeof CreateInvoiceRoute
   '/create-master-hotel': typeof CreateMasterHotelRoute
   '/create-master-transport': typeof CreateMasterTransportRoute
   '/create-receipt': typeof CreateReceiptRoute
   '/create-service-order': typeof CreateServiceOrderRoute
   '/create-transportation-booking': typeof CreateTransportationBookingRoute
+  '/custom-la-requests': typeof CustomLaRequestsRoute
   '/dashboard': typeof DashboardRouteWithChildren
   '/forgot-password': typeof ForgotPasswordRoute
   '/invoice-detail': typeof InvoiceDetailRoute
@@ -403,12 +440,15 @@ export interface FileRoutesByTo {
   '/service-orders': typeof ServiceOrdersRouteWithChildren
   '/transportation-bookings': typeof TransportationBookingsRoute
   '/vouchers': typeof VouchersRouteWithChildren
+  '/custom-la-quotation': typeof CustomLaQuotationRoute
   '/auth/callback': typeof AuthCallbackRoute
   '/booking-view/$bookingId': typeof BookingViewBookingIdRoute
   '/client-detail/$clientId': typeof ClientDetailClientIdRoute
   '/clients/create': typeof ClientsCreateRoute
   '/create-hotel-pricing/$hotelId': typeof CreateHotelPricingHotelIdRoute
   '/create-transport-pricing/$routeId': typeof CreateTransportPricingRouteIdRoute
+  '/custom-la-detail/$id': typeof CustomLaDetailIdRoute
+  '/custom-la-quotation/$id': typeof CustomLaQuotationIdRoute
   '/dashboard/admin': typeof DashboardAdminRoute
   '/master-hotel-detail/$hotelId': typeof MasterHotelDetailHotelIdRoute
   '/master-hotel-edit/$hotelId': typeof MasterHotelEditHotelIdRoute
@@ -438,12 +478,14 @@ export interface FileRoutesById {
   '/clients': typeof ClientsRouteWithChildren
   '/costs': typeof CostsRoute
   '/create-booking': typeof CreateBookingRoute
+  '/create-custom-la': typeof CreateCustomLaRoute
   '/create-invoice': typeof CreateInvoiceRoute
   '/create-master-hotel': typeof CreateMasterHotelRoute
   '/create-master-transport': typeof CreateMasterTransportRoute
   '/create-receipt': typeof CreateReceiptRoute
   '/create-service-order': typeof CreateServiceOrderRoute
   '/create-transportation-booking': typeof CreateTransportationBookingRoute
+  '/custom-la-requests': typeof CustomLaRequestsRoute
   '/dashboard': typeof DashboardRouteWithChildren
   '/forgot-password': typeof ForgotPasswordRoute
   '/invoice-detail': typeof InvoiceDetailRoute
@@ -456,12 +498,15 @@ export interface FileRoutesById {
   '/service-orders': typeof ServiceOrdersRouteWithChildren
   '/transportation-bookings': typeof TransportationBookingsRoute
   '/vouchers': typeof VouchersRouteWithChildren
+  '/custom-la-quotation/': typeof CustomLaQuotationRoute
   '/auth/callback': typeof AuthCallbackRoute
   '/booking-view/$bookingId': typeof BookingViewBookingIdRoute
   '/client-detail/$clientId': typeof ClientDetailClientIdRoute
   '/clients/create': typeof ClientsCreateRoute
   '/create-hotel-pricing/$hotelId': typeof CreateHotelPricingHotelIdRoute
   '/create-transport-pricing/$routeId': typeof CreateTransportPricingRouteIdRoute
+  '/custom-la-detail/$id': typeof CustomLaDetailIdRoute
+  '/custom-la-quotation/$id': typeof CustomLaQuotationIdRoute
   '/dashboard/admin': typeof DashboardAdminRoute
   '/master-hotel-detail/$hotelId': typeof MasterHotelDetailHotelIdRoute
   '/master-hotel-edit/$hotelId': typeof MasterHotelEditHotelIdRoute
@@ -492,12 +537,14 @@ export interface FileRouteTypes {
     | '/clients'
     | '/costs'
     | '/create-booking'
+    | '/create-custom-la'
     | '/create-invoice'
     | '/create-master-hotel'
     | '/create-master-transport'
     | '/create-receipt'
     | '/create-service-order'
     | '/create-transportation-booking'
+    | '/custom-la-requests'
     | '/dashboard'
     | '/forgot-password'
     | '/invoice-detail'
@@ -510,12 +557,15 @@ export interface FileRouteTypes {
     | '/service-orders'
     | '/transportation-bookings'
     | '/vouchers'
+    | '/custom-la-quotation'
     | '/auth/callback'
     | '/booking-view/$bookingId'
     | '/client-detail/$clientId'
     | '/clients/create'
     | '/create-hotel-pricing/$hotelId'
     | '/create-transport-pricing/$routeId'
+    | '/custom-la-detail/$id'
+    | '/custom-la-quotation/$id'
     | '/dashboard/admin'
     | '/master-hotel-detail/$hotelId'
     | '/master-hotel-edit/$hotelId'
@@ -543,12 +593,14 @@ export interface FileRouteTypes {
     | '/clear-auth-cache'
     | '/costs'
     | '/create-booking'
+    | '/create-custom-la'
     | '/create-invoice'
     | '/create-master-hotel'
     | '/create-master-transport'
     | '/create-receipt'
     | '/create-service-order'
     | '/create-transportation-booking'
+    | '/custom-la-requests'
     | '/dashboard'
     | '/forgot-password'
     | '/invoice-detail'
@@ -561,12 +613,15 @@ export interface FileRouteTypes {
     | '/service-orders'
     | '/transportation-bookings'
     | '/vouchers'
+    | '/custom-la-quotation'
     | '/auth/callback'
     | '/booking-view/$bookingId'
     | '/client-detail/$clientId'
     | '/clients/create'
     | '/create-hotel-pricing/$hotelId'
     | '/create-transport-pricing/$routeId'
+    | '/custom-la-detail/$id'
+    | '/custom-la-quotation/$id'
     | '/dashboard/admin'
     | '/master-hotel-detail/$hotelId'
     | '/master-hotel-edit/$hotelId'
@@ -595,12 +650,14 @@ export interface FileRouteTypes {
     | '/clients'
     | '/costs'
     | '/create-booking'
+    | '/create-custom-la'
     | '/create-invoice'
     | '/create-master-hotel'
     | '/create-master-transport'
     | '/create-receipt'
     | '/create-service-order'
     | '/create-transportation-booking'
+    | '/custom-la-requests'
     | '/dashboard'
     | '/forgot-password'
     | '/invoice-detail'
@@ -613,12 +670,15 @@ export interface FileRouteTypes {
     | '/service-orders'
     | '/transportation-bookings'
     | '/vouchers'
+    | '/custom-la-quotation/'
     | '/auth/callback'
     | '/booking-view/$bookingId'
     | '/client-detail/$clientId'
     | '/clients/create'
     | '/create-hotel-pricing/$hotelId'
     | '/create-transport-pricing/$routeId'
+    | '/custom-la-detail/$id'
+    | '/custom-la-quotation/$id'
     | '/dashboard/admin'
     | '/master-hotel-detail/$hotelId'
     | '/master-hotel-edit/$hotelId'
@@ -648,12 +708,14 @@ export interface RootRouteChildren {
   ClientsRoute: typeof ClientsRouteWithChildren
   CostsRoute: typeof CostsRoute
   CreateBookingRoute: typeof CreateBookingRoute
+  CreateCustomLaRoute: typeof CreateCustomLaRoute
   CreateInvoiceRoute: typeof CreateInvoiceRoute
   CreateMasterHotelRoute: typeof CreateMasterHotelRoute
   CreateMasterTransportRoute: typeof CreateMasterTransportRoute
   CreateReceiptRoute: typeof CreateReceiptRoute
   CreateServiceOrderRoute: typeof CreateServiceOrderRoute
   CreateTransportationBookingRoute: typeof CreateTransportationBookingRoute
+  CustomLaRequestsRoute: typeof CustomLaRequestsRoute
   DashboardRoute: typeof DashboardRouteWithChildren
   ForgotPasswordRoute: typeof ForgotPasswordRoute
   InvoiceDetailRoute: typeof InvoiceDetailRoute
@@ -666,11 +728,14 @@ export interface RootRouteChildren {
   ServiceOrdersRoute: typeof ServiceOrdersRouteWithChildren
   TransportationBookingsRoute: typeof TransportationBookingsRoute
   VouchersRoute: typeof VouchersRouteWithChildren
+  CustomLaQuotationRoute: typeof CustomLaQuotationRoute
   AuthCallbackRoute: typeof AuthCallbackRoute
   BookingViewBookingIdRoute: typeof BookingViewBookingIdRoute
   ClientDetailClientIdRoute: typeof ClientDetailClientIdRoute
   CreateHotelPricingHotelIdRoute: typeof CreateHotelPricingHotelIdRoute
   CreateTransportPricingRouteIdRoute: typeof CreateTransportPricingRouteIdRoute
+  CustomLaDetailIdRoute: typeof CustomLaDetailIdRoute
+  CustomLaQuotationIdRoute: typeof CustomLaQuotationIdRoute
   MasterHotelDetailHotelIdRoute: typeof MasterHotelDetailHotelIdRoute
   MasterHotelEditHotelIdRoute: typeof MasterHotelEditHotelIdRoute
   MasterTransportDetailRouteIdRoute: typeof MasterTransportDetailRouteIdRoute
@@ -769,6 +834,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DashboardRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/custom-la-requests': {
+      id: '/custom-la-requests'
+      path: '/custom-la-requests'
+      fullPath: '/custom-la-requests'
+      preLoaderRoute: typeof CustomLaRequestsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/create-transportation-booking': {
       id: '/create-transportation-booking'
       path: '/create-transportation-booking'
@@ -809,6 +881,13 @@ declare module '@tanstack/react-router' {
       path: '/create-invoice'
       fullPath: '/create-invoice'
       preLoaderRoute: typeof CreateInvoiceRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/create-custom-la': {
+      id: '/create-custom-la'
+      path: '/create-custom-la'
+      fullPath: '/create-custom-la'
+      preLoaderRoute: typeof CreateCustomLaRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/create-booking': {
@@ -972,6 +1051,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DashboardAdminRouteImport
       parentRoute: typeof DashboardRoute
     }
+    '/custom-la-quotation/$id': {
+      id: '/custom-la-quotation/$id'
+      path: '/custom-la-quotation/$id'
+      fullPath: '/custom-la-quotation/$id'
+      preLoaderRoute: typeof CustomLaQuotationIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/custom-la-detail/$id': {
+      id: '/custom-la-detail/$id'
+      path: '/custom-la-detail/$id'
+      fullPath: '/custom-la-detail/$id'
+      preLoaderRoute: typeof CustomLaDetailIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/create-transport-pricing/$routeId': {
       id: '/create-transport-pricing/$routeId'
       path: '/create-transport-pricing/$routeId'
@@ -1012,6 +1105,13 @@ declare module '@tanstack/react-router' {
       path: '/auth/callback'
       fullPath: '/auth/callback'
       preLoaderRoute: typeof AuthCallbackRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/custom-la-quotation/': {
+      id: '/custom-la-quotation/'
+      path: '/custom-la-quotation'
+      fullPath: '/custom-la-quotation'
+      preLoaderRoute: typeof CustomLaQuotationRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/edit-transport-pricing/$routeId/$pricingId': {
@@ -1112,12 +1212,14 @@ const rootRouteChildren: RootRouteChildren = {
   ClientsRoute: ClientsRouteWithChildren,
   CostsRoute: CostsRoute,
   CreateBookingRoute: CreateBookingRoute,
+  CreateCustomLaRoute: CreateCustomLaRoute,
   CreateInvoiceRoute: CreateInvoiceRoute,
   CreateMasterHotelRoute: CreateMasterHotelRoute,
   CreateMasterTransportRoute: CreateMasterTransportRoute,
   CreateReceiptRoute: CreateReceiptRoute,
   CreateServiceOrderRoute: CreateServiceOrderRoute,
   CreateTransportationBookingRoute: CreateTransportationBookingRoute,
+  CustomLaRequestsRoute: CustomLaRequestsRoute,
   DashboardRoute: DashboardRouteWithChildren,
   ForgotPasswordRoute: ForgotPasswordRoute,
   InvoiceDetailRoute: InvoiceDetailRoute,
@@ -1130,11 +1232,14 @@ const rootRouteChildren: RootRouteChildren = {
   ServiceOrdersRoute: ServiceOrdersRouteWithChildren,
   TransportationBookingsRoute: TransportationBookingsRoute,
   VouchersRoute: VouchersRouteWithChildren,
+  CustomLaQuotationRoute: CustomLaQuotationRoute,
   AuthCallbackRoute: AuthCallbackRoute,
   BookingViewBookingIdRoute: BookingViewBookingIdRoute,
   ClientDetailClientIdRoute: ClientDetailClientIdRoute,
   CreateHotelPricingHotelIdRoute: CreateHotelPricingHotelIdRoute,
   CreateTransportPricingRouteIdRoute: CreateTransportPricingRouteIdRoute,
+  CustomLaDetailIdRoute: CustomLaDetailIdRoute,
+  CustomLaQuotationIdRoute: CustomLaQuotationIdRoute,
   MasterHotelDetailHotelIdRoute: MasterHotelDetailHotelIdRoute,
   MasterHotelEditHotelIdRoute: MasterHotelEditHotelIdRoute,
   MasterTransportDetailRouteIdRoute: MasterTransportDetailRouteIdRoute,

@@ -59,6 +59,7 @@ export const verification = pgTable('verification', {
 export const cityEnum = pgEnum('city', ['Makkah', 'Madinah']);
 export const paymentStatusEnum = pgEnum('payment_status', ['unpaid', 'partial', 'paid', 'overdue']);
 export const bookingStatusEnum = pgEnum('booking_status', ['pending', 'confirmed', 'cancelled']);
+export const customLaRequestStatusEnum = pgEnum('custom_la_request_status', ['pending', 'quoted', 'invoiced', 'cancelled']);
 // roomTypeEnum removed - now using varchar for flexibility
 export const invoiceStatusEnum = pgEnum('invoice_status', ['draft', 'sent', 'paid', 'overdue', 'cancelled']);
 export const mealPlanEnum = pgEnum('meal_plan', ['Breakfast', 'Half Board', 'Full Board', 'Room Only']);
@@ -507,6 +508,23 @@ export const invoicePayments = pgTable('invoice_payments', {
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
 });
 
+// Custom LA Requests table
+export const customLaRequests = pgTable('custom_la_requests', {
+  id: serial('id').primaryKey(),
+  number: varchar('number', { length: 50 }).notNull().unique(), // Format: CLA-YYYY-XXXX
+  clientId: integer('client_id').notNull().references(() => clients.id, { onDelete: 'cascade' }),
+  customerName: varchar('customer_name', { length: 255 }).notNull(),
+  customerPhone: varchar('customer_phone', { length: 50 }),
+  customerEmail: varchar('customer_email', { length: 255 }),
+  travelName: varchar('travel_name', { length: 255 }),
+  status: customLaRequestStatusEnum('status').default('pending').notNull(),
+  totalAmountSAR: decimal('total_amount_sar', { precision: 10, scale: 2 }).notNull(),
+  totalPax: integer('total_pax').notNull(),
+  meta: jsonb('meta').notNull(), // To store all form details (hotel selected, transport, layout)
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+});
+
 
 // Type exports for better-auth tables
 export type User = typeof user.$inferSelect;
@@ -571,3 +589,5 @@ export type TransportationRouteMaster = typeof transportationRoutesMaster.$infer
 export type NewTransportationRouteMaster = typeof transportationRoutesMaster.$inferInsert;
 export type TransportationRoutePricingPeriod = typeof transportationRoutePricingPeriods.$inferSelect;
 export type NewTransportationRoutePricingPeriod = typeof transportationRoutePricingPeriods.$inferInsert;
+export type CustomLaRequest = typeof customLaRequests.$inferSelect;
+export type NewCustomLaRequest = typeof customLaRequests.$inferInsert;

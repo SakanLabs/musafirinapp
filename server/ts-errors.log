@@ -1,0 +1,35 @@
+src/routes/publicBookings.ts(90,39): error TS2532: Object is possibly 'undefined'.
+src/routes/publicBookings.ts(100,29): error TS18048: 'booking' is possibly 'undefined'.
+src/routes/publicBookings.ts(107,41): error TS18048: 'booking' is possibly 'undefined'.
+src/routes/publicBookings.ts(123,89): error TS18048: 'booking' is possibly 'undefined'.
+src/routes/publicBookings.ts(124,89): error TS18048: 'booking' is possibly 'undefined'.
+src/routes/publicBookings.ts(130,37): error TS18048: 'booking' is possibly 'undefined'.
+src/routes/publicBookings.ts(135,13): error TS18048: 'booking' is possibly 'undefined'.
+src/routes/publicBookings.ts(136,15): error TS18048: 'booking' is possibly 'undefined'.
+src/routes/publicBookings.ts(137,19): error TS18048: 'booking' is possibly 'undefined'.
+src/routes/publicBookings.ts(138,20): error TS18048: 'booking' is possibly 'undefined'.
+src/routes/publicBookings.ts(139,15): error TS18048: 'booking' is possibly 'undefined'.
+src/routes/publicBookings.ts(140,18): error TS18048: 'booking' is possibly 'undefined'.
+src/routes/publicBookings.ts(141,19): error TS18048: 'booking' is possibly 'undefined'.
+src/routes/publicBookings.ts(142,22): error TS18048: 'booking' is possibly 'undefined'.
+src/routes/publicBookings.ts(143,24): error TS18048: 'booking' is possibly 'undefined'.
+src/routes/publicBookings.ts(144,24): error TS18048: 'booking' is possibly 'undefined'.
+src/routes/publicBookings.ts(145,19): error TS18048: 'booking' is possibly 'undefined'.
+src/routes/publicBookings.ts(146,30): error TS18048: 'booking' is possibly 'undefined'.
+src/routes/publicBookings.ts(147,15): error TS18048: 'booking' is possibly 'undefined'.
+src/routes/publicBookings.ts(148,20): error TS18048: 'booking' is possibly 'undefined'.
+src/routes/publicBookings.ts(149,20): error TS18048: 'booking' is possibly 'undefined'.
+src/routes/publicCheckout.ts(23,7): error TS2769: No overload matches this call.
+  Overload 1 of 2, '(value: { name: string | SQL<unknown> | Placeholder<string, any>; email: string | SQL<unknown> | Placeholder<string, any>; id?: number | SQL<unknown> | Placeholder<string, any> | undefined; ... 5 more ...; isActive?: boolean | ... 2 more ... | undefined; }): PgInsertBase<...>', gave the following error.
+    Type 'string | undefined' is not assignable to type 'string | SQL<unknown> | Placeholder<string, any>'.
+      Type 'undefined' is not assignable to type 'string | SQL<unknown> | Placeholder<string, any>'.
+  Overload 2 of 2, '(values: { name: string | SQL<unknown> | Placeholder<string, any>; email: string | SQL<unknown> | Placeholder<string, any>; id?: number | SQL<unknown> | Placeholder<string, any> | undefined; ... 5 more ...; isActive?: boolean | ... 2 more ... | undefined; }[]): PgInsertBase<...>', gave the following error.
+    Object literal may only specify known properties, and 'name' does not exist in type '{ name: string | SQL<unknown> | Placeholder<string, any>; email: string | SQL<unknown> | Placeholder<string, any>; id?: number | SQL<unknown> | Placeholder<string, any> | undefined; ... 5 more ...; isActive?: boolean | ... 2 more ... | undefined; }[]'.
+src/routes/publicCheckout.ts(31,10): error TS18048: 'client' is possibly 'undefined'.
+src/routes/publicCheckout.ts(136,62): error TS2769: No overload matches this call.
+  Overload 1 of 2, '(value: { number: string | SQL<unknown> | Placeholder<string, any>; clientId: number | SQL<unknown> | Placeholder<string, any>; totalAmount: string | SQL<unknown> | Placeholder<...>; ... 8 more ...; customerEmail?: string | ... 3 more ... | undefined; }): PgInsertBase<...>', gave the following error.
+    Type 'PgColumn<{ name: "email"; tableName: "user"; dataType: "string"; columnType: "PgText"; data: string; driverParam: string; notNull: true; hasDefault: false; isPrimaryKey: false; isAutoincrement: false; ... 4 more ...; generated: undefined; }, {}, {}>' is not assignable to type 'string | SQL<unknown> | Placeholder<string, any> | null | undefined'.
+      Property 'protected' is missing in type 'PgColumn<{ name: "email"; tableName: "user"; dataType: "string"; columnType: "PgText"; data: string; driverParam: string; notNull: true; hasDefault: false; isPrimaryKey: false; isAutoincrement: false; ... 4 more ...; generated: undefined; }, {}, {}>' but required in type 'Placeholder<string, any>'.
+  Overload 2 of 2, '(values: { number: string | SQL<unknown> | Placeholder<string, any>; clientId: number | SQL<unknown> | Placeholder<string, any>; totalAmount: string | SQL<unknown> | Placeholder<...>; ... 8 more ...; customerEmail?: string | ... 3 more ... | undefined; }[]): PgInsertBase<...>', gave the following error.
+    Object literal may only specify known properties, and 'number' does not exist in type '{ number: string | SQL<unknown> | Placeholder<string, any>; clientId: number | SQL<unknown> | Placeholder<string, any>; totalAmount: string | SQL<unknown> | Placeholder<...>; ... 8 more ...; customerEmail?: string | ... 3 more ... | undefined; }[]'.
+src/routes/publicCheckout.ts(139,51): error TS2339: Property 'split' does not exist on type 'PgColumn<{ name: "email"; tableName: "user"; dataType: "string"; columnType: "PgText"; data: string; driverParam: string; notNull: true; hasDefault: false; isPrimaryKey: false; isAutoincrement: false; ... 4 more ...; generated: undefined; }, {}, {}>'.

@@ -8,3 +8,4 @@ export * from './clients';
 export * from './deposits';
 export * from './serviceOrders';
 export * from './master';
+export * from './customLa';

@@ -1,6 +1,6 @@
 import { Hono } from "hono";
 import { db } from "../db";
-import { clients, bookings, invoices, bookingItems, transportationBookings, transportationRoutes, transportationInvoices, user } from "../db/schema";
+import { clients, bookings, invoices, bookingItems, transportationBookings, transportationRoutes, transportationInvoices, user, customLaRequests } from "../db/schema";
 import { eq } from "drizzle-orm";
 import { supabaseAuth } from "../middleware/supabaseAuth";
 
@@ -20,12 +20,12 @@ async function getOrCreateClient(email: string, customerName?: string, customerP
 
   if (!client) {
     const newClient = await db.insert(clients).values({
-      name: customerName || email.split('@')[0],
+      name: customerName || email.split('@')[0] || "Unknown",
       email: email,
       phone: customerPhone || null,
       isActive: true
     }).returning({ id: clients.id });
-    client = { id: newClient[0]!.id } as any;
+    return newClient[0]!.id;
   }
 
   return client.id;
@@ -42,9 +42,11 @@ app.post("/", async (c) => {
       return handleHotelCheckout(c, supabaseUser, body);
     } else if (type === 'transportation') {
       return handleTransportationCheckout(c, supabaseUser, body);
+    } else if (type === 'custom_la') {
+      return handleCustomLaCheckout(c, supabaseUser, body);
     }
 
-    return c.json({ success: false, error: "Invalid checkout type. Use 'hotel' or 'transportation'" }, 400);
+    return c.json({ success: false, error: "Invalid checkout type." }, 400);
 
   } catch (error) {
     console.error("Checkout failed:", error);
@@ -136,9 +138,9 @@ async function handleTransportationCheckout(c: any, supabaseUser: any, body: any
   const newBooking = await db.insert(transportationBookings).values({
     number: generateBookingCode("TB-WEB"),
     clientId: clientId,
-    customerName: body.customerName || user.email.split('@')[0],
+    customerName: body.customerName || supabaseUser.email.split('@')[0] || "Unknown",
     customerPhone: body.customerPhone || null,
-    customerEmail: user.email,
+    customerEmail: supabaseUser.email,
     status: "pending",
     totalAmount: totalAmount.toFixed(2),
     currency: body.currency || "SAR",
@@ -179,6 +181,35 @@ async function handleTransportationCheckout(c: any, supabaseUser: any, body: any
     bookingNumber: bookingNumber,
     message: "Transportation booking created successfully!",
     userType: userType
+  });
+}
+
+async function handleCustomLaCheckout(c: any, supabaseUser: any, body: any) {
+  const customerName = body.namaPemesan || supabaseUser.email.split('@')[0] || "Unknown";
+  const customerPhone = body.nomorPemesan || null;
+  const clientId = await getOrCreateClient(supabaseUser.email, customerName, customerPhone);
+
+  const totalAmountSAR = parseFloat(body.totals?.grandTotal || 0).toFixed(2);
+  const totalPax = parseInt(body.totals?.totalPax || 1);
+
+  const newRequest = await db.insert(customLaRequests).values({
+    number: generateBookingCode("CLA"),
+    clientId: clientId,
+    customerName: customerName,
+    customerPhone: customerPhone,
+    customerEmail: supabaseUser.email,
+    travelName: body.namaTravel || null,
+    status: "pending",
+    totalAmountSAR: totalAmountSAR,
+    totalPax: totalPax,
+    meta: body, // store full form data
+  }).returning({ id: customLaRequests.id, number: customLaRequests.number });
+
+  return c.json({ 
+    success: true, 
+    requestId: newRequest[0]!.id,
+    requestNumber: newRequest[0]!.number,
+    message: "Custom LA Request submitted successfully!"
   });
 }
 

@@ -16,7 +16,8 @@ import {
   Car,
   Building,
   Map,
-  Shield
+  Shield,
+  Package
 } from 'lucide-react'
 import { useState, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
@@ -50,6 +51,12 @@ const navigation = [
     name: 'Service Orders',
     href: '/service-orders',
     icon: Plane,
+    roles: ['admin', 'owner']
+  },
+  {
+    name: 'Permintaan LA',
+    href: '/custom-la-requests',
+    icon: Package,
     roles: ['admin', 'owner']
   },
   {
@@ -150,10 +157,9 @@ export function Sidebar({ className }: SidebarProps) {
         <div className="flex flex-col h-full">
           {/* Logo */}
           <div className="flex items-center justify-center h-16 px-4 border-b border-gray-200">
-            <div className="flex items-center space-x-2">
-              <Hotel className="h-8 w-8 text-blue-600" />
-              <span className="text-xl font-bold text-gray-900">Musafirin</span>
-            </div>
+            <Link to="/dashboard/admin" className="flex items-center space-x-2">
+              <img src="/Logo Musafirin with PT.png" alt="Musafirin" className="h-10 object-contain" />
+            </Link>
           </div>
 
           {/* Navigation */}

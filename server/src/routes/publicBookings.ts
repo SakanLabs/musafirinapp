@@ -87,11 +87,10 @@ app.get("/:code", async (c) => {
       .from(bookings)
       .where(eq(bookings.code, bookingCode));
 
-    if (bookingResult.length === 0 || bookingResult[0].clientId !== clientId) {
+    const booking = bookingResult[0];
+    if (!booking || booking.clientId !== clientId) {
       return c.json({ success: false, error: "Booking not found" }, 404);
     }
-
-    const booking = bookingResult[0];
 
     // Get client info
     const clientResult = await db

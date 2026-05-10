@@ -24,6 +24,7 @@ import publicProductsRoutes from "./routes/publicProducts";
 import publicCheckoutRoutes from "./routes/publicCheckout";
 import publicBookingsRoutes from "./routes/publicBookings";
 import userRoutes from "./routes/users";
+import customLaRoutes from "./routes/customLa";
 
 // Load environment variables
 const BETTER_AUTH_SECRET = process.env.BETTER_AUTH_SECRET;
@@ -116,6 +117,7 @@ export const app = new Hono()
   .route("/api/public/checkout", publicCheckoutRoutes)
   .route("/api/public/bookings", publicBookingsRoutes)
   .route("/api/users", userRoutes)
+  .route("/api/custom-la", customLaRoutes)
   .get("/", (c) => {
     return c.text("Hello Hono!");
   })
