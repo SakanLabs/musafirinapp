@@ -18,6 +18,9 @@ COPY . .
 ENV VITE_API_URL=""
 ENV VITE_BETTER_AUTH_URL=""
 
+# Remove local .env files so Vite uses the relative paths we want
+RUN rm -f client/.env client/.env.local
+
 # Build the client
 RUN bun --filter=client run build
 
