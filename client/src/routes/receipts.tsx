@@ -103,7 +103,7 @@ function ReceiptsPage() {
           <Button
             size="sm"
             variant="ghost"
-            onClick={() => window.open(`http://localhost:3000/api/receipts/${receipt.id}/download`, '_blank')}
+            onClick={() => window.open(`/api/receipts/${receipt.id}/download`, '_blank')}
             title="Download PDF"
           >
             <Download className="h-4 w-4" />

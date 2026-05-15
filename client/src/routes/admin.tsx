@@ -8,7 +8,7 @@ import { authService } from '@/lib/auth'
 import { admin } from '@/lib/auth-client'
 import { Plus, RefreshCw, Users as UsersIcon } from 'lucide-react'
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000'
+const API_URL = import.meta.env.VITE_API_URL || ''
 
 export const Route = createFileRoute('/admin')({
   beforeLoad: async () => {

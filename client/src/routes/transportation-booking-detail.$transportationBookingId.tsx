@@ -113,7 +113,7 @@ function TransportationBookingDetailPage() {
       // Open the invoice PDF
       if (result?.number) {
         const invoiceNumber = result.number.trim();
-        window.open(`http://localhost:3000/api/transportation/invoice/${encodeURIComponent(invoiceNumber)}`, '_blank');
+        window.open(`/api/transportation/invoice/${encodeURIComponent(invoiceNumber)}`, '_blank');
       }
     } catch (error) {
       console.error('Error generating invoice:', error);
@@ -131,7 +131,7 @@ function TransportationBookingDetailPage() {
       // Assuming Resp could be shaped like { id, number } or direct object
       const receiptNumber = (resp as any).number || (resp as any).data?.number;
       if (receiptNumber) {
-        window.open(`http://localhost:3000/api/transportation/receipt/${receiptNumber}`, '_blank');
+        window.open(`/api/transportation/receipt/${receiptNumber}`, '_blank');
       }
     } catch (error) {
       console.error('Error generating receipt:', error);

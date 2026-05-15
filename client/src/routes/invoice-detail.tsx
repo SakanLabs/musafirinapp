@@ -148,7 +148,7 @@ function InvoiceDetailPage() {
 
   const handleDownload = () => {
     if (!invoice) return;
-    window.open(`http://localhost:3000/api/invoices/by-number/${invoice.number}`, "_blank");
+    window.open(`/api/invoices/by-number/${invoice.number}`, "_blank");
   };
 
   const handleShareWhatsApp = () => {
@@ -278,7 +278,7 @@ function InvoiceDetailPage() {
               variant="secondary"
               onClick={() => {
                 const r = receiptsForBooking[0];
-                window.open(`http://localhost:3000/api/receipts/${r.id}/download`, '_blank');
+                window.open(`/api/receipts/${r.id}/download`, '_blank');
               }}
               title="Download existing receipt"
             >
