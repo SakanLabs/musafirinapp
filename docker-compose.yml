@@ -51,6 +51,10 @@ services:
       - .env
     environment:
       - DATABASE_URL=postgresql://postgres:postgres123@db:5432/musdb
+      - BETTER_AUTH_URL=${BETTER_AUTH_URL:-http://localhost:3000}
+      - TRUSTED_ORIGINS=${TRUSTED_ORIGINS:-http://localhost:5173,http://localhost:5174,http://localhost:3001}
+      - CORS_ORIGINS=${CORS_ORIGINS:-http://localhost:5173,http://localhost:5174,http://localhost:3001}
+      - USE_SECURE_COOKIES=${USE_SECURE_COOKIES:-false}
     restart: unless-stopped
 
   frontend:
