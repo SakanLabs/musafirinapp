@@ -10,7 +10,7 @@ import { Save, ArrowLeft, Loader2, Plus, Trash2 } from "lucide-react"
 import { useCreateHotelPricing, useHotels, useHotelPricing } from "@/lib/queries/master"
 
 export const Route = createFileRoute("/create-hotel-pricing/$hotelId")({
-  validateSearch: (search: Record<string, unknown>) => {
+  validateSearch: (search: Record<string, unknown>): { startDate?: string; endDate?: string } => {
     return {
       startDate: (search.startDate as string) || "",
       endDate: (search.endDate as string) || "",

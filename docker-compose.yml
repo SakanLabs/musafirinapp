@@ -50,6 +50,8 @@ services:
         condition: service_healthy
     env_file:
       - .env
+    environment:
+      - DATABASE_URL=postgresql://postgres:postgres123@db:5432/musdb
     restart: unless-stopped
 
   frontend:
