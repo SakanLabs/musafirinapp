@@ -1,32 +1,8 @@
 import type { Context, Next } from 'hono';
-import { betterAuth } from 'better-auth';
-import { drizzleAdapter } from 'better-auth/adapters/drizzle';
-import { admin } from 'better-auth/plugins';
+import { auth } from '../lib/auth';
 import { db } from '../db';
 import * as schema from '../db/schema';
 import { eq } from 'drizzle-orm';
-
-// Initialize Better Auth instance for middleware
-const auth = betterAuth({
-  database: drizzleAdapter(db, {
-    provider: "pg",
-    schema,
-  }),
-  secret: process.env.BETTER_AUTH_SECRET!,
-  baseURL: process.env.BETTER_AUTH_URL || "http://localhost:3000",
-  advanced: {
-    useSecureCookies: false,
-    defaultCookieAttributes: {
-      httpOnly: false,
-      secure: false,
-      sameSite: "lax",
-      domain: undefined,
-    },
-  },
-  plugins: [
-    admin({})
-  ]
-});
 
 export async function requireAuth(c: Context, next: Next) {
   try {
