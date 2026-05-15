@@ -5,6 +5,7 @@ import { user, account } from '../db/schema'
 import { eq, desc } from 'drizzle-orm'
 import { requireOwner } from '../middleware/auth'
 import type { ApiResponse } from 'shared/dist'
+import { hashPassword } from 'better-auth/crypto'
 
 const supabase = createClient(
   process.env.SUPABASE_URL || 'http://localhost:54321',
@@ -130,7 +131,7 @@ const app = new Hono()
         }, 400)
       }
 
-      const passwordHash = await Bun.password.hash(body.password)
+      const passwordHash = await hashPassword(body.password)
 
       await db.insert(account).values({
         id: crypto.randomUUID(),
