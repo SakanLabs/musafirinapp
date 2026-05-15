@@ -13,6 +13,16 @@ const auth = betterAuth({
     schema,
   }),
   secret: process.env.BETTER_AUTH_SECRET!,
+  baseURL: process.env.BETTER_AUTH_URL || "http://localhost:3000",
+  advanced: {
+    useSecureCookies: false,
+    defaultCookieAttributes: {
+      httpOnly: false,
+      secure: false,
+      sameSite: "lax",
+      domain: undefined,
+    },
+  },
   plugins: [
     admin({})
   ]
