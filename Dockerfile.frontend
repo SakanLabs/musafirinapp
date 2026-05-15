@@ -1,0 +1,41 @@
+FROM oven/bun:1.2.4-alpine AS builder
+
+WORKDIR /app
+
+# Copy package configurations
+COPY package.json bun.lock turbo.json ./
+COPY server/package.json ./server/
+COPY shared/package.json ./shared/
+COPY client/package.json ./client/
+
+# Install dependencies
+RUN bun install
+
+# Copy source code
+COPY . .
+
+# Pass empty env vars during build to prevent fallback to localhost:3000 at build time
+ENV VITE_API_URL=""
+ENV VITE_BETTER_AUTH_URL=""
+
+# Build the client
+RUN bun --filter=client run build
+
+FROM nginx:alpine
+
+# Copy built artifacts to nginx html directory
+COPY --from=builder /app/client/dist /usr/share/nginx/html
+
+# Create a simple nginx config for the frontend container on port 5173
+RUN echo "server { \
+    listen 5173; \
+    location / { \
+        root /usr/share/nginx/html; \
+        index index.html index.htm; \
+        try_files \$uri \$uri/ /index.html; \
+    } \
+}" > /etc/nginx/conf.d/default.conf
+
+EXPOSE 5173
+
+CMD ["nginx", "-g", "daemon off;"]

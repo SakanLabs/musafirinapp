@@ -46,7 +46,7 @@ const auth = betterAuth({
     schema,
   }),
   secret: BETTER_AUTH_SECRET,
-  baseURL: "http://localhost:3000",
+  baseURL: process.env.BETTER_AUTH_URL || "http://localhost:3000",
   trustedOrigins: ["http://localhost:5173", "http://localhost:5174", "http://localhost:3001"],
   session: {
     cookieCache: {

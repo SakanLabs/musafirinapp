@@ -1,0 +1,35 @@
+FROM oven/bun:1.2.4-alpine AS builder
+
+WORKDIR /app
+
+# Copy package configurations
+COPY package.json bun.lock turbo.json ./
+COPY server/package.json ./server/
+COPY shared/package.json ./shared/
+COPY client/package.json ./client/
+
+# Install dependencies
+RUN bun install
+
+# Copy source code
+COPY . .
+
+# Build the applications
+RUN bun --filter=shared build && bun --filter=server build
+
+FROM oven/bun:1.2.4-alpine AS runner
+
+WORKDIR /app
+
+# Copy built artifacts and necessary files
+COPY --from=builder /app/package.json ./
+COPY --from=builder /app/bun.lock ./
+COPY --from=builder /app/node_modules ./node_modules
+COPY --from=builder /app/shared ./shared
+COPY --from=builder /app/server ./server
+
+EXPOSE 3000
+
+ENV NODE_ENV=production
+
+CMD ["bun", "run", "server/src/index.ts"]
