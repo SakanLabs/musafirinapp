@@ -1,7 +1,7 @@
 import { Hono } from 'hono'
 import { createClient } from '@supabase/supabase-js'
 import { db } from '../db'
-import { user } from '../db/schema'
+import { user, account } from '../db/schema'
 import { eq, desc } from 'drizzle-orm'
 import { requireOwner } from '../middleware/auth'
 import type { ApiResponse } from 'shared/dist'
@@ -129,6 +129,18 @@ const app = new Hono()
           message: `Supabase error: ${supabaseError.message}`
         }, 400)
       }
+
+      const passwordHash = await Bun.password.hash(body.password)
+
+      await db.insert(account).values({
+        id: crypto.randomUUID(),
+        accountId: body.email,
+        providerId: 'email',
+        userId: userId,
+        password: passwordHash,
+        createdAt: now,
+        updatedAt: now,
+      })
 
       return c.json<ApiResponse>({
         success: true,
