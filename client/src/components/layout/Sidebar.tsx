@@ -17,7 +17,8 @@ import {
   Building,
   Map,
   Shield,
-  Package
+  Package,
+  UserCheck
 } from 'lucide-react'
 import { useState, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
@@ -93,6 +94,12 @@ const navigation = [
     name: 'Master Transport',
     href: '/master-transport',
     icon: Map,
+    roles: ['admin', 'owner']
+  },
+  {
+    name: 'Master Muthowifs',
+    href: '/dashboard/muthowifs',
+    icon: UserCheck,
     roles: ['admin', 'owner']
   },
   {

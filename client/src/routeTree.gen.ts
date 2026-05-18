@@ -51,6 +51,7 @@ import { Route as MasterTransportEditRouteIdRouteImport } from './routes/master-
 import { Route as MasterTransportDetailRouteIdRouteImport } from './routes/master-transport-detail.$routeId'
 import { Route as MasterHotelEditHotelIdRouteImport } from './routes/master-hotel-edit.$hotelId'
 import { Route as MasterHotelDetailHotelIdRouteImport } from './routes/master-hotel-detail.$hotelId'
+import { Route as DashboardMuthowifsRouteImport } from './routes/dashboard/muthowifs'
 import { Route as DashboardAdminRouteImport } from './routes/dashboard/admin'
 import { Route as CustomLaQuotationIdRouteImport } from './routes/custom-la-quotation.$id'
 import { Route as CustomLaDetailIdRouteImport } from './routes/custom-la-detail.$id'
@@ -63,6 +64,7 @@ import { Route as AuthCallbackRouteImport } from './routes/auth/callback'
 import { Route as CustomLaQuotationRouteImport } from './routes/custom-la-quotation.'
 import { Route as EditTransportPricingRouteIdPricingIdRouteImport } from './routes/edit-transport-pricing.$routeId.$pricingId'
 import { Route as EditHotelPricingHotelIdPricingIdRouteImport } from './routes/edit-hotel-pricing.$hotelId.$pricingId'
+import { Route as DashboardMuthowifsIdRouteImport } from './routes/dashboard/muthowifs/$id'
 import { Route as BookingsBookingIdEditRouteImport } from './routes/bookings/$bookingId/edit'
 
 const VouchersRoute = VouchersRouteImport.update({
@@ -283,6 +285,11 @@ const MasterHotelDetailHotelIdRoute =
     path: '/master-hotel-detail/$hotelId',
     getParentRoute: () => rootRouteImport,
   } as any)
+const DashboardMuthowifsRoute = DashboardMuthowifsRouteImport.update({
+  id: '/muthowifs',
+  path: '/muthowifs',
+  getParentRoute: () => DashboardRoute,
+} as any)
 const DashboardAdminRoute = DashboardAdminRouteImport.update({
   id: '/admin',
   path: '/admin',
@@ -347,6 +354,11 @@ const EditHotelPricingHotelIdPricingIdRoute =
     path: '/edit-hotel-pricing/$hotelId/$pricingId',
     getParentRoute: () => rootRouteImport,
   } as any)
+const DashboardMuthowifsIdRoute = DashboardMuthowifsIdRouteImport.update({
+  id: '/$id',
+  path: '/$id',
+  getParentRoute: () => DashboardMuthowifsRoute,
+} as any)
 const BookingsBookingIdEditRoute = BookingsBookingIdEditRouteImport.update({
   id: '/$bookingId/edit',
   path: '/$bookingId/edit',
@@ -394,6 +406,7 @@ export interface FileRoutesByFullPath {
   '/custom-la-detail/$id': typeof CustomLaDetailIdRoute
   '/custom-la-quotation/$id': typeof CustomLaQuotationIdRoute
   '/dashboard/admin': typeof DashboardAdminRoute
+  '/dashboard/muthowifs': typeof DashboardMuthowifsRouteWithChildren
   '/master-hotel-detail/$hotelId': typeof MasterHotelDetailHotelIdRoute
   '/master-hotel-edit/$hotelId': typeof MasterHotelEditHotelIdRoute
   '/master-transport-detail/$routeId': typeof MasterTransportDetailRouteIdRoute
@@ -407,6 +420,7 @@ export interface FileRoutesByFullPath {
   '/vouchers/create': typeof VouchersCreateRoute
   '/clients/': typeof ClientsIndexRoute
   '/bookings/$bookingId/edit': typeof BookingsBookingIdEditRoute
+  '/dashboard/muthowifs/$id': typeof DashboardMuthowifsIdRoute
   '/edit-hotel-pricing/$hotelId/$pricingId': typeof EditHotelPricingHotelIdPricingIdRoute
   '/edit-transport-pricing/$routeId/$pricingId': typeof EditTransportPricingRouteIdPricingIdRoute
 }
@@ -450,6 +464,7 @@ export interface FileRoutesByTo {
   '/custom-la-detail/$id': typeof CustomLaDetailIdRoute
   '/custom-la-quotation/$id': typeof CustomLaQuotationIdRoute
   '/dashboard/admin': typeof DashboardAdminRoute
+  '/dashboard/muthowifs': typeof DashboardMuthowifsRouteWithChildren
   '/master-hotel-detail/$hotelId': typeof MasterHotelDetailHotelIdRoute
   '/master-hotel-edit/$hotelId': typeof MasterHotelEditHotelIdRoute
   '/master-transport-detail/$routeId': typeof MasterTransportDetailRouteIdRoute
@@ -463,6 +478,7 @@ export interface FileRoutesByTo {
   '/vouchers/create': typeof VouchersCreateRoute
   '/clients': typeof ClientsIndexRoute
   '/bookings/$bookingId/edit': typeof BookingsBookingIdEditRoute
+  '/dashboard/muthowifs/$id': typeof DashboardMuthowifsIdRoute
   '/edit-hotel-pricing/$hotelId/$pricingId': typeof EditHotelPricingHotelIdPricingIdRoute
   '/edit-transport-pricing/$routeId/$pricingId': typeof EditTransportPricingRouteIdPricingIdRoute
 }
@@ -508,6 +524,7 @@ export interface FileRoutesById {
   '/custom-la-detail/$id': typeof CustomLaDetailIdRoute
   '/custom-la-quotation/$id': typeof CustomLaQuotationIdRoute
   '/dashboard/admin': typeof DashboardAdminRoute
+  '/dashboard/muthowifs': typeof DashboardMuthowifsRouteWithChildren
   '/master-hotel-detail/$hotelId': typeof MasterHotelDetailHotelIdRoute
   '/master-hotel-edit/$hotelId': typeof MasterHotelEditHotelIdRoute
   '/master-transport-detail/$routeId': typeof MasterTransportDetailRouteIdRoute
@@ -521,6 +538,7 @@ export interface FileRoutesById {
   '/vouchers/create': typeof VouchersCreateRoute
   '/clients/': typeof ClientsIndexRoute
   '/bookings/$bookingId/edit': typeof BookingsBookingIdEditRoute
+  '/dashboard/muthowifs/$id': typeof DashboardMuthowifsIdRoute
   '/edit-hotel-pricing/$hotelId/$pricingId': typeof EditHotelPricingHotelIdPricingIdRoute
   '/edit-transport-pricing/$routeId/$pricingId': typeof EditTransportPricingRouteIdPricingIdRoute
 }
@@ -567,6 +585,7 @@ export interface FileRouteTypes {
     | '/custom-la-detail/$id'
     | '/custom-la-quotation/$id'
     | '/dashboard/admin'
+    | '/dashboard/muthowifs'
     | '/master-hotel-detail/$hotelId'
     | '/master-hotel-edit/$hotelId'
     | '/master-transport-detail/$routeId'
@@ -580,6 +599,7 @@ export interface FileRouteTypes {
     | '/vouchers/create'
     | '/clients/'
     | '/bookings/$bookingId/edit'
+    | '/dashboard/muthowifs/$id'
     | '/edit-hotel-pricing/$hotelId/$pricingId'
     | '/edit-transport-pricing/$routeId/$pricingId'
   fileRoutesByTo: FileRoutesByTo
@@ -623,6 +643,7 @@ export interface FileRouteTypes {
     | '/custom-la-detail/$id'
     | '/custom-la-quotation/$id'
     | '/dashboard/admin'
+    | '/dashboard/muthowifs'
     | '/master-hotel-detail/$hotelId'
     | '/master-hotel-edit/$hotelId'
     | '/master-transport-detail/$routeId'
@@ -636,6 +657,7 @@ export interface FileRouteTypes {
     | '/vouchers/create'
     | '/clients'
     | '/bookings/$bookingId/edit'
+    | '/dashboard/muthowifs/$id'
     | '/edit-hotel-pricing/$hotelId/$pricingId'
     | '/edit-transport-pricing/$routeId/$pricingId'
   id:
@@ -680,6 +702,7 @@ export interface FileRouteTypes {
     | '/custom-la-detail/$id'
     | '/custom-la-quotation/$id'
     | '/dashboard/admin'
+    | '/dashboard/muthowifs'
     | '/master-hotel-detail/$hotelId'
     | '/master-hotel-edit/$hotelId'
     | '/master-transport-detail/$routeId'
@@ -693,6 +716,7 @@ export interface FileRouteTypes {
     | '/vouchers/create'
     | '/clients/'
     | '/bookings/$bookingId/edit'
+    | '/dashboard/muthowifs/$id'
     | '/edit-hotel-pricing/$hotelId/$pricingId'
     | '/edit-transport-pricing/$routeId/$pricingId'
   fileRoutesById: FileRoutesById
@@ -1044,6 +1068,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof MasterHotelDetailHotelIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/dashboard/muthowifs': {
+      id: '/dashboard/muthowifs'
+      path: '/muthowifs'
+      fullPath: '/dashboard/muthowifs'
+      preLoaderRoute: typeof DashboardMuthowifsRouteImport
+      parentRoute: typeof DashboardRoute
+    }
     '/dashboard/admin': {
       id: '/dashboard/admin'
       path: '/admin'
@@ -1128,6 +1159,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof EditHotelPricingHotelIdPricingIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/dashboard/muthowifs/$id': {
+      id: '/dashboard/muthowifs/$id'
+      path: '/$id'
+      fullPath: '/dashboard/muthowifs/$id'
+      preLoaderRoute: typeof DashboardMuthowifsIdRouteImport
+      parentRoute: typeof DashboardMuthowifsRoute
+    }
     '/bookings/$bookingId/edit': {
       id: '/bookings/$bookingId/edit'
       path: '/$bookingId/edit'
@@ -1163,12 +1201,25 @@ const ClientsRouteChildren: ClientsRouteChildren = {
 const ClientsRouteWithChildren =
   ClientsRoute._addFileChildren(ClientsRouteChildren)
 
+interface DashboardMuthowifsRouteChildren {
+  DashboardMuthowifsIdRoute: typeof DashboardMuthowifsIdRoute
+}
+
+const DashboardMuthowifsRouteChildren: DashboardMuthowifsRouteChildren = {
+  DashboardMuthowifsIdRoute: DashboardMuthowifsIdRoute,
+}
+
+const DashboardMuthowifsRouteWithChildren =
+  DashboardMuthowifsRoute._addFileChildren(DashboardMuthowifsRouteChildren)
+
 interface DashboardRouteChildren {
   DashboardAdminRoute: typeof DashboardAdminRoute
+  DashboardMuthowifsRoute: typeof DashboardMuthowifsRouteWithChildren
 }
 
 const DashboardRouteChildren: DashboardRouteChildren = {
   DashboardAdminRoute: DashboardAdminRoute,
+  DashboardMuthowifsRoute: DashboardMuthowifsRouteWithChildren,
 }
 
 const DashboardRouteWithChildren = DashboardRoute._addFileChildren(

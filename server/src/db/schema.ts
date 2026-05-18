@@ -525,6 +525,44 @@ export const customLaRequests = pgTable('custom_la_requests', {
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
 });
 
+// Muthowif Enums
+export const visaStatusEnum = pgEnum('visa_status', ['umrah', 'ziarah', 'student', 'worker', 'resident']);
+export const residentTypeEnum = pgEnum('resident_type', ['mahasiswa', 'mukimin']);
+export const muthowifStatusEnum = pgEnum('muthowif_status', ['idle', 'assigned', 'unavailable']);
+export const assignmentReferenceTypeEnum = pgEnum('assignment_reference_type', ['service_order', 'custom_la']);
+export const assignmentStatusEnum = pgEnum('assignment_status', ['active', 'completed', 'cancelled']);
+
+// Muthowif Master Table
+export const muthowifs = pgTable('muthowifs', {
+  id: serial('id').primaryKey(),
+  name: varchar('name', { length: 255 }).notNull(),
+  phone: varchar('phone', { length: 50 }).notNull(),
+  iqamaOrPassportNo: varchar('iqama_or_passport_no', { length: 100 }),
+  visaStatus: visaStatusEnum('visa_status').notNull(),
+  residentType: residentTypeEnum('resident_type').notNull(),
+  residenceLocation: text('residence_location'),
+  lastEducation: varchar('last_education', { length: 255 }), // Pendidikan terakhir
+  status: muthowifStatusEnum('status').default('idle').notNull(),
+  notes: text('notes'),
+  isActive: boolean('is_active').default(true).notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+});
+
+// Muthowif Assignments Table
+export const muthowifAssignments = pgTable('muthowif_assignments', {
+  id: serial('id').primaryKey(),
+  muthowifId: integer('muthowif_id').notNull().references(() => muthowifs.id, { onDelete: 'cascade' }),
+  referenceType: assignmentReferenceTypeEnum('reference_type').notNull(),
+  referenceId: integer('reference_id').notNull(),
+  startDate: timestamp('start_date').notNull(),
+  endDate: timestamp('end_date').notNull(),
+  taskDescription: text('task_description'),
+  status: assignmentStatusEnum('status').default('active').notNull(),
+  assignedBy: text('assigned_by'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+});
 
 // Type exports for better-auth tables
 export type User = typeof user.$inferSelect;
@@ -591,3 +629,7 @@ export type TransportationRoutePricingPeriod = typeof transportationRoutePricing
 export type NewTransportationRoutePricingPeriod = typeof transportationRoutePricingPeriods.$inferInsert;
 export type CustomLaRequest = typeof customLaRequests.$inferSelect;
 export type NewCustomLaRequest = typeof customLaRequests.$inferInsert;
+export type Muthowif = typeof muthowifs.$inferSelect;
+export type NewMuthowif = typeof muthowifs.$inferInsert;
+export type MuthowifAssignment = typeof muthowifAssignments.$inferSelect;
+export type NewMuthowifAssignment = typeof muthowifAssignments.$inferInsert;

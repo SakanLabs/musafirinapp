@@ -4,7 +4,7 @@ import { PageLayout } from "@/components/layout/PageLayout"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card } from "@/components/ui/card"
-import { 
+import {
   Users,
   Calendar,
   Save,
@@ -19,10 +19,10 @@ import { useClients } from "@/lib/queries"
 import { apiClient } from "@/lib/api"
 import { toast } from "sonner"
 
-export const Route = createFileRoute("/create-custom-la")({ 
+export const Route = createFileRoute("/create-custom-la")({
   beforeLoad: async () => {
     const isAuthenticated = await authService.isAuthenticated()
-    
+
     if (!isAuthenticated) {
       throw redirect({ to: "/login" })
     }
@@ -36,7 +36,7 @@ function CreateCustomLaPage() {
   const { data: clients = [], isLoading: isClientsLoading } = useClients()
   const { data: hotels = [], isLoading: isHotelsLoading } = useHotels()
   const { data: transportRoutes = [], isLoading: isTransportLoading } = useTransportRoutes()
-  
+
   const [formData, setFormData] = useState({
     clientId: 0,
     customerName: "",
@@ -68,6 +68,7 @@ function CreateCustomLaPage() {
     visaTotal: 0,
     handlingAirport: 0,
     handlingHotel: 0,
+    muthowifTourType: "Full Trip Paket",
     muthowif: 0,
     muthowifahRaudhah: 0,
     tiketMuseum: 0,
@@ -84,22 +85,22 @@ function CreateCustomLaPage() {
   const [errors, setErrors] = useState<Record<string, string>>({})
 
   useEffect(() => {
-    const makkahRoomsTotalPerNight = (formData.makkahDoubleQty * formData.makkahDoublePrice) + 
-                                     (formData.makkahTripleQty * formData.makkahTriplePrice) + 
-                                     (formData.makkahQuadQty * formData.makkahQuadPrice);
+    const makkahRoomsTotalPerNight = (formData.makkahDoubleQty * formData.makkahDoublePrice) +
+      (formData.makkahTripleQty * formData.makkahTriplePrice) +
+      (formData.makkahQuadQty * formData.makkahQuadPrice);
     const makkahTotal = makkahRoomsTotalPerNight * formData.makkahNights;
-    
+
     if (makkahTotal >= 0 && (makkahRoomsTotalPerNight > 0 || formData.makkahNights > 0)) {
       setFormData(prev => ({ ...prev, makkahHotelTotal: makkahTotal }));
     }
   }, [formData.makkahDoubleQty, formData.makkahDoublePrice, formData.makkahTripleQty, formData.makkahTriplePrice, formData.makkahQuadQty, formData.makkahQuadPrice, formData.makkahNights]);
 
   useEffect(() => {
-    const madinahRoomsTotalPerNight = (formData.madinahDoubleQty * formData.madinahDoublePrice) + 
-                                      (formData.madinahTripleQty * formData.madinahTriplePrice) + 
-                                      (formData.madinahQuadQty * formData.madinahQuadPrice);
+    const madinahRoomsTotalPerNight = (formData.madinahDoubleQty * formData.madinahDoublePrice) +
+      (formData.madinahTripleQty * formData.madinahTriplePrice) +
+      (formData.madinahQuadQty * formData.madinahQuadPrice);
     const madinahTotal = madinahRoomsTotalPerNight * formData.madinahNights;
-    
+
     if (madinahTotal >= 0 && (madinahRoomsTotalPerNight > 0 || formData.madinahNights > 0)) {
       setFormData(prev => ({ ...prev, madinahHotelTotal: madinahTotal }));
     }
@@ -110,11 +111,11 @@ function CreateCustomLaPage() {
     const startDate = new Date(start);
     const endDate = new Date(end);
     if (isNaN(startDate.getTime()) || isNaN(endDate.getTime())) return null;
-    
+
     const diffTime = endDate.getTime() - startDate.getTime();
     if (diffTime < 0) return null;
 
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)); 
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
     return { nights: diffDays, days: diffDays + 1 };
   };
 
@@ -125,7 +126,7 @@ function CreateCustomLaPage() {
     let remainder = pax % 4;
     let triple = 0;
     let double = 0;
-    
+
     if (remainder === 3) triple = 1;
     else if (remainder === 2) double = 1;
     else if (remainder === 1) {
@@ -159,11 +160,11 @@ function CreateCustomLaPage() {
 
   const validateForm = () => {
     const newErrors: Record<string, string> = {}
-    
+
     if (!formData.clientId) newErrors.clientId = "Client harus dipilih"
     if (!formData.customerName.trim()) newErrors.customerName = "Nama PIC harus diisi"
     if (formData.totalPax < 1) newErrors.totalPax = "Jumlah jamaah minimal 1"
-    
+
     if (duration) {
       const totalNights = formData.makkahNights + formData.madinahNights;
       if (totalNights > duration.nights) {
@@ -171,32 +172,32 @@ function CreateCustomLaPage() {
         toast.error(newErrors.nights);
       }
     }
-    
+
     setErrors(newErrors)
     return Object.keys(newErrors).length === 0
   }
 
-  const fixedServicesTotal = 
-    formData.totalTransport + 
-    formData.muthowif + 
-    formData.muthowifahRaudhah + 
+  const fixedServicesTotal =
+    formData.totalTransport +
+    formData.muthowif +
+    formData.muthowifahRaudhah +
     formData.biayaTakTerduga +
     formData.tipDriver;
 
-  const perPaxServicesTotal = 
+  const perPaxServicesTotal =
     formData.keretaCepat +
-    formData.handlingAirport + 
-    formData.handlingHotel + 
-    formData.tiketMuseum + 
+    formData.handlingAirport +
+    formData.handlingHotel +
+    formData.tiketMuseum +
     (formData.includeVisa ? formData.visaTotal : 0);
 
-  const subTotal = 
-    formData.makkahHotelTotal + 
-    formData.madinahHotelTotal + 
+  const subTotal =
+    formData.makkahHotelTotal +
+    formData.madinahHotelTotal +
     fixedServicesTotal +
     (perPaxServicesTotal * formData.totalPax);
 
-  const profitAmount = formData.profitType === "percentage" 
+  const profitAmount = formData.profitType === "percentage"
     ? subTotal * (formData.profitValue / 100)
     : formData.profitValue;
 
@@ -205,7 +206,7 @@ function CreateCustomLaPage() {
 
   const nonHotelTotal = grandTotal - formData.makkahHotelTotal - formData.madinahHotelTotal;
   const nonHotelPerPax = formData.totalPax > 0 ? nonHotelTotal / formData.totalPax : 0;
-  
+
   const makkahDoublePerPax = (formData.makkahDoublePrice * formData.makkahNights) / 2;
   const madinahDoublePerPax = (formData.madinahDoublePrice * formData.madinahNights) / 2;
   const priceDouble = nonHotelPerPax + makkahDoublePerPax + madinahDoublePerPax;
@@ -220,7 +221,7 @@ function CreateCustomLaPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    
+
     if (!validateForm()) return
 
     try {
@@ -239,22 +240,23 @@ function CreateCustomLaPage() {
           profitValue: formData.profitValue,
           notes: formData.notes,
           rooms: {
-            makkah: { 
+            makkah: {
               nights: formData.makkahNights,
               doubleQty: formData.makkahDoubleQty, doublePrice: formData.makkahDoublePrice,
               tripleQty: formData.makkahTripleQty, triplePrice: formData.makkahTriplePrice,
-              quadQty: formData.makkahQuadQty, quadPrice: formData.makkahQuadPrice 
+              quadQty: formData.makkahQuadQty, quadPrice: formData.makkahQuadPrice
             },
-            madinah: { 
+            madinah: {
               nights: formData.madinahNights,
               doubleQty: formData.madinahDoubleQty, doublePrice: formData.madinahDoublePrice,
               tripleQty: formData.madinahTripleQty, triplePrice: formData.madinahTriplePrice,
-              quadQty: formData.madinahQuadQty, quadPrice: formData.madinahQuadPrice 
+              quadQty: formData.madinahQuadQty, quadPrice: formData.madinahQuadPrice
             }
           },
           handlingDetails: {
             handlingAirport: formData.handlingAirport,
             handlingHotel: formData.handlingHotel,
+            muthowifTourType: formData.muthowifTourType,
             muthowif: formData.muthowif,
             muthowifahRaudhah: formData.muthowifahRaudhah,
             tiketMuseum: formData.tiketMuseum,
@@ -283,7 +285,7 @@ function CreateCustomLaPage() {
           }
         }
       })
-      
+
       toast.success("Permintaan LA berhasil dibuat!")
       navigate({ to: "/custom-la-requests" })
     } catch (error) {
@@ -302,7 +304,7 @@ function CreateCustomLaPage() {
   const handleClientChange = (clientId: string) => {
     const id = parseInt(clientId)
     const client = clients.find(c => c.id === id)
-    
+
     if (client) {
       setFormData(prev => ({
         ...prev,
@@ -319,19 +321,19 @@ function CreateCustomLaPage() {
   const handleHotelChange = async (city: 'makkah' | 'madinah', hotelId: string) => {
     const id = parseInt(hotelId);
     setFormData(prev => ({ ...prev, [`${city}HotelId`]: id }));
-    
+
     if (!id) return;
-    
+
     try {
       const response = await apiClient.get<any[]>(`/api/master/hotels/${id}/pricing`);
       if (response && response.length > 0) {
         // Gunakan lowest sellingPrice sebagai baseline untuk Quad, lalu increment untuk Triple dan Double
         const minPrice = Math.min(...response.map(p => parseFloat(p.sellingPrice || '0')));
-        setFormData(prev => ({ 
-          ...prev, 
+        setFormData(prev => ({
+          ...prev,
           [`${city}QuadPrice`]: minPrice,
           [`${city}TriplePrice`]: minPrice + 50,
-          [`${city}DoublePrice`]: minPrice + 100 
+          [`${city}DoublePrice`]: minPrice + 100
         }));
       }
     } catch (e) {
@@ -342,9 +344,9 @@ function CreateCustomLaPage() {
   const handleTransportChange = async (routeId: string) => {
     const id = parseInt(routeId);
     setFormData(prev => ({ ...prev, transportRouteId: id }));
-    
+
     if (!id) return;
-    
+
     try {
       const response = await apiClient.get<any[]>(`/api/master/transport-routes/${id}/pricing`);
       if (response && response.length > 0) {
@@ -357,8 +359,8 @@ function CreateCustomLaPage() {
   }
 
   const handleVisaToggle = (checked: boolean) => {
-    setFormData(prev => ({ 
-      ...prev, 
+    setFormData(prev => ({
+      ...prev,
       includeVisa: checked,
       // Default Visa estimate: 650 SAR
       visaTotal: checked ? 650 * prev.totalPax : 0
@@ -391,7 +393,7 @@ function CreateCustomLaPage() {
               <Users className="h-5 w-5 text-blue-600" />
               <h2 className="text-lg font-semibold">Informasi Client / Pemesan</h2>
             </div>
-            
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -455,7 +457,7 @@ function CreateCustomLaPage() {
               <Package className="h-5 w-5 text-purple-600" />
               <h2 className="text-lg font-semibold">Komponen Biaya & Jadwal</h2>
             </div>
-            
+
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-2">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -722,9 +724,24 @@ function CreateCustomLaPage() {
                   <label className="block text-xs font-medium text-blue-600 mb-1">Tiket Museum (Per Pax)</label>
                   <Input type="number" min="0" value={formData.tiketMuseum} onChange={(e) => handleInputChange("tiketMuseum", parseFloat(e.target.value) || 0)} />
                 </div>
+                <div className="col-span-2">
+                  <label className="block text-xs font-medium text-amber-600 mb-1">Muthowif Tour Type</label>
+                  <select
+                    value={formData.muthowifTourType}
+                    onChange={(e) => handleInputChange("muthowifTourType", e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm h-10"
+                  >
+                    <option value="Full Trip Paket">Full Trip Paket</option>
+                    <option value="Half Trip Paket">Half Trip Paket</option>
+                    <option value="City Tour Makkah">City Tour Makkah</option>
+                    <option value="City Tour Madinah">City Tour Madinah</option>
+                    <option value="City Tour Jeddah">City Tour Jeddah</option>
+                    <option value="Tour Lainnya">Tour Lainnya</option>
+                  </select>
+                </div>
                 <div>
                   <label className="block text-xs font-medium text-amber-600 mb-1">Muthowif (Fixed)</label>
-                  <Input type="number" min="0" value={formData.muthowif} onChange={(e) => handleInputChange("muthowif", parseFloat(e.target.value) || 0)} />
+                  <Input type="number" min="0" value={formData.muthowif} onChange={(e) => handleInputChange("muthowif", parseFloat(e.target.value) || 0)} className="h-10" />
                 </div>
                 <div>
                   <label className="block text-xs font-medium text-amber-600 mb-1">Muthowifah Raudhah (Fixed)</label>
@@ -747,7 +764,7 @@ function CreateCustomLaPage() {
               <DollarSign className="h-5 w-5 text-green-600" />
               <h2 className="text-lg font-semibold">Total & Margin</h2>
             </div>
-            
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
               <div>
                 <div className="flex gap-2 mb-1">
@@ -775,7 +792,7 @@ function CreateCustomLaPage() {
                     className="flex-1"
                   />
                 </div>
-                
+
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Catatan Internal
                 </label>
@@ -806,19 +823,19 @@ function CreateCustomLaPage() {
                   <div className="mt-3 space-y-1">
                     <div className="flex justify-between text-xs text-gray-500">
                       <span>Sub-Total Non-Hotel / Pax</span>
-                      <span>SAR {nonHotelPerPax.toLocaleString('en-US', {maximumFractionDigits:2})}</span>
+                      <span>SAR {nonHotelPerPax.toLocaleString('en-US', { maximumFractionDigits: 2 })}</span>
                     </div>
                     <div className="flex justify-between font-medium text-blue-600">
                       <span>Harga Per Pax (Double)</span>
-                      <span>SAR {priceDouble.toLocaleString('en-US', {maximumFractionDigits:2})}</span>
+                      <span>SAR {priceDouble.toLocaleString('en-US', { maximumFractionDigits: 2 })}</span>
                     </div>
                     <div className="flex justify-between font-medium text-blue-600">
                       <span>Harga Per Pax (Triple)</span>
-                      <span>SAR {priceTriple.toLocaleString('en-US', {maximumFractionDigits:2})}</span>
+                      <span>SAR {priceTriple.toLocaleString('en-US', { maximumFractionDigits: 2 })}</span>
                     </div>
                     <div className="flex justify-between font-medium text-blue-600">
                       <span>Harga Per Pax (Quad)</span>
-                      <span>SAR {priceQuad.toLocaleString('en-US', {maximumFractionDigits:2})}</span>
+                      <span>SAR {priceQuad.toLocaleString('en-US', { maximumFractionDigits: 2 })}</span>
                     </div>
                   </div>
                 </div>

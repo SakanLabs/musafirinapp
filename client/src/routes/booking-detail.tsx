@@ -370,7 +370,7 @@ function BookingDetailPage() {
                 </div>
 
                 {/* Rooms Information */}
-                <div className="mt-6">
+                <div className="mt-6 border-t pt-6">
                   <label className="text-sm font-medium text-gray-500 mb-3 block">Rooms Information</label>
                   <div className="space-y-3">
                     {booking.items && booking.items.length > 0 ? (

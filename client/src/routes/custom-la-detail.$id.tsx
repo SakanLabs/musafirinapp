@@ -4,10 +4,13 @@ import { PageLayout } from "@/components/layout/PageLayout"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { ArrowLeft, Share, Users, Phone, Loader2, RefreshCw, FileText, Building, Plane, Package } from "lucide-react"
+import { AssignMuthowifModal } from "@/components/modals/AssignMuthowifModal"
+import { ArrowLeft, Share, Users, Phone, Loader2, RefreshCw, FileText, Building, Plane, Package, Map, UserCheck } from "lucide-react"
 import { authService } from "@/lib/auth"
 import { formatCurrency, formatDate } from "@/lib/utils"
 import { useCustomLaRequest, useUpdateCustomLaStatus } from "@/lib/queries"
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
+import { apiClient } from "@/lib/api"
 import { useState } from "react"
 
 export const Route = createFileRoute("/custom-la-detail/$id")({
@@ -29,6 +32,31 @@ function CustomLaDetailPage() {
   const [isUpdating, setIsUpdating] = useState(false)
   const [displayCurrency, setDisplayCurrency] = useState('SAR')
   const [exchangeRate, setExchangeRate] = useState('4400')
+  const [isAssignMuthowifOpen, setIsAssignMuthowifOpen] = useState(false)
+  
+  const queryClient = useQueryClient()
+
+  const { data: assignmentsData, isLoading: isAssignmentsLoading } = useQuery<{ assignments: any[] }>({
+    queryKey: ['muthowif-assignments', 'custom_la', id],
+    queryFn: () => apiClient.get(`/api/muthowifs/assignments/custom_la/${id}`),
+    enabled: !!id
+  })
+
+  const completeTaskMutation = useMutation({
+    mutationFn: (assignmentId: number) => apiClient.post(`/api/muthowifs/complete-task/${assignmentId}`),
+    onSuccess: () => {
+      toast.success('Tugas Muthowif telah diselesaikan.')
+      queryClient.invalidateQueries({ queryKey: ['muthowif-assignments', 'custom_la', id] })
+      queryClient.invalidateQueries({ queryKey: ['muthowifs'] })
+    },
+    onError: (err: any) => toast.error(`Gagal menyelesaikan tugas: ${err.message}`)
+  })
+
+  const handleCompleteTask = (assignmentId: number) => {
+    if (confirm('Apakah Anda yakin tugas muthowif ini sudah selesai? Muthowif akan dikembalikan ke status Idle.')) {
+      completeTaskMutation.mutate(assignmentId)
+    }
+  }
 
   const handleUpdateStatus = async (newStatus: string) => {
     try {
@@ -296,7 +324,10 @@ Silakan hubungi kami jika ada penyesuaian yang ingin dilakukan.`
                   <span className="font-semibold">{formatCurrency(meta.handlingDetails?.tiketMuseum || 0, 'SAR')} <span className="text-xs text-gray-400 font-normal">/pax</span></span>
                 </div>
                 <div className="flex justify-between items-center py-1 border-b">
-                  <span className="text-gray-600">Muthowif</span>
+                  <span className="text-gray-600">
+                    Muthowif 
+                    {meta.handlingDetails?.muthowifTourType && <span className="text-xs text-amber-600 ml-1">({meta.handlingDetails.muthowifTourType})</span>}
+                  </span>
                   <span className="font-semibold">{formatCurrency(meta.handlingDetails?.muthowif || 0, 'SAR')}</span>
                 </div>
                 <div className="flex justify-between items-center py-1 border-b">
@@ -317,6 +348,49 @@ Silakan hubungi kami jika ada penyesuaian yang ingin dilakukan.`
                     <span className="font-semibold">{formatCurrency(totals.visaTotal || 0, 'SAR')}</span>
                   </div>
                 )}
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className="bg-emerald-50 border-b border-emerald-100">
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-lg flex items-center text-emerald-900">
+                    <Map className="w-5 h-5 mr-2" /> City Tour & Penugasan Muthowif
+                  </CardTitle>
+                  <Button variant="outline" size="sm" onClick={() => setIsAssignMuthowifOpen(true)}>
+                    <UserCheck className="mr-2 h-4 w-4" />
+                    Assign Muthowif Tour
+                  </Button>
+                </div>
+              </CardHeader>
+              <CardContent className="pt-4 space-y-4">
+                <div className="bg-white p-3 rounded border text-sm text-gray-700">
+                  <strong>Jadwal City Tour:</strong> Muthowif akan ditugaskan untuk mengawal City Tour (Makkah, Madinah, Jeddah, Thaif, dll) sesuai kebutuhan rombongan.
+                </div>
+                
+                <div className="space-y-3">
+                  {isAssignmentsLoading ? (
+                    <p className="text-gray-500 text-sm">Loading...</p>
+                  ) : assignmentsData?.assignments && assignmentsData.assignments.length > 0 ? (
+                    assignmentsData.assignments.map((assignment, idx) => (
+                      <div key={idx} className="bg-gray-50 p-4 rounded-lg flex flex-col md:flex-row md:items-center justify-between gap-4 border">
+                        <div>
+                          <p className="font-semibold text-gray-900">{assignment.muthowif?.name} <Badge variant={assignment.status === 'active' ? 'default' : 'secondary'} className="ml-2">{assignment.status}</Badge></p>
+                          <p className="text-sm text-gray-500 mt-1">Visa: {assignment.muthowif?.visaStatus} | Tipe: {assignment.muthowif?.residentType}</p>
+                          <p className="text-sm text-gray-500">Tugas: {formatDate(assignment.startDate)} - {formatDate(assignment.endDate)}</p>
+                          {assignment.taskDescription && <p className="text-sm text-gray-600 mt-2 bg-white p-2 rounded border">Catatan Tour: {assignment.taskDescription}</p>}
+                        </div>
+                        {assignment.status === 'active' && (
+                          <Button variant="secondary" size="sm" onClick={() => handleCompleteTask(assignment.id)} disabled={completeTaskMutation.isPending}>
+                            {completeTaskMutation.isPending ? 'Memproses...' : 'Selesaikan Tugas'}
+                          </Button>
+                        )}
+                      </div>
+                    ))
+                  ) : (
+                    <p className="text-gray-500 text-sm italic">Belum ada muthowif yang ditugaskan untuk City Tour rombongan ini.</p>
+                  )}
+                </div>
               </CardContent>
             </Card>
 
@@ -401,6 +475,17 @@ Silakan hubungi kami jika ada penyesuaian yang ingin dilakukan.`
 
         </div>
       </div>
+      
+      {request && (
+        <AssignMuthowifModal
+          isOpen={isAssignMuthowifOpen}
+          onClose={() => setIsAssignMuthowifOpen(false)}
+          referenceType="custom_la"
+          referenceId={parseInt(id.toString())}
+          startDate={meta.tanggalKedatangan || new Date().toISOString()}
+          endDate={meta.tanggalKeberangkatan || new Date().toISOString()}
+        />
+      )}
     </PageLayout>
   )
 }

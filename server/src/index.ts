@@ -23,6 +23,7 @@ import bookingServiceItemsRoutes from "./routes/bookingServiceItems";
 import masterRoutes from "./routes/master";
 import publicProductsRoutes from "./routes/publicProducts";
 import publicCheckoutRoutes from "./routes/publicCheckout";
+import muthowifsRoutes from "./routes/muthowifs";
 import publicBookingsRoutes from "./routes/publicBookings";
 import userRoutes from "./routes/users";
 import customLaRoutes from "./routes/customLa";
@@ -63,6 +64,7 @@ export const app = new Hono()
   .route("/api/transportation", transportationRoutes)
   .route("/api/booking-service-items", bookingServiceItemsRoutes)
   .route("/api/master", masterRoutes)
+  .route("/api/muthowifs", muthowifsRoutes)
   .route("/api/public/products", publicProductsRoutes)
   .route("/api/public/checkout", publicCheckoutRoutes)
   .route("/api/public/bookings", publicBookingsRoutes)
