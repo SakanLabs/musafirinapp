@@ -33,9 +33,21 @@ import customLaRoutes from "./routes/customLa";
 export const app = new Hono()
   .use(logger())
   .use(cors({
-    origin: process.env.CORS_ORIGINS
-      ? process.env.CORS_ORIGINS.split(",")
-      : ["http://localhost:5173", "http://localhost:5174", "http://localhost:3001"],
+    origin: (origin, c) => {
+      const allowedOrigins = process.env.CORS_ORIGINS ? process.env.CORS_ORIGINS.split(",") : ["http://localhost:5173", "https://musafirin.co"];
+      
+      // Always allow localhost during development, plus any explicitly allowed origins, plus production domains
+      if (
+        !origin || 
+        allowedOrigins.includes(origin) || 
+        origin.startsWith("http://localhost:") ||
+        origin === "https://musafirin.co" ||
+        origin === "https://www.musafirin.co"
+      ) {
+        return origin || allowedOrigins[0];
+      }
+      return allowedOrigins[0];
+    },
     credentials: true,
     allowMethods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
     allowHeaders: ["Content-Type", "Authorization"],
