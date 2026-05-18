@@ -142,7 +142,7 @@ export function Sidebar({ className }: SidebarProps) {
 
       {/* Mobile overlay */}
       {isMobileMenuOpen && (
-        <div 
+        <div
           className="lg:hidden fixed inset-0 bg-black bg-opacity-50 z-40"
           onClick={() => setIsMobileMenuOpen(false)}
         />
@@ -165,9 +165,9 @@ export function Sidebar({ className }: SidebarProps) {
           {/* Navigation */}
           <nav className="flex-1 px-4 py-6 space-y-2">
             {navigation.filter(item => item.roles.includes(userRole)).map((item) => {
-              const isActive = location.pathname === item.href || 
-                             (item.href !== '/dashboard/admin' && location.pathname.startsWith(item.href))
-              
+              const isActive = location.pathname === item.href ||
+                (item.href !== '/dashboard/admin' && location.pathname.startsWith(item.href))
+
               return (
                 <Link
                   key={item.name}
@@ -190,7 +190,7 @@ export function Sidebar({ className }: SidebarProps) {
           {/* Footer */}
           <div className="p-4 border-t border-gray-200">
             <div className="text-xs text-gray-500 text-center">
-              Hotel Booking Management
+              Musafirin Bookings Management System
             </div>
           </div>
         </div>

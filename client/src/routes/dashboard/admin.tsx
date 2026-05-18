@@ -4,7 +4,7 @@ import { StatCard } from "@/components/ui/stat-card"
 import { DataTable, Column } from "@/components/ui/data-table"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { 
+import {
   Calendar,
   FileText,
   Ticket,
@@ -41,7 +41,7 @@ function AdminDashboard() {
   // Show loading state
   if (isLoading) {
     return (
-      <PageLayout title="Dashboard" subtitle="Hotel Booking Management Overview">
+      <PageLayout title="Dashboard" subtitle="Musafirin Bookings Management System Overview">
         <div className="flex items-center justify-center h-64">
           <Loader2 className="h-8 w-8 animate-spin text-gray-500" />
           <span className="ml-2 text-gray-500">Loading dashboard data...</span>
@@ -53,7 +53,7 @@ function AdminDashboard() {
   // Show error state
   if (error) {
     return (
-      <PageLayout title="Dashboard" subtitle="Hotel Booking Management Overview">
+      <PageLayout title="Dashboard" subtitle="Musafirin Bookings Management System Overview">
         <div className="flex items-center justify-center h-64">
           <div className="text-center">
             <p className="text-red-600 mb-4">Error loading dashboard data</p>
@@ -69,7 +69,7 @@ function AdminDashboard() {
   // Ensure dashboardData exists
   if (!dashboardData) {
     return (
-      <PageLayout title="Dashboard" subtitle="Hotel Booking Management Overview">
+      <PageLayout title="Dashboard" subtitle="Musafirin Bookings Management System Overview">
         <div className="flex items-center justify-center h-64">
           <p className="text-gray-500">No data available</p>
         </div>
@@ -130,15 +130,15 @@ function AdminDashboard() {
       header: 'Actions',
       render: (booking) => (
         <div className="flex space-x-2">
-          <Button 
-            size="sm" 
+          <Button
+            size="sm"
             variant="ghost"
             onClick={() => navigate({ to: "/booking-detail", search: { id: booking.id.toString() } })}
           >
             <Eye className="h-4 w-4" />
           </Button>
-          <Button 
-            size="sm" 
+          <Button
+            size="sm"
             variant="ghost"
             onClick={() => handleShareWhatsApp(booking)}
           >
@@ -160,7 +160,7 @@ function AdminDashboard() {
       totalAmount: booking.totalAmount.toString(),
       currency: 'SAR'
     })
-    
+
     shareToWhatsApp({ message })
   }
 
@@ -186,7 +186,7 @@ function AdminDashboard() {
           }}
           icon={Calendar}
         />
-        
+
         <StatCard
           title="Total Revenue"
           value={formatCurrency(dashboardData.totalRevenue.toString())}
@@ -196,7 +196,7 @@ function AdminDashboard() {
           }}
           icon={TrendingUp}
         />
-        
+
         <StatCard
           title="Pending Invoices"
           value={dashboardData.pendingInvoices.toString()}
@@ -206,7 +206,7 @@ function AdminDashboard() {
           }}
           icon={FileText}
         />
-        
+
         <StatCard
           title="Total Vouchers"
           value={dashboardData.totalVouchers.toString()}
@@ -226,7 +226,7 @@ function AdminDashboard() {
             View All
           </Button>
         </div>
-        
+
         <DataTable
           data={dashboardData.recentBookings}
           columns={bookingColumns}

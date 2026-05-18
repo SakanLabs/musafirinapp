@@ -4,7 +4,7 @@ import { config } from 'dotenv';
 import * as schema from './schema.js';
 
 // Load environment variables
-config({ path: '../../../.env' });
+config({ path: ['../.env', '../.env.local'], override: true });
 
 const DATABASE_URL = process.env.DATABASE_URL;
 
