@@ -27,14 +27,14 @@ export function PageLayout({
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 flex">
+    <div className="h-screen overflow-hidden bg-gray-50 flex">
       {/* Sidebar */}
       <Sidebar />
 
       {/* Main Content Area */}
-      <div className="flex-1 lg:ml-0">
+      <div className="flex-1 flex flex-col min-h-0 min-w-0 overflow-hidden">
         {/* Header */}
-        <header className="bg-white border-b border-gray-200">
+        <header className="flex-shrink-0 bg-white border-b border-gray-200 z-10">
           <div className="w-full px-4 sm:px-6 lg:px-8">
             <div className="flex items-center justify-between h-16">
               <div className="flex items-center space-x-4 lg:ml-0 ml-12">
@@ -64,7 +64,7 @@ export function PageLayout({
         </header>
 
         {/* Main Content */}
-        <main className="w-full px-4 sm:px-6 lg:px-8 py-8">
+        <main className="flex-1 overflow-y-auto overflow-x-hidden w-full px-4 sm:px-6 lg:px-8 py-6">
           {children}
         </main>
       </div>

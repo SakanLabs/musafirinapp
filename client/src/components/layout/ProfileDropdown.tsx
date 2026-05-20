@@ -42,8 +42,7 @@ export function ProfileDropdown() {
   }
 
   const handleProfile = () => {
-    // Navigate to profile page when implemented
-    console.log('Navigate to profile')
+    navigate({ to: '/profile' })
   }
 
   const handleSettings = () => {
