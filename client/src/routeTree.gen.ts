@@ -14,9 +14,11 @@ import { Route as TransportationBookingsRouteImport } from './routes/transportat
 import { Route as ServiceOrdersRouteImport } from './routes/service-orders'
 import { Route as RegisterRouteImport } from './routes/register'
 import { Route as ReceiptsRouteImport } from './routes/receipts'
+import { Route as ProfileRouteImport } from './routes/profile'
 import { Route as MasterTransportRouteImport } from './routes/master-transport'
 import { Route as MasterHotelsRouteImport } from './routes/master-hotels'
 import { Route as LoginRouteImport } from './routes/login'
+import { Route as LeadsRouteImport } from './routes/leads'
 import { Route as InvoicesRouteImport } from './routes/invoices'
 import { Route as InvoiceDetailRouteImport } from './routes/invoice-detail'
 import { Route as ForgotPasswordRouteImport } from './routes/forgot-password'
@@ -51,6 +53,7 @@ import { Route as MasterTransportEditRouteIdRouteImport } from './routes/master-
 import { Route as MasterTransportDetailRouteIdRouteImport } from './routes/master-transport-detail.$routeId'
 import { Route as MasterHotelEditHotelIdRouteImport } from './routes/master-hotel-edit.$hotelId'
 import { Route as MasterHotelDetailHotelIdRouteImport } from './routes/master-hotel-detail.$hotelId'
+import { Route as LeadDetailLeadIdRouteImport } from './routes/lead-detail.$leadId'
 import { Route as DashboardMuthowifsRouteImport } from './routes/dashboard/muthowifs'
 import { Route as DashboardAdminRouteImport } from './routes/dashboard/admin'
 import { Route as CustomLaQuotationIdRouteImport } from './routes/custom-la-quotation.$id'
@@ -92,6 +95,11 @@ const ReceiptsRoute = ReceiptsRouteImport.update({
   path: '/receipts',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ProfileRoute = ProfileRouteImport.update({
+  id: '/profile',
+  path: '/profile',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const MasterTransportRoute = MasterTransportRouteImport.update({
   id: '/master-transport',
   path: '/master-transport',
@@ -105,6 +113,11 @@ const MasterHotelsRoute = MasterHotelsRouteImport.update({
 const LoginRoute = LoginRouteImport.update({
   id: '/login',
   path: '/login',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LeadsRoute = LeadsRouteImport.update({
+  id: '/leads',
+  path: '/leads',
   getParentRoute: () => rootRouteImport,
 } as any)
 const InvoicesRoute = InvoicesRouteImport.update({
@@ -285,6 +298,11 @@ const MasterHotelDetailHotelIdRoute =
     path: '/master-hotel-detail/$hotelId',
     getParentRoute: () => rootRouteImport,
   } as any)
+const LeadDetailLeadIdRoute = LeadDetailLeadIdRouteImport.update({
+  id: '/lead-detail/$leadId',
+  path: '/lead-detail/$leadId',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const DashboardMuthowifsRoute = DashboardMuthowifsRouteImport.update({
   id: '/muthowifs',
   path: '/muthowifs',
@@ -388,9 +406,11 @@ export interface FileRoutesByFullPath {
   '/forgot-password': typeof ForgotPasswordRoute
   '/invoice-detail': typeof InvoiceDetailRoute
   '/invoices': typeof InvoicesRoute
+  '/leads': typeof LeadsRoute
   '/login': typeof LoginRoute
   '/master-hotels': typeof MasterHotelsRoute
   '/master-transport': typeof MasterTransportRoute
+  '/profile': typeof ProfileRoute
   '/receipts': typeof ReceiptsRoute
   '/register': typeof RegisterRoute
   '/service-orders': typeof ServiceOrdersRouteWithChildren
@@ -407,6 +427,7 @@ export interface FileRoutesByFullPath {
   '/custom-la-quotation/$id': typeof CustomLaQuotationIdRoute
   '/dashboard/admin': typeof DashboardAdminRoute
   '/dashboard/muthowifs': typeof DashboardMuthowifsRouteWithChildren
+  '/lead-detail/$leadId': typeof LeadDetailLeadIdRoute
   '/master-hotel-detail/$hotelId': typeof MasterHotelDetailHotelIdRoute
   '/master-hotel-edit/$hotelId': typeof MasterHotelEditHotelIdRoute
   '/master-transport-detail/$routeId': typeof MasterTransportDetailRouteIdRoute
@@ -446,9 +467,11 @@ export interface FileRoutesByTo {
   '/forgot-password': typeof ForgotPasswordRoute
   '/invoice-detail': typeof InvoiceDetailRoute
   '/invoices': typeof InvoicesRoute
+  '/leads': typeof LeadsRoute
   '/login': typeof LoginRoute
   '/master-hotels': typeof MasterHotelsRoute
   '/master-transport': typeof MasterTransportRoute
+  '/profile': typeof ProfileRoute
   '/receipts': typeof ReceiptsRoute
   '/register': typeof RegisterRoute
   '/service-orders': typeof ServiceOrdersRouteWithChildren
@@ -465,6 +488,7 @@ export interface FileRoutesByTo {
   '/custom-la-quotation/$id': typeof CustomLaQuotationIdRoute
   '/dashboard/admin': typeof DashboardAdminRoute
   '/dashboard/muthowifs': typeof DashboardMuthowifsRouteWithChildren
+  '/lead-detail/$leadId': typeof LeadDetailLeadIdRoute
   '/master-hotel-detail/$hotelId': typeof MasterHotelDetailHotelIdRoute
   '/master-hotel-edit/$hotelId': typeof MasterHotelEditHotelIdRoute
   '/master-transport-detail/$routeId': typeof MasterTransportDetailRouteIdRoute
@@ -506,9 +530,11 @@ export interface FileRoutesById {
   '/forgot-password': typeof ForgotPasswordRoute
   '/invoice-detail': typeof InvoiceDetailRoute
   '/invoices': typeof InvoicesRoute
+  '/leads': typeof LeadsRoute
   '/login': typeof LoginRoute
   '/master-hotels': typeof MasterHotelsRoute
   '/master-transport': typeof MasterTransportRoute
+  '/profile': typeof ProfileRoute
   '/receipts': typeof ReceiptsRoute
   '/register': typeof RegisterRoute
   '/service-orders': typeof ServiceOrdersRouteWithChildren
@@ -525,6 +551,7 @@ export interface FileRoutesById {
   '/custom-la-quotation/$id': typeof CustomLaQuotationIdRoute
   '/dashboard/admin': typeof DashboardAdminRoute
   '/dashboard/muthowifs': typeof DashboardMuthowifsRouteWithChildren
+  '/lead-detail/$leadId': typeof LeadDetailLeadIdRoute
   '/master-hotel-detail/$hotelId': typeof MasterHotelDetailHotelIdRoute
   '/master-hotel-edit/$hotelId': typeof MasterHotelEditHotelIdRoute
   '/master-transport-detail/$routeId': typeof MasterTransportDetailRouteIdRoute
@@ -567,9 +594,11 @@ export interface FileRouteTypes {
     | '/forgot-password'
     | '/invoice-detail'
     | '/invoices'
+    | '/leads'
     | '/login'
     | '/master-hotels'
     | '/master-transport'
+    | '/profile'
     | '/receipts'
     | '/register'
     | '/service-orders'
@@ -586,6 +615,7 @@ export interface FileRouteTypes {
     | '/custom-la-quotation/$id'
     | '/dashboard/admin'
     | '/dashboard/muthowifs'
+    | '/lead-detail/$leadId'
     | '/master-hotel-detail/$hotelId'
     | '/master-hotel-edit/$hotelId'
     | '/master-transport-detail/$routeId'
@@ -625,9 +655,11 @@ export interface FileRouteTypes {
     | '/forgot-password'
     | '/invoice-detail'
     | '/invoices'
+    | '/leads'
     | '/login'
     | '/master-hotels'
     | '/master-transport'
+    | '/profile'
     | '/receipts'
     | '/register'
     | '/service-orders'
@@ -644,6 +676,7 @@ export interface FileRouteTypes {
     | '/custom-la-quotation/$id'
     | '/dashboard/admin'
     | '/dashboard/muthowifs'
+    | '/lead-detail/$leadId'
     | '/master-hotel-detail/$hotelId'
     | '/master-hotel-edit/$hotelId'
     | '/master-transport-detail/$routeId'
@@ -684,9 +717,11 @@ export interface FileRouteTypes {
     | '/forgot-password'
     | '/invoice-detail'
     | '/invoices'
+    | '/leads'
     | '/login'
     | '/master-hotels'
     | '/master-transport'
+    | '/profile'
     | '/receipts'
     | '/register'
     | '/service-orders'
@@ -703,6 +738,7 @@ export interface FileRouteTypes {
     | '/custom-la-quotation/$id'
     | '/dashboard/admin'
     | '/dashboard/muthowifs'
+    | '/lead-detail/$leadId'
     | '/master-hotel-detail/$hotelId'
     | '/master-hotel-edit/$hotelId'
     | '/master-transport-detail/$routeId'
@@ -744,9 +780,11 @@ export interface RootRouteChildren {
   ForgotPasswordRoute: typeof ForgotPasswordRoute
   InvoiceDetailRoute: typeof InvoiceDetailRoute
   InvoicesRoute: typeof InvoicesRoute
+  LeadsRoute: typeof LeadsRoute
   LoginRoute: typeof LoginRoute
   MasterHotelsRoute: typeof MasterHotelsRoute
   MasterTransportRoute: typeof MasterTransportRoute
+  ProfileRoute: typeof ProfileRoute
   ReceiptsRoute: typeof ReceiptsRoute
   RegisterRoute: typeof RegisterRoute
   ServiceOrdersRoute: typeof ServiceOrdersRouteWithChildren
@@ -760,6 +798,7 @@ export interface RootRouteChildren {
   CreateTransportPricingRouteIdRoute: typeof CreateTransportPricingRouteIdRoute
   CustomLaDetailIdRoute: typeof CustomLaDetailIdRoute
   CustomLaQuotationIdRoute: typeof CustomLaQuotationIdRoute
+  LeadDetailLeadIdRoute: typeof LeadDetailLeadIdRoute
   MasterHotelDetailHotelIdRoute: typeof MasterHotelDetailHotelIdRoute
   MasterHotelEditHotelIdRoute: typeof MasterHotelEditHotelIdRoute
   MasterTransportDetailRouteIdRoute: typeof MasterTransportDetailRouteIdRoute
@@ -809,6 +848,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ReceiptsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/profile': {
+      id: '/profile'
+      path: '/profile'
+      fullPath: '/profile'
+      preLoaderRoute: typeof ProfileRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/master-transport': {
       id: '/master-transport'
       path: '/master-transport'
@@ -828,6 +874,13 @@ declare module '@tanstack/react-router' {
       path: '/login'
       fullPath: '/login'
       preLoaderRoute: typeof LoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/leads': {
+      id: '/leads'
+      path: '/leads'
+      fullPath: '/leads'
+      preLoaderRoute: typeof LeadsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/invoices': {
@@ -1068,6 +1121,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof MasterHotelDetailHotelIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/lead-detail/$leadId': {
+      id: '/lead-detail/$leadId'
+      path: '/lead-detail/$leadId'
+      fullPath: '/lead-detail/$leadId'
+      preLoaderRoute: typeof LeadDetailLeadIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/dashboard/muthowifs': {
       id: '/dashboard/muthowifs'
       path: '/muthowifs'
@@ -1275,9 +1335,11 @@ const rootRouteChildren: RootRouteChildren = {
   ForgotPasswordRoute: ForgotPasswordRoute,
   InvoiceDetailRoute: InvoiceDetailRoute,
   InvoicesRoute: InvoicesRoute,
+  LeadsRoute: LeadsRoute,
   LoginRoute: LoginRoute,
   MasterHotelsRoute: MasterHotelsRoute,
   MasterTransportRoute: MasterTransportRoute,
+  ProfileRoute: ProfileRoute,
   ReceiptsRoute: ReceiptsRoute,
   RegisterRoute: RegisterRoute,
   ServiceOrdersRoute: ServiceOrdersRouteWithChildren,
@@ -1291,6 +1353,7 @@ const rootRouteChildren: RootRouteChildren = {
   CreateTransportPricingRouteIdRoute: CreateTransportPricingRouteIdRoute,
   CustomLaDetailIdRoute: CustomLaDetailIdRoute,
   CustomLaQuotationIdRoute: CustomLaQuotationIdRoute,
+  LeadDetailLeadIdRoute: LeadDetailLeadIdRoute,
   MasterHotelDetailHotelIdRoute: MasterHotelDetailHotelIdRoute,
   MasterHotelEditHotelIdRoute: MasterHotelEditHotelIdRoute,
   MasterTransportDetailRouteIdRoute: MasterTransportDetailRouteIdRoute,

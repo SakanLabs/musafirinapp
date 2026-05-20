@@ -12,6 +12,7 @@ const leadsRoutes = new Hono()
       
       const response: ApiResponse = {
         success: true,
+        message: "Leads fetched successfully",
         data: allLeads,
       };
       return c.json(response);
@@ -19,7 +20,7 @@ const leadsRoutes = new Hono()
       console.error("Error fetching leads:", error);
       const response: ApiResponse = {
         success: false,
-        error: error.message || "Failed to fetch leads",
+        message: error.message || "Failed to fetch leads",
       };
       return c.json(response, 500);
     }
@@ -42,15 +43,15 @@ const leadsRoutes = new Hono()
       
       const response: ApiResponse = {
         success: true,
-        data: newLead[0],
         message: "Lead created successfully",
+        data: newLead[0],
       };
       return c.json(response, 201);
     } catch (error: any) {
       console.error("Error creating lead:", error);
       const response: ApiResponse = {
         success: false,
-        error: error.message || "Failed to create lead",
+        message: error.message || "Failed to create lead",
       };
       return c.json(response, 500);
     }
@@ -71,20 +72,20 @@ const leadsRoutes = new Hono()
         .returning();
         
       if (!updatedLead.length) {
-        return c.json({ success: false, error: "Lead not found" }, 404);
+        return c.json({ success: false, message: "Lead not found" }, 404);
       }
       
       const response: ApiResponse = {
         success: true,
-        data: updatedLead[0],
         message: "Lead updated successfully",
+        data: updatedLead[0],
       };
       return c.json(response);
     } catch (error: any) {
       console.error("Error updating lead:", error);
       const response: ApiResponse = {
         success: false,
-        error: error.message || "Failed to update lead",
+        message: error.message || "Failed to update lead",
       };
       return c.json(response, 500);
     }
@@ -95,7 +96,6 @@ const leadsRoutes = new Hono()
     try {
       const { items } = await c.req.json(); // Array of { id, orderIndex }
       
-      // We could use a transaction here, but for simplicity we'll just loop
       await db.transaction(async (tx) => {
         for (const item of items) {
           await tx.update(leads)
@@ -107,7 +107,7 @@ const leadsRoutes = new Hono()
       return c.json({ success: true, message: "Leads reordered successfully" });
     } catch (error: any) {
       console.error("Error reordering leads:", error);
-      return c.json({ success: false, error: "Failed to reorder leads" }, 500);
+      return c.json({ success: false, message: "Failed to reorder leads" }, 500);
     }
   })
   
@@ -126,7 +126,7 @@ const leadsRoutes = new Hono()
       console.error("Error deleting lead:", error);
       const response: ApiResponse = {
         success: false,
-        error: error.message || "Failed to delete lead",
+        message: error.message || "Failed to delete lead",
       };
       return c.json(response, 500);
     }

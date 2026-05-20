@@ -5,7 +5,7 @@ import { eq } from 'drizzle-orm'
 import { requireAuth } from '../middleware/auth'
 import type { ApiResponse } from 'shared/dist'
 
-const app = new Hono()
+const app = new Hono<{ Variables: { user: any; session: any } }>()
   .use('/*', requireAuth)
 
   .get('/me', async (c) => {

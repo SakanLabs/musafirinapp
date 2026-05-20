@@ -67,6 +67,9 @@ export const mealPlanEnum = pgEnum('meal_plan', ['Breakfast', 'Half Board', 'Ful
 export const serviceOrderProductEnum = pgEnum('service_order_product', ['visa_umrah', 'siskopatuh']);
 export const serviceOrderStatusEnum = pgEnum('service_order_status', ['draft', 'submitted', 'paid', 'cancelled']);
 
+// CRM / Lead Management Enums
+export const leadStatusEnum = pgEnum('lead_status', ['NEW', 'DISCUSSION', 'QUOTED', 'FOLLOW_UP', 'WON', 'LOST']);
+
 // Transportation enums
 export const vehicleTypeEnum = pgEnum('vehicle_type', ['sedan', 'suv', 'van', 'bus', 'minibus']);
 export const transportationStatusEnum = pgEnum('transportation_status', ['pending', 'confirmed', 'completed', 'cancelled']);
@@ -529,7 +532,7 @@ export const customLaRequests = pgTable('custom_la_requests', {
 export const visaStatusEnum = pgEnum('visa_status', ['umrah', 'ziarah', 'student', 'worker', 'resident']);
 export const residentTypeEnum = pgEnum('resident_type', ['mahasiswa', 'mukimin']);
 export const muthowifStatusEnum = pgEnum('muthowif_status', ['idle', 'assigned', 'unavailable']);
-export const assignmentReferenceTypeEnum = pgEnum('assignment_reference_type', ['service_order', 'custom_la']);
+export const assignmentReferenceTypeEnum = pgEnum('assignment_reference_type', ['service_order', 'custom_la', 'booking']);
 export const assignmentStatusEnum = pgEnum('assignment_status', ['active', 'completed', 'cancelled']);
 
 // Muthowif Master Table
@@ -560,6 +563,22 @@ export const muthowifAssignments = pgTable('muthowif_assignments', {
   taskDescription: text('task_description'),
   status: assignmentStatusEnum('status').default('active').notNull(),
   assignedBy: text('assigned_by'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+});
+
+// CRM / Leads Table
+export const leads = pgTable('leads', {
+  id: serial('id').primaryKey(),
+  name: varchar('name', { length: 255 }).notNull(),
+  phone: varchar('phone', { length: 50 }).notNull(),
+  companyName: varchar('company_name', { length: 255 }),
+  requirement: text('requirement').notNull(),
+  status: leadStatusEnum('status').default('NEW').notNull(),
+  value: decimal('value', { precision: 12, scale: 2 }), // Estimated deal value
+  notes: text('notes'),
+  assignedTo: text('assigned_to').references(() => user.id, { onDelete: 'set null' }),
+  orderIndex: integer('order_index').default(0).notNull(), // For kanban ordering
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
 });
@@ -633,3 +652,5 @@ export type Muthowif = typeof muthowifs.$inferSelect;
 export type NewMuthowif = typeof muthowifs.$inferInsert;
 export type MuthowifAssignment = typeof muthowifAssignments.$inferSelect;
 export type NewMuthowifAssignment = typeof muthowifAssignments.$inferInsert;
+export type Lead = typeof leads.$inferSelect;
+export type NewLead = typeof leads.$inferInsert;

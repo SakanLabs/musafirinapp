@@ -37,6 +37,12 @@ const navigation = [
     roles: ['admin', 'owner', 'finance']
   },
   {
+    name: 'CRM Pipeline (Kanban)',
+    href: '/leads',
+    icon: Users,
+    roles: ['admin', 'owner']
+  },
+  {
     name: 'Bookings',
     href: '/bookings',
     icon: Calendar,
