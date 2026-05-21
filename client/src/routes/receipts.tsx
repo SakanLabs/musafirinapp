@@ -92,13 +92,12 @@ function ReceiptsPage() {
           <Button
             size="sm"
             variant="ghost"
-            onClick={() => {
-              // For now, just show receipt info in alert
-              toast.info(`Receipt ${receipt.number} — Client: ${receipt.clientName}, Amount: ${formatCurrency(receipt.amount, receipt.currency)}, Booking: ${receipt.bookingCode}`)
-            }}
+            asChild
             title="View Receipt Detail"
           >
-            <Eye className="h-4 w-4" />
+            <Link to="/receipt-detail" search={{ id: receipt.id }}>
+              <Eye className="h-4 w-4" />
+            </Link>
           </Button>
           <Button
             size="sm"

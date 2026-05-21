@@ -14,6 +14,7 @@ import { Route as TransportationBookingsRouteImport } from './routes/transportat
 import { Route as ServiceOrdersRouteImport } from './routes/service-orders'
 import { Route as RegisterRouteImport } from './routes/register'
 import { Route as ReceiptsRouteImport } from './routes/receipts'
+import { Route as ReceiptDetailRouteImport } from './routes/receipt-detail'
 import { Route as ProfileRouteImport } from './routes/profile'
 import { Route as MasterTransportRouteImport } from './routes/master-transport'
 import { Route as MasterHotelsRouteImport } from './routes/master-hotels'
@@ -92,6 +93,11 @@ const RegisterRoute = RegisterRouteImport.update({
 const ReceiptsRoute = ReceiptsRouteImport.update({
   id: '/receipts',
   path: '/receipts',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ReceiptDetailRoute = ReceiptDetailRouteImport.update({
+  id: '/receipt-detail',
+  path: '/receipt-detail',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ProfileRoute = ProfileRouteImport.update({
@@ -405,6 +411,7 @@ export interface FileRoutesByFullPath {
   '/master-hotels': typeof MasterHotelsRoute
   '/master-transport': typeof MasterTransportRoute
   '/profile': typeof ProfileRoute
+  '/receipt-detail': typeof ReceiptDetailRoute
   '/receipts': typeof ReceiptsRoute
   '/register': typeof RegisterRoute
   '/service-orders': typeof ServiceOrdersRouteWithChildren
@@ -465,6 +472,7 @@ export interface FileRoutesByTo {
   '/master-hotels': typeof MasterHotelsRoute
   '/master-transport': typeof MasterTransportRoute
   '/profile': typeof ProfileRoute
+  '/receipt-detail': typeof ReceiptDetailRoute
   '/receipts': typeof ReceiptsRoute
   '/register': typeof RegisterRoute
   '/service-orders': typeof ServiceOrdersRouteWithChildren
@@ -527,6 +535,7 @@ export interface FileRoutesById {
   '/master-hotels': typeof MasterHotelsRoute
   '/master-transport': typeof MasterTransportRoute
   '/profile': typeof ProfileRoute
+  '/receipt-detail': typeof ReceiptDetailRoute
   '/receipts': typeof ReceiptsRoute
   '/register': typeof RegisterRoute
   '/service-orders': typeof ServiceOrdersRouteWithChildren
@@ -590,6 +599,7 @@ export interface FileRouteTypes {
     | '/master-hotels'
     | '/master-transport'
     | '/profile'
+    | '/receipt-detail'
     | '/receipts'
     | '/register'
     | '/service-orders'
@@ -650,6 +660,7 @@ export interface FileRouteTypes {
     | '/master-hotels'
     | '/master-transport'
     | '/profile'
+    | '/receipt-detail'
     | '/receipts'
     | '/register'
     | '/service-orders'
@@ -711,6 +722,7 @@ export interface FileRouteTypes {
     | '/master-hotels'
     | '/master-transport'
     | '/profile'
+    | '/receipt-detail'
     | '/receipts'
     | '/register'
     | '/service-orders'
@@ -773,6 +785,7 @@ export interface RootRouteChildren {
   MasterHotelsRoute: typeof MasterHotelsRoute
   MasterTransportRoute: typeof MasterTransportRoute
   ProfileRoute: typeof ProfileRoute
+  ReceiptDetailRoute: typeof ReceiptDetailRoute
   ReceiptsRoute: typeof ReceiptsRoute
   RegisterRoute: typeof RegisterRoute
   ServiceOrdersRoute: typeof ServiceOrdersRouteWithChildren
@@ -833,6 +846,13 @@ declare module '@tanstack/react-router' {
       path: '/receipts'
       fullPath: '/receipts'
       preLoaderRoute: typeof ReceiptsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/receipt-detail': {
+      id: '/receipt-detail'
+      path: '/receipt-detail'
+      fullPath: '/receipt-detail'
+      preLoaderRoute: typeof ReceiptDetailRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/profile': {
@@ -1320,6 +1340,7 @@ const rootRouteChildren: RootRouteChildren = {
   MasterHotelsRoute: MasterHotelsRoute,
   MasterTransportRoute: MasterTransportRoute,
   ProfileRoute: ProfileRoute,
+  ReceiptDetailRoute: ReceiptDetailRoute,
   ReceiptsRoute: ReceiptsRoute,
   RegisterRoute: RegisterRoute,
   ServiceOrdersRoute: ServiceOrdersRouteWithChildren,

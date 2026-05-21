@@ -249,7 +249,22 @@ receiptRoutes.get('/:id/download', requireFinance, async (c) => {
     }
 
     if (!receipt.pdfUrl) {
-      return c.json({ error: 'PDF not available for this receipt' }, 404);
+      // Try to regenerate it
+      const receiptData = await receiptService.prepareReceiptData(receipt.id);
+      if (receiptData) {
+        try {
+          const { generateReceiptPDF } = await import('../utils/pdf');
+          const pdfUrl = await generateReceiptPDF(receiptData);
+          await db.update(receipts).set({ pdfUrl }).where(eq(receipts.id, receipt.id));
+          receipt.pdfUrl = pdfUrl;
+        } catch (e) {
+          console.error('Failed to regenerate receipt PDF:', e);
+        }
+      }
+
+      if (!receipt.pdfUrl) {
+        return c.json({ error: 'PDF not available for this receipt' }, 404);
+      }
     }
 
     // Redirect to the PDF URL
