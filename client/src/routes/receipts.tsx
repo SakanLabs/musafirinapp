@@ -102,7 +102,10 @@ function ReceiptsPage() {
           <Button
             size="sm"
             variant="ghost"
-            onClick={() => window.open(`/api/receipts/${receipt.id}/download`, '_blank')}
+            onClick={() => {
+              const API_BASE_URL = import.meta.env.VITE_API_URL || window.location.origin.replace(':5173', ':3000');
+              window.open(`${API_BASE_URL}/api/receipts/${receipt.id}/download`, '_blank');
+            }}
             title="Download PDF"
           >
             <Download className="h-4 w-4" />
@@ -112,7 +115,8 @@ function ReceiptsPage() {
             variant="ghost"
             className="text-green-600 hover:text-green-700 hover:bg-green-50"
             onClick={() => {
-              const pdfUrl = `${window.location.origin.replace(':5173', ':3000')}/api/receipts/${receipt.id}/download`;
+              const API_BASE_URL = import.meta.env.VITE_API_URL || window.location.origin.replace(':5173', ':3000');
+              const pdfUrl = `${API_BASE_URL}/api/receipts/${receipt.id}/download`;
               const msg = [
                 `Assalamu'alaikum *${receipt.clientName}* 🙏`,
                 ``,

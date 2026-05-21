@@ -186,7 +186,10 @@ export class ReceiptService {
         .reduce((sum: number, p: any) => sum + (parseFloat(p.amount) || 0), 0);
 
       const totalAmountNum = parseFloat(invoice.amount as any);
-      const balanceAfter = Math.max(totalAmountNum - totalPaid, 0);
+      // Ensure we include current payment amount if not already included in totalPaid
+      const isAlreadyInTotalPaid = paymentsRows.some((p: any) => p.referenceNumber === payment.referenceNumber && String(p.status) === 'completed' && p.amount == payment.amount);
+      const actualTotalPaid = isAlreadyInTotalPaid ? totalPaid : totalPaid + payment.amount;
+      const balanceAfter = Math.max(totalAmountNum - actualTotalPaid, 0);
 
       const totalAmountStr = invoice.amount != null ? String(invoice.amount) : '0.00';
       const balanceAfterStr = balanceAfter.toFixed(2);
@@ -391,7 +394,7 @@ export class ReceiptService {
           accountNumber: receipt.accountNumberOrIBAN || '',
         },
         brand: {
-          name: 'Poppy Ayu',
+          name: 'Finance - Poppy Ayu',
           tagline: 'Your Trusted Travel Partner',
           website: 'www.musafirin.com',
         },

@@ -30,12 +30,14 @@ function ReceiptDetailPage() {
 
   const handleDownload = () => {
     if (!receipt) return;
-    window.open(`/api/receipts/${receipt.id}/download`, "_blank");
+    const API_BASE_URL = import.meta.env.VITE_API_URL || window.location.origin.replace(':5173', ':3000');
+    window.open(`${API_BASE_URL}/api/receipts/${receipt.id}/download`, "_blank");
   };
 
   const handleShareWhatsApp = () => {
     if (!receipt) return;
-    const pdfUrl = `${window.location.origin.replace(':5173', ':3000')}/api/receipts/${receipt.id}/download`;
+    const API_BASE_URL = import.meta.env.VITE_API_URL || window.location.origin.replace(':5173', ':3000');
+    const pdfUrl = `${API_BASE_URL}/api/receipts/${receipt.id}/download`;
     const message = [
       `Assalamu'alaikum *${receipt.payerName || receipt.clientName}* 🙏`,
       ``,

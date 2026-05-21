@@ -148,12 +148,14 @@ function InvoiceDetailPage() {
 
   const handleDownload = () => {
     if (!invoice) return;
-    window.open(`/api/invoices/by-number/${invoice.number}`, "_blank");
+    const API_BASE_URL = import.meta.env.VITE_API_URL || window.location.origin.replace(':5173', ':3000');
+    window.open(`${API_BASE_URL}/api/invoices/by-number/${invoice.number}`, "_blank");
   };
 
   const handleShareWhatsApp = () => {
     if (!invoice) return;
-    const pdfUrl = `${window.location.origin.replace(':5173', ':3000')}/api/invoices/by-number/${invoice.number}`;
+    const API_BASE_URL = import.meta.env.VITE_API_URL || window.location.origin.replace(':5173', ':3000');
+    const pdfUrl = `${API_BASE_URL}/api/invoices/by-number/${invoice.number}`;
     const message = [
       `Assalamu'alaikum *${invoice.clientName}* 🙏`,
       ``,
@@ -278,7 +280,8 @@ function InvoiceDetailPage() {
               variant="secondary"
               onClick={() => {
                 const r = receiptsForBooking[0];
-                window.open(`/api/receipts/${r.id}/download`, '_blank');
+                const API_BASE_URL = import.meta.env.VITE_API_URL || window.location.origin.replace(':5173', ':3000');
+                window.open(`${API_BASE_URL}/api/receipts/${r.id}/download`, '_blank');
               }}
               title="Download existing receipt"
             >

@@ -259,7 +259,7 @@ export async function generateServiceOrderReceiptPDF(
     } catch (e) { }
 
     const signaturePath = join(process.cwd(), 'public', 'ttd.png');
-    let signatureBase64 = '';
+    let signatureBase64 = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=';
     try {
       signatureBase64 = readFileSync(signaturePath).toString('base64');
     } catch (e) { }
@@ -443,12 +443,12 @@ export async function generateReceiptPDF(receiptData: any): Promise<string> {
 
     // Load signature image base64
     const signaturePath = join(process.cwd(), 'public', 'ttd.png');
-    let signatureBase64 = '';
+    let signatureBase64 = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=';
     try {
       const sigBuffer = readFileSync(signaturePath);
       signatureBase64 = sigBuffer.toString('base64');
     } catch (error) {
-      console.warn('Signature image not found, continuing without signature image');
+      console.warn('Signature image not found, using transparent fallback');
     }
 
     // Comprehensive template replacement
