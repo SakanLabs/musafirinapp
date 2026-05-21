@@ -40,9 +40,6 @@ function ServiceOrderDetailPage() {
   const handleShareWhatsApp = () => {
     if (!serviceOrder) return
     
-    const message = `Service Order Details:
-SO Number: ${serviceOrder.number || 'N/A'}
-Client: ${serviceOrder.clientName || 'N/A'}
     const message = `Visa Details:
 - Number: ${serviceOrder.number}
 - Client: ${serviceOrder.clientName}
