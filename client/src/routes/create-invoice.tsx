@@ -248,10 +248,10 @@ function CreateInvoicePage() {
               createServiceItem({
                 bookingId: parseInt(selectedBookingId),
                 serviceType: 'visa_umrah',
-                description: `Service Order ${so.number} — ${so.productType} — ${so.totalPeople} org`,
+                description: `Visa ${so.number} — ${so.productType} — ${so.totalPeople} org`,
                 quantity: 1,
-                unitPrice: parseFloat(so.totalPriceSAR || '0'),
-                notes: `Auto-added from Service Order ${so.number}`
+                unitPrice: parseFloat(so.totalPriceSAR),
+                notes: `Auto-added from Visa ${so.number}`
               })
             )
           }
@@ -372,7 +372,7 @@ function CreateInvoicePage() {
                   >
                     <option value="hotel">Hotel Booking</option>
                     <option value="transportation">Transportasi</option>
-                    <option value="service_order">Service Order (Visa)</option>
+                    <option value="service_order">Visa</option>
                   </select>
                 </div>
                 <div className="md:col-span-2">
@@ -421,10 +421,10 @@ function CreateInvoicePage() {
                         </div>
                       </div>
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">Tambahkan Service Order ke invoice</label>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">Tambahkan Visa ke invoice</label>
                         <div className="space-y-2 max-h-40 overflow-auto border rounded-md p-2">
                           {serviceOrdersOptions.length === 0 ? (
-                            <p className="text-xs text-gray-500">Tidak ada service order yang belum ber-invoice.</p>
+                            <p className="text-xs text-gray-500">Tidak ada visa yang belum ber-invoice.</p>
                           ) : (
                             serviceOrdersOptions.map(so => {
                               const checked = selectedServiceOrderIdsMulti.includes(so.id.toString())
@@ -470,7 +470,7 @@ function CreateInvoicePage() {
                       disabled={!selectedClientId}
                       className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-base shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring md:text-sm"
                     >
-                      <option value="">{selectedClientId ? 'Pilih Service Order' : 'Pilih client dulu'}</option>
+                      <option value="">{selectedClientId ? 'Pilih Visa' : 'Pilih client dulu'}</option>
                       {serviceOrdersOptions.map(so => (
                         <option key={so.id} value={so.id.toString()}>{so.number} — {so.productType} • {so.groupLeaderName} • {so.totalPeople} org • Total: {formatCurrency(parseFloat(so.totalPriceSAR), 'SAR')}</option>
                       ))}
@@ -610,7 +610,7 @@ function CreateInvoicePage() {
                         transportationOptions.reduce((sum, t) => sum + (selectedTransportationIdsMulti.includes(t.id.toString()) ? parseFloat(t.totalAmount || '0') : 0), 0),
                         'SAR'
                       )}</span></div>
-                      <div className="flex justify-between"><span>Service Orders dipilih</span><span>{formatCurrency(
+                      <div className="flex justify-between"><span>Visa dipilih</span><span>{formatCurrency(
                         serviceOrdersOptions.reduce((sum, so) => sum + (selectedServiceOrderIdsMulti.includes(so.id.toString()) ? parseFloat(so.totalPriceSAR || '0') : 0), 0),
                         'SAR'
                       )}</span></div>

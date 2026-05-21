@@ -73,10 +73,11 @@ function CreateTransportationBookingPage() {
 
   const vehicleTypes = [
     { value: "sedan", label: "Sedan" },
-    { value: "suv", label: "SUV" },
-    { value: "van", label: "Van" },
+    { value: "staria", label: "Staria" },
+    { value: "hiace", label: "Hiace" },
+    { value: "gmc", label: "GMC" },
+    { value: "coaster", label: "Coaster" },
     { value: "bus", label: "Bus" },
-    { value: "minibus", label: "Minibus" },
   ];
 
   // Effect to validate selected client

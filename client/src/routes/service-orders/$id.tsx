@@ -43,66 +43,95 @@ function ServiceOrderDetailPage() {
     const message = `Service Order Details:
 SO Number: ${serviceOrder.number || 'N/A'}
 Client: ${serviceOrder.clientName || 'N/A'}
-Product: ${serviceOrder.productType?.replace('_', ' ') || 'N/A'}
-Group Leader: ${serviceOrder.groupLeaderName || 'N/A'}
-Group Leader Phone: ${serviceOrder.groupLeaderPhone || 'N/A'}
-Total People: ${serviceOrder.totalPeople || 0}
-Departure: ${serviceOrder.departureDate ? formatDate(serviceOrder.departureDate) : 'N/A'}
-Return: ${serviceOrder.returnDate ? formatDate(serviceOrder.returnDate) : 'N/A'}
-Total: ${serviceOrder.totalPriceUSD ? formatCurrency(serviceOrder.totalPriceUSD, 'USD') : 'N/A'}`
-    
-    const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(message)}`
-    window.open(whatsappUrl, '_blank')
+    const message = `Visa Details:
+- Number: ${serviceOrder.number}
+- Client: ${serviceOrder.clientName}
+- Product: ${serviceOrder.productType}
+- Total Pax: ${serviceOrder.totalPeople}
+- Status: ${serviceOrder.status}`
+    const encodedMessage = encodeURIComponent(message)
+    window.open(`https://wa.me/?text=${encodedMessage}`, '_blank')
   }
 
+  const handleEdit = () => {
+    navigate({ to: `/service-order-edit/${serviceOrderId}` })
+  }
+
+  // Loading state
   if (isLoading) {
     return (
-      <PageLayout title="Loading..." subtitle="Loading service order details">
-        <div className="flex items-center justify-center h-64">
+      <PageLayout title="Loading...">
+        <div className="flex items-center justify-center py-12">
           <Loader2 className="h-8 w-8 animate-spin" />
+          <span className="ml-2">Loading visa details...</span>
         </div>
       </PageLayout>
     )
   }
 
-  if (error || !serviceOrder) {
+  // Error state
+  if (error) {
     return (
-      <PageLayout title="Error" subtitle="Failed to load service order details">
-        <div className="text-center text-red-600 p-8">
-          {error?.message || "Service order not found"}
+      <PageLayout title="Error">
+        <div className="flex items-center justify-center py-12">
+          <div className="text-center">
+            <p className="text-red-600 mb-4">Failed to load visa details</p>
+            <Button onClick={() => navigate({ to: "/service-orders" })}>
+              Back to Visa
+            </Button>
+          </div>
+        </div>
+      </PageLayout>
+    )
+  }
+
+  // No data state
+  if (!serviceOrder) {
+    return (
+      <PageLayout title="Not Found">
+        <div className="flex items-center justify-center py-12">
+          <div className="text-center">
+            <p className="text-gray-600 mb-4">Visa not found</p>
+            <Button onClick={() => navigate({ to: "/service-orders" })}>
+              Back to Visa
+            </Button>
+          </div>
         </div>
       </PageLayout>
     )
   }
 
   return (
-    <PageLayout title="Service Order Details" subtitle={`SO Number: ${serviceOrder.number}`}>
+    <PageLayout title="Visa Details" subtitle={`Visa Number: ${serviceOrder.number}`}>
       <div className="space-y-6">
-        {/* Header */}
+        {/* Header Actions */}
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-4">
-            <Button 
-              variant="outline" 
-              size="sm"
-              onClick={() => navigate({ to: "/service-orders" })}
-            >
-              <ArrowLeft className="h-4 w-4 mr-2" />
-              Back to Service Orders
-            </Button>
-          </div>
-          <div className="flex items-center space-x-2">
             <Button
               variant="outline"
               size="sm"
-              onClick={handleShareWhatsApp}
+              onClick={() => navigate({ to: '/service-orders' })}
             >
-              <Share className="h-4 w-4 mr-2" />
+              <ArrowLeft className="h-4 w-4 mr-2" />
+              Back to Visa
+            </Button>
+            <Badge className={getStatusColor(serviceOrder.status)}>
+              {serviceOrder.status.toUpperCase()}
+            </Badge>
+          </div>
+          <div className="flex items-center space-x-2">
+            <Button variant="outline" size="sm" onClick={handleShareWhatsApp}>
+              <MessageCircle className="h-4 w-4 mr-2" />
               Share
+            </Button>
+            <Button variant="outline" size="sm" onClick={handleEdit}>
+              <Edit className="h-4 w-4 mr-2" />
+              Edit
             </Button>
           </div>
         </div>
 
-        {/* Service Order Status */}
+        {/* Visa Status */}
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center justify-between">

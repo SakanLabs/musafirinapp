@@ -55,7 +55,7 @@ const navigation = [
     roles: ['admin', 'owner', 'finance']
   },
   {
-    name: 'Service Orders',
+    name: 'Visa',
     href: '/service-orders',
     icon: Plane,
     roles: ['admin', 'owner']

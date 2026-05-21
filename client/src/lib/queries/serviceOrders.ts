@@ -20,7 +20,23 @@ export interface ServiceOrderListItem {
   departureDate: string;
   returnDate: string;
   createdAt: string;
+  meta?: VisaMeta | null;
 }
+
+export type VisaMeta = {
+  hotelMakkah?: { name: string; checkIn: string; checkOut: string };
+  hotelMadinah?: { name: string; checkIn: string; checkOut: string };
+  transportation?: {
+    route1: string; // Airport - Hotel
+    route1Vehicle: string;
+    route2: string; // City - City
+    route2Vehicle: string;
+    route3: string; // Hotel - Airport
+    route3Vehicle: string;
+  };
+  jamaah?: Array<{ name: string; passportNo: string; gender: string }>;
+  googleDriveLink?: string;
+};
 
 export interface CreateServiceOrderData {
   clientId: number;
@@ -32,6 +48,7 @@ export interface CreateServiceOrderData {
   departureDate: string; // ISO date
   returnDate: string; // ISO date
   notes?: string;
+  meta?: VisaMeta | null;
 }
 
 export interface ServiceOrderChecklist {
@@ -96,6 +113,7 @@ export function useCreateServiceOrder() {
         departureDate: data.departureDate,
         returnDate: data.returnDate,
         notes: data.notes || null,
+        meta: data.meta || null,
       };
       const res = await apiClient.post<{ success: boolean; data: any }>(API_ENDPOINTS.SERVICE_ORDERS, payload);
       return res.data;

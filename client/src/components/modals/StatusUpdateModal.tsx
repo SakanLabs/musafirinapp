@@ -63,7 +63,7 @@ export function StatusUpdateModal({
     <Modal
       isOpen={isOpen}
       onClose={handleClose}
-      title="Update Service Order Status"
+      title="Update Visa Status"
       size="sm"
       footer={
         <>

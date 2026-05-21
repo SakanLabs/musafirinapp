@@ -52,16 +52,13 @@ function TransportationBookingDetailPage() {
 
   const getVehicleTypeLabel = (type: string) => {
     switch (type) {
-      case "sedan":
-        return "Sedan";
-      case "suv":
-        return "SUV";
-      case "van":
-        return "Van";
-      case "bus":
-        return "Bus";
-      default:
-        return type;
+      case "sedan": return "Sedan";
+      case "staria": return "Staria";
+      case "hiace": return "Hiace";
+      case "gmc": return "GMC";
+      case "coaster": return "Coaster";
+      case "bus": return "Bus";
+      default: return type;
     }
   };
 

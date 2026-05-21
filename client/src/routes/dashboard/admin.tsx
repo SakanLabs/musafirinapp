@@ -280,7 +280,7 @@ function AdminDashboard() {
             <div className="bg-amber-100 p-2 rounded-lg">
               <Plane className="h-6 w-6 text-amber-600" />
             </div>
-            <h3 className="text-lg font-semibold text-gray-900">Service Orders</h3>
+            <h3 className="text-lg font-semibold text-gray-900">Visa</h3>
           </div>
           <p className="text-gray-600 mb-4">Manage Visa Umrah & Siskopatuh orders.</p>
           <Button variant="outline" className="w-full" onClick={() => navigate({ to: "/service-orders" })}>

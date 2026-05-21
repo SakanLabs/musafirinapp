@@ -24,15 +24,15 @@ function ServiceOrdersPage() {
 
   const handleDelete = async (serviceOrder: ServiceOrderListItem) => {
     const confirmed = window.confirm(
-      `Are you sure you want to delete service order ${serviceOrder.number}? This action cannot be undone.`
+      `Are you sure you want to delete visa ${serviceOrder.number}? This action cannot be undone.`
     )
 
     if (confirmed) {
       try {
         await deleteServiceOrder.mutateAsync(serviceOrder.id.toString())
-        toast.success('Service order deleted successfully!')
+        toast.success('Visa deleted successfully!')
       } catch (error) {
-        console.error('Error deleting service order:', error)
+        console.error('Error deleting visa:', error)
         const msg = error instanceof Error ? error.message : 'An unexpected error occurred'
         toast.error(msg)
       }
@@ -40,7 +40,7 @@ function ServiceOrdersPage() {
   }
 
   const columns: Column<ServiceOrderListItem>[] = [
-    { key: 'number', header: 'SO Number', sortable: true, width: 'w-36' },
+    { key: 'number', header: 'Visa Number', sortable: true, width: 'w-36' },
     { key: 'clientName', header: 'Client', sortable: true },
     { key: 'productType', header: 'Product', sortable: true, width: 'w-32' },
     {
@@ -89,7 +89,7 @@ function ServiceOrdersPage() {
 
   return (
     <PageLayout
-      title="Service Orders (Visa)"
+      title="Visa"
       subtitle="Kelola pesanan layanan visa dan checklist dokumen"
       actions={
         <Link to="/create-service-order">
@@ -105,7 +105,7 @@ function ServiceOrdersPage() {
           data={orders}
           columns={columns}
           loading={isLoading}
-          emptyMessage="No service orders found"
+          emptyMessage="No visa orders found"
         />
       </div>
     </PageLayout>

@@ -338,10 +338,11 @@ function TransportationBookingEditPage() {
                       className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                     >
                       <option value="sedan">Sedan</option>
-                      <option value="suv">SUV</option>
-                      <option value="van">Van</option>
+                      <option value="staria">Staria</option>
+                      <option value="hiace">Hiace</option>
+                      <option value="gmc">GMC</option>
+                      <option value="coaster">Coaster</option>
                       <option value="bus">Bus</option>
-                      <option value="minibus">Minibus</option>
                     </select>
                   </div>
                   <div>

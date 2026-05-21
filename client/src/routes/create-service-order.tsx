@@ -10,10 +10,15 @@ import {
   Save,
   ArrowLeft,
   Loader2,
-  Plane
+  Plane,
+  Building,
+  Car,
+  Link as LinkIcon,
+  Plus,
+  Trash2
 } from "lucide-react"
 import { authService } from "@/lib/auth"
-import { useCreateServiceOrder, type CreateServiceOrderData, type ProductType } from "@/lib/queries/serviceOrders"
+import { useCreateServiceOrder, type CreateServiceOrderData, type ProductType, type VisaMeta } from "@/lib/queries/serviceOrders"
 import { useClients } from "@/lib/queries"
 
 export const Route = createFileRoute("/create-service-order")({ 
@@ -42,7 +47,21 @@ function CreateServiceOrderPage() {
     unitPriceUSD: 0,
     departureDate: "",
     returnDate: "",
-    notes: ""
+    notes: "",
+    meta: {
+      hotelMakkah: { name: "", checkIn: "", checkOut: "" },
+      hotelMadinah: { name: "", checkIn: "", checkOut: "" },
+      transportation: {
+        route1: "Airport - Hotel",
+        route1Vehicle: "",
+        route2: "City - City",
+        route2Vehicle: "",
+        route3: "Hotel - Airport",
+        route3Vehicle: ""
+      },
+      jamaah: [],
+      googleDriveLink: ""
+    } as VisaMeta
   })
 
   const [errors, setErrors] = useState<Record<string, string>>({})
@@ -85,7 +104,8 @@ function CreateServiceOrderPage() {
         unitPriceUSD: formData.unitPriceUSD,
         departureDate: formData.departureDate,
         returnDate: formData.returnDate,
-        notes: formData.notes || undefined
+        notes: formData.notes || undefined,
+        meta: formData.meta
       }
 
       await createServiceOrderMutation.mutateAsync(serviceOrderData)
@@ -106,6 +126,61 @@ function CreateServiceOrderPage() {
     const id = parseInt(clientId)
     setSelectedClientId(clientId)
     handleInputChange("clientId", id)
+  }
+
+  const handleMetaChange = (section: keyof VisaMeta, field: string, value: any) => {
+    setFormData(prev => ({
+      ...prev,
+      meta: {
+        ...prev.meta,
+        [section]: {
+          ...(prev.meta?.[section] as any),
+          [field]: value
+        }
+      }
+    }))
+  }
+
+  const handleDriveLinkChange = (value: string) => {
+    setFormData(prev => ({
+      ...prev,
+      meta: {
+        ...prev.meta,
+        googleDriveLink: value
+      }
+    }))
+  }
+
+  const addJamaah = () => {
+    setFormData(prev => ({
+      ...prev,
+      meta: {
+        ...prev.meta,
+        jamaah: [...(prev.meta?.jamaah || []), { name: "", passportNo: "", gender: "L" }]
+      }
+    }))
+  }
+
+  const updateJamaah = (index: number, field: string, value: string) => {
+    setFormData(prev => {
+      const newJamaah = [...(prev.meta?.jamaah || [])]
+      newJamaah[index] = { ...newJamaah[index], [field]: value }
+      return {
+        ...prev,
+        meta: { ...prev.meta, jamaah: newJamaah }
+      }
+    })
+  }
+
+  const removeJamaah = (index: number) => {
+    setFormData(prev => {
+      const newJamaah = [...(prev.meta?.jamaah || [])]
+      newJamaah.splice(index, 1)
+      return {
+        ...prev,
+        meta: { ...prev.meta, jamaah: newJamaah }
+      }
+    })
   }
 
   const totalPriceUSD = formData.totalPeople * formData.unitPriceUSD
@@ -305,6 +380,203 @@ function CreateServiceOrderPage() {
                 rows={3}
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
+            </div>
+          </Card>
+
+          {/* HOTEL MAKKAH */}
+          <Card className="p-6">
+            <div className="flex items-center space-x-2 mb-4">
+              <Building className="h-5 w-5 text-amber-600" />
+              <h2 className="text-lg font-semibold">Hotel Makkah</h2>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Nama Hotel</label>
+                <Input
+                  value={formData.meta?.hotelMakkah?.name || ""}
+                  onChange={(e) => handleMetaChange("hotelMakkah", "name", e.target.value)}
+                  placeholder="Nama Hotel Makkah"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Check-in</label>
+                <Input
+                  type="date"
+                  value={formData.meta?.hotelMakkah?.checkIn || ""}
+                  onChange={(e) => handleMetaChange("hotelMakkah", "checkIn", e.target.value)}
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Check-out</label>
+                <Input
+                  type="date"
+                  value={formData.meta?.hotelMakkah?.checkOut || ""}
+                  onChange={(e) => handleMetaChange("hotelMakkah", "checkOut", e.target.value)}
+                />
+              </div>
+            </div>
+          </Card>
+
+          {/* HOTEL MADINAH */}
+          <Card className="p-6">
+            <div className="flex items-center space-x-2 mb-4">
+              <Building className="h-5 w-5 text-emerald-600" />
+              <h2 className="text-lg font-semibold">Hotel Madinah</h2>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Nama Hotel</label>
+                <Input
+                  value={formData.meta?.hotelMadinah?.name || ""}
+                  onChange={(e) => handleMetaChange("hotelMadinah", "name", e.target.value)}
+                  placeholder="Nama Hotel Madinah"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Check-in</label>
+                <Input
+                  type="date"
+                  value={formData.meta?.hotelMadinah?.checkIn || ""}
+                  onChange={(e) => handleMetaChange("hotelMadinah", "checkIn", e.target.value)}
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Check-out</label>
+                <Input
+                  type="date"
+                  value={formData.meta?.hotelMadinah?.checkOut || ""}
+                  onChange={(e) => handleMetaChange("hotelMadinah", "checkOut", e.target.value)}
+                />
+              </div>
+            </div>
+          </Card>
+
+          {/* TRANSPORTATION */}
+          <Card className="p-6">
+            <div className="flex items-center space-x-2 mb-4">
+              <Car className="h-5 w-5 text-blue-600" />
+              <h2 className="text-lg font-semibold">Transportasi</h2>
+            </div>
+            <div className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-center">
+                <div className="font-medium text-gray-700">1. Airport - Hotel</div>
+                <select
+                  value={formData.meta?.transportation?.route1Vehicle || ""}
+                  onChange={(e) => handleMetaChange("transportation", "route1Vehicle", e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="">Pilih Kendaraan</option>
+                  <option value="Sedan">Sedan</option>
+                  <option value="Staria">Staria</option>
+                  <option value="Hiace">Hiace</option>
+                  <option value="GMC">GMC</option>
+                  <option value="Coaster">Coaster</option>
+                  <option value="Bus">Bus</option>
+                </select>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-center">
+                <div className="font-medium text-gray-700">2. City - City</div>
+                <select
+                  value={formData.meta?.transportation?.route2Vehicle || ""}
+                  onChange={(e) => handleMetaChange("transportation", "route2Vehicle", e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="">Pilih Kendaraan</option>
+                  <option value="Sedan">Sedan</option>
+                  <option value="Staria">Staria</option>
+                  <option value="Hiace">Hiace</option>
+                  <option value="GMC">GMC</option>
+                  <option value="Coaster">Coaster</option>
+                  <option value="Bus">Bus</option>
+                </select>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-center">
+                <div className="font-medium text-gray-700">3. Hotel - Airport</div>
+                <select
+                  value={formData.meta?.transportation?.route3Vehicle || ""}
+                  onChange={(e) => handleMetaChange("transportation", "route3Vehicle", e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="">Pilih Kendaraan</option>
+                  <option value="Sedan">Sedan</option>
+                  <option value="Staria">Staria</option>
+                  <option value="Hiace">Hiace</option>
+                  <option value="GMC">GMC</option>
+                  <option value="Coaster">Coaster</option>
+                  <option value="Bus">Bus</option>
+                </select>
+              </div>
+            </div>
+          </Card>
+
+          {/* JAMAAH DETAILS */}
+          <Card className="p-6">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center space-x-2">
+                <Users className="h-5 w-5 text-indigo-600" />
+                <h2 className="text-lg font-semibold">Data Jamaah</h2>
+              </div>
+              <Button type="button" variant="outline" size="sm" onClick={addJamaah}>
+                <Plus className="h-4 w-4 mr-2" />
+                Tambah Jamaah
+              </Button>
+            </div>
+            
+            {(!formData.meta?.jamaah || formData.meta.jamaah.length === 0) ? (
+              <p className="text-gray-500 text-sm text-center py-4">Belum ada data jamaah. Silakan tambahkan.</p>
+            ) : (
+              <div className="space-y-4">
+                {formData.meta.jamaah.map((j, index) => (
+                  <div key={index} className="flex flex-col md:flex-row gap-4 items-start md:items-end border p-4 rounded-md relative group">
+                    <div className="flex-1 w-full">
+                      <label className="block text-xs font-medium text-gray-700 mb-1">Nama</label>
+                      <Input value={j.name} onChange={e => updateJamaah(index, "name", e.target.value)} placeholder="Nama Sesuai Paspor" />
+                    </div>
+                    <div className="flex-1 w-full">
+                      <label className="block text-xs font-medium text-gray-700 mb-1">No. Paspor</label>
+                      <Input value={j.passportNo} onChange={e => updateJamaah(index, "passportNo", e.target.value)} placeholder="A1234567" />
+                    </div>
+                    <div className="w-full md:w-32">
+                      <label className="block text-xs font-medium text-gray-700 mb-1">L/P</label>
+                      <select
+                        value={j.gender}
+                        onChange={e => updateJamaah(index, "gender", e.target.value)}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 h-10"
+                      >
+                        <option value="L">Laki-laki</option>
+                        <option value="P">Perempuan</option>
+                      </select>
+                    </div>
+                    <Button 
+                      type="button" 
+                      variant="destructive" 
+                      size="icon" 
+                      className="shrink-0"
+                      onClick={() => removeJamaah(index)}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </Card>
+
+          {/* GOOGLE DRIVE LINK */}
+          <Card className="p-6">
+            <div className="flex items-center space-x-2 mb-4">
+              <LinkIcon className="h-5 w-5 text-blue-500" />
+              <h2 className="text-lg font-semibold">Link Dokumen (Google Drive)</h2>
+            </div>
+            
+            <div>
+              <Input
+                type="url"
+                value={formData.meta?.googleDriveLink || ""}
+                onChange={(e) => handleDriveLinkChange(e.target.value)}
+                placeholder="https://drive.google.com/drive/folders/..."
+              />
+              <p className="text-xs text-gray-500 mt-1">Masukkan link folder Google Drive yang berisi scan paspor, KTP, KK, dll.</p>
             </div>
           </Card>
 

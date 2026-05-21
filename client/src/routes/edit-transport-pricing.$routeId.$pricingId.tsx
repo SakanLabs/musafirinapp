@@ -15,9 +15,10 @@ export const Route = createFileRoute("/edit-transport-pricing/$routeId/$pricingI
 
 const VEHICLE_TYPES = [
   { value: 'sedan', label: 'Sedan' },
-  { value: 'suv', label: 'SUV' },
-  { value: 'van', label: 'Van' },
-  { value: 'minibus', label: 'Minibus' },
+  { value: 'staria', label: 'Staria' },
+  { value: 'hiace', label: 'Hiace' },
+  { value: 'gmc', label: 'GMC' },
+  { value: 'coaster', label: 'Coaster' },
   { value: 'bus', label: 'Bus' }
 ]
 

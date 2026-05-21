@@ -9,7 +9,7 @@ const leadsRoutes = new Hono()
   .get("/", async (c) => {
     try {
       const allLeads = await db.select().from(leads).orderBy(asc(leads.orderIndex), asc(leads.createdAt));
-      
+
       const response: ApiResponse = {
         success: true,
         message: "Leads fetched successfully",
@@ -25,7 +25,7 @@ const leadsRoutes = new Hono()
       return c.json(response, 500);
     }
   })
-  
+
   // Create a new lead
   .post("/", async (c) => {
     try {
@@ -40,7 +40,7 @@ const leadsRoutes = new Hono()
         notes: body.notes || null,
         assignedTo: body.assignedTo || null,
       }).returning();
-      
+
       const response: ApiResponse = {
         success: true,
         message: "Lead created successfully",
@@ -56,13 +56,13 @@ const leadsRoutes = new Hono()
       return c.json(response, 500);
     }
   })
-  
+
   // Update a lead (status, orderIndex, or other details)
   .patch("/:id", async (c) => {
     try {
       const id = parseInt(c.req.param("id"));
       const body = await c.req.json();
-      
+
       const updatedLead = await db.update(leads)
         .set({
           ...body,
@@ -70,11 +70,11 @@ const leadsRoutes = new Hono()
         })
         .where(eq(leads.id, id))
         .returning();
-        
+
       if (!updatedLead.length) {
         return c.json({ success: false, message: "Lead not found" }, 404);
       }
-      
+
       const response: ApiResponse = {
         success: true,
         message: "Lead updated successfully",
@@ -90,12 +90,12 @@ const leadsRoutes = new Hono()
       return c.json(response, 500);
     }
   })
-  
+
   // Update multiple leads ordering (for kanban drag and drop within same column)
   .put("/reorder", async (c) => {
     try {
       const { items } = await c.req.json(); // Array of { id, orderIndex }
-      
+
       await db.transaction(async (tx) => {
         for (const item of items) {
           await tx.update(leads)
@@ -103,20 +103,20 @@ const leadsRoutes = new Hono()
             .where(eq(leads.id, item.id));
         }
       });
-      
+
       return c.json({ success: true, message: "Leads reordered successfully" });
     } catch (error: any) {
       console.error("Error reordering leads:", error);
       return c.json({ success: false, message: "Failed to reorder leads" }, 500);
     }
   })
-  
+
   // Delete a lead
   .delete("/:id", async (c) => {
     try {
       const id = parseInt(c.req.param("id"));
       await db.delete(leads).where(eq(leads.id, id));
-      
+
       const response: ApiResponse = {
         success: true,
         message: "Lead deleted successfully",

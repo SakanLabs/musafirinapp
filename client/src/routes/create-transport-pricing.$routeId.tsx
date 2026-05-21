@@ -15,9 +15,10 @@ export const Route = createFileRoute("/create-transport-pricing/$routeId")({
 
 const VEHICLE_TYPES = [
   { value: 'sedan', label: 'Sedan' },
-  { value: 'suv', label: 'SUV' },
-  { value: 'van', label: 'Van' },
-  { value: 'minibus', label: 'Minibus' },
+  { value: 'staria', label: 'Staria' },
+  { value: 'hiace', label: 'Hiace' },
+  { value: 'gmc', label: 'GMC' },
+  { value: 'coaster', label: 'Coaster' },
   { value: 'bus', label: 'Bus' }
 ]
 
@@ -40,7 +41,7 @@ function CreateTransportPricingPage() {
 
   const [vehicleConfigs, setVehicleConfigs] = useState([
     { id: '1', vehicleType: 'sedan', costPrice: 0, sellingPrice: 0, agentPrice: 0 },
-    { id: '2', vehicleType: 'suv', costPrice: 0, sellingPrice: 0, agentPrice: 0 }
+    { id: '2', vehicleType: 'staria', costPrice: 0, sellingPrice: 0, agentPrice: 0 }
   ])
 
   const handlePeriodChange = (field: string, value: string | boolean) => {
@@ -56,7 +57,7 @@ function CreateTransportPricingPage() {
   const addVehicleConfig = () => {
     setVehicleConfigs(prev => [
       ...prev,
-      { id: Date.now().toString(), vehicleType: 'van', costPrice: 0, sellingPrice: 0, agentPrice: 0 }
+      { id: Date.now().toString(), vehicleType: 'hiace', costPrice: 0, sellingPrice: 0, agentPrice: 0 }
     ])
   }
 

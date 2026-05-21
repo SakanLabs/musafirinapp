@@ -19,7 +19,10 @@ import {
   Trash2,
   Receipt,
   RefreshCw,
-  Eye
+  Eye,
+  Building,
+  Car,
+  Link as LinkIcon
 } from "lucide-react"
 import { authService } from "@/lib/auth"
 import { formatCurrency, formatDate } from "@/lib/utils"
@@ -163,7 +166,7 @@ Total: ${serviceOrder.totalPriceUSD ? formatCurrency(serviceOrder.totalPriceUSD,
 
   if (isLoading) {
     return (
-      <PageLayout title="Loading..." subtitle="Loading service order details">
+      <PageLayout title="Loading..." subtitle="Loading visa details">
         <div className="flex items-center justify-center h-64">
           <Loader2 className="h-8 w-8 animate-spin" />
         </div>
@@ -173,16 +176,16 @@ Total: ${serviceOrder.totalPriceUSD ? formatCurrency(serviceOrder.totalPriceUSD,
 
   if (error || !serviceOrder) {
     return (
-      <PageLayout title="Error" subtitle="Failed to load service order details">
+      <PageLayout title="Error" subtitle="Failed to load visa details">
         <div className="text-center text-red-600 p-8">
-          {error?.message || "Service order not found"}
+          {error?.message || "Visa not found"}
         </div>
       </PageLayout>
     )
   }
 
   return (
-    <PageLayout title="Service Order Details" subtitle={`SO Number: ${serviceOrder.number}`}>
+    <PageLayout title="Visa Details" subtitle={`Visa Number: ${serviceOrder.number}`}>
       <div className="space-y-6">
         {/* Header */}
         <div className="flex items-center justify-between">
@@ -193,7 +196,7 @@ Total: ${serviceOrder.totalPriceUSD ? formatCurrency(serviceOrder.totalPriceUSD,
               onClick={() => navigate({ to: "/service-orders" })}
             >
               <ArrowLeft className="h-4 w-4 mr-2" />
-              Back to Service Orders
+              Back to Visa
             </Button>
           </div>
           <div className="flex items-center space-x-2">
@@ -382,6 +385,151 @@ Total: ${serviceOrder.totalPriceUSD ? formatCurrency(serviceOrder.totalPriceUSD,
             </div>
           </CardContent>
         </Card>
+
+        {/* Hotel Information */}
+        {serviceOrder.meta && (serviceOrder.meta.hotelMakkah?.name || serviceOrder.meta.hotelMadinah?.name) && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center">
+                <Building className="h-5 w-5 mr-2" />
+                Hotel Information
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              {serviceOrder.meta.hotelMakkah?.name && (
+                <div>
+                  <h4 className="font-semibold text-gray-900 mb-2 border-b pb-1">Makkah Hotel</h4>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div>
+                      <label className="text-sm font-medium text-gray-500">Name</label>
+                      <p className="text-base">{serviceOrder.meta.hotelMakkah.name}</p>
+                    </div>
+                    <div>
+                      <label className="text-sm font-medium text-gray-500">Check In</label>
+                      <p className="text-base">{serviceOrder.meta.hotelMakkah.checkIn ? formatDate(serviceOrder.meta.hotelMakkah.checkIn) : 'N/A'}</p>
+                    </div>
+                    <div>
+                      <label className="text-sm font-medium text-gray-500">Check Out</label>
+                      <p className="text-base">{serviceOrder.meta.hotelMakkah.checkOut ? formatDate(serviceOrder.meta.hotelMakkah.checkOut) : 'N/A'}</p>
+                    </div>
+                  </div>
+                </div>
+              )}
+              {serviceOrder.meta.hotelMadinah?.name && (
+                <div>
+                  <h4 className="font-semibold text-gray-900 mb-2 border-b pb-1">Madinah Hotel</h4>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div>
+                      <label className="text-sm font-medium text-gray-500">Name</label>
+                      <p className="text-base">{serviceOrder.meta.hotelMadinah.name}</p>
+                    </div>
+                    <div>
+                      <label className="text-sm font-medium text-gray-500">Check In</label>
+                      <p className="text-base">{serviceOrder.meta.hotelMadinah.checkIn ? formatDate(serviceOrder.meta.hotelMadinah.checkIn) : 'N/A'}</p>
+                    </div>
+                    <div>
+                      <label className="text-sm font-medium text-gray-500">Check Out</label>
+                      <p className="text-base">{serviceOrder.meta.hotelMadinah.checkOut ? formatDate(serviceOrder.meta.hotelMadinah.checkOut) : 'N/A'}</p>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Transportation */}
+        {serviceOrder.meta?.transportation && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center">
+                <Car className="h-5 w-5 mr-2" />
+                Transportation
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="bg-gray-50 p-3 rounded-md">
+                  <label className="text-xs font-medium text-gray-500 uppercase tracking-wider block mb-1">Route 1: Airport - Hotel</label>
+                  <p className="text-base font-semibold">{serviceOrder.meta.transportation.route1Vehicle || 'Not Specified'}</p>
+                </div>
+                <div className="bg-gray-50 p-3 rounded-md">
+                  <label className="text-xs font-medium text-gray-500 uppercase tracking-wider block mb-1">Route 2: City - City</label>
+                  <p className="text-base font-semibold">{serviceOrder.meta.transportation.route2Vehicle || 'Not Specified'}</p>
+                </div>
+                <div className="bg-gray-50 p-3 rounded-md">
+                  <label className="text-xs font-medium text-gray-500 uppercase tracking-wider block mb-1">Route 3: Hotel - Airport</label>
+                  <p className="text-base font-semibold">{serviceOrder.meta.transportation.route3Vehicle || 'Not Specified'}</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Jamaah List */}
+        {serviceOrder.meta?.jamaah && serviceOrder.meta.jamaah.length > 0 && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center justify-between">
+                <div className="flex items-center">
+                  <Users className="h-5 w-5 mr-2" />
+                  Jamaah Details
+                </div>
+                <Badge variant="outline">{serviceOrder.meta.jamaah.length} People</Badge>
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm text-left">
+                  <thead className="text-xs text-gray-700 uppercase bg-gray-50">
+                    <tr>
+                      <th className="px-4 py-3 rounded-tl-md">No</th>
+                      <th className="px-4 py-3">Nama</th>
+                      <th className="px-4 py-3">No. Paspor</th>
+                      <th className="px-4 py-3 rounded-tr-md">L/P</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {serviceOrder.meta.jamaah.map((j: any, index: number) => (
+                      <tr key={index} className="border-b last:border-0 hover:bg-gray-50">
+                        <td className="px-4 py-3">{index + 1}</td>
+                        <td className="px-4 py-3 font-medium">{j.name}</td>
+                        <td className="px-4 py-3">{j.passportNo}</td>
+                        <td className="px-4 py-3">{j.gender === 'L' ? 'Laki-laki' : j.gender === 'P' ? 'Perempuan' : j.gender}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Documents Link */}
+        {serviceOrder.meta?.googleDriveLink && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center">
+                <LinkIcon className="h-5 w-5 mr-2" />
+                Documents
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <a 
+                href={serviceOrder.meta.googleDriveLink} 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+              >
+                <LinkIcon className="h-4 w-4 mr-2" />
+                Open Google Drive Folder
+              </a>
+              <p className="mt-2 text-sm text-gray-500">
+                Contains all jamaah documents (Visa, Passport, KTP, KK, etc).
+              </p>
+            </CardContent>
+          </Card>
+        )}
 
         {/* Pricing Information */}
         <Card>

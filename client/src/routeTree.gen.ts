@@ -53,7 +53,6 @@ import { Route as MasterTransportEditRouteIdRouteImport } from './routes/master-
 import { Route as MasterTransportDetailRouteIdRouteImport } from './routes/master-transport-detail.$routeId'
 import { Route as MasterHotelEditHotelIdRouteImport } from './routes/master-hotel-edit.$hotelId'
 import { Route as MasterHotelDetailHotelIdRouteImport } from './routes/master-hotel-detail.$hotelId'
-import { Route as LeadDetailLeadIdRouteImport } from './routes/lead-detail.$leadId'
 import { Route as DashboardMuthowifsRouteImport } from './routes/dashboard/muthowifs'
 import { Route as DashboardAdminRouteImport } from './routes/dashboard/admin'
 import { Route as CustomLaQuotationIdRouteImport } from './routes/custom-la-quotation.$id'
@@ -298,11 +297,6 @@ const MasterHotelDetailHotelIdRoute =
     path: '/master-hotel-detail/$hotelId',
     getParentRoute: () => rootRouteImport,
   } as any)
-const LeadDetailLeadIdRoute = LeadDetailLeadIdRouteImport.update({
-  id: '/lead-detail/$leadId',
-  path: '/lead-detail/$leadId',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const DashboardMuthowifsRoute = DashboardMuthowifsRouteImport.update({
   id: '/muthowifs',
   path: '/muthowifs',
@@ -427,7 +421,6 @@ export interface FileRoutesByFullPath {
   '/custom-la-quotation/$id': typeof CustomLaQuotationIdRoute
   '/dashboard/admin': typeof DashboardAdminRoute
   '/dashboard/muthowifs': typeof DashboardMuthowifsRouteWithChildren
-  '/lead-detail/$leadId': typeof LeadDetailLeadIdRoute
   '/master-hotel-detail/$hotelId': typeof MasterHotelDetailHotelIdRoute
   '/master-hotel-edit/$hotelId': typeof MasterHotelEditHotelIdRoute
   '/master-transport-detail/$routeId': typeof MasterTransportDetailRouteIdRoute
@@ -488,7 +481,6 @@ export interface FileRoutesByTo {
   '/custom-la-quotation/$id': typeof CustomLaQuotationIdRoute
   '/dashboard/admin': typeof DashboardAdminRoute
   '/dashboard/muthowifs': typeof DashboardMuthowifsRouteWithChildren
-  '/lead-detail/$leadId': typeof LeadDetailLeadIdRoute
   '/master-hotel-detail/$hotelId': typeof MasterHotelDetailHotelIdRoute
   '/master-hotel-edit/$hotelId': typeof MasterHotelEditHotelIdRoute
   '/master-transport-detail/$routeId': typeof MasterTransportDetailRouteIdRoute
@@ -551,7 +543,6 @@ export interface FileRoutesById {
   '/custom-la-quotation/$id': typeof CustomLaQuotationIdRoute
   '/dashboard/admin': typeof DashboardAdminRoute
   '/dashboard/muthowifs': typeof DashboardMuthowifsRouteWithChildren
-  '/lead-detail/$leadId': typeof LeadDetailLeadIdRoute
   '/master-hotel-detail/$hotelId': typeof MasterHotelDetailHotelIdRoute
   '/master-hotel-edit/$hotelId': typeof MasterHotelEditHotelIdRoute
   '/master-transport-detail/$routeId': typeof MasterTransportDetailRouteIdRoute
@@ -615,7 +606,6 @@ export interface FileRouteTypes {
     | '/custom-la-quotation/$id'
     | '/dashboard/admin'
     | '/dashboard/muthowifs'
-    | '/lead-detail/$leadId'
     | '/master-hotel-detail/$hotelId'
     | '/master-hotel-edit/$hotelId'
     | '/master-transport-detail/$routeId'
@@ -676,7 +666,6 @@ export interface FileRouteTypes {
     | '/custom-la-quotation/$id'
     | '/dashboard/admin'
     | '/dashboard/muthowifs'
-    | '/lead-detail/$leadId'
     | '/master-hotel-detail/$hotelId'
     | '/master-hotel-edit/$hotelId'
     | '/master-transport-detail/$routeId'
@@ -738,7 +727,6 @@ export interface FileRouteTypes {
     | '/custom-la-quotation/$id'
     | '/dashboard/admin'
     | '/dashboard/muthowifs'
-    | '/lead-detail/$leadId'
     | '/master-hotel-detail/$hotelId'
     | '/master-hotel-edit/$hotelId'
     | '/master-transport-detail/$routeId'
@@ -798,7 +786,6 @@ export interface RootRouteChildren {
   CreateTransportPricingRouteIdRoute: typeof CreateTransportPricingRouteIdRoute
   CustomLaDetailIdRoute: typeof CustomLaDetailIdRoute
   CustomLaQuotationIdRoute: typeof CustomLaQuotationIdRoute
-  LeadDetailLeadIdRoute: typeof LeadDetailLeadIdRoute
   MasterHotelDetailHotelIdRoute: typeof MasterHotelDetailHotelIdRoute
   MasterHotelEditHotelIdRoute: typeof MasterHotelEditHotelIdRoute
   MasterTransportDetailRouteIdRoute: typeof MasterTransportDetailRouteIdRoute
@@ -1121,13 +1108,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof MasterHotelDetailHotelIdRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/lead-detail/$leadId': {
-      id: '/lead-detail/$leadId'
-      path: '/lead-detail/$leadId'
-      fullPath: '/lead-detail/$leadId'
-      preLoaderRoute: typeof LeadDetailLeadIdRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/dashboard/muthowifs': {
       id: '/dashboard/muthowifs'
       path: '/muthowifs'
@@ -1353,7 +1333,6 @@ const rootRouteChildren: RootRouteChildren = {
   CreateTransportPricingRouteIdRoute: CreateTransportPricingRouteIdRoute,
   CustomLaDetailIdRoute: CustomLaDetailIdRoute,
   CustomLaQuotationIdRoute: CustomLaQuotationIdRoute,
-  LeadDetailLeadIdRoute: LeadDetailLeadIdRoute,
   MasterHotelDetailHotelIdRoute: MasterHotelDetailHotelIdRoute,
   MasterHotelEditHotelIdRoute: MasterHotelEditHotelIdRoute,
   MasterTransportDetailRouteIdRoute: MasterTransportDetailRouteIdRoute,
