@@ -103,6 +103,12 @@ const navigation = [
     roles: ['admin', 'owner']
   },
   {
+    name: 'Master Layanan (LA)',
+    href: '/master-services',
+    icon: Package,
+    roles: ['admin', 'owner']
+  },
+  {
     name: 'Master Muthowifs',
     href: '/dashboard/muthowifs',
     icon: UserCheck,

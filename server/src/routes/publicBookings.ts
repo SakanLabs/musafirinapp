@@ -1,6 +1,6 @@
 import { Hono } from "hono";
 import { db } from "../db";
-import { bookings, invoices, vouchers, transportationBookings, transportationInvoices, transportationVouchers, transportationRoutes, serviceOrders, serviceOrderInvoices, serviceOrderReceipts, clients, bookingItems, bookingItemPricingPeriods, receipts } from "../db/schema";
+import { bookings, invoices, vouchers, transportationBookings, transportationInvoices, transportationVouchers, transportationRoutes, serviceOrders, serviceOrderInvoices, serviceOrderReceipts, clients, bookingItems, bookingItemPricingPeriods, receipts, customLaRequests, customLaInvoices, customLaReceipts } from "../db/schema";
 import { eq, desc, inArray } from "drizzle-orm";
 import { supabaseAuth } from "../middleware/supabaseAuth";
 
@@ -356,6 +356,65 @@ app.get("/service-orders/list", async (c) => {
     
   } catch (error) {
     console.error("Fetch service orders failed:", error);
+    return c.json({ success: false, error: "Internal Server Error" }, 500);
+  }
+});
+
+// GET /api/public/bookings/custom-la/list
+app.get("/custom-la/list", async (c) => {
+  try {
+    const user = (c as any).get('supabaseUser');
+    const clientId = user.clientId;
+    
+    if (!clientId) {
+      return c.json({ success: true, data: [] });
+    }
+
+    const laRequests = await db
+      .select()
+      .from(customLaRequests)
+      .where(eq(customLaRequests.clientId, clientId))
+      .orderBy(desc(customLaRequests.createdAt));
+
+    if (laRequests.length === 0) {
+      return c.json({ success: true, data: [] });
+    }
+
+    const requestIds = laRequests.map(r => r.id);
+
+    // Fetch related invoices and receipts
+    const relatedInvoices = await db.select().from(customLaInvoices).where(inArray(customLaInvoices.customLaRequestId, requestIds));
+    const relatedReceipts = await db.select().from(customLaReceipts).where(inArray(customLaReceipts.customLaRequestId, requestIds));
+    
+    // Fetch related sub-bookings to calculate summaries
+    const relatedHotels = await db.select().from(bookings).where(inArray(bookings.customLaRequestId, requestIds));
+    const relatedTransports = await db.select().from(transportationBookings).where(inArray(transportationBookings.customLaRequestId, requestIds));
+    const relatedServices = await db.select().from(serviceOrders).where(inArray(serviceOrders.customLaRequestId, requestIds));
+
+    const formattedRequests = laRequests.map(request => {
+      const bInvoice = relatedInvoices.find(i => i.customLaRequestId === request.id);
+      const bReceipt = relatedReceipts.find(r => r.customLaRequestId === request.id);
+      
+      const hotels = relatedHotels.filter(h => h.customLaRequestId === request.id);
+      const transports = relatedTransports.filter(t => t.customLaRequestId === request.id);
+      const services = relatedServices.filter(s => s.customLaRequestId === request.id);
+
+      return {
+        ...request,
+        subBookings: {
+          hotels,
+          transports,
+          services
+        },
+        invoice: bInvoice || null,
+        receipt: bReceipt || null
+      }
+    });
+
+    return c.json({ success: true, data: formattedRequests });
+    
+  } catch (error) {
+    console.error("Fetch custom LA requests failed:", error);
     return c.json({ success: false, error: "Internal Server Error" }, 500);
   }
 });

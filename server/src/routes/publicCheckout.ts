@@ -1,7 +1,7 @@
 import { Hono } from "hono";
 import { db } from "../db";
-import { clients, bookings, invoices, bookingItems, transportationBookings, transportationRoutes, transportationInvoices, user, customLaRequests } from "../db/schema";
-import { eq } from "drizzle-orm";
+import { clients, bookings, invoices, bookingItems, transportationBookings, transportationRoutes, transportationInvoices, user, customLaRequests, serviceOrders, hotels, serviceMaster } from "../db/schema";
+import { eq, inArray } from "drizzle-orm";
 import { supabaseAuth } from "../middleware/supabaseAuth";
 
 const app = new Hono();
@@ -190,25 +190,214 @@ async function handleCustomLaCheckout(c: any, supabaseUser: any, body: any) {
   const clientId = await getOrCreateClient(supabaseUser.email, customerName, customerPhone);
 
   const totalAmountSAR = parseFloat(body.totals?.grandTotal || 0).toFixed(2);
-  const totalPax = parseInt(body.totals?.totalPax || 1);
+  const totalPax = parseInt(body.totals?.totalPax || body.jumlahJamaah || 1);
 
-  const newRequest = await db.insert(customLaRequests).values({
-    number: generateBookingCode("CLA"),
-    clientId: clientId,
-    customerName: customerName,
-    customerPhone: customerPhone,
-    customerEmail: supabaseUser.email,
-    travelName: body.namaTravel || null,
-    status: "pending",
-    totalAmountSAR: totalAmountSAR,
-    totalPax: totalPax,
-    meta: body, // store full form data
-  }).returning({ id: customLaRequests.id, number: customLaRequests.number });
+  let makkahHotelName = "Makkah Hotel";
+  let madinahHotelName = "Madinah Hotel";
+
+  if (body.makkahHotelId) {
+    const mh = await db.query.hotels.findFirst({ where: eq(hotels.id, parseInt(body.makkahHotelId)) });
+    if (mh) makkahHotelName = mh.name;
+  }
+  
+  if (body.madinahHotelId) {
+    const dh = await db.query.hotels.findFirst({ where: eq(hotels.id, parseInt(body.madinahHotelId)) });
+    if (dh) madinahHotelName = dh.name;
+  }
+
+  let dynamicServicesTotal = 0;
+  const dynamicHandlingDetails: Record<string, number> = {};
+  const dynamicServicesList = [];
+
+  if (body.selectedServiceIds && Array.isArray(body.selectedServiceIds) && body.selectedServiceIds.length > 0) {
+    const services = await db.query.serviceMaster.findMany({
+      where: inArray(serviceMaster.id, body.selectedServiceIds)
+    });
+    
+    for (const service of services) {
+      const priceNum = parseFloat(service.price);
+      let calculatedPrice = priceNum;
+      if (service.unitType === 'Per Pax') {
+         calculatedPrice = priceNum * totalPax;
+      }
+      dynamicServicesTotal += calculatedPrice;
+      
+      dynamicHandlingDetails[service.name] = calculatedPrice;
+      dynamicServicesList.push({
+         id: service.id,
+         name: service.name,
+         category: service.category,
+         calculatedPrice: calculatedPrice
+      });
+    }
+  }
+
+  // Map simplehotel payload to musafirinapp standard meta format so the UI renders it correctly
+  const mappedMeta = {
+    ...body,
+    type: "custom_la",
+    tanggalKedatangan: body.tanggalKedatangan,
+    tanggalKeberangkatan: body.tanggalKeberangkatan,
+    rooms: {
+      makkah: {
+        nights: parseInt(body.malamMakkah) || 0,
+        quadQty: parseInt(body.kamarQuad) || 0, quadPrice: body.totals?.makkahRoomPrices?.quad || 0,
+        tripleQty: parseInt(body.kamarTriple) || 0, triplePrice: body.totals?.makkahRoomPrices?.triple || 0,
+        doubleQty: parseInt(body.kamarDouble) || 0, doublePrice: body.totals?.makkahRoomPrices?.double || 0,
+        singleQty: parseInt(body.kamarSingle) || 0, singlePrice: body.totals?.makkahRoomPrices?.single || 0,
+      },
+      madinah: {
+        nights: parseInt(body.malamMadinah) || 0,
+        quadQty: parseInt(body.kamarQuad) || 0, quadPrice: body.totals?.madinahRoomPrices?.quad || 0,
+        tripleQty: parseInt(body.kamarTriple) || 0, triplePrice: body.totals?.madinahRoomPrices?.triple || 0,
+        doubleQty: parseInt(body.kamarDouble) || 0, doublePrice: body.totals?.madinahRoomPrices?.double || 0,
+        singleQty: parseInt(body.kamarSingle) || 0, singlePrice: body.totals?.madinahRoomPrices?.single || 0,
+      }
+    },
+    handlingDetails: {
+      ...dynamicHandlingDetails,
+      keretaCepat: body.tiketKeretaCepat ? (150 * totalPax) : 0,
+    },
+    totals: {
+      ...body.totals,
+      includeVisa: body.visaSiskopatuh,
+      visaTotal: body.visaSiskopatuh ? (750 * totalPax) : 0,
+    }
+  };
+
+  const newRequest = await db.transaction(async (tx) => {
+    const laNumber = generateBookingCode("CLA");
+    const [laReq] = await tx.insert(customLaRequests).values({
+      number: laNumber,
+      clientId: clientId,
+      customerName: customerName,
+      customerPhone: customerPhone,
+      customerEmail: supabaseUser.email,
+      travelName: body.namaTravel || null,
+      status: "pending",
+      totalAmountSAR: totalAmountSAR,
+      totalPax: totalPax,
+      meta: mappedMeta, 
+    }).returning({ id: customLaRequests.id, number: customLaRequests.number });
+    
+    const laId = laReq!.id;
+    const checkInDate = new Date(body.tanggalKedatangan || new Date());
+    let checkoutMakkah = new Date(checkInDate);
+    checkoutMakkah.setDate(checkoutMakkah.getDate() + (parseInt(body.malamMakkah) || 0));
+
+    // Auto Create Makkah Booking
+    if (body.makkahHotelId) {
+      const bCode = generateBookingCode("BKG-MKH");
+      const [mkhBkg] = await tx.insert(bookings).values({
+        code: bCode,
+        clientId: clientId,
+        bookingStatus: "pending",
+        hotelName: makkahHotelName,
+        city: "Makkah",
+        checkIn: checkInDate,
+        checkOut: checkoutMakkah,
+        customLaRequestId: laId,
+        totalAmount: String(body.totals?.makkahHotelTotal || 0)
+      }).returning();
+      
+      const kQuad = parseInt(body.kamarQuad)||0;
+      const kTriple = parseInt(body.kamarTriple)||0;
+      const kDouble = parseInt(body.kamarDouble)||0;
+      const kSingle = parseInt(body.kamarSingle)||0;
+      
+      if (kQuad > 0) await tx.insert(bookingItems).values({ bookingId: mkhBkg!.id, roomType: 'Quad', roomCount: kQuad, unitPrice: String(body.totals?.makkahRoomPrices?.quad || 0) });
+      if (kTriple > 0) await tx.insert(bookingItems).values({ bookingId: mkhBkg!.id, roomType: 'Triple', roomCount: kTriple, unitPrice: String(body.totals?.makkahRoomPrices?.triple || 0) });
+      if (kDouble > 0) await tx.insert(bookingItems).values({ bookingId: mkhBkg!.id, roomType: 'Double', roomCount: kDouble, unitPrice: String(body.totals?.makkahRoomPrices?.double || 0) });
+      if (kSingle > 0) await tx.insert(bookingItems).values({ bookingId: mkhBkg!.id, roomType: 'Single', roomCount: kSingle, unitPrice: String(body.totals?.makkahRoomPrices?.single || 0) });
+    }
+
+    // Auto Create Madinah Booking
+    if (body.madinahHotelId) {
+      let checkoutMadinah = new Date(checkoutMakkah);
+      checkoutMadinah.setDate(checkoutMadinah.getDate() + (parseInt(body.malamMadinah) || 0));
+      
+      const bCode = generateBookingCode("BKG-MDN");
+      const [mdnBkg] = await tx.insert(bookings).values({
+        code: bCode,
+        clientId: clientId,
+        bookingStatus: "pending",
+        hotelName: madinahHotelName,
+        city: "Madinah",
+        checkIn: checkoutMakkah,
+        checkOut: checkoutMadinah,
+        customLaRequestId: laId,
+        totalAmount: String(body.totals?.madinahHotelTotal || 0)
+      }).returning();
+      
+      const kQuad = parseInt(body.kamarQuad)||0;
+      const kTriple = parseInt(body.kamarTriple)||0;
+      const kDouble = parseInt(body.kamarDouble)||0;
+      const kSingle = parseInt(body.kamarSingle)||0;
+
+      if (kQuad > 0) await tx.insert(bookingItems).values({ bookingId: mdnBkg!.id, roomType: 'Quad', roomCount: kQuad, unitPrice: String(body.totals?.madinahRoomPrices?.quad || 0) });
+      if (kTriple > 0) await tx.insert(bookingItems).values({ bookingId: mdnBkg!.id, roomType: 'Triple', roomCount: kTriple, unitPrice: String(body.totals?.madinahRoomPrices?.triple || 0) });
+      if (kDouble > 0) await tx.insert(bookingItems).values({ bookingId: mdnBkg!.id, roomType: 'Double', roomCount: kDouble, unitPrice: String(body.totals?.madinahRoomPrices?.double || 0) });
+      if (kSingle > 0) await tx.insert(bookingItems).values({ bookingId: mdnBkg!.id, roomType: 'Single', roomCount: kSingle, unitPrice: String(body.totals?.madinahRoomPrices?.single || 0) });
+    }
+
+    // Auto Create Transports
+    if (body.selectedTransports && body.selectedTransports.length > 0) {
+      const tCode = generateBookingCode("TRP");
+        const [trBkg] = await tx.insert(transportationBookings).values({
+          number: tCode,
+          clientId: clientId,
+          customerName: customerName,
+          customerPhone: customerPhone,
+          customerEmail: supabaseUser.email,
+          status: "pending",
+          customLaRequestId: laId,
+          totalAmount: String(body.totals?.totalTransport || 0),
+          currency: "SAR"
+        }).returning();
+
+        for (const route of body.selectedTransports) {
+          let vehicleEnum = route.vehicle?.toLowerCase();
+          if (!['sedan', 'staria', 'hiace', 'gmc', 'coaster', 'bus'].includes(vehicleEnum)) {
+            vehicleEnum = 'bus'; 
+          }
+          await tx.insert(transportationRoutes).values({
+            transportationBookingId: trBkg!.id,
+            pickupDateTime: checkInDate,
+            originLocation: route.origin || "TBD",
+            destinationLocation: route.destination || "TBD",
+            vehicleType: vehicleEnum as any,
+            price: String(route.price || 0),
+            currency: "SAR"
+          });
+        }
+    }
+
+    // Auto Create Visa Service Order
+    if (body.visaSiskopatuh) {
+      const soCode = generateBookingCode("SO");
+      await tx.insert(serviceOrders).values({
+        number: soCode,
+        clientId: clientId,
+        status: "draft",
+        productType: "visa_umrah",
+        customLaRequestId: laId,
+        groupLeaderName: customerName,
+        totalPeople: totalPax,
+        unitPriceUSD: "0",
+        totalPriceUSD: "0",
+        totalPriceSAR: String(body.totals?.subTotalHandling || 0),
+        departureDate: checkInDate,
+        returnDate: new Date(body.tanggalKeberangkatan || new Date())
+      });
+    }
+
+    return laReq;
+  });
 
   return c.json({ 
     success: true, 
-    requestId: newRequest[0]!.id,
-    requestNumber: newRequest[0]!.number,
+    requestId: newRequest!.id,
+    requestNumber: newRequest!.number,
     message: "Custom LA Request submitted successfully!"
   });
 }

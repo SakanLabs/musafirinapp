@@ -1,6 +1,9 @@
 import puppeteer from 'puppeteer';
 import QRCode from 'qrcode';
 import { Client as MinioClient } from 'minio';
+import Handlebars from 'handlebars';
+import fs from 'fs';
+import path from 'path';
 import type { Booking, Invoice, Voucher, Client } from '../db/schema';
 import { templateEngine, TemplateHelpers } from './template';
 
@@ -1091,5 +1094,126 @@ export async function generateTransportationVoucherPDF(
   } catch (error) {
     await browser.close();
     throw error;
+  }
+}
+
+
+export async function generateCustomLaInvoicePDF(
+  invoiceData: any
+): Promise<string> {
+  const browser = await puppeteer.launch({ headless: true, args: ['--no-sandbox', '--disable-setuid-sandbox'] });
+  try {
+    const page = await browser.newPage();
+    const templatePath = path.join(__dirname, '../templates/custom-la-invoice.html');
+    const templateSource = fs.readFileSync(templatePath, 'utf8');
+    const template = Handlebars.compile(templateSource);
+
+    const logoPath = path.join(__dirname, '../templates/logomusafirin.png');
+    const logoBase64 = fs.readFileSync(logoPath, 'base64');
+    
+    // Default bank if not provided
+    const defaultBank = {
+      bankName: 'Bank Syariah Indonesia',
+      bankCountry: 'Indonesia',
+      accountName: 'PT Musafirin Internasional',
+      accountNumberOrIBAN: '7254459741'
+    };
+
+    const data = {
+      ...invoiceData,
+      logoBase64,
+      bank: invoiceData.bank || defaultBank,
+      brandName: 'Musafirin'
+    };
+
+    const html = template(data);
+    await page.setContent(html, { waitUntil: 'networkidle0' });
+
+    const fileName = `${invoiceData.invoiceNo}.pdf`;
+    const tempFilePath = path.join(__dirname, '../../temp', fileName);
+    
+    if (!fs.existsSync(path.join(__dirname, '../../temp'))) {
+      fs.mkdirSync(path.join(__dirname, '../../temp'), { recursive: true });
+    }
+
+    await page.pdf({
+      path: tempFilePath,
+      format: 'A4',
+      printBackground: true,
+      margin: { top: '20px', right: '20px', bottom: '20px', left: '20px' }
+    });
+
+    const fileStream = fs.createReadStream(tempFilePath);
+    await minioClient.putObject(
+      (process.env.MINIO_BUCKET || 'musafirin-assets'),
+      `receipts/${fileName}`,
+      fileStream,
+      fs.statSync(tempFilePath).size,
+      { 'Content-Type': 'application/pdf' }
+    );
+
+    fs.unlinkSync(tempFilePath);
+    
+    // In local dev, use port 3000 mapping if (process.env.MINIO_ENDPOINT || 'localhost') is localhost
+    const isLocal = (process.env.MINIO_ENDPOINT || 'localhost').includes('localhost') || (process.env.MINIO_ENDPOINT || 'localhost').includes('127.0.0.1');
+    const endpoint = isLocal ? 'localhost:9000' : (process.env.MINIO_ENDPOINT || 'localhost');
+    return `http://${endpoint}/${(process.env.MINIO_BUCKET || 'musafirin-assets')}/receipts/${fileName}`;
+  } finally {
+    await browser.close();
+  }
+}
+
+export async function generateCustomLaReceiptPDF(
+  receiptData: any
+): Promise<string> {
+  const browser = await puppeteer.launch({ headless: true, args: ['--no-sandbox', '--disable-setuid-sandbox'] });
+  try {
+    const page = await browser.newPage();
+    const templatePath = path.join(__dirname, '../templates/custom-la-receipt.html');
+    const templateSource = fs.readFileSync(templatePath, 'utf8');
+    const template = Handlebars.compile(templateSource);
+
+    const logoPath = path.join(__dirname, '../templates/logomusafirin.png');
+    const logoBase64 = fs.readFileSync(logoPath, 'base64');
+
+    const data = {
+      ...receiptData,
+      logoBase64,
+      brandName: 'Musafirin'
+    };
+
+    const html = template(data);
+    await page.setContent(html, { waitUntil: 'networkidle0' });
+
+    const fileName = `${receiptData.receiptNo}.pdf`;
+    const tempFilePath = path.join(__dirname, '../../temp', fileName);
+    
+    if (!fs.existsSync(path.join(__dirname, '../../temp'))) {
+      fs.mkdirSync(path.join(__dirname, '../../temp'), { recursive: true });
+    }
+
+    await page.pdf({
+      path: tempFilePath,
+      format: 'A4',
+      printBackground: true,
+      margin: { top: '20px', right: '20px', bottom: '20px', left: '20px' }
+    });
+
+    const fileStream = fs.createReadStream(tempFilePath);
+    await minioClient.putObject(
+      (process.env.MINIO_BUCKET || 'musafirin-assets'),
+      `receipts/${fileName}`,
+      fileStream,
+      fs.statSync(tempFilePath).size,
+      { 'Content-Type': 'application/pdf' }
+    );
+
+    fs.unlinkSync(tempFilePath);
+    
+    const isLocal = (process.env.MINIO_ENDPOINT || 'localhost').includes('localhost') || (process.env.MINIO_ENDPOINT || 'localhost').includes('127.0.0.1');
+    const endpoint = isLocal ? 'localhost:9000' : (process.env.MINIO_ENDPOINT || 'localhost');
+    return `http://${endpoint}/${(process.env.MINIO_BUCKET || 'musafirin-assets')}/receipts/${fileName}`;
+  } finally {
+    await browser.close();
   }
 }

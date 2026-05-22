@@ -59,13 +59,16 @@ export const verification = pgTable('verification', {
 export const cityEnum = pgEnum('city', ['Makkah', 'Madinah']);
 export const paymentStatusEnum = pgEnum('payment_status', ['unpaid', 'partial', 'paid', 'overdue']);
 export const bookingStatusEnum = pgEnum('booking_status', ['pending', 'confirmed', 'cancelled']);
-export const customLaRequestStatusEnum = pgEnum('custom_la_request_status', ['pending', 'quoted', 'invoiced', 'cancelled']);
+export const customLaRequestStatusEnum = pgEnum('custom_la_request_status', ['pending', 'quoted', 'approved', 'invoiced', 'completed', 'cancelled']);
 // roomTypeEnum removed - now using varchar for flexibility
-export const invoiceStatusEnum = pgEnum('invoice_status', ['draft', 'sent', 'paid', 'overdue', 'cancelled']);
+export const invoiceStatusEnum = pgEnum('invoice_status', ['draft', 'sent', 'partially_paid', 'paid', 'overdue', 'cancelled']);
 export const mealPlanEnum = pgEnum('meal_plan', ['Breakfast', 'Half Board', 'Full Board', 'Room Only']);
 // Service Orders enums (new products: Visa Umrah, Siskopatuh)
 export const serviceOrderProductEnum = pgEnum('service_order_product', ['visa_umrah', 'siskopatuh']);
 export const serviceOrderStatusEnum = pgEnum('service_order_status', ['draft', 'submitted', 'paid', 'cancelled']);
+
+// Master Services Enum
+export const serviceCategoryEnum = pgEnum('service_category', ['Visa', 'Siskopatuh', 'Transportasi', 'Handling Airport', 'Handling Hotel', 'Muthowif', 'Tiket Museum', 'Lainnya']);
 
 // CRM / Lead Management Enums
 export const leadStatusEnum = pgEnum('lead_status', ['NEW', 'DISCUSSION', 'QUOTED', 'FOLLOW_UP', 'WON', 'LOST']);
@@ -136,6 +139,7 @@ export const bookings = pgTable('bookings', {
   paymentStatus: paymentStatusEnum('payment_status').default('unpaid').notNull(),
   bookingStatus: bookingStatusEnum('booking_status').default('pending').notNull(),
   hotelConfirmationNo: varchar('hotel_confirmation_no', { length: 100 }),
+  customLaRequestId: integer('custom_la_request_id').references(() => customLaRequests.id, { onDelete: 'set null' }), // Added for LA integration
   meta: jsonb('meta'),
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
@@ -281,12 +285,27 @@ export const hotelPricingPeriods = pgTable('hotel_pricing_periods', {
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
 });
 
+// Master Services Table
+export const serviceMaster = pgTable('service_master', {
+  id: serial('id').primaryKey(),
+  name: varchar('name', { length: 255 }).notNull(),
+  category: serviceCategoryEnum('category').notNull(),
+  price: decimal('price', { precision: 10, scale: 2 }).notNull(),
+  unitType: varchar('unit_type', { length: 50 }).notNull().default('Per Pax'), // e.g. "Per Pax", "Per Group"
+  description: text('description'),
+  isActive: boolean('is_active').default(true).notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+});
+
 // Service Orders table (generic for Visa Umrah & Siskopatuh)
 export const serviceOrders = pgTable('service_orders', {
   id: serial('id').primaryKey(),
   number: varchar('number', { length: 50 }).notNull().unique(), // Format: SO-YYYY-XXXX
   clientId: integer('client_id').notNull().references(() => clients.id, { onDelete: 'cascade' }),
   userId: text('user_id').references(() => user.id, { onDelete: 'set null' }), // User who created (for pricing)
+  servicePackage: text('service_package'), // Example: Standard, Premium, dll.
+  customLaRequestId: integer('custom_la_request_id').references(() => customLaRequests.id, { onDelete: 'set null' }), // Added for LA integration
   productType: serviceOrderProductEnum('product_type').notNull(),
   status: serviceOrderStatusEnum('status').default('draft').notNull(),
   groupLeaderName: varchar('group_leader_name', { length: 255 }).notNull(), // Penanggung Jawab Grup
@@ -368,6 +387,7 @@ export const transportationBookings = pgTable('transportation_bookings', {
   customerName: varchar('customer_name', { length: 255 }).notNull(),
   customerPhone: varchar('customer_phone', { length: 50 }),
   customerEmail: varchar('customer_email', { length: 255 }),
+  customLaRequestId: integer('custom_la_request_id').references(() => customLaRequests.id, { onDelete: 'set null' }), // Added for LA integration
   status: transportationStatusEnum('status').default('pending').notNull(),
   totalAmount: decimal('total_amount', { precision: 10, scale: 2 }).notNull(),
   currency: varchar('currency', { length: 3 }).default('SAR').notNull(),
@@ -634,6 +654,60 @@ export type TransportationVoucher = typeof transportationVouchers.$inferSelect;
 export type NewTransportationVoucher = typeof transportationVouchers.$inferInsert;
 export type BookingServiceItem = typeof bookingServiceItems.$inferSelect;
 export type NewBookingServiceItem = typeof bookingServiceItems.$inferInsert;
+
+// Custom LA Billing
+export const customLaInvoices = pgTable("custom_la_invoices", {
+  id: serial("id").primaryKey(),
+  number: varchar("number", { length: 50 }).notNull().unique(),
+  customLaRequestId: integer("custom_la_request_id").notNull().references(() => customLaRequests.id, { onDelete: "cascade" }),
+  amount: decimal("amount", { precision: 10, scale: 2 }).notNull(),
+  currency: varchar("currency", { length: 3 }).default("SAR").notNull(),
+  issueDate: timestamp("issue_date").notNull(),
+  dueDate: timestamp("due_date").notNull(),
+  status: invoiceStatusEnum("status").default("draft").notNull(),
+  pdfUrl: text("pdf_url"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const customLaInvoicePayments = pgTable("custom_la_invoice_payments", {
+  id: serial("id").primaryKey(),
+  invoiceId: integer("invoice_id").notNull().references(() => customLaInvoices.id, { onDelete: "cascade" }),
+  amount: decimal("amount", { precision: 10, scale: 2 }).notNull(),
+  currency: varchar("currency", { length: 3 }).default("SAR").notNull(),
+  paymentMethod: varchar("payment_method", { length: 50 }).notNull(),
+  paymentDate: timestamp("payment_date").defaultNow().notNull(),
+  referenceNumber: varchar("reference_number", { length: 100 }),
+  notes: text("notes"),
+  status: depositTransactionStatusEnum("status").default("completed").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const customLaReceipts = pgTable("custom_la_receipts", {
+  id: serial("id").primaryKey(),
+  number: varchar("number", { length: 50 }).notNull().unique(),
+  customLaRequestId: integer("custom_la_request_id").notNull().references(() => customLaRequests.id, { onDelete: "cascade" }),
+  invoiceId: integer("invoice_id").references(() => customLaInvoices.id, { onDelete: "set null" }),
+  paymentId: integer("payment_id").references(() => customLaInvoicePayments.id, { onDelete: "set null" }),
+  totalAmount: decimal("total_amount", { precision: 10, scale: 2 }).notNull(),
+  paidAmount: decimal("paid_amount", { precision: 10, scale: 2 }).notNull(),
+  balanceDue: decimal("balance_due", { precision: 10, scale: 2 }).notNull(),
+  currency: varchar("currency", { length: 3 }).default("SAR").notNull(),
+  issueDate: timestamp("issue_date").defaultNow().notNull(),
+  payerName: varchar("payer_name", { length: 255 }).notNull(),
+  payerEmail: varchar("payer_email", { length: 255 }),
+  payerPhone: varchar("payer_phone", { length: 50 }),
+  payerAddress: text("payer_address"),
+  paymentMethod: varchar("payment_method", { length: 50 }).notNull(),
+  amountInWords: text("amount_in_words"),
+  notes: text("notes"),
+  pdfUrl: text("pdf_url"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+
 export type InvoicePayment = typeof invoicePayments.$inferSelect;
 export type NewInvoicePayment = typeof invoicePayments.$inferInsert;
 export type ServiceOrderReceipt = typeof serviceOrderReceipts.$inferSelect;
@@ -654,3 +728,9 @@ export type MuthowifAssignment = typeof muthowifAssignments.$inferSelect;
 export type NewMuthowifAssignment = typeof muthowifAssignments.$inferInsert;
 export type Lead = typeof leads.$inferSelect;
 export type NewLead = typeof leads.$inferInsert;
+export type CustomLaInvoice = typeof customLaInvoices.$inferSelect;
+export type NewCustomLaInvoice = typeof customLaInvoices.$inferInsert;
+export type CustomLaInvoicePayment = typeof customLaInvoicePayments.$inferSelect;
+export type NewCustomLaInvoicePayment = typeof customLaInvoicePayments.$inferInsert;
+export type CustomLaReceipt = typeof customLaReceipts.$inferSelect;
+export type NewCustomLaReceipt = typeof customLaReceipts.$inferInsert;

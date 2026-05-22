@@ -13,6 +13,18 @@ const receiptService = new ReceiptService();
 // GET /api/bookings - List all bookings
 bookingRoutes.get('/', requireAdmin, async (c) => {
   try {
+    const unlinked = c.req.query('unlinked') === 'true';
+    const clientId = c.req.query('clientId');
+    
+    // Build where conditions
+    const conditions = [];
+    if (unlinked) {
+      conditions.push(sql`${bookings.customLaRequestId} IS NULL`);
+    }
+    if (clientId) {
+      conditions.push(eq(bookings.clientId, parseInt(clientId)));
+    }
+    
     // Query bookings table using Drizzle
     const result = await db
       .select({
@@ -37,6 +49,7 @@ bookingRoutes.get('/', requireAdmin, async (c) => {
       })
       .from(bookings)
       .leftJoin(clients, eq(bookings.clientId, clients.id))
+      .where(conditions.length > 0 ? sql`${conditions.reduce((acc, c, i) => i === 0 ? c : sql`${acc} AND ${c}`, sql``)}` : undefined)
       .orderBy(desc(bookings.createdAt));
 
     const bookingIds = result.map((booking) => booking.id).filter((id): id is number => id !== null && id !== undefined);

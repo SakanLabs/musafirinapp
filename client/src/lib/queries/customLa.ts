@@ -15,6 +15,9 @@ export interface CustomLaRequest {
   meta: any;
   createdAt: string;
   updatedAt: string;
+  linkedBookings?: any[];
+  linkedTransport?: any[];
+  linkedServiceOrders?: any[];
 }
 
 export function useCustomLaRequests() {
@@ -66,3 +69,23 @@ export function useCreateCustomLaRequest() {
     },
   });
 }
+
+export const fetchLaBilling = async (id: number) => {
+  const res = await apiClient.get(`/api/custom-la-billing/${id}`);
+  return res.data;
+};
+
+export const generateLaInvoice = async (id: number, data: any) => {
+  const res = await apiClient.post(`/api/custom-la-billing/${id}/invoice`, data);
+  return res.data;
+};
+
+export const recordLaPayment = async (id: number, data: any) => {
+  const res = await apiClient.post(`/api/custom-la-billing/${id}/payment`, data);
+  return res.data;
+};
+
+export const generateLaReceipt = async (id: number, paymentId: number) => {
+  const res = await apiClient.post(`/api/custom-la-billing/${id}/receipt/${paymentId}`, {});
+  return res.data;
+};

@@ -22,7 +22,8 @@ import {
   Eye,
   Building,
   Car,
-  Link as LinkIcon
+  Link as LinkIcon,
+  Package
 } from "lucide-react"
 import { authService } from "@/lib/auth"
 import { formatCurrency, formatDate } from "@/lib/utils"
@@ -230,46 +231,48 @@ Total: ${serviceOrder.totalPriceUSD ? formatCurrency(serviceOrder.totalPriceUSD,
               Share
             </Button>
             {/* Invoice buttons - show different buttons based on whether invoice exists */}
-            {!isInvoiceLoading && existingInvoice ? (
-              // Show View and Regenerate buttons if invoice exists
-              <>
+            {(!serviceOrder?.customLaRequestId) && (
+              !isInvoiceLoading && existingInvoice ? (
+                // Show View and Regenerate buttons if invoice exists
+                <>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleViewInvoice}
+                  >
+                    <Eye className="h-4 w-4 mr-2" />
+                    View Invoice
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={openRegenerateModal}
+                    disabled={regenerateInvoice.isPending}
+                  >
+                    {regenerateInvoice.isPending ? (
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    ) : (
+                      <RefreshCw className="h-4 w-4 mr-2" />
+                    )}
+                    Regenerate Invoice
+                  </Button>
+                </>
+              ) : (
+                // Show Generate button if no invoice exists
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={handleViewInvoice}
+                  onClick={openGenerateModal}
+                  disabled={generateInvoice.isPending || isInvoiceLoading}
                 >
-                  <Eye className="h-4 w-4 mr-2" />
-                  View Invoice
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={openRegenerateModal}
-                  disabled={regenerateInvoice.isPending}
-                >
-                  {regenerateInvoice.isPending ? (
+                  {generateInvoice.isPending ? (
                     <Loader2 className="h-4 w-4 mr-2 animate-spin" />
                   ) : (
-                    <RefreshCw className="h-4 w-4 mr-2" />
+                    <Receipt className="h-4 w-4 mr-2" />
                   )}
-                  Regenerate Invoice
+                  Generate Invoice
                 </Button>
-              </>
-            ) : (
-              // Show Generate button if no invoice exists
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={openGenerateModal}
-                disabled={generateInvoice.isPending || isInvoiceLoading}
-              >
-                {generateInvoice.isPending ? (
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                ) : (
-                  <Receipt className="h-4 w-4 mr-2" />
-                )}
-                Generate Invoice
-              </Button>
+              )
             )}
             <Button
               variant="outline"
@@ -286,6 +289,26 @@ Total: ${serviceOrder.totalPriceUSD ? formatCurrency(serviceOrder.totalPriceUSD,
             </Button>
           </div>
         </div>
+
+        {/* LA Integration Banner */}
+        {serviceOrder.customLaRequestId && (
+          <div className="bg-purple-50 border border-purple-200 rounded-lg p-4 flex items-center justify-between">
+            <div className="flex items-center text-purple-900">
+              <Package className="h-5 w-5 mr-3" />
+              <div>
+                <p className="font-semibold">Paket LA Terkait</p>
+                <p className="text-sm">Visa/Handling ini merupakan bagian dari Land Arrangement.</p>
+              </div>
+            </div>
+            <Button 
+              variant="outline" 
+              className="border-purple-300 text-purple-700 hover:bg-purple-100"
+              onClick={() => navigate({ to: `/custom-la-detail/${serviceOrder.customLaRequestId}` })}
+            >
+              Kembali ke Ringkasan LA
+            </Button>
+          </div>
+        )}
 
         {/* Service Order Status */}
         <Card>

@@ -36,8 +36,8 @@ function CustomLaQuotationPage() {
   const rooms = meta.rooms || { makkah: {}, madinah: {} }
   const handling = meta.handlingDetails || {}
 
-  const makkahHotel = hotels?.find(h => h.id === totals.makkahHotelId)
-  const madinahHotel = hotels?.find(h => h.id === totals.madinahHotelId)
+  const makkahHotel = hotels?.find(h => h.id == (meta.makkahHotelId || totals.makkahHotelId))
+  const madinahHotel = hotels?.find(h => h.id == (meta.madinahHotelId || totals.madinahHotelId))
 
   // Calculate pricing per pax per room type
   const makkahNights = rooms.makkah.nights || 0

@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html class="no-js" lang="id">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Kwitansi {{receiptNo}}</title>
+  <style>
+    :root {
+      --ink:#111827;           
+      --text:#374151;          
+      --muted:#6b7280;         
+      --line:#e5e7eb;          
+      --paper:#ffffff;         
+      --bg:#f9fafb;            
+      --brand:#0ea5e9;         
+      --badge:#eef2ff;         
+      --badgeText:#3730a3;     
+      --success:#16a34a;       
+    }
+    *{box-sizing:border-box}
+    body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;line-height:1.35;color:var(--text);background:var(--bg);font-size:12px;margin:0}
+    .cs-container{max-width:800px;margin:20px auto;padding:20px;background:var(--paper);box-shadow:0 10px 15px -3px rgba(0,0,0,.1);border-radius:8px}
+    .cs-flex{display:flex}
+    .cs-justify-between{justify-content:space-between}
+    .cs-align-start{align-items:flex-start}
+    .cs-align-center{align-items:center}
+    .cs-text-right{text-align:right}
+    .cs-mb-1{margin-bottom:4px}
+    .cs-mb-2{margin-bottom:8px}
+    .cs-mb-3{margin-bottom:12px}
+    .cs-mb-4{margin-bottom:16px}
+    .cs-mb-6{margin-bottom:20px}
+    .cs-mt-2{margin-top:8px}
+    .cs-font-bold{font-weight:700}
+    .cs-font-semibold{font-weight:600}
+    .cs-text-sm{font-size:11px}
+    .cs-text-lg{font-size:16px}
+    .cs-text-xl{font-size:18px}
+    .cs-text-2xl{font-size:20px}
+    .cs-text-3xl{font-size:24px}
+    .cs-text-gray-500{color:var(--muted)}
+    .cs-text-gray-700{color:var(--text)}
+    .cs-text-gray-900{color:var(--ink)}
+    .cs-divider{height:1px;background:var(--line);margin:16px 0}
+    .cs-card{background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:12px}
+    .cs-badge{display:inline-block;padding:2px 6px;border-radius:999px;background:var(--badge);color:var(--badgeText);font-weight:700;font-size:11px}
+    .cs-list{margin:0;padding:0;list-style:none}
+    .cs-list li{margin:0 0 4px 0}
+    .cs-num{text-align:right;white-space:nowrap}
+    .cs-table{width:100%;border-collapse:collapse}
+    .cs-table th,.cs-table td{padding:8px 0;text-align:left;vertical-align:top}
+    .cs-table th{font-weight:700;color:var(--ink);border-bottom:1px solid var(--line)}
+    .cs-table td{border-bottom:1px solid #f1f5f9}
+
+    .cs-stamp{display:inline-flex;align-items:center;gap:8px;border:2px solid var(--success);color:var(--success);padding:6px 10px;border-radius:8px;font-weight:800;letter-spacing:.5px}
+    .cs-stamp .dot{width:8px;height:8px;background:var(--success);border-radius:999px}
+    
+    @media print{
+      body{background:#fff;font-size:11px}
+      .cs-container{box-shadow:none;margin:0;padding:16px}
+      .cs-no-print{display:none !important}
+    }
+  </style>
+</head>
+<body>
+  <div class="cs-container">
+    <!-- Header -->
+    <div class="cs-flex cs-justify-between cs-align-start cs-mb-6">
+      <div>
+        <img src="data:image/png;base64,{{logoBase64}}" alt="Logo" style="height:80px;width:auto;margin-bottom:6px;" />
+        <div class="cs-mt-2"><span class="cs-badge">Kwitansi LA</span></div>
+      </div>
+      <div class="cs-text-right">
+        <p class="cs-text-gray-700 cs-font-semibold cs-text-lg">#{{receiptNo}}</p>
+        <p class="cs-text-gray-500">{{receiptDate}}</p>
+        {{#if isFullyPaid}}
+        <div class="cs-stamp cs-mt-2"><span class="dot"></span><span>L U N A S</span></div>
+        {{else}}
+        <div class="cs-stamp cs-mt-2" style="border-color:#eab308;color:#eab308"><span class="dot" style="background:#eab308"></span><span>CICILAN / DP</span></div>
+        {{/if}}
+      </div>
+    </div>
+
+    <!-- Parties -->
+    <div class="cs-flex cs-justify-between cs-align-start cs-mb-4" style="gap:12px;flex-wrap:wrap;">
+      <div style="flex:1;min-width:280px;">
+        <p class="cs-font-semibold cs-text-gray-900 cs-mb-1">Diterima Dari</p>
+        <div class="cs-card">
+          <p class="cs-font-semibold cs-mb-1">{{payer.name}}</p>
+          <p class="cs-text-sm cs-text-gray-700">{{payer.email}} <span class="cs-text-gray-500">|</span> {{payer.phone}}</p>
+          <p class="cs-text-sm cs-text-gray-500">{{payer.address}}</p>
+        </div>
+      </div>
+      <div style="flex:1;min-width:280px;">
+        <p class="cs-font-semibold cs-text-gray-900 cs-mb-1">Untuk Pembayaran</p>
+        <div class="cs-card">
+          <p class="cs-mb-1">Invoice LA: <span class="cs-font-semibold">#{{invoiceNo}}</span></p>
+          <p class="cs-text-sm cs-text-gray-700 cs-mb-1">Paket: <span class="cs-font-semibold">Land Arrangement (LA)</span></p>
+          <p class="cs-text-sm cs-text-gray-500">Grup Leader: {{groupLeaderName}} ({{pax}} Pax)</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Payment Summary -->
+    <div class="cs-card cs-mb-4">
+      <table class="cs-table">
+        <thead>
+          <tr>
+            <th style="width:40%">Deskripsi</th>
+            <th style="width:20%">Metode</th>
+            <th style="width:20%">Mata Uang</th>
+            <th style="width:20%" class="cs-num">Jumlah Dibayar</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>
+              <div class="cs-font-semibold">Pembayaran Paket LA</div>
+              <div class="cs-text-sm cs-text-gray-500">{{receiptDate}}</div>
+            </td>
+            <td>{{paymentMethod}}</td>
+            <td>{{currency}}</td>
+            <td class="cs-num">
+              {{paidAmount}}
+            </td>
+          </tr>
+        </tbody>
+      </table>
+      
+      <div class="cs-flex cs-justify-between cs-align-start cs-mt-2 pt-2" style="border-top:1px solid var(--line); padding-top:8px;">
+        <div>
+          <p class="cs-text-sm cs-text-gray-700">Total Tagihan (Invoice)</p>
+          <p class="cs-text-sm cs-text-gray-700">Total Telah Dibayar (Semua Cicilan)</p>
+          <p class="cs-text-sm cs-text-gray-700 cs-font-bold">Sisa Tagihan Saat Ini</p>
+        </div>
+        <div class="cs-text-right">
+          <p class="cs-text-sm cs-font-semibold">
+            {{totals.invoiceAmount}}
+          </p>
+          <p class="cs-text-sm cs-font-semibold">
+            {{totals.totalPaidAmount}}
+          </p>
+          <p class="cs-text-sm cs-font-bold {{#if isFullyPaid}}cs-text-success{{else}}cs-text-danger{{/if}}" {{#unless isFullyPaid}}style="color:#dc2626"{{/unless}}>
+            {{totals.balanceDue}}
+          </p>
+        </div>
+      </div>
+      
+      {{#if amountInWords}}
+      <div class="cs-mt-2 cs-text-sm cs-text-gray-700"><em>Terbilang:</em> {{amountInWords}}</div>
+      {{/if}}
+    </div>
+
+    {{#if notes}}
+    <div class="cs-card cs-mb-4">
+      <p class="cs-font-bold cs-text-gray-900 cs-mb-1">Catatan</p>
+      <p class="cs-text-sm cs-text-gray-700">{{notes}}</p>
+    </div>
+    {{/if}}
+
+    <!-- Signature -->
+    <div class="cs-flex cs-justify-between cs-align-start" style="gap:12px;flex-wrap:wrap;">
+      <div style="flex:1;min-width:260px;">
+        <p class="cs-text-sm cs-text-gray-700 cs-mb-1">Dikonfirmasi Oleh</p>
+        <div class="cs-card" style="height:80px;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;gap:4px;background:#fff;border:none">
+          <div class="cs-text-sm cs-text-gray-900 cs-font-semibold">{{brandName}}</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Footer -->
+    <div class="cs-divider"></div>
+    <div class="cs-flex cs-justify-between cs-align-center">
+      <p class="cs-text-sm cs-text-gray-500">Terima kasih. Pembayaran Anda telah kami terima.</p>
+      <button class="cs-no-print" onclick="window.print()" style="border:1px solid var(--line);background:#fff;border-radius:6px;padding:6px 10px;cursor:pointer">Cetak</button>
+    </div>
+  </div>
+</body>
+</html>

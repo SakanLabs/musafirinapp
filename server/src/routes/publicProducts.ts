@@ -1,6 +1,6 @@
 import { Hono } from "hono";
 import { db } from "../db";
-import { hotels, hotelPricingPeriods, transportationRoutesMaster, transportationRoutePricingPeriods, user } from "../db/schema";
+import { hotels, hotelPricingPeriods, transportationRoutesMaster, transportationRoutePricingPeriods, user, serviceMaster } from "../db/schema";
 import { eq, and, sql, gte, lte, ilike } from "drizzle-orm";
 import { verify } from "hono/jwt";
 
@@ -123,9 +123,20 @@ app.get("/hotels", async (c) => {
 app.get("/transportation", async (c) => {
   try {
     const { userType, email } = await getUserTypeFromRequest(c);
+    const dateQuery = c.req.query('date');
     
-    const today = new Date();
-    const todayStr = today.toISOString().split('T')[0];
+    let targetDateStr = '';
+    if (dateQuery) {
+      const parsedDate = new Date(dateQuery);
+      if (!isNaN(parsedDate.getTime())) {
+        targetDateStr = parsedDate.toISOString().substring(0, 10);
+      }
+    }
+    
+    if (!targetDateStr) {
+      const today = new Date();
+      targetDateStr = today.toISOString().substring(0, 10);
+    }
 
     // Fetch active transportation routes
     const routesWithPricing = await db
@@ -139,8 +150,8 @@ app.get("/transportation", async (c) => {
         and(
           eq(transportationRoutePricingPeriods.transportationRouteMasterId, transportationRoutesMaster.id),
           eq(transportationRoutePricingPeriods.isActive, true),
-          sql`${transportationRoutePricingPeriods.startDate} <= ${todayStr}::date`,
-          sql`${transportationRoutePricingPeriods.endDate} >= ${todayStr}::date`
+          sql`${transportationRoutePricingPeriods.startDate} <= ${targetDateStr}::date`,
+          sql`${transportationRoutePricingPeriods.endDate} >= ${targetDateStr}::date`
         )
       )
       .where(eq(transportationRoutesMaster.isActive, true));
@@ -170,6 +181,24 @@ app.get("/transportation", async (c) => {
   } catch (error) {
     console.error("Failed to fetch public transportation:", error);
     return c.json({ success: false, error: "Failed to fetch transportation" }, 500);
+  }
+});
+
+// GET /api/public/products/services
+app.get("/services", async (c) => {
+  try {
+    const services = await db.query.serviceMaster.findMany({
+      where: eq(serviceMaster.isActive, true),
+      orderBy: (serviceMaster, { asc }) => [asc(serviceMaster.category), asc(serviceMaster.name)]
+    });
+
+    return c.json({ 
+      success: true, 
+      data: services
+    });
+  } catch (error) {
+    console.error("Failed to fetch public services:", error);
+    return c.json({ success: false, error: "Failed to fetch services" }, 500);
   }
 });
 

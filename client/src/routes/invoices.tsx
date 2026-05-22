@@ -26,6 +26,8 @@ export const Route = createFileRoute("/invoices")({
 
 
 function InvoicesPage() {
+  const API_BASE_URL = import.meta.env.VITE_API_URL || window.location.origin.replace(':5173', ':3000');
+
   // Fetch invoices using TanStack Query
   const { data: invoices = [], isLoading, error } = useInvoices()
 
@@ -66,15 +68,25 @@ function InvoicesPage() {
     {
       key: 'bookingId',
       header: 'Booking ID',
-      render: (invoice) => (
-        <Link
-          to="/booking-view/$bookingId"
-          params={{ bookingId: invoice.bookingId.toString() }}
-          className="text-blue-600 hover:text-blue-800 underline"
-        >
-          #{invoice.bookingId}
-        </Link>
-      ),
+      render: (invoice) => {
+        let bookingLink = `/booking-view/${invoice.bookingId}`;
+        if (invoice.number.startsWith('TI-')) {
+          bookingLink = `/transportation-booking-detail/${invoice.bookingId}`;
+        } else if (invoice.number.startsWith('SOI-')) {
+          bookingLink = `/service-order-detail/${invoice.bookingId}`;
+        } else if (invoice.number.startsWith('LA-INV-')) {
+          bookingLink = `/custom-la-detail/${invoice.bookingId}`;
+        }
+
+        return (
+          <Link
+            to={bookingLink as any}
+            className="text-blue-600 hover:text-blue-800 underline"
+          >
+            #{invoice.bookingId}
+          </Link>
+        );
+      },
       sortable: true,
       width: 'w-24'
     },
@@ -119,6 +131,8 @@ function InvoicesPage() {
           detailLink = `/transportation-booking-detail/${invoice.bookingId}`;
         } else if (invoice.number.startsWith('SOI-')) {
           detailLink = `/service-order-detail/${invoice.bookingId}`;
+        } else if (invoice.number.startsWith('LA-INV-')) {
+          detailLink = `/custom-la-detail/${invoice.bookingId}`;
         }
 
         return (
@@ -133,7 +147,7 @@ function InvoicesPage() {
             <Button
               size="sm"
               variant="ghost"
-              onClick={() => window.open(`/api/invoices/by-number/${invoice.number}`, '_blank')}
+              onClick={() => window.open(`${API_BASE_URL}/api/invoices/by-number/${invoice.number}`, '_blank')}
               title="Download PDF"
             >
               <Download className="h-4 w-4" />
@@ -143,7 +157,7 @@ function InvoicesPage() {
               variant="ghost"
               className="text-green-600 hover:text-green-700 hover:bg-green-50"
               onClick={() => {
-                const pdfUrl = `${window.location.origin.replace(':5173', ':3000')}/api/invoices/by-number/${invoice.number}`;
+                const pdfUrl = `${API_BASE_URL}/api/invoices/by-number/${invoice.number}`;
                 const msg = [
                   `Assalamu'alaikum *${invoice.clientName}* 🙏`,
                   ``,

@@ -28,6 +28,7 @@ export interface Booking {
   paymentStatus: 'unpaid' | 'partial' | 'paid' | 'overdue';
   bookingStatus: 'pending' | 'confirmed' | 'cancelled';
   hotelConfirmationNo?: string;
+  customLaRequestId?: number;
   meta?: Record<string, unknown>;
   createdAt: string;
   updatedAt: string;
@@ -102,7 +103,7 @@ export const bookingKeys = {
 };
 
 // Get all bookings
-export function useBookings() {
+export function useBookings(clientId?: number, unlinked?: boolean) {
   return useQuery({
     queryKey: bookingKeys.lists(),
     queryFn: async () => {

@@ -17,6 +17,7 @@ import { Route as ReceiptsRouteImport } from './routes/receipts'
 import { Route as ReceiptDetailRouteImport } from './routes/receipt-detail'
 import { Route as ProfileRouteImport } from './routes/profile'
 import { Route as MasterTransportRouteImport } from './routes/master-transport'
+import { Route as MasterServicesRouteImport } from './routes/master-services'
 import { Route as MasterHotelsRouteImport } from './routes/master-hotels'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as LeadsRouteImport } from './routes/leads'
@@ -108,6 +109,11 @@ const ProfileRoute = ProfileRouteImport.update({
 const MasterTransportRoute = MasterTransportRouteImport.update({
   id: '/master-transport',
   path: '/master-transport',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const MasterServicesRoute = MasterServicesRouteImport.update({
+  id: '/master-services',
+  path: '/master-services',
   getParentRoute: () => rootRouteImport,
 } as any)
 const MasterHotelsRoute = MasterHotelsRouteImport.update({
@@ -409,6 +415,7 @@ export interface FileRoutesByFullPath {
   '/leads': typeof LeadsRoute
   '/login': typeof LoginRoute
   '/master-hotels': typeof MasterHotelsRoute
+  '/master-services': typeof MasterServicesRoute
   '/master-transport': typeof MasterTransportRoute
   '/profile': typeof ProfileRoute
   '/receipt-detail': typeof ReceiptDetailRoute
@@ -470,6 +477,7 @@ export interface FileRoutesByTo {
   '/leads': typeof LeadsRoute
   '/login': typeof LoginRoute
   '/master-hotels': typeof MasterHotelsRoute
+  '/master-services': typeof MasterServicesRoute
   '/master-transport': typeof MasterTransportRoute
   '/profile': typeof ProfileRoute
   '/receipt-detail': typeof ReceiptDetailRoute
@@ -533,6 +541,7 @@ export interface FileRoutesById {
   '/leads': typeof LeadsRoute
   '/login': typeof LoginRoute
   '/master-hotels': typeof MasterHotelsRoute
+  '/master-services': typeof MasterServicesRoute
   '/master-transport': typeof MasterTransportRoute
   '/profile': typeof ProfileRoute
   '/receipt-detail': typeof ReceiptDetailRoute
@@ -597,6 +606,7 @@ export interface FileRouteTypes {
     | '/leads'
     | '/login'
     | '/master-hotels'
+    | '/master-services'
     | '/master-transport'
     | '/profile'
     | '/receipt-detail'
@@ -658,6 +668,7 @@ export interface FileRouteTypes {
     | '/leads'
     | '/login'
     | '/master-hotels'
+    | '/master-services'
     | '/master-transport'
     | '/profile'
     | '/receipt-detail'
@@ -720,6 +731,7 @@ export interface FileRouteTypes {
     | '/leads'
     | '/login'
     | '/master-hotels'
+    | '/master-services'
     | '/master-transport'
     | '/profile'
     | '/receipt-detail'
@@ -783,6 +795,7 @@ export interface RootRouteChildren {
   LeadsRoute: typeof LeadsRoute
   LoginRoute: typeof LoginRoute
   MasterHotelsRoute: typeof MasterHotelsRoute
+  MasterServicesRoute: typeof MasterServicesRoute
   MasterTransportRoute: typeof MasterTransportRoute
   ProfileRoute: typeof ProfileRoute
   ReceiptDetailRoute: typeof ReceiptDetailRoute
@@ -867,6 +880,13 @@ declare module '@tanstack/react-router' {
       path: '/master-transport'
       fullPath: '/master-transport'
       preLoaderRoute: typeof MasterTransportRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/master-services': {
+      id: '/master-services'
+      path: '/master-services'
+      fullPath: '/master-services'
+      preLoaderRoute: typeof MasterServicesRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/master-hotels': {
@@ -1338,6 +1358,7 @@ const rootRouteChildren: RootRouteChildren = {
   LeadsRoute: LeadsRoute,
   LoginRoute: LoginRoute,
   MasterHotelsRoute: MasterHotelsRoute,
+  MasterServicesRoute: MasterServicesRoute,
   MasterTransportRoute: MasterTransportRoute,
   ProfileRoute: ProfileRoute,
   ReceiptDetailRoute: ReceiptDetailRoute,

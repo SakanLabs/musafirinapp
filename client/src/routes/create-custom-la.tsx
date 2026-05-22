@@ -4,39 +4,33 @@ import { PageLayout } from "@/components/layout/PageLayout"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card } from "@/components/ui/card"
+import { Badge } from "@/components/ui/badge"
 import {
-  Users,
-  Calendar,
-  Save,
-  ArrowLeft,
-  Loader2,
-  Package,
-  DollarSign
+  Users, Calendar, Save, ArrowLeft, Loader2, Package, DollarSign, CheckCircle2, Circle, Plus, RefreshCw
 } from "lucide-react"
 import { authService } from "@/lib/auth"
-import { useCreateCustomLaRequest, useHotels, useTransportRoutes } from "@/lib/queries"
-import { useClients } from "@/lib/queries"
-import { apiClient } from "@/lib/api"
+import { useCreateCustomLaRequest, useClients, useBookings, useServiceOrders } from "@/lib/queries"
+import { useTransportationBookings } from "@/lib/queries/transportationBookings"
+import { formatCurrency } from "@/lib/utils"
 import { toast } from "sonner"
 
 export const Route = createFileRoute("/create-custom-la")({
   beforeLoad: async () => {
     const isAuthenticated = await authService.isAuthenticated()
-
     if (!isAuthenticated) {
       throw redirect({ to: "/login" })
     }
   },
-  component: CreateCustomLaPage
+  component: CreateCustomLaWizard
 })
 
-function CreateCustomLaPage() {
+function CreateCustomLaWizard() {
   const navigate = useNavigate()
   const createLaMutation = useCreateCustomLaRequest()
   const { data: clients = [], isLoading: isClientsLoading } = useClients()
-  const { data: hotels = [], isLoading: isHotelsLoading } = useHotels()
-  const { data: transportRoutes = [], isLoading: isTransportLoading } = useTransportRoutes()
 
+  const [step, setStep] = useState(1)
+  
   const [formData, setFormData] = useState({
     clientId: 0,
     customerName: "",
@@ -44,186 +38,79 @@ function CreateCustomLaPage() {
     customerEmail: "",
     travelName: "",
     totalPax: 1,
-    makkahHotelId: 0,
-    makkahHotelTotal: 0,
-    makkahNights: 0,
-    makkahDoubleQty: 0,
-    makkahDoublePrice: 0,
-    makkahTripleQty: 0,
-    makkahTriplePrice: 0,
-    makkahQuadQty: 0,
-    makkahQuadPrice: 0,
-    madinahHotelId: 0,
-    madinahHotelTotal: 0,
-    madinahNights: 0,
-    madinahDoubleQty: 0,
-    madinahDoublePrice: 0,
-    madinahTripleQty: 0,
-    madinahTriplePrice: 0,
-    madinahQuadQty: 0,
-    madinahQuadPrice: 0,
-    transportRouteId: 0,
-    totalTransport: 0,
-    includeVisa: false,
-    visaTotal: 0,
-    handlingAirport: 0,
-    handlingHotel: 0,
-    muthowifTourType: "Full Trip Paket",
-    muthowif: 0,
-    muthowifahRaudhah: 0,
-    tiketMuseum: 0,
-    biayaTakTerduga: 0,
-    tipDriver: 0,
-    keretaCepat: 0,
-    profitType: "percentage",
-    profitValue: 0,
     kedatangan: "",
     keberangkatan: "",
+    
+    // Cart (Linked Items)
+    linkedBookingIds: [] as number[],
+    linkedTransportIds: [] as number[],
+    linkedServiceOrderIds: [] as number[],
+    
+    // Additional LA Specific services
+    handlingAirport: 0,
+    handlingHotel: 0,
+    muthowif: 0,
+    muthowifTourType: "Full Trip Paket",
+    
+    // Margin
+    profitType: "percentage",
+    profitValue: 0,
     notes: ""
   })
 
-  const [errors, setErrors] = useState<Record<string, string>>({})
+  // Fetch unlinked components for the selected client
+  const { data: unlinkedBookings = [], refetch: refetchBookings, isFetching: isRefetchingB } = useBookings(formData.clientId, true);
+  const { data: unlinkedTransports = [], refetch: refetchTransports, isFetching: isRefetchingT } = useTransportationBookings(formData.clientId, true);
+  const { data: unlinkedServiceOrders = [], refetch: refetchSO, isFetching: isRefetchingSO } = useServiceOrders(formData.clientId, true);
 
-  useEffect(() => {
-    const makkahRoomsTotalPerNight = (formData.makkahDoubleQty * formData.makkahDoublePrice) +
-      (formData.makkahTripleQty * formData.makkahTriplePrice) +
-      (formData.makkahQuadQty * formData.makkahQuadPrice);
-    const makkahTotal = makkahRoomsTotalPerNight * formData.makkahNights;
-
-    if (makkahTotal >= 0 && (makkahRoomsTotalPerNight > 0 || formData.makkahNights > 0)) {
-      setFormData(prev => ({ ...prev, makkahHotelTotal: makkahTotal }));
+  const handleClientChange = (clientId: string) => {
+    const id = parseInt(clientId)
+    const client = clients.find(c => c.id === id)
+    if (client) {
+      setFormData(prev => ({
+        ...prev,
+        clientId: id,
+        customerName: client.name || prev.customerName,
+        customerPhone: client.phone || prev.customerPhone,
+        customerEmail: client.email || prev.customerEmail,
+        // reset cart on client change
+        linkedBookingIds: [],
+        linkedTransportIds: [],
+        linkedServiceOrderIds: []
+      }))
     }
-  }, [formData.makkahDoubleQty, formData.makkahDoublePrice, formData.makkahTripleQty, formData.makkahTriplePrice, formData.makkahQuadQty, formData.makkahQuadPrice, formData.makkahNights]);
-
-  useEffect(() => {
-    const madinahRoomsTotalPerNight = (formData.madinahDoubleQty * formData.madinahDoublePrice) +
-      (formData.madinahTripleQty * formData.madinahTriplePrice) +
-      (formData.madinahQuadQty * formData.madinahQuadPrice);
-    const madinahTotal = madinahRoomsTotalPerNight * formData.madinahNights;
-
-    if (madinahTotal >= 0 && (madinahRoomsTotalPerNight > 0 || formData.madinahNights > 0)) {
-      setFormData(prev => ({ ...prev, madinahHotelTotal: madinahTotal }));
-    }
-  }, [formData.madinahDoubleQty, formData.madinahDoublePrice, formData.madinahTripleQty, formData.madinahTriplePrice, formData.madinahQuadQty, formData.madinahQuadPrice, formData.madinahNights]);
-
-  const getDuration = (start: string, end: string) => {
-    if (!start || !end) return null;
-    const startDate = new Date(start);
-    const endDate = new Date(end);
-    if (isNaN(startDate.getTime()) || isNaN(endDate.getTime())) return null;
-
-    const diffTime = endDate.getTime() - startDate.getTime();
-    if (diffTime < 0) return null;
-
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-    return { nights: diffDays, days: diffDays + 1 };
-  };
-
-  const duration = getDuration(formData.kedatangan, formData.keberangkatan);
-
-  const calculateRooms = (pax: number) => {
-    let quad = Math.floor(pax / 4);
-    let remainder = pax % 4;
-    let triple = 0;
-    let double = 0;
-
-    if (remainder === 3) triple = 1;
-    else if (remainder === 2) double = 1;
-    else if (remainder === 1) {
-      if (quad > 0) {
-        quad -= 1;
-        triple = 1;
-        double = 1;
-      } else {
-        double = 1;
-      }
-    }
-    return { quad, triple, double };
-  };
-
-  const handlePaxChange = (pax: number) => {
-    const { quad, triple, double } = calculateRooms(pax);
-    setFormData(prev => ({
-      ...prev,
-      totalPax: pax,
-      makkahQuadQty: quad,
-      makkahTripleQty: triple,
-      makkahDoubleQty: double,
-      madinahQuadQty: quad,
-      madinahTripleQty: triple,
-      madinahDoubleQty: double,
-    }));
-    if (errors["totalPax"]) {
-      setErrors(prev => ({ ...prev, totalPax: "" }));
-    }
-  };
-
-  const validateForm = () => {
-    const newErrors: Record<string, string> = {}
-
-    if (!formData.clientId) newErrors.clientId = "Client harus dipilih"
-    if (!formData.customerName.trim()) newErrors.customerName = "Nama PIC harus diisi"
-    if (formData.totalPax < 1) newErrors.totalPax = "Jumlah jamaah minimal 1"
-
-    if (duration) {
-      const totalNights = formData.makkahNights + formData.madinahNights;
-      if (totalNights > duration.nights) {
-        newErrors.nights = `Total malam Makkah & Madinah (${totalNights}) melebihi durasi tour (${duration.nights} malam)`;
-        toast.error(newErrors.nights);
-      }
-    }
-
-    setErrors(newErrors)
-    return Object.keys(newErrors).length === 0
   }
 
-  const fixedServicesTotal =
-    formData.totalTransport +
-    formData.muthowif +
-    formData.muthowifahRaudhah +
-    formData.biayaTakTerduga +
-    formData.tipDriver;
+  const handleToggleCart = (type: 'booking' | 'transport' | 'serviceOrder', id: number) => {
+    setFormData(prev => {
+      const field = type === 'booking' ? 'linkedBookingIds' : type === 'transport' ? 'linkedTransportIds' : 'linkedServiceOrderIds';
+      const arr = prev[field] as number[];
+      if (arr.includes(id)) {
+        return { ...prev, [field]: arr.filter(x => x !== id) };
+      } else {
+        return { ...prev, [field]: [...arr, id] };
+      }
+    });
+  }
+  
+  const getSelectedTotal = () => {
+    let total = 0;
+    unlinkedBookings.filter((b:any) => formData.linkedBookingIds.includes(b.id)).forEach((b:any) => total += parseFloat(b.totalAmount || 0));
+    unlinkedTransports.filter((t:any) => formData.linkedTransportIds.includes(t.id)).forEach((t:any) => total += parseFloat(t.totalAmount || 0));
+    unlinkedServiceOrders.filter((s:any) => formData.linkedServiceOrderIds.includes(s.id)).forEach((s:any) => total += parseFloat(s.totalAmount || 0));
+    
+    // add handling
+    const handlingTotal = (formData.handlingAirport * formData.totalPax) + (formData.handlingHotel * formData.totalPax) + formData.muthowif;
+    total += handlingTotal;
+    
+    return total;
+  }
+  
+  const baseTotal = getSelectedTotal();
+  const profitAmount = formData.profitType === "percentage" ? baseTotal * (formData.profitValue / 100) : formData.profitValue;
+  const grandTotal = baseTotal + profitAmount;
 
-  const perPaxServicesTotal =
-    formData.keretaCepat +
-    formData.handlingAirport +
-    formData.handlingHotel +
-    formData.tiketMuseum +
-    (formData.includeVisa ? formData.visaTotal : 0);
-
-  const subTotal =
-    formData.makkahHotelTotal +
-    formData.madinahHotelTotal +
-    fixedServicesTotal +
-    (perPaxServicesTotal * formData.totalPax);
-
-  const profitAmount = formData.profitType === "percentage"
-    ? subTotal * (formData.profitValue / 100)
-    : formData.profitValue;
-
-  const grandTotal = subTotal + profitAmount;
-  const perPaxPrice = formData.totalPax > 0 ? grandTotal / formData.totalPax : 0;
-
-  const nonHotelTotal = grandTotal - formData.makkahHotelTotal - formData.madinahHotelTotal;
-  const nonHotelPerPax = formData.totalPax > 0 ? nonHotelTotal / formData.totalPax : 0;
-
-  const makkahDoublePerPax = (formData.makkahDoublePrice * formData.makkahNights) / 2;
-  const madinahDoublePerPax = (formData.madinahDoublePrice * formData.madinahNights) / 2;
-  const priceDouble = nonHotelPerPax + makkahDoublePerPax + madinahDoublePerPax;
-
-  const makkahTriplePerPax = (formData.makkahTriplePrice * formData.makkahNights) / 3;
-  const madinahTriplePerPax = (formData.madinahTriplePrice * formData.madinahNights) / 3;
-  const priceTriple = nonHotelPerPax + makkahTriplePerPax + madinahTriplePerPax;
-
-  const makkahQuadPerPax = (formData.makkahQuadPrice * formData.makkahNights) / 4;
-  const madinahQuadPerPax = (formData.madinahQuadPrice * formData.madinahNights) / 4;
-  const priceQuad = nonHotelPerPax + makkahQuadPerPax + madinahQuadPerPax;
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-
-    if (!validateForm()) return
-
+  const handleSubmit = async () => {
     try {
       await createLaMutation.mutateAsync({
         clientId: formData.clientId,
@@ -233,642 +120,265 @@ function CreateCustomLaPage() {
         travelName: formData.travelName,
         totalPax: formData.totalPax,
         totalAmountSAR: grandTotal,
+        linkedBookingIds: formData.linkedBookingIds,
+        linkedTransportIds: formData.linkedTransportIds,
+        linkedServiceOrderIds: formData.linkedServiceOrderIds,
         meta: {
           tanggalKedatangan: formData.kedatangan,
           tanggalKeberangkatan: formData.keberangkatan,
           profitType: formData.profitType,
           profitValue: formData.profitValue,
           notes: formData.notes,
-          rooms: {
-            makkah: {
-              nights: formData.makkahNights,
-              doubleQty: formData.makkahDoubleQty, doublePrice: formData.makkahDoublePrice,
-              tripleQty: formData.makkahTripleQty, triplePrice: formData.makkahTriplePrice,
-              quadQty: formData.makkahQuadQty, quadPrice: formData.makkahQuadPrice
-            },
-            madinah: {
-              nights: formData.madinahNights,
-              doubleQty: formData.madinahDoubleQty, doublePrice: formData.madinahDoublePrice,
-              tripleQty: formData.madinahTripleQty, triplePrice: formData.madinahTriplePrice,
-              quadQty: formData.madinahQuadQty, quadPrice: formData.madinahQuadPrice
-            }
-          },
           handlingDetails: {
             handlingAirport: formData.handlingAirport,
             handlingHotel: formData.handlingHotel,
-            muthowifTourType: formData.muthowifTourType,
             muthowif: formData.muthowif,
-            muthowifahRaudhah: formData.muthowifahRaudhah,
-            tiketMuseum: formData.tiketMuseum,
-            biayaTakTerduga: formData.biayaTakTerduga,
-            tipDriver: formData.tipDriver,
-            keretaCepat: formData.keretaCepat,
+            muthowifTourType: formData.muthowifTourType,
           },
           totals: {
-            totalPax: formData.totalPax,
-            makkahHotelId: formData.makkahHotelId,
-            madinahHotelId: formData.madinahHotelId,
-            transportRouteId: formData.transportRouteId,
-            makkahHotelTotal: formData.makkahHotelTotal,
-            madinahHotelTotal: formData.madinahHotelTotal,
-            totalTransport: formData.totalTransport,
-            includeVisa: formData.includeVisa,
-            visaTotal: formData.visaTotal * formData.totalPax,
-            additionalServicesTotal: fixedServicesTotal + (perPaxServicesTotal * formData.totalPax) - formData.totalTransport - (formData.includeVisa ? formData.visaTotal * formData.totalPax : 0),
-            subTotalHandling: fixedServicesTotal + (perPaxServicesTotal * formData.totalPax),
-            profit: profitAmount,
-            grandTotal: grandTotal,
-            perPaxPrice: perPaxPrice,
-            priceDouble,
-            priceTriple,
-            priceQuad
+            baseTotal,
+            profitAmount,
+            grandTotal,
+            perPaxPrice: formData.totalPax > 0 ? grandTotal / formData.totalPax : 0
           }
         }
-      })
-
-      toast.success("Permintaan LA berhasil dibuat!")
-      navigate({ to: "/custom-la-requests" })
-    } catch (error) {
-      console.error("Error creating custom LA:", error)
-      toast.error("Gagal membuat permintaan LA.")
+      });
+      toast.success("Land Arrangement berhasil dibuat dan layanan terkait telah digabungkan!");
+      navigate({ to: "/custom-la-requests" });
+    } catch (e: any) {
+      toast.error("Gagal membuat LA: " + e.message);
     }
-  }
-
-  const handleInputChange = (field: string, value: any) => {
-    setFormData(prev => ({ ...prev, [field]: value }))
-    if (errors[field]) {
-      setErrors(prev => ({ ...prev, [field]: "" }))
-    }
-  }
-
-  const handleClientChange = (clientId: string) => {
-    const id = parseInt(clientId)
-    const client = clients.find(c => c.id === id)
-
-    if (client) {
-      setFormData(prev => ({
-        ...prev,
-        clientId: id,
-        customerName: client.name || prev.customerName,
-        customerPhone: client.phone || prev.customerPhone,
-        customerEmail: client.email || prev.customerEmail,
-      }))
-    } else {
-      setFormData(prev => ({ ...prev, clientId: id }))
-    }
-  }
-
-  const handleHotelChange = async (city: 'makkah' | 'madinah', hotelId: string) => {
-    const id = parseInt(hotelId);
-    setFormData(prev => ({ ...prev, [`${city}HotelId`]: id }));
-
-    if (!id) return;
-
-    try {
-      const response = await apiClient.get<any[]>(`/api/master/hotels/${id}/pricing`);
-      if (response && response.length > 0) {
-        // Gunakan lowest sellingPrice sebagai baseline untuk Quad, lalu increment untuk Triple dan Double
-        const minPrice = Math.min(...response.map(p => parseFloat(p.sellingPrice || '0')));
-        setFormData(prev => ({
-          ...prev,
-          [`${city}QuadPrice`]: minPrice,
-          [`${city}TriplePrice`]: minPrice + 50,
-          [`${city}DoublePrice`]: minPrice + 100
-        }));
-      }
-    } catch (e) {
-      console.error(`Failed to fetch ${city} hotel pricing:`, e);
-    }
-  }
-
-  const handleTransportChange = async (routeId: string) => {
-    const id = parseInt(routeId);
-    setFormData(prev => ({ ...prev, transportRouteId: id }));
-
-    if (!id) return;
-
-    try {
-      const response = await apiClient.get<any[]>(`/api/master/transport-routes/${id}/pricing`);
-      if (response && response.length > 0) {
-        const minPrice = Math.min(...response.map(p => parseFloat(p.sellingPrice || '0')));
-        setFormData(prev => ({ ...prev, totalTransport: minPrice }));
-      }
-    } catch (e) {
-      console.error("Failed to fetch transport pricing:", e);
-    }
-  }
-
-  const handleVisaToggle = (checked: boolean) => {
-    setFormData(prev => ({
-      ...prev,
-      includeVisa: checked,
-      // Default Visa estimate: 650 SAR
-      visaTotal: checked ? 650 * prev.totalPax : 0
-    }));
   }
 
   return (
-    <PageLayout title="Buat Permintaan LA Custom Secara Manual">
-      <div className="space-y-6">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center space-x-4">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => navigate({ to: "/custom-la-requests" })}
-            >
-              <ArrowLeft className="h-4 w-4 mr-2" />
-              Kembali
-            </Button>
-            <div>
-              <h1 className="text-2xl font-bold text-gray-900">Buat Permintaan LA (Manual)</h1>
-              <p className="text-gray-600">Buat record permintaan LA untuk di-quote dan diterbitkan invoicenya</p>
+    <PageLayout title="Buat Permintaan LA (Integrated Wizard)">
+      <div className="max-w-5xl mx-auto space-y-6">
+        
+        {/* Stepper Header */}
+        <div className="flex items-center justify-between mb-8 bg-white p-4 rounded-lg shadow-sm border">
+          {[1, 2, 3, 4].map(idx => (
+            <div key={idx} className={`flex items-center ${idx !== 4 ? 'flex-1' : ''}`}>
+              <div className={`flex items-center justify-center w-8 h-8 rounded-full ${step >= idx ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-500'} font-bold`}>
+                {step > idx ? <CheckCircle2 className="w-5 h-5" /> : idx}
+              </div>
+              <div className="mx-3 text-sm font-medium hidden sm:block">
+                {idx === 1 && "Info Client"}
+                {idx === 2 && "Pilih Layanan"}
+                {idx === 3 && "Handling Tambahan"}
+                {idx === 4 && "Rekap & Margin"}
+              </div>
+              {idx !== 4 && <div className="flex-1 h-1 mx-2 bg-gray-200"><div className={`h-1 ${step > idx ? 'bg-blue-600' : 'bg-gray-200'}`}></div></div>}
             </div>
-          </div>
+          ))}
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-6">
+        {/* STEP 1 */}
+        {step === 1 && (
           <Card className="p-6">
-            <div className="flex items-center space-x-2 mb-4">
-              <Users className="h-5 w-5 text-blue-600" />
-              <h2 className="text-lg font-semibold">Informasi Client / Pemesan</h2>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <h2 className="text-xl font-bold mb-6 flex items-center"><Users className="mr-2" /> Informasi Pemesan & Jadwal</h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Pilih Client Terdaftar *
-                </label>
-                <select
-                  value={formData.clientId}
-                  onChange={(e) => handleClientChange(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  disabled={isClientsLoading}
-                >
+                <label className="block text-sm font-medium mb-1">Pilih Client Terdaftar *</label>
+                <select value={formData.clientId} onChange={(e) => handleClientChange(e.target.value)} className="w-full border p-2 rounded">
                   <option value="">Pilih Client</option>
-                  {clients.map((client) => (
-                    <option key={client.id} value={client.id}>
-                      {client.name}
-                    </option>
-                  ))}
+                  {clients.map((c:any) => <option key={c.id} value={c.id}>{c.name}</option>)}
                 </select>
-                {errors.clientId && <p className="text-red-500 text-sm mt-1">{errors.clientId}</p>}
               </div>
-
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Nama PIC / Travel *
-                </label>
-                <Input
-                  value={formData.customerName}
-                  onChange={(e) => handleInputChange("customerName", e.target.value)}
-                  placeholder="Nama PIC"
-                />
-                {errors.customerName && <p className="text-red-500 text-sm mt-1">{errors.customerName}</p>}
+                <label className="block text-sm font-medium mb-1">Nama Group / PIC</label>
+                <Input value={formData.customerName} onChange={e => setFormData({...formData, customerName: e.target.value})} placeholder="Nama Grup" />
               </div>
-
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  No. WhatsApp
-                </label>
-                <Input
-                  value={formData.customerPhone}
-                  onChange={(e) => handleInputChange("customerPhone", e.target.value)}
-                  placeholder="0812..."
-                />
+                <label className="block text-sm font-medium mb-1">Total Jamaah *</label>
+                <Input type="number" min="1" value={formData.totalPax} onChange={e => setFormData({...formData, totalPax: parseInt(e.target.value)||1})} />
               </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Email
-                </label>
-                <Input
-                  value={formData.customerEmail}
-                  type="email"
-                  onChange={(e) => handleInputChange("customerEmail", e.target.value)}
-                  placeholder="email@example.com"
-                />
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium mb-1">Kedatangan</label>
+                  <Input type="date" value={formData.kedatangan} onChange={e => setFormData({...formData, kedatangan: e.target.value})} />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-1">Keberangkatan</label>
+                  <Input type="date" value={formData.keberangkatan} onChange={e => setFormData({...formData, keberangkatan: e.target.value})} />
+                </div>
               </div>
+            </div>
+            <div className="mt-6 flex justify-end">
+              <Button onClick={() => setStep(2)} disabled={!formData.clientId || !formData.customerName}>Lanjut ke Pemilihan Layanan</Button>
             </div>
           </Card>
+        )}
 
-          <Card className="p-6">
-            <div className="flex items-center space-x-2 mb-4">
-              <Package className="h-5 w-5 text-purple-600" />
-              <h2 className="text-lg font-semibold">Komponen Biaya & Jadwal</h2>
+        {/* STEP 2 */}
+        {step === 2 && (
+          <div className="space-y-6">
+            <div className="bg-blue-50 p-4 rounded-lg border border-blue-200 flex justify-between items-center">
+              <div>
+                <h3 className="font-bold text-blue-900 flex items-center"><Package className="mr-2" /> Keranjang Layanan Terintegrasi</h3>
+                <p className="text-sm text-blue-800">Pilih booking hotel, transport, atau visa yang sudah Anda buat sebelumnya. Atau buat baru di tab/jendela terpisah lalu klik Refresh.</p>
+              </div>
+              <div className="space-x-2">
+                <Button variant="outline" size="sm" onClick={() => window.open('/create-booking', '_blank')}><Plus className="w-4 h-4 mr-1"/> Buat Booking Hotel</Button>
+                <Button variant="outline" size="sm" onClick={() => { refetchBookings(); refetchTransports(); refetchSO(); }}><RefreshCw className={`w-4 h-4 mr-1 ${(isRefetchingB||isRefetchingT||isRefetchingSO) ? 'animate-spin':''}`}/> Refresh Data</Button>
+              </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-2">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Tanggal Kedatangan
-                </label>
-                <Input
-                  type="date"
-                  value={formData.kedatangan}
-                  onChange={(e) => handleInputChange("kedatangan", e.target.value)}
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Tanggal Keberangkatan
-                </label>
-                <Input
-                  type="date"
-                  value={formData.keberangkatan}
-                  onChange={(e) => handleInputChange("keberangkatan", e.target.value)}
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Total Jamaah *
-                </label>
-                <Input
-                  type="number"
-                  min="1"
-                  value={formData.totalPax}
-                  onChange={(e) => handlePaxChange(parseInt(e.target.value) || 1)}
-                />
-              </div>
-            </div>
-            {duration && (
-              <div className="mb-6 space-y-1">
-                <div className="px-3 py-2 bg-blue-50 text-blue-700 rounded-md text-sm font-medium inline-block">
-                  Total Durasi: {duration.days} Hari {duration.nights} Malam
-                </div>
-                {errors.nights && <p className="text-red-500 text-sm">{errors.nights}</p>}
-              </div>
-            )}
-
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-              <div className="col-span-1 md:col-span-2">
-                <div className="flex gap-3 mb-2">
-                  <div className="flex-1">
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Pilih Hotel Makkah
-                    </label>
-                    <select
-                      value={formData.makkahHotelId}
-                      onChange={(e) => handleHotelChange('makkah', e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      disabled={isHotelsLoading}
-                    >
-                      <option value="">-- Pilih Hotel Makkah --</option>
-                      {hotels.filter(h => h.city === 'Makkah').map(hotel => (
-                        <option key={hotel.id} value={hotel.id}>{hotel.name} {hotel.starRating ? `(${hotel.starRating}★)` : ''}</option>
-                      ))}
-                    </select>
-                  </div>
-                  <div className="w-24">
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Total Malam</label>
-                    <Input type="number" min="0" value={formData.makkahNights} onChange={(e) => handleInputChange("makkahNights", parseInt(e.target.value) || 0)} />
-                  </div>
-                </div>
-                <div className="grid grid-cols-3 gap-2 mb-2">
-                  <div>
-                    <label className="block text-xs font-medium text-gray-500 mb-1">Qty Double</label>
-                    <Input type="number" min="0" value={formData.makkahDoubleQty} onChange={(e) => handleInputChange("makkahDoubleQty", parseInt(e.target.value) || 0)} />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-medium text-gray-500 mb-1">Harga Double (SAR)</label>
-                    <Input type="number" min="0" value={formData.makkahDoublePrice} onChange={(e) => handleInputChange("makkahDoublePrice", parseFloat(e.target.value) || 0)} />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-medium text-gray-500 mb-1">Sub Total Double</label>
-                    <Input disabled className="bg-gray-50 font-semibold" value={(formData.makkahDoubleQty * formData.makkahDoublePrice * formData.makkahNights).toLocaleString('en-US')} />
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-medium text-gray-500 mb-1">Qty Triple</label>
-                    <Input type="number" min="0" value={formData.makkahTripleQty} onChange={(e) => handleInputChange("makkahTripleQty", parseInt(e.target.value) || 0)} />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-medium text-gray-500 mb-1">Harga Triple (SAR)</label>
-                    <Input type="number" min="0" value={formData.makkahTriplePrice} onChange={(e) => handleInputChange("makkahTriplePrice", parseFloat(e.target.value) || 0)} />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-medium text-gray-500 mb-1">Sub Total Triple</label>
-                    <Input disabled className="bg-gray-50 font-semibold" value={(formData.makkahTripleQty * formData.makkahTriplePrice * formData.makkahNights).toLocaleString('en-US')} />
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-medium text-gray-500 mb-1">Qty Quad</label>
-                    <Input type="number" min="0" value={formData.makkahQuadQty} onChange={(e) => handleInputChange("makkahQuadQty", parseInt(e.target.value) || 0)} />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-medium text-gray-500 mb-1">Harga Quad (SAR)</label>
-                    <Input type="number" min="0" value={formData.makkahQuadPrice} onChange={(e) => handleInputChange("makkahQuadPrice", parseFloat(e.target.value) || 0)} />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-medium text-gray-500 mb-1">Sub Total Quad</label>
-                    <Input disabled className="bg-gray-50 font-semibold" value={(formData.makkahQuadQty * formData.makkahQuadPrice * formData.makkahNights).toLocaleString('en-US')} />
-                  </div>
-                </div>
-                <label className="block text-xs font-medium text-gray-500 mb-1">Total Harga Makkah (SAR)</label>
-                <Input
-                  type="number"
-                  min="0"
-                  value={formData.makkahHotelTotal}
-                  onChange={(e) => handleInputChange("makkahHotelTotal", parseFloat(e.target.value) || 0)}
-                />
-              </div>
-
-              <div className="col-span-1 md:col-span-2">
-                <div className="flex gap-3 mb-2">
-                  <div className="flex-1">
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Pilih Hotel Madinah
-                    </label>
-                    <select
-                      value={formData.madinahHotelId}
-                      onChange={(e) => handleHotelChange('madinah', e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      disabled={isHotelsLoading}
-                    >
-                      <option value="">-- Pilih Hotel Madinah --</option>
-                      {hotels.filter(h => h.city === 'Madinah').map(hotel => (
-                        <option key={hotel.id} value={hotel.id}>{hotel.name} {hotel.starRating ? `(${hotel.starRating}★)` : ''}</option>
-                      ))}
-                    </select>
-                  </div>
-                  <div className="w-24">
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Total Malam</label>
-                    <Input type="number" min="0" value={formData.madinahNights} onChange={(e) => handleInputChange("madinahNights", parseInt(e.target.value) || 0)} />
-                  </div>
-                </div>
-                <div className="grid grid-cols-3 gap-2 mb-2">
-                  <div>
-                    <label className="block text-xs font-medium text-gray-500 mb-1">Qty Double</label>
-                    <Input type="number" min="0" value={formData.madinahDoubleQty} onChange={(e) => handleInputChange("madinahDoubleQty", parseInt(e.target.value) || 0)} />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-medium text-gray-500 mb-1">Harga Double (SAR)</label>
-                    <Input type="number" min="0" value={formData.madinahDoublePrice} onChange={(e) => handleInputChange("madinahDoublePrice", parseFloat(e.target.value) || 0)} />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-medium text-gray-500 mb-1">Sub Total Double</label>
-                    <Input disabled className="bg-gray-50 font-semibold" value={(formData.madinahDoubleQty * formData.madinahDoublePrice * formData.madinahNights).toLocaleString('en-US')} />
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-medium text-gray-500 mb-1">Qty Triple</label>
-                    <Input type="number" min="0" value={formData.madinahTripleQty} onChange={(e) => handleInputChange("madinahTripleQty", parseInt(e.target.value) || 0)} />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-medium text-gray-500 mb-1">Harga Triple (SAR)</label>
-                    <Input type="number" min="0" value={formData.madinahTriplePrice} onChange={(e) => handleInputChange("madinahTriplePrice", parseFloat(e.target.value) || 0)} />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-medium text-gray-500 mb-1">Sub Total Triple</label>
-                    <Input disabled className="bg-gray-50 font-semibold" value={(formData.madinahTripleQty * formData.madinahTriplePrice * formData.madinahNights).toLocaleString('en-US')} />
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-medium text-gray-500 mb-1">Qty Quad</label>
-                    <Input type="number" min="0" value={formData.madinahQuadQty} onChange={(e) => handleInputChange("madinahQuadQty", parseInt(e.target.value) || 0)} />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-medium text-gray-500 mb-1">Harga Quad (SAR)</label>
-                    <Input type="number" min="0" value={formData.madinahQuadPrice} onChange={(e) => handleInputChange("madinahQuadPrice", parseFloat(e.target.value) || 0)} />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-medium text-gray-500 mb-1">Sub Total Quad</label>
-                    <Input disabled className="bg-gray-50 font-semibold" value={(formData.madinahQuadQty * formData.madinahQuadPrice * formData.madinahNights).toLocaleString('en-US')} />
-                  </div>
-                </div>
-                <label className="block text-xs font-medium text-gray-500 mb-1">Total Harga Madinah (SAR)</label>
-                <Input
-                  type="number"
-                  min="0"
-                  value={formData.madinahHotelTotal}
-                  onChange={(e) => handleInputChange("madinahHotelTotal", parseFloat(e.target.value) || 0)}
-                />
-              </div>
-
-              <div className="col-span-1 md:col-span-2">
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Pilih Moda Transportasi (Termasuk Kereta)
-                </label>
-                <select
-                  value={formData.transportRouteId}
-                  onChange={(e) => handleTransportChange(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 mb-2"
-                  disabled={isTransportLoading}
-                >
-                  <option value="">-- Pilih Transportasi --</option>
-                  {transportRoutes.map(route => (
-                    <option key={route.id} value={route.id}>{route.originLocation} ➔ {route.destinationLocation}</option>
+            <Card className="p-6">
+              <h4 className="font-bold mb-4 border-b pb-2">Hotel Bookings (Unlinked)</h4>
+              {unlinkedBookings.length === 0 ? <p className="text-gray-500 italic text-sm">Tidak ada booking hotel yang unlinked untuk client ini.</p> : (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {unlinkedBookings.map((b:any) => (
+                    <div key={b.id} className={`border p-4 rounded-lg cursor-pointer transition-colors ${formData.linkedBookingIds.includes(b.id) ? 'bg-blue-50 border-blue-500' : 'hover:bg-gray-50'}`} onClick={() => handleToggleCart('booking', b.id)}>
+                      <div className="flex justify-between">
+                        <span className="font-bold">{b.hotelName} ({b.city})</span>
+                        <input type="checkbox" checked={formData.linkedBookingIds.includes(b.id)} readOnly className="h-5 w-5" />
+                      </div>
+                      <div className="text-sm text-gray-600 mt-1">Code: {b.code} | {b.checkIn ? new Date(b.checkIn).toLocaleDateString() : '-'}</div>
+                      <div className="font-bold mt-2 text-green-700">{formatCurrency(b.totalAmount, 'SAR')}</div>
+                    </div>
                   ))}
-                </select>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-xs font-medium text-gray-500 mb-1">Total Transportasi (SAR) - Fixed</label>
-                    <Input
-                      type="number"
-                      min="0"
-                      value={formData.totalTransport}
-                      onChange={(e) => handleInputChange("totalTransport", parseFloat(e.target.value) || 0)}
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-medium text-gray-500 mb-1">Kereta Cepat (SAR) - Per Pax</label>
-                    <Input
-                      type="number"
-                      min="0"
-                      value={formData.keretaCepat}
-                      onChange={(e) => handleInputChange("keretaCepat", parseFloat(e.target.value) || 0)}
-                    />
-                  </div>
                 </div>
-              </div>
-
-              <div className="col-span-1 md:col-span-1">
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Visa Umroh
-                </label>
-                <div className="flex items-center space-x-2 mb-2 h-[38px]">
-                  <input
-                    type="checkbox"
-                    id="includeVisa"
-                    checked={formData.includeVisa}
-                    onChange={(e) => handleVisaToggle(e.target.checked)}
-                    className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-                  />
-                  <label htmlFor="includeVisa" className="text-sm text-gray-700">Termasuk Visa</label>
-                </div>
-                <label className="block text-xs font-medium text-gray-500 mb-1">Visa (SAR) - Per Pax</label>
-                <Input
-                  type="number"
-                  min="0"
-                  value={formData.visaTotal}
-                  onChange={(e) => handleInputChange("visaTotal", parseFloat(e.target.value) || 0)}
-                  disabled={!formData.includeVisa}
-                />
-              </div>
-
-            </div>
-
-            {/* Handling Tambahan */}
-            <div className="mt-6 border-t pt-4">
-              <h3 className="text-sm font-semibold text-gray-700 mb-3">Rincian Handling & Layanan Tambahan (SAR)</h3>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                <div>
-                  <label className="block text-xs font-medium text-blue-600 mb-1">Handling Airport (Per Pax)</label>
-                  <Input type="number" min="0" value={formData.handlingAirport} onChange={(e) => handleInputChange("handlingAirport", parseFloat(e.target.value) || 0)} />
-                </div>
-                <div>
-                  <label className="block text-xs font-medium text-blue-600 mb-1">Handling Hotel (Per Pax)</label>
-                  <Input type="number" min="0" value={formData.handlingHotel} onChange={(e) => handleInputChange("handlingHotel", parseFloat(e.target.value) || 0)} />
-                </div>
-                <div>
-                  <label className="block text-xs font-medium text-blue-600 mb-1">Tiket Museum (Per Pax)</label>
-                  <Input type="number" min="0" value={formData.tiketMuseum} onChange={(e) => handleInputChange("tiketMuseum", parseFloat(e.target.value) || 0)} />
-                </div>
-                <div className="col-span-2">
-                  <label className="block text-xs font-medium text-amber-600 mb-1">Muthowif Tour Type</label>
-                  <select
-                    value={formData.muthowifTourType}
-                    onChange={(e) => handleInputChange("muthowifTourType", e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm h-10"
-                  >
-                    <option value="Full Trip Paket">Full Trip Paket</option>
-                    <option value="Half Trip Paket">Half Trip Paket</option>
-                    <option value="City Tour Makkah">City Tour Makkah</option>
-                    <option value="City Tour Madinah">City Tour Madinah</option>
-                    <option value="City Tour Jeddah">City Tour Jeddah</option>
-                    <option value="Tour Lainnya">Tour Lainnya</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-xs font-medium text-amber-600 mb-1">Muthowif (Fixed)</label>
-                  <Input type="number" min="0" value={formData.muthowif} onChange={(e) => handleInputChange("muthowif", parseFloat(e.target.value) || 0)} className="h-10" />
-                </div>
-                <div>
-                  <label className="block text-xs font-medium text-amber-600 mb-1">Muthowifah Raudhah (Fixed)</label>
-                  <Input type="number" min="0" value={formData.muthowifahRaudhah} onChange={(e) => handleInputChange("muthowifahRaudhah", parseFloat(e.target.value) || 0)} />
-                </div>
-                <div>
-                  <label className="block text-xs font-medium text-amber-600 mb-1">Tip Driver (Fixed)</label>
-                  <Input type="number" min="0" value={formData.tipDriver} onChange={(e) => handleInputChange("tipDriver", parseFloat(e.target.value) || 0)} />
-                </div>
-                <div>
-                  <label className="block text-xs font-medium text-amber-600 mb-1">Biaya Tak Terduga (Fixed)</label>
-                  <Input type="number" min="0" value={formData.biayaTakTerduga} onChange={(e) => handleInputChange("biayaTakTerduga", parseFloat(e.target.value) || 0)} />
-                </div>
-              </div>
-            </div>
-          </Card>
-
-          <Card className="p-6">
-            <div className="flex items-center space-x-2 mb-4">
-              <DollarSign className="h-5 w-5 text-green-600" />
-              <h2 className="text-lg font-semibold">Total & Margin</h2>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-              <div>
-                <div className="flex gap-2 mb-1">
-                  <label className="block text-sm font-medium text-gray-700 flex-1">
-                    Jenis Profit
-                  </label>
-                  <label className="block text-sm font-medium text-gray-700 flex-1">
-                    Nilai Profit
-                  </label>
-                </div>
-                <div className="flex gap-2 mb-4">
-                  <select
-                    value={formData.profitType}
-                    onChange={(e) => handleInputChange("profitType", e.target.value)}
-                    className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  >
-                    <option value="percentage">Persentase (%)</option>
-                    <option value="fixed">Fix Amount (SAR)</option>
-                  </select>
-                  <Input
-                    type="number"
-                    min="0"
-                    value={formData.profitValue}
-                    onChange={(e) => handleInputChange("profitValue", parseFloat(e.target.value) || 0)}
-                    className="flex-1"
-                  />
-                </div>
-
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Catatan Internal
-                </label>
-                <textarea
-                  value={formData.notes}
-                  onChange={(e) => handleInputChange("notes", e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md"
-                  rows={3}
-                />
-              </div>
-
-              <div className="bg-gray-50 p-6 rounded-xl border border-gray-200">
-                <div className="space-y-2 text-sm">
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">Subtotal Modal</span>
-                    <span>SAR {subTotal.toLocaleString('en-US')}</span>
-                  </div>
-                  <div className="flex justify-between text-green-600">
-                    <span>Profit ({formData.profitType === 'percentage' ? `${formData.profitValue}%` : 'Fixed'})</span>
-                    <span>+ SAR {profitAmount.toLocaleString('en-US')}</span>
-                  </div>
-                  <div className="border-t pt-2 mt-2">
-                    <div className="flex justify-between font-bold text-lg">
-                      <span>GRAND TOTAL</span>
-                      <span>SAR {grandTotal.toLocaleString('en-US')}</span>
-                    </div>
-                  </div>
-                  <div className="mt-3 space-y-1">
-                    <div className="flex justify-between text-xs text-gray-500">
-                      <span>Sub-Total Non-Hotel / Pax</span>
-                      <span>SAR {nonHotelPerPax.toLocaleString('en-US', { maximumFractionDigits: 2 })}</span>
-                    </div>
-                    <div className="flex justify-between font-medium text-blue-600">
-                      <span>Harga Per Pax (Double)</span>
-                      <span>SAR {priceDouble.toLocaleString('en-US', { maximumFractionDigits: 2 })}</span>
-                    </div>
-                    <div className="flex justify-between font-medium text-blue-600">
-                      <span>Harga Per Pax (Triple)</span>
-                      <span>SAR {priceTriple.toLocaleString('en-US', { maximumFractionDigits: 2 })}</span>
-                    </div>
-                    <div className="flex justify-between font-medium text-blue-600">
-                      <span>Harga Per Pax (Quad)</span>
-                      <span>SAR {priceQuad.toLocaleString('en-US', { maximumFractionDigits: 2 })}</span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </Card>
-
-          <div className="flex justify-end space-x-4">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => navigate({ to: "/custom-la-requests" })}
-            >
-              Batal
-            </Button>
-            <Button
-              type="submit"
-              disabled={createLaMutation.isPending}
-            >
-              {createLaMutation.isPending ? (
-                <>
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  Menyimpan...
-                </>
-              ) : (
-                <>
-                  <Save className="h-4 w-4 mr-2" />
-                  Simpan Pesanan
-                </>
               )}
-            </Button>
+            </Card>
+
+            <Card className="p-6">
+              <h4 className="font-bold mb-4 border-b pb-2">Transportation Bookings (Unlinked)</h4>
+              {unlinkedTransports.length === 0 ? <p className="text-gray-500 italic text-sm">Tidak ada booking transport yang unlinked.</p> : (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {unlinkedTransports.map((t:any) => (
+                    <div key={t.id} className={`border p-4 rounded-lg cursor-pointer transition-colors ${formData.linkedTransportIds.includes(t.id) ? 'bg-blue-50 border-blue-500' : 'hover:bg-gray-50'}`} onClick={() => handleToggleCart('transport', t.id)}>
+                      <div className="flex justify-between">
+                        <span className="font-bold">{t.number}</span>
+                        <input type="checkbox" checked={formData.linkedTransportIds.includes(t.id)} readOnly className="h-5 w-5" />
+                      </div>
+                      <div className="font-bold mt-2 text-green-700">{formatCurrency(t.totalAmount, t.currency || 'SAR')}</div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </Card>
+
+            <Card className="p-6">
+              <h4 className="font-bold mb-4 border-b pb-2">Service Orders - Visa/Siskopatuh (Unlinked)</h4>
+              {unlinkedServiceOrders.length === 0 ? <p className="text-gray-500 italic text-sm">Tidak ada service order yang unlinked.</p> : (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {unlinkedServiceOrders.map((s:any) => (
+                    <div key={s.id} className={`border p-4 rounded-lg cursor-pointer transition-colors ${formData.linkedServiceOrderIds.includes(s.id) ? 'bg-blue-50 border-blue-500' : 'hover:bg-gray-50'}`} onClick={() => handleToggleCart('serviceOrder', s.id)}>
+                      <div className="flex justify-between">
+                        <span className="font-bold">{s.productType} - {s.number}</span>
+                        <input type="checkbox" checked={formData.linkedServiceOrderIds.includes(s.id)} readOnly className="h-5 w-5" />
+                      </div>
+                      <div className="text-sm text-gray-600 mt-1">Pax: {s.totalPax}</div>
+                      <div className="font-bold mt-2 text-green-700">{formatCurrency(s.totalAmount, s.currency || 'SAR')}</div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </Card>
+
+            <div className="flex justify-between">
+              <Button variant="outline" onClick={() => setStep(1)}>Kembali</Button>
+              <Button onClick={() => setStep(3)}>Lanjut ke Layanan Tambahan</Button>
+            </div>
           </div>
-        </form>
+        )}
+
+        {/* STEP 3 */}
+        {step === 3 && (
+          <Card className="p-6">
+            <h2 className="text-xl font-bold mb-6 flex items-center"><Calendar className="mr-2" /> Layanan Tambahan Khusus LA</h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div>
+                <label className="block text-sm font-medium mb-1">Handling Airport (SAR per pax)</label>
+                <Input type="number" value={formData.handlingAirport} onChange={e => setFormData({...formData, handlingAirport: parseFloat(e.target.value)||0})} />
+                <p className="text-xs text-gray-500 mt-1">Total: {formatCurrency(formData.handlingAirport * formData.totalPax, 'SAR')}</p>
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1">Handling Hotel (SAR per pax)</label>
+                <Input type="number" value={formData.handlingHotel} onChange={e => setFormData({...formData, handlingHotel: parseFloat(e.target.value)||0})} />
+                <p className="text-xs text-gray-500 mt-1">Total: {formatCurrency(formData.handlingHotel * formData.totalPax, 'SAR')}</p>
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1">Tipe Tour Muthowif</label>
+                <select value={formData.muthowifTourType} onChange={e => setFormData({...formData, muthowifTourType: e.target.value})} className="w-full border p-2 rounded">
+                  <option value="Full Trip Paket">Full Trip Paket</option>
+                  <option value="City Tour Makkah">City Tour Makkah</option>
+                  <option value="City Tour Madinah">City Tour Madinah</option>
+                  <option value="Tanpa Tour">Tanpa Tour</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1">Biaya Muthowif (SAR Fixed)</label>
+                <Input type="number" value={formData.muthowif} onChange={e => setFormData({...formData, muthowif: parseFloat(e.target.value)||0})} />
+              </div>
+            </div>
+            <div className="mt-8 flex justify-between">
+              <Button variant="outline" onClick={() => setStep(2)}>Kembali</Button>
+              <Button onClick={() => setStep(4)}>Lanjut ke Margin & Simpan</Button>
+            </div>
+          </Card>
+        )}
+
+        {/* STEP 4 */}
+        {step === 4 && (
+          <Card className="p-6">
+            <h2 className="text-xl font-bold mb-6 flex items-center"><DollarSign className="mr-2" /> Rekapitulasi & Margin Profit</h2>
+            
+            <div className="bg-gray-50 p-4 rounded-lg border mb-6 space-y-2">
+              <div className="flex justify-between text-sm">
+                <span>Total Item Terpilih (Hotel, Transport, Visa)</span>
+                <span>{formatCurrency(baseTotal - ((formData.handlingAirport + formData.handlingHotel) * formData.totalPax) - formData.muthowif, 'SAR')}</span>
+              </div>
+              <div className="flex justify-between text-sm">
+                <span>Total Handling & Tambahan LA</span>
+                <span>{formatCurrency(((formData.handlingAirport + formData.handlingHotel) * formData.totalPax) + formData.muthowif, 'SAR')}</span>
+              </div>
+              <div className="flex justify-between font-bold border-t pt-2">
+                <span>Base Total (HPP)</span>
+                <span>{formatCurrency(baseTotal, 'SAR')}</span>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+              <div>
+                <label className="block text-sm font-medium mb-1">Tipe Profit</label>
+                <select value={formData.profitType} onChange={e => setFormData({...formData, profitType: e.target.value})} className="w-full border p-2 rounded">
+                  <option value="percentage">Persentase (%)</option>
+                  <option value="fixed">Nominal Fixed (SAR)</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1">Nilai Profit</label>
+                <Input type="number" value={formData.profitValue} onChange={e => setFormData({...formData, profitValue: parseFloat(e.target.value)||0})} />
+                <p className="text-xs text-green-600 font-bold mt-1">Margin: +{formatCurrency(profitAmount, 'SAR')}</p>
+              </div>
+              <div className="md:col-span-2">
+                <label className="block text-sm font-medium mb-1">Catatan Tambahan</label>
+                <textarea rows={3} value={formData.notes} onChange={e => setFormData({...formData, notes: e.target.value})} className="w-full border p-2 rounded" />
+              </div>
+            </div>
+
+            <div className="bg-blue-600 text-white p-4 rounded-lg flex justify-between items-center mb-8">
+              <div>
+                <p className="text-blue-100 text-sm">Grand Total Tagihan LA</p>
+                <p className="text-3xl font-bold">{formatCurrency(grandTotal, 'SAR')}</p>
+              </div>
+              <div className="text-right">
+                <p className="text-blue-100 text-sm">Harga Per Pax</p>
+                <p className="text-xl font-semibold">{formatCurrency(formData.totalPax > 0 ? grandTotal / formData.totalPax : 0, 'SAR')}</p>
+              </div>
+            </div>
+
+            <div className="flex justify-between">
+              <Button variant="outline" onClick={() => setStep(3)}>Kembali</Button>
+              <Button onClick={handleSubmit} disabled={createLaMutation.isPending} className="bg-green-600 hover:bg-green-700">
+                {createLaMutation.isPending ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Save className="w-4 h-4 mr-2" />}
+                Simpan & Gabungkan LA
+              </Button>
+            </div>
+          </Card>
+        )}
+
       </div>
     </PageLayout>
   )

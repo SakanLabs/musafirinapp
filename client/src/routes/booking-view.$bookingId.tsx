@@ -15,7 +15,8 @@ import {
   Mail,
   Loader2,
   Edit,
-  Clock
+  Clock,
+  Package
 } from "lucide-react"
 import { SARCurrency } from "@/components/ui/sar-currency"
 import { authService } from "@/lib/auth"
@@ -150,6 +151,26 @@ Total: ${formatCurrency(booking.totalAmount.toString(), 'SAR')}`
             </Button>
           </div>
         </div>
+
+        {/* LA Integration Banner */}
+        {booking.customLaRequestId && (
+          <div className="bg-purple-50 border border-purple-200 rounded-lg p-4 flex items-center justify-between">
+            <div className="flex items-center text-purple-900">
+              <Package className="h-5 w-5 mr-3" />
+              <div>
+                <p className="font-semibold">Paket LA Terkait</p>
+                <p className="text-sm">Booking ini merupakan bagian dari Land Arrangement.</p>
+              </div>
+            </div>
+            <Button 
+              variant="outline" 
+              className="border-purple-300 text-purple-700 hover:bg-purple-100"
+              onClick={() => navigate({ to: `/custom-la-detail/${booking.customLaRequestId}` })}
+            >
+              Kembali ke Ringkasan LA
+            </Button>
+          </div>
+        )}
 
         {/* Booking Status */}
         <Card>
@@ -322,7 +343,7 @@ Total: ${formatCurrency(booking.totalAmount.toString(), 'SAR')}`
                 <label className="text-sm font-medium text-gray-500">Total Amount</label>
                 <div className="flex items-center">
                   <SARCurrency amount="" iconSize={16} className="mr-2 text-gray-400" showSymbol={true} />
-                  <p className="text-lg font-semibold">{formatCurrency(booking.totalAmount.toString(), 'SAR')}</p>
+                  <p className="text-lg font-semibold">{formatCurrency(booking.totalAmount?.toString() || '0', 'SAR')}</p>
                 </div>
               </div>
               <div>
@@ -343,18 +364,20 @@ Total: ${formatCurrency(booking.totalAmount.toString(), 'SAR')}`
           </CardHeader>
           <CardContent>
             <div className="flex flex-wrap gap-4">
-              <Button
-                onClick={handleGenerateInvoice}
-                disabled={generateInvoiceMutation.isPending}
-                className="flex items-center"
-              >
-                {generateInvoiceMutation.isPending ? (
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                ) : (
-                  <FileText className="h-4 w-4 mr-2" />
-                )}
-                Generate Invoice
-              </Button>
+              {(!booking?.customLaRequestId) && (
+                <Button
+                  onClick={handleGenerateInvoice}
+                  disabled={generateInvoiceMutation.isPending}
+                  className="flex items-center"
+                >
+                  {generateInvoiceMutation.isPending ? (
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  ) : (
+                    <FileText className="h-4 w-4 mr-2" />
+                  )}
+                  Generate Invoice
+                </Button>
+              )}
               <Button
                 onClick={handleGenerateVoucher}
                 disabled={generateVoucherMutation.isPending}

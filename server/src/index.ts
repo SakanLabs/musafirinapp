@@ -21,12 +21,14 @@ import serviceOrderRoutes from "./routes/serviceOrders";
 import transportationRoutes from "./routes/transportation";
 import bookingServiceItemsRoutes from "./routes/bookingServiceItems";
 import masterRoutes from "./routes/master";
+import serviceMasterRoutes from "./routes/serviceMaster";
 import publicProductsRoutes from "./routes/publicProducts";
 import publicCheckoutRoutes from "./routes/publicCheckout";
 import muthowifsRoutes from "./routes/muthowifs";
 import publicBookingsRoutes from "./routes/publicBookings";
 import userRoutes from "./routes/users";
 import customLaRoutes from "./routes/customLa";
+import customLaBillingRoutes from "./routes/customLaBilling";
 import leadsRoutes from "./routes/leads";
 import profileRoutes from "./routes/profile";
 
@@ -77,6 +79,7 @@ export const app = new Hono()
   .route("/api/service-orders", serviceOrderRoutes)
   .route("/api/transportation", transportationRoutes)
   .route("/api/booking-service-items", bookingServiceItemsRoutes)
+  .route("/api/master/services", serviceMasterRoutes)
   .route("/api/master", masterRoutes)
   .route("/api/muthowifs", muthowifsRoutes)
   .route("/api/public/products", publicProductsRoutes)
@@ -84,6 +87,7 @@ export const app = new Hono()
   .route("/api/public/bookings", publicBookingsRoutes)
   .route("/api/users", userRoutes)
   .route("/api/custom-la", customLaRoutes)
+  .route("/api/custom-la-billing", customLaBillingRoutes)
   .route("/api/leads", leadsRoutes)
   .route("/api/profile", profileRoutes)
   .get("/", (c) => {

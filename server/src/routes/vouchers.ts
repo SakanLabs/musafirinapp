@@ -79,6 +79,7 @@ voucherRoutes.post('/:bookingId/generate', requireAdmin, async (c) => {
         hotelConfirmationNo: bookings.hotelConfirmationNo,
         mealPlan: bookings.mealPlan,
         meta: bookings.meta,
+        customLaRequestId: bookings.customLaRequestId,
         createdAt: bookings.createdAt,
         updatedAt: bookings.updatedAt,
         clientName: clients.name,
@@ -201,6 +202,7 @@ voucherRoutes.post('/:bookingId/generate', requireAdmin, async (c) => {
       hotelConfirmationNo: bookingData.hotelConfirmationNo,
       mealPlan: bookingData.mealPlan,
       meta: bookingData.meta,
+      customLaRequestId: bookingData.customLaRequestId,
       createdAt: bookingData.createdAt,
       updatedAt: bookingData.updatedAt,
     };

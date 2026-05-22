@@ -33,6 +33,7 @@ export interface TransportationBooking {
   routeCount: number;
   createdAt: string;
   updatedAt: string;
+  customLaRequestId?: number;
   routes?: TransportationRoute[];
 }
 
@@ -69,7 +70,7 @@ export const transportationBookingKeys = {
 };
 
 // Get all transportation bookings
-export function useTransportationBookings() {
+export function useTransportationBookings(clientId?: number, unlinked?: boolean) {
   return useQuery({
     queryKey: transportationBookingKeys.lists(),
     queryFn: async () => {

@@ -1,7 +1,7 @@
 import { Hono } from 'hono';
 import { eq, desc } from 'drizzle-orm';
 import { db } from '../db';
-import { invoices, bookings, clients, bookingItems, bookingItemPricingPeriods, clientDeposits, depositTransactions, bookingServiceItems, invoicePayments, transportationInvoices, transportationBookings, serviceOrderInvoices, serviceOrders } from '../db/schema';
+import { invoices, bookings, clients, bookingItems, bookingItemPricingPeriods, clientDeposits, depositTransactions, bookingServiceItems, invoicePayments, transportationInvoices, transportationBookings, serviceOrderInvoices, serviceOrders, customLaInvoices, customLaRequests } from '../db/schema';
 import { requireAdminOrFinance } from '../middleware/auth';
 import { generateInvoiceNumber, generateInvoicePDF, uploadToMinio, checkFileExistsInMinio, deleteFromMinio } from '../utils/pdf';
 import { TemplateHelpers } from '../utils/template';
@@ -377,11 +377,33 @@ invoiceRoutes.get('/', requireAdminOrFinance, async (c) => {
       .leftJoin(serviceOrders, eq(serviceOrderInvoices.serviceOrderId, serviceOrders.id))
       .leftJoin(clients, eq(serviceOrders.clientId, clients.id));
 
+    const allCustomLaInvoices = await db
+      .select({
+        id: customLaInvoices.id,
+        number: customLaInvoices.number,
+        bookingId: customLaInvoices.customLaRequestId,
+        amount: customLaInvoices.amount,
+        currency: customLaInvoices.currency,
+        issueDate: customLaInvoices.issueDate,
+        dueDate: customLaInvoices.dueDate,
+        status: customLaInvoices.status,
+        pdfUrl: customLaInvoices.pdfUrl,
+        bookingCode: customLaRequests.number,
+        clientName: clients.name,
+        clientEmail: clients.email,
+        hotelName: customLaRequests.travelName,
+        city: customLaRequests.status,
+      })
+      .from(customLaInvoices)
+      .leftJoin(customLaRequests, eq(customLaInvoices.customLaRequestId, customLaRequests.id))
+      .leftJoin(clients, eq(customLaRequests.clientId, clients.id));
+
     // Combine and sort by issueDate descending
     const combinedInvoices = [
       ...allInvoices,
       ...allTransportationInvoices.map(inv => ({ ...inv, hotelName: 'Transportation' })),
-      ...allServiceOrderInvoices.map(inv => ({ ...inv, hotelName: 'Service Order' }))
+      ...allServiceOrderInvoices.map(inv => ({ ...inv, hotelName: 'Service Order' })),
+      ...allCustomLaInvoices.map(inv => ({ ...inv, hotelName: inv.hotelName ? `Custom LA (${inv.hotelName})` : 'Custom LA' }))
     ].sort((a, b) => {
       const dateA = a.issueDate ? new Date(a.issueDate).getTime() : 0;
       const dateB = b.issueDate ? new Date(b.issueDate).getTime() : 0;
@@ -628,6 +650,10 @@ invoiceRoutes.get('/by-number/:number', requireAdminOrFinance, async (c) => {
       pdfUrl = invoice[0]!.pdfUrl;
     } else if (invoiceNumber.startsWith('SOI-')) {
       const invoice = await db.select().from(serviceOrderInvoices).where(eq(serviceOrderInvoices.number, invoiceNumber)).limit(1);
+      if (invoice.length === 0) return c.json({ error: 'Invoice not found' }, 404);
+      pdfUrl = invoice[0]!.pdfUrl;
+    } else if (invoiceNumber.startsWith('LA-INV-')) {
+      const invoice = await db.select().from(customLaInvoices).where(eq(customLaInvoices.number, invoiceNumber)).limit(1);
       if (invoice.length === 0) return c.json({ error: 'Invoice not found' }, 404);
       pdfUrl = invoice[0]!.pdfUrl;
     } else {

@@ -1,6 +1,6 @@
 import { createFileRoute, redirect, useNavigate } from "@tanstack/react-router";
 import { toast } from "sonner";
-import { ArrowLeft, Edit, FileText, Receipt, Trash2, Loader2 } from "lucide-react";
+import { ArrowLeft, Edit, FileText, Receipt, Trash2, Loader2, Package } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -200,14 +200,18 @@ function TransportationBookingDetailPage() {
             </Badge>
           </div>
           <div className="flex items-center space-x-2">
-            <Button variant="outline" size="sm" onClick={handleGenerateInvoice}>
-              <FileText className="h-4 w-4 mr-2" />
-              {existingInvoice ? "Generate Ulang Invoice" : "Generate Invoice"}
-            </Button>
-            <Button variant="outline" size="sm" onClick={handleGenerateReceipt}>
-              <Receipt className="h-4 w-4 mr-2" />
-              Generate Receipt
-            </Button>
+            {(!transportationBooking.customLaRequestId) && (
+              <>
+                <Button variant="outline" size="sm" onClick={handleGenerateInvoice}>
+                  <FileText className="h-4 w-4 mr-2" />
+                  {existingInvoice ? "Generate Ulang Invoice" : "Generate Invoice"}
+                </Button>
+                <Button variant="outline" size="sm" onClick={handleGenerateReceipt}>
+                  <Receipt className="h-4 w-4 mr-2" />
+                  Generate Receipt
+                </Button>
+              </>
+            )}
             <Button variant="outline" size="sm" onClick={handleEdit}>
               <Edit className="h-4 w-4 mr-2" />
               Edit
@@ -218,6 +222,26 @@ function TransportationBookingDetailPage() {
             </Button>
           </div>
         </div>
+
+        {/* LA Integration Banner */}
+        {transportationBooking.customLaRequestId && (
+          <div className="bg-purple-50 border border-purple-200 rounded-lg p-4 flex items-center justify-between">
+            <div className="flex items-center text-purple-900">
+              <Package className="h-5 w-5 mr-3" />
+              <div>
+                <p className="font-semibold">Paket LA Terkait</p>
+                <p className="text-sm">Booking transportasi ini merupakan bagian dari Land Arrangement.</p>
+              </div>
+            </div>
+            <Button 
+              variant="outline" 
+              className="border-purple-300 text-purple-700 hover:bg-purple-100"
+              onClick={() => navigate({ to: `/custom-la-detail/${transportationBooking.customLaRequestId}` })}
+            >
+              Kembali ke Ringkasan LA
+            </Button>
+          </div>
+        )}
 
         {/* Customer Information */}
         <Card className="p-6">

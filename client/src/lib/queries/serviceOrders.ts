@@ -21,6 +21,7 @@ export interface ServiceOrderListItem {
   returnDate: string;
   createdAt: string;
   meta?: VisaMeta | null;
+  customLaRequestId?: number;
 }
 
 export type VisaMeta = {
@@ -67,7 +68,7 @@ export const serviceOrderKeys = {
   checklist: (id: string | number) => [...serviceOrderKeys.detail(id), 'checklist'] as const,
 };
 
-export function useServiceOrders() {
+export function useServiceOrders(clientId?: number, unlinked?: boolean) {
   return useQuery({
     queryKey: serviceOrderKeys.lists(),
     queryFn: async () => {

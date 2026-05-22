@@ -257,3 +257,68 @@ export const useDeleteTransportPricing = () => {
     },
   });
 };
+
+// ==========================================
+// SERVICE MASTER
+// ==========================================
+
+export interface ServiceMaster {
+  id: number;
+  category: 'Handling Airport' | 'Handling Hotel' | 'Muthowif' | 'Visa' | 'Tiket Museum' | 'Siskopatuh' | 'Lainnya';
+  name: string;
+  price: string;
+  unitType: string;
+  currency: string;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export const useServices = () => {
+  return useQuery({
+    queryKey: ['services-master'],
+    queryFn: async () => {
+      const response = await apiClient.get<ServiceMaster[]>('/api/master/services');
+      return response;
+    },
+  });
+};
+
+export const useCreateService = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (data: Partial<ServiceMaster>) => {
+      const response = await apiClient.post<ServiceMaster>('/api/master/services', data);
+      return response;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['services-master'] });
+    },
+  });
+};
+
+export const useUpdateService = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, ...data }: Partial<ServiceMaster> & { id: number }) => {
+      const response = await apiClient.put<ServiceMaster>(`/api/master/services/${id}`, data);
+      return response;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['services-master'] });
+    },
+  });
+};
+
+export const useDeleteService = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: number) => {
+      const response = await apiClient.delete<{message: string}>(`/api/master/services/${id}`);
+      return response;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['services-master'] });
+    },
+  });
+};
