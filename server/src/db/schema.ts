@@ -74,7 +74,7 @@ export const serviceCategoryEnum = pgEnum('service_category', ['Visa', 'Siskopat
 export const leadStatusEnum = pgEnum('lead_status', ['NEW', 'DISCUSSION', 'QUOTED', 'FOLLOW_UP', 'WON', 'LOST']);
 
 // Transportation enums
-export const vehicleTypeEnum = pgEnum('vehicle_type', ['sedan', 'staria', 'hiace', 'gmc', 'coaster', 'bus']);
+export const vehicleTypeEnum = pgEnum('vehicle_type', ['sedan', 'suv', 'van', 'bus', 'minibus', 'staria', 'hiace', 'gmc', 'coaster']);
 export const transportationStatusEnum = pgEnum('transportation_status', ['pending', 'confirmed', 'completed', 'cancelled']);
 
 // Clients table
