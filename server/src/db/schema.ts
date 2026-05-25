@@ -1,4 +1,5 @@
 import { pgTable, text, timestamp, boolean, varchar, serial, integer, decimal, jsonb, pgEnum, date } from 'drizzle-orm/pg-core';
+import { relations } from 'drizzle-orm';
 
 // User table for better-auth
 export const user = pgTable('user', {
@@ -707,6 +708,145 @@ export const customLaReceipts = pgTable("custom_la_receipts", {
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
 
+// Store-specific Enums
+export const storePaymentStatusEnum = pgEnum('store_payment_status', ['unpaid', 'partial', 'paid', 'verified', 'failed']);
+export const storeOrderStatusEnum = pgEnum('store_order_status', ['pending', 'processing', 'completed', 'cancelled']);
+export const preOrderStatusEnum = pgEnum('pre_order_status', ['PO_OPEN', 'PO_CLOSED', 'PURCHASING', 'SHIPPING_FROM_SAUDI', 'ARRIVED_INDONESIA', 'LOCAL_DELIVERY', 'COMPLETED']);
+export const shipmentStatusEnum = pgEnum('shipment_status', ['PENDING', 'PACKING', 'READY_TO_SHIP', 'SHIPPED_FROM_SAUDI', 'ARRIVED_INDONESIA', 'CUSTOMS_CLEARANCE', 'LOCAL_COURIER', 'OUT_FOR_DELIVERY', 'DELIVERED', 'FAILED_DELIVERY', 'RETURNED']);
+
+// Store Categories
+export const storeCategories = pgTable('store_categories', {
+  id: serial('id').primaryKey(),
+  name: varchar('name', { length: 255 }).notNull(),
+  slug: varchar('slug', { length: 255 }).notNull().unique(),
+  description: text('description'),
+  isActive: boolean('is_active').default(true).notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+});
+
+// Store Products
+export const storeProducts = pgTable('store_products', {
+  id: serial('id').primaryKey(),
+  name: varchar('name', { length: 255 }).notNull(),
+  slug: varchar('slug', { length: 255 }).notNull().unique(),
+  description: text('description'),
+  categoryId: integer('category_id').notNull().references(() => storeCategories.id, { onDelete: 'cascade' }),
+  sku: varchar('sku', { length: 100 }).notNull(),
+  stock: integer('stock').default(0).notNull(),
+  price: decimal('price', { precision: 10, scale: 2 }).notNull(),
+  promoPrice: decimal('promo_price', { precision: 10, scale: 2 }),
+  weight: decimal('weight', { precision: 10, scale: 2 }).default('0.00').notNull(), // in kg
+  dimensions: varchar('dimensions', { length: 100 }), // e.g. "20x15x10"
+  isActive: boolean('is_active').default(true).notNull(),
+  isPreOrder: boolean('is_pre_order').default(false).notNull(),
+  preOrderOpenDate: timestamp('pre_order_open_date'),
+  preOrderCloseDate: timestamp('pre_order_close_date'),
+  estimatedArrivalDate: timestamp('estimated_arrival_date'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+});
+
+// Store Product Images
+export const storeProductImages = pgTable('store_product_images', {
+  id: serial('id').primaryKey(),
+  productId: integer('product_id').notNull().references(() => storeProducts.id, { onDelete: 'cascade' }),
+  imageUrl: text('image_url').notNull(),
+  thumbnail: boolean('thumbnail').default(false).notNull(),
+  sortOrder: integer('sort_order').default(0).notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+});
+
+// Store Carts
+export const storeCarts = pgTable('store_carts', {
+  id: serial('id').primaryKey(),
+  userId: text('user_id').notNull().references(() => user.id, { onDelete: 'cascade' }),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+});
+
+// Store Cart Items
+export const storeCartItems = pgTable('store_cart_items', {
+  id: serial('id').primaryKey(),
+  cartId: integer('cart_id').notNull().references(() => storeCarts.id, { onDelete: 'cascade' }),
+  productId: integer('product_id').notNull().references(() => storeProducts.id, { onDelete: 'cascade' }),
+  quantity: integer('quantity').default(1).notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+});
+
+// Store Orders
+export const storeOrders = pgTable('store_orders', {
+  id: serial('id').primaryKey(),
+  orderNumber: varchar('order_number', { length: 50 }).notNull().unique(), // e.g. ORD-2026-XXXXXX
+  userId: text('user_id').notNull().references(() => user.id, { onDelete: 'cascade' }),
+  totalAmount: decimal('total_amount', { precision: 10, scale: 2 }).notNull(),
+  shippingCost: decimal('shipping_cost', { precision: 10, scale: 2 }).default('0.00').notNull(),
+  discountAmount: decimal('discount_amount', { precision: 10, scale: 2 }).default('0.00').notNull(),
+  finalAmount: decimal('final_amount', { precision: 10, scale: 2 }).notNull(),
+  currency: varchar('currency', { length: 3 }).default('SAR').notNull(),
+  paymentStatus: storePaymentStatusEnum('payment_status').default('unpaid').notNull(),
+  orderStatus: storeOrderStatusEnum('order_status').default('pending').notNull(),
+  preOrderStatus: preOrderStatusEnum('pre_order_status'), // For PO orders tracking
+  shippingName: varchar('shipping_name', { length: 255 }).notNull(),
+  shippingPhone: varchar('shipping_phone', { length: 50 }).notNull(),
+  shippingAddress: text('shipping_address').notNull(),
+  trackingNumber: varchar('tracking_number', { length: 100 }),
+  courierName: varchar('courier_name', { length: 100 }),
+  estimatedDelivery: timestamp('estimated_delivery'),
+  isPreOrder: boolean('is_pre_order').default(false).notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+});
+
+// Store Order Items
+export const storeOrderItems = pgTable('store_order_items', {
+  id: serial('id').primaryKey(),
+  orderId: integer('order_id').notNull().references(() => storeOrders.id, { onDelete: 'cascade' }),
+  productId: integer('product_id').notNull().references(() => storeProducts.id, { onDelete: 'cascade' }),
+  quantity: integer('quantity').notNull(),
+  price: decimal('price', { precision: 10, scale: 2 }).notNull(),
+  subtotal: decimal('subtotal', { precision: 10, scale: 2 }).notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+});
+
+// Store Payments (Manual Uploads)
+export const storePayments = pgTable('store_payments', {
+  id: serial('id').primaryKey(),
+  orderId: integer('order_id').notNull().references(() => storeOrders.id, { onDelete: 'cascade' }),
+  amount: decimal('amount', { precision: 10, scale: 2 }).notNull(),
+  bankName: varchar('bank_name', { length: 100 }).notNull(),
+  accountName: varchar('account_name', { length: 255 }).notNull(),
+  paymentProofUrl: text('payment_proof_url').notNull(),
+  notes: text('notes'),
+  status: varchar('status', { length: 50 }).default('pending').notNull(), // 'pending', 'approved', 'rejected'
+  verifiedBy: text('verified_by').references(() => user.id, { onDelete: 'set null' }),
+  verifiedAt: timestamp('verified_by_date'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+});
+
+// Store Shipments
+export const storeShipments = pgTable('store_shipments', {
+  id: serial('id').primaryKey(),
+  orderId: integer('order_id').notNull().references(() => storeOrders.id, { onDelete: 'cascade' }),
+  trackingNumber: varchar('tracking_number', { length: 100 }).notNull(),
+  courierName: varchar('courier_name', { length: 100 }).notNull(),
+  status: shipmentStatusEnum('status').default('PENDING').notNull(),
+  estimatedArrival: timestamp('estimated_arrival'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+});
+
+// Store Shipment Logs (Timeline)
+export const storeShipmentLogs = pgTable('store_shipment_logs', {
+  id: serial('id').primaryKey(),
+  shipmentId: integer('shipment_id').notNull().references(() => storeShipments.id, { onDelete: 'cascade' }),
+  status: shipmentStatusEnum('status').notNull(),
+  description: text('description').notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+});
+
 
 export type InvoicePayment = typeof invoicePayments.$inferSelect;
 export type NewInvoicePayment = typeof invoicePayments.$inferInsert;
@@ -734,3 +874,118 @@ export type CustomLaInvoicePayment = typeof customLaInvoicePayments.$inferSelect
 export type NewCustomLaInvoicePayment = typeof customLaInvoicePayments.$inferInsert;
 export type CustomLaReceipt = typeof customLaReceipts.$inferSelect;
 export type NewCustomLaReceipt = typeof customLaReceipts.$inferInsert;
+
+export type StoreCategory = typeof storeCategories.$inferSelect;
+export type NewStoreCategory = typeof storeCategories.$inferInsert;
+export type StoreProduct = typeof storeProducts.$inferSelect;
+export type NewStoreProduct = typeof storeProducts.$inferInsert;
+export type StoreProductImage = typeof storeProductImages.$inferSelect;
+export type NewStoreProductImage = typeof storeProductImages.$inferInsert;
+export type StoreCart = typeof storeCarts.$inferSelect;
+export type NewStoreCart = typeof storeCarts.$inferInsert;
+export type StoreCartItem = typeof storeCartItems.$inferSelect;
+export type NewStoreCartItem = typeof storeCartItems.$inferInsert;
+export type StoreOrder = typeof storeOrders.$inferSelect;
+export type NewStoreOrder = typeof storeOrders.$inferInsert;
+export type StoreOrderItem = typeof storeOrderItems.$inferSelect;
+export type NewStoreOrderItem = typeof storeOrderItems.$inferInsert;
+export type StorePayment = typeof storePayments.$inferSelect;
+export type NewStorePayment = typeof storePayments.$inferInsert;
+export type StoreShipment = typeof storeShipments.$inferSelect;
+export type NewStoreShipment = typeof storeShipments.$inferInsert;
+export type StoreShipmentLog = typeof storeShipmentLogs.$inferSelect;
+export type NewStoreShipmentLog = typeof storeShipmentLogs.$inferInsert;
+
+export const storeProductsRelations = relations(storeProducts, ({ one, many }) => ({
+  category: one(storeCategories, {
+    fields: [storeProducts.categoryId],
+    references: [storeCategories.id]
+  }),
+  images: many(storeProductImages)
+}));
+
+export const storeProductImagesRelations = relations(storeProductImages, ({ one }) => ({
+  product: one(storeProducts, {
+    fields: [storeProductImages.productId],
+    references: [storeProducts.id]
+  })
+}));
+
+export const storeCartsRelations = relations(storeCarts, ({ many }) => ({
+  items: many(storeCartItems)
+}));
+
+export const storeCartItemsRelations = relations(storeCartItems, ({ one }) => ({
+  cart: one(storeCarts, {
+    fields: [storeCartItems.cartId],
+    references: [storeCarts.id]
+  }),
+  product: one(storeProducts, {
+    fields: [storeCartItems.productId],
+    references: [storeProducts.id]
+  })
+}));
+
+export const storeOrdersRelations = relations(storeOrders, ({ many }) => ({
+  items: many(storeOrderItems),
+  payments: many(storePayments),
+  shipments: many(storeShipments)
+}));
+
+export const storeOrderItemsRelations = relations(storeOrderItems, ({ one }) => ({
+  order: one(storeOrders, {
+    fields: [storeOrderItems.orderId],
+    references: [storeOrders.id]
+  }),
+  product: one(storeProducts, {
+    fields: [storeOrderItems.productId],
+    references: [storeProducts.id]
+  })
+}));
+
+export const storePaymentsRelations = relations(storePayments, ({ one }) => ({
+  order: one(storeOrders, {
+    fields: [storePayments.orderId],
+    references: [storeOrders.id]
+  })
+}));
+
+export const storeShipmentsRelations = relations(storeShipments, ({ one, many }) => ({
+  order: one(storeOrders, {
+    fields: [storeShipments.orderId],
+    references: [storeOrders.id]
+  }),
+  logs: many(storeShipmentLogs)
+}));
+
+export const storeShipmentLogsRelations = relations(storeShipmentLogs, ({ one }) => ({
+  shipment: one(storeShipments, {
+    fields: [storeShipmentLogs.shipmentId],
+    references: [storeShipments.id]
+  })
+}));
+
+// Store User Addresses table
+export const storeUserAddresses = pgTable('store_user_addresses', {
+  id: serial('id').primaryKey(),
+  userId: text('user_id').notNull().references(() => user.id, { onDelete: 'cascade' }),
+  label: varchar('label', { length: 100 }).notNull(), // e.g. 'Rumah', 'Kantor'
+  recipientName: varchar('recipient_name', { length: 255 }).notNull(),
+  recipientPhone: varchar('recipient_phone', { length: 50 }).notNull(),
+  shippingAddress: text('shipping_address').notNull(),
+  province: varchar('province', { length: 100 }).notNull(),
+  city: varchar('city', { length: 100 }).notNull(),
+  postalCode: varchar('postal_code', { length: 20 }).notNull(),
+  isDefault: boolean('is_default').default(false).notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+});
+
+export const storeUserAddressesRelations = relations(storeUserAddresses, ({ one }) => ({
+  user: one(user, {
+    fields: [storeUserAddresses.userId],
+    references: [user.id]
+  })
+}));
+
+

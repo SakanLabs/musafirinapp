@@ -5,7 +5,8 @@
   "types": "dist/index.d.ts",
   "scripts": {
     "build": "tsc",
-    "dev": "bun --watch run src/index.ts && tsc --watch"
+    "dev": "bun --watch run src/index.ts && tsc --watch",
+    "seed:store": "bun run src/scripts/seed-store.ts"
   },
   "dependencies": {
     "@types/qrcode": "^1.5.5",

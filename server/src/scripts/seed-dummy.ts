@@ -5,8 +5,8 @@ import * as schema from '../db/schema.js';
 import path from 'path';
 
 // Load environment variables
-dotenv.config({ path: path.resolve(process.cwd(), '../.env.local') });
 dotenv.config({ path: path.resolve(process.cwd(), '../.env') });
+dotenv.config({ path: path.resolve(process.cwd(), '../.env.local'), override: true });
 
 const connectionString = process.env.DATABASE_URL;
 

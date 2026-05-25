@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as VouchersRouteImport } from './routes/vouchers'
 import { Route as TransportationBookingsRouteImport } from './routes/transportation-bookings'
+import { Route as StoreRouteImport } from './routes/store'
 import { Route as ServiceOrdersRouteImport } from './routes/service-orders'
 import { Route as RegisterRouteImport } from './routes/register'
 import { Route as ReceiptsRouteImport } from './routes/receipts'
@@ -44,10 +45,14 @@ import { Route as AnalyticsRouteImport } from './routes/analytics'
 import { Route as AdminRouteImport } from './routes/admin'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as VouchersIndexRouteImport } from './routes/vouchers/index'
+import { Route as StoreIndexRouteImport } from './routes/store/index'
 import { Route as ClientsIndexRouteImport } from './routes/clients/index'
 import { Route as VouchersCreateRouteImport } from './routes/vouchers/create'
 import { Route as TransportationBookingEditTransportationBookingIdRouteImport } from './routes/transportation-booking-edit.$transportationBookingId'
 import { Route as TransportationBookingDetailTransportationBookingIdRouteImport } from './routes/transportation-booking-detail.$transportationBookingId'
+import { Route as StoreOrdersRouteImport } from './routes/store/orders'
+import { Route as StoreCartRouteImport } from './routes/store/cart'
+import { Route as StoreAdminRouteImport } from './routes/store/admin'
 import { Route as ServiceOrdersCreateRouteImport } from './routes/service-orders/create'
 import { Route as ServiceOrdersIdRouteImport } from './routes/service-orders/$id'
 import { Route as ServiceOrderEditServiceOrderIdRouteImport } from './routes/service-order-edit.$serviceOrderId'
@@ -67,6 +72,8 @@ import { Route as ClientDetailClientIdRouteImport } from './routes/client-detail
 import { Route as BookingViewBookingIdRouteImport } from './routes/booking-view.$bookingId'
 import { Route as AuthCallbackRouteImport } from './routes/auth/callback'
 import { Route as CustomLaQuotationRouteImport } from './routes/custom-la-quotation.'
+import { Route as StoreProductProductIdRouteImport } from './routes/store/product.$productId'
+import { Route as StoreOrderOrderIdRouteImport } from './routes/store/order.$orderId'
 import { Route as EditTransportPricingRouteIdPricingIdRouteImport } from './routes/edit-transport-pricing.$routeId.$pricingId'
 import { Route as EditHotelPricingHotelIdPricingIdRouteImport } from './routes/edit-hotel-pricing.$hotelId.$pricingId'
 import { Route as DashboardMuthowifsIdRouteImport } from './routes/dashboard/muthowifs/$id'
@@ -80,6 +87,11 @@ const VouchersRoute = VouchersRouteImport.update({
 const TransportationBookingsRoute = TransportationBookingsRouteImport.update({
   id: '/transportation-bookings',
   path: '/transportation-bookings',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const StoreRoute = StoreRouteImport.update({
+  id: '/store',
+  path: '/store',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ServiceOrdersRoute = ServiceOrdersRouteImport.update({
@@ -248,6 +260,11 @@ const VouchersIndexRoute = VouchersIndexRouteImport.update({
   path: '/',
   getParentRoute: () => VouchersRoute,
 } as any)
+const StoreIndexRoute = StoreIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => StoreRoute,
+} as any)
 const ClientsIndexRoute = ClientsIndexRouteImport.update({
   id: '/',
   path: '/',
@@ -270,6 +287,21 @@ const TransportationBookingDetailTransportationBookingIdRoute =
     path: '/transportation-booking-detail/$transportationBookingId',
     getParentRoute: () => rootRouteImport,
   } as any)
+const StoreOrdersRoute = StoreOrdersRouteImport.update({
+  id: '/orders',
+  path: '/orders',
+  getParentRoute: () => StoreRoute,
+} as any)
+const StoreCartRoute = StoreCartRouteImport.update({
+  id: '/cart',
+  path: '/cart',
+  getParentRoute: () => StoreRoute,
+} as any)
+const StoreAdminRoute = StoreAdminRouteImport.update({
+  id: '/admin',
+  path: '/admin',
+  getParentRoute: () => StoreRoute,
+} as any)
 const ServiceOrdersCreateRoute = ServiceOrdersCreateRouteImport.update({
   id: '/create',
   path: '/create',
@@ -372,6 +404,16 @@ const CustomLaQuotationRoute = CustomLaQuotationRouteImport.update({
   path: '/custom-la-quotation/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const StoreProductProductIdRoute = StoreProductProductIdRouteImport.update({
+  id: '/product/$productId',
+  path: '/product/$productId',
+  getParentRoute: () => StoreRoute,
+} as any)
+const StoreOrderOrderIdRoute = StoreOrderOrderIdRouteImport.update({
+  id: '/order/$orderId',
+  path: '/order/$orderId',
+  getParentRoute: () => StoreRoute,
+} as any)
 const EditTransportPricingRouteIdPricingIdRoute =
   EditTransportPricingRouteIdPricingIdRouteImport.update({
     id: '/edit-transport-pricing/$routeId/$pricingId',
@@ -428,6 +470,7 @@ export interface FileRoutesByFullPath {
   '/receipts': typeof ReceiptsRoute
   '/register': typeof RegisterRoute
   '/service-orders': typeof ServiceOrdersRouteWithChildren
+  '/store': typeof StoreRouteWithChildren
   '/transportation-bookings': typeof TransportationBookingsRoute
   '/vouchers': typeof VouchersRouteWithChildren
   '/custom-la-quotation': typeof CustomLaQuotationRoute
@@ -449,15 +492,21 @@ export interface FileRoutesByFullPath {
   '/service-order-edit/$serviceOrderId': typeof ServiceOrderEditServiceOrderIdRoute
   '/service-orders/$id': typeof ServiceOrdersIdRoute
   '/service-orders/create': typeof ServiceOrdersCreateRoute
+  '/store/admin': typeof StoreAdminRoute
+  '/store/cart': typeof StoreCartRoute
+  '/store/orders': typeof StoreOrdersRoute
   '/transportation-booking-detail/$transportationBookingId': typeof TransportationBookingDetailTransportationBookingIdRoute
   '/transportation-booking-edit/$transportationBookingId': typeof TransportationBookingEditTransportationBookingIdRoute
   '/vouchers/create': typeof VouchersCreateRoute
   '/clients/': typeof ClientsIndexRoute
+  '/store/': typeof StoreIndexRoute
   '/vouchers/': typeof VouchersIndexRoute
   '/bookings/$bookingId/edit': typeof BookingsBookingIdEditRoute
   '/dashboard/muthowifs/$id': typeof DashboardMuthowifsIdRoute
   '/edit-hotel-pricing/$hotelId/$pricingId': typeof EditHotelPricingHotelIdPricingIdRoute
   '/edit-transport-pricing/$routeId/$pricingId': typeof EditTransportPricingRouteIdPricingIdRoute
+  '/store/order/$orderId': typeof StoreOrderOrderIdRoute
+  '/store/product/$productId': typeof StoreProductProductIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -511,15 +560,21 @@ export interface FileRoutesByTo {
   '/service-order-edit/$serviceOrderId': typeof ServiceOrderEditServiceOrderIdRoute
   '/service-orders/$id': typeof ServiceOrdersIdRoute
   '/service-orders/create': typeof ServiceOrdersCreateRoute
+  '/store/admin': typeof StoreAdminRoute
+  '/store/cart': typeof StoreCartRoute
+  '/store/orders': typeof StoreOrdersRoute
   '/transportation-booking-detail/$transportationBookingId': typeof TransportationBookingDetailTransportationBookingIdRoute
   '/transportation-booking-edit/$transportationBookingId': typeof TransportationBookingEditTransportationBookingIdRoute
   '/vouchers/create': typeof VouchersCreateRoute
   '/clients': typeof ClientsIndexRoute
+  '/store': typeof StoreIndexRoute
   '/vouchers': typeof VouchersIndexRoute
   '/bookings/$bookingId/edit': typeof BookingsBookingIdEditRoute
   '/dashboard/muthowifs/$id': typeof DashboardMuthowifsIdRoute
   '/edit-hotel-pricing/$hotelId/$pricingId': typeof EditHotelPricingHotelIdPricingIdRoute
   '/edit-transport-pricing/$routeId/$pricingId': typeof EditTransportPricingRouteIdPricingIdRoute
+  '/store/order/$orderId': typeof StoreOrderOrderIdRoute
+  '/store/product/$productId': typeof StoreProductProductIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -555,6 +610,7 @@ export interface FileRoutesById {
   '/receipts': typeof ReceiptsRoute
   '/register': typeof RegisterRoute
   '/service-orders': typeof ServiceOrdersRouteWithChildren
+  '/store': typeof StoreRouteWithChildren
   '/transportation-bookings': typeof TransportationBookingsRoute
   '/vouchers': typeof VouchersRouteWithChildren
   '/custom-la-quotation/': typeof CustomLaQuotationRoute
@@ -576,15 +632,21 @@ export interface FileRoutesById {
   '/service-order-edit/$serviceOrderId': typeof ServiceOrderEditServiceOrderIdRoute
   '/service-orders/$id': typeof ServiceOrdersIdRoute
   '/service-orders/create': typeof ServiceOrdersCreateRoute
+  '/store/admin': typeof StoreAdminRoute
+  '/store/cart': typeof StoreCartRoute
+  '/store/orders': typeof StoreOrdersRoute
   '/transportation-booking-detail/$transportationBookingId': typeof TransportationBookingDetailTransportationBookingIdRoute
   '/transportation-booking-edit/$transportationBookingId': typeof TransportationBookingEditTransportationBookingIdRoute
   '/vouchers/create': typeof VouchersCreateRoute
   '/clients/': typeof ClientsIndexRoute
+  '/store/': typeof StoreIndexRoute
   '/vouchers/': typeof VouchersIndexRoute
   '/bookings/$bookingId/edit': typeof BookingsBookingIdEditRoute
   '/dashboard/muthowifs/$id': typeof DashboardMuthowifsIdRoute
   '/edit-hotel-pricing/$hotelId/$pricingId': typeof EditHotelPricingHotelIdPricingIdRoute
   '/edit-transport-pricing/$routeId/$pricingId': typeof EditTransportPricingRouteIdPricingIdRoute
+  '/store/order/$orderId': typeof StoreOrderOrderIdRoute
+  '/store/product/$productId': typeof StoreProductProductIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -621,6 +683,7 @@ export interface FileRouteTypes {
     | '/receipts'
     | '/register'
     | '/service-orders'
+    | '/store'
     | '/transportation-bookings'
     | '/vouchers'
     | '/custom-la-quotation'
@@ -642,15 +705,21 @@ export interface FileRouteTypes {
     | '/service-order-edit/$serviceOrderId'
     | '/service-orders/$id'
     | '/service-orders/create'
+    | '/store/admin'
+    | '/store/cart'
+    | '/store/orders'
     | '/transportation-booking-detail/$transportationBookingId'
     | '/transportation-booking-edit/$transportationBookingId'
     | '/vouchers/create'
     | '/clients/'
+    | '/store/'
     | '/vouchers/'
     | '/bookings/$bookingId/edit'
     | '/dashboard/muthowifs/$id'
     | '/edit-hotel-pricing/$hotelId/$pricingId'
     | '/edit-transport-pricing/$routeId/$pricingId'
+    | '/store/order/$orderId'
+    | '/store/product/$productId'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -704,15 +773,21 @@ export interface FileRouteTypes {
     | '/service-order-edit/$serviceOrderId'
     | '/service-orders/$id'
     | '/service-orders/create'
+    | '/store/admin'
+    | '/store/cart'
+    | '/store/orders'
     | '/transportation-booking-detail/$transportationBookingId'
     | '/transportation-booking-edit/$transportationBookingId'
     | '/vouchers/create'
     | '/clients'
+    | '/store'
     | '/vouchers'
     | '/bookings/$bookingId/edit'
     | '/dashboard/muthowifs/$id'
     | '/edit-hotel-pricing/$hotelId/$pricingId'
     | '/edit-transport-pricing/$routeId/$pricingId'
+    | '/store/order/$orderId'
+    | '/store/product/$productId'
   id:
     | '__root__'
     | '/'
@@ -747,6 +822,7 @@ export interface FileRouteTypes {
     | '/receipts'
     | '/register'
     | '/service-orders'
+    | '/store'
     | '/transportation-bookings'
     | '/vouchers'
     | '/custom-la-quotation/'
@@ -768,15 +844,21 @@ export interface FileRouteTypes {
     | '/service-order-edit/$serviceOrderId'
     | '/service-orders/$id'
     | '/service-orders/create'
+    | '/store/admin'
+    | '/store/cart'
+    | '/store/orders'
     | '/transportation-booking-detail/$transportationBookingId'
     | '/transportation-booking-edit/$transportationBookingId'
     | '/vouchers/create'
     | '/clients/'
+    | '/store/'
     | '/vouchers/'
     | '/bookings/$bookingId/edit'
     | '/dashboard/muthowifs/$id'
     | '/edit-hotel-pricing/$hotelId/$pricingId'
     | '/edit-transport-pricing/$routeId/$pricingId'
+    | '/store/order/$orderId'
+    | '/store/product/$productId'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -812,6 +894,7 @@ export interface RootRouteChildren {
   ReceiptsRoute: typeof ReceiptsRoute
   RegisterRoute: typeof RegisterRoute
   ServiceOrdersRoute: typeof ServiceOrdersRouteWithChildren
+  StoreRoute: typeof StoreRouteWithChildren
   TransportationBookingsRoute: typeof TransportationBookingsRoute
   VouchersRoute: typeof VouchersRouteWithChildren
   CustomLaQuotationRoute: typeof CustomLaQuotationRoute
@@ -848,6 +931,13 @@ declare module '@tanstack/react-router' {
       path: '/transportation-bookings'
       fullPath: '/transportation-bookings'
       preLoaderRoute: typeof TransportationBookingsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/store': {
+      id: '/store'
+      path: '/store'
+      fullPath: '/store'
+      preLoaderRoute: typeof StoreRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/service-orders': {
@@ -1081,6 +1171,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof VouchersIndexRouteImport
       parentRoute: typeof VouchersRoute
     }
+    '/store/': {
+      id: '/store/'
+      path: '/'
+      fullPath: '/store/'
+      preLoaderRoute: typeof StoreIndexRouteImport
+      parentRoute: typeof StoreRoute
+    }
     '/clients/': {
       id: '/clients/'
       path: '/'
@@ -1108,6 +1205,27 @@ declare module '@tanstack/react-router' {
       fullPath: '/transportation-booking-detail/$transportationBookingId'
       preLoaderRoute: typeof TransportationBookingDetailTransportationBookingIdRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/store/orders': {
+      id: '/store/orders'
+      path: '/orders'
+      fullPath: '/store/orders'
+      preLoaderRoute: typeof StoreOrdersRouteImport
+      parentRoute: typeof StoreRoute
+    }
+    '/store/cart': {
+      id: '/store/cart'
+      path: '/cart'
+      fullPath: '/store/cart'
+      preLoaderRoute: typeof StoreCartRouteImport
+      parentRoute: typeof StoreRoute
+    }
+    '/store/admin': {
+      id: '/store/admin'
+      path: '/admin'
+      fullPath: '/store/admin'
+      preLoaderRoute: typeof StoreAdminRouteImport
+      parentRoute: typeof StoreRoute
     }
     '/service-orders/create': {
       id: '/service-orders/create'
@@ -1242,6 +1360,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof CustomLaQuotationRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/store/product/$productId': {
+      id: '/store/product/$productId'
+      path: '/product/$productId'
+      fullPath: '/store/product/$productId'
+      preLoaderRoute: typeof StoreProductProductIdRouteImport
+      parentRoute: typeof StoreRoute
+    }
+    '/store/order/$orderId': {
+      id: '/store/order/$orderId'
+      path: '/order/$orderId'
+      fullPath: '/store/order/$orderId'
+      preLoaderRoute: typeof StoreOrderOrderIdRouteImport
+      parentRoute: typeof StoreRoute
+    }
     '/edit-transport-pricing/$routeId/$pricingId': {
       id: '/edit-transport-pricing/$routeId/$pricingId'
       path: '/edit-transport-pricing/$routeId/$pricingId'
@@ -1337,6 +1469,26 @@ const ServiceOrdersRouteWithChildren = ServiceOrdersRoute._addFileChildren(
   ServiceOrdersRouteChildren,
 )
 
+interface StoreRouteChildren {
+  StoreAdminRoute: typeof StoreAdminRoute
+  StoreCartRoute: typeof StoreCartRoute
+  StoreOrdersRoute: typeof StoreOrdersRoute
+  StoreIndexRoute: typeof StoreIndexRoute
+  StoreOrderOrderIdRoute: typeof StoreOrderOrderIdRoute
+  StoreProductProductIdRoute: typeof StoreProductProductIdRoute
+}
+
+const StoreRouteChildren: StoreRouteChildren = {
+  StoreAdminRoute: StoreAdminRoute,
+  StoreCartRoute: StoreCartRoute,
+  StoreOrdersRoute: StoreOrdersRoute,
+  StoreIndexRoute: StoreIndexRoute,
+  StoreOrderOrderIdRoute: StoreOrderOrderIdRoute,
+  StoreProductProductIdRoute: StoreProductProductIdRoute,
+}
+
+const StoreRouteWithChildren = StoreRoute._addFileChildren(StoreRouteChildren)
+
 interface VouchersRouteChildren {
   VouchersCreateRoute: typeof VouchersCreateRoute
   VouchersIndexRoute: typeof VouchersIndexRoute
@@ -1384,6 +1536,7 @@ const rootRouteChildren: RootRouteChildren = {
   ReceiptsRoute: ReceiptsRoute,
   RegisterRoute: RegisterRoute,
   ServiceOrdersRoute: ServiceOrdersRouteWithChildren,
+  StoreRoute: StoreRouteWithChildren,
   TransportationBookingsRoute: TransportationBookingsRoute,
   VouchersRoute: VouchersRouteWithChildren,
   CustomLaQuotationRoute: CustomLaQuotationRoute,

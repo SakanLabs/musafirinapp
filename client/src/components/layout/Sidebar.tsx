@@ -17,7 +17,8 @@ import {
   Map,
   Shield,
   Package,
-  UserCheck
+  UserCheck,
+  ShoppingBag
 } from 'lucide-react'
 import { useState, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
@@ -78,7 +79,14 @@ const navigationSections = [
         href: '/transportation-bookings',
         icon: Car,
         roles: ['admin', 'owner']
+      },
+      {
+        name: 'Souvenir Store',
+        href: '/store',
+        icon: ShoppingBag,
+        roles: ['admin', 'owner', 'finance']
       }
+
     ]
   },
   {
