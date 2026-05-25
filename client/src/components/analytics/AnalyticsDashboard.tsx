@@ -17,16 +17,16 @@ export function AnalyticsDashboard() {
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
       </div>
     );
   }
 
   if (error) {
     return (
-      <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-        <h3 className="text-red-800 font-medium">Error Loading Analytics</h3>
-        <p className="text-red-600 text-sm mt-1">
+      <div className="bg-destructive/10 border border-destructive/20 rounded-xl p-6">
+        <h3 className="text-sm font-semibold text-destructive">Error Loading Analytics</h3>
+        <p className="text-sm text-destructive/80 mt-1">
           {error instanceof Error ? error.message : 'Failed to load analytics data'}
         </p>
       </div>
@@ -35,8 +35,8 @@ export function AnalyticsDashboard() {
 
   if (!analytics) {
     return (
-      <div className="bg-gray-50 border border-gray-200 rounded-lg p-8 text-center">
-        <p className="text-gray-600">No analytics data available</p>
+      <div className="bg-muted border border-border rounded-xl p-8 text-center">
+        <p className="text-sm text-muted-foreground">No analytics data available</p>
       </div>
     );
   }
@@ -45,38 +45,26 @@ export function AnalyticsDashboard() {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex justify-between items-center">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">Revenue & Profit Analytics</h1>
-          <p className="text-gray-600 mt-1">
-            Comprehensive analysis of your business performance
-          </p>
-        </div>
-        <div className="flex gap-2">
-          <Button 
-            variant="outline" 
-            size="sm"
-            onClick={() => setShowFilters(!showFilters)}
-          >
-            <Filter className="h-4 w-4 mr-2" />
-            Filters
-          </Button>
-          <Button variant="outline" size="sm">
-            <Download className="h-4 w-4 mr-2" />
-            Export
-          </Button>
-        </div>
+      <div className="flex justify-end gap-2">
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => setShowFilters(!showFilters)}
+        >
+          <Filter className="h-4 w-4" />
+          Filters
+        </Button>
+        <Button variant="outline" size="sm">
+          <Download className="h-4 w-4" />
+          Export
+        </Button>
       </div>
 
-      {/* Filters Panel */}
       {showFilters && (
-        <Card className="p-4">
+        <Card className="p-6">
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Start Date
-              </label>
+            <div className="space-y-1.5">
+              <label className="text-xs font-medium text-muted-foreground">Start Date</label>
               <Input
                 type="date"
                 value={filters.startDate?.toISOString().split('T')[0] || ''}
@@ -86,10 +74,8 @@ export function AnalyticsDashboard() {
                 }))}
               />
             </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                End Date
-              </label>
+            <div className="space-y-1.5">
+              <label className="text-xs font-medium text-muted-foreground">End Date</label>
               <Input
                 type="date"
                 value={filters.endDate?.toISOString().split('T')[0] || ''}
@@ -99,12 +85,10 @@ export function AnalyticsDashboard() {
                 }))}
               />
             </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                City
-              </label>
+            <div className="space-y-1.5">
+              <label className="text-xs font-medium text-muted-foreground">City</label>
               <select
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
                 value={filters.city || ''}
                 onChange={(e) => setFilters(prev => ({
                   ...prev,
@@ -116,12 +100,10 @@ export function AnalyticsDashboard() {
                 <option value="Madinah">Madinah</option>
               </select>
             </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Status
-              </label>
+            <div className="space-y-1.5">
+              <label className="text-xs font-medium text-muted-foreground">Status</label>
               <select
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
                 value={filters.status || ''}
                 onChange={(e) => setFilters(prev => ({
                   ...prev,
@@ -138,7 +120,6 @@ export function AnalyticsDashboard() {
         </Card>
       )}
 
-      {/* Summary Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard
           title="Total Revenue"
@@ -182,61 +163,59 @@ export function AnalyticsDashboard() {
         />
       </div>
 
-      {/* Revenue and Profit Charts */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <Card className="p-6">
-          <h3 className="text-lg font-semibold mb-4">Revenue Trend</h3>
-          <div className="h-64 flex items-center justify-center bg-gray-50 rounded-lg">
+          <h3 className="text-base font-semibold text-foreground mb-4">Revenue Trend</h3>
+          <div className="h-64 flex items-center justify-center bg-muted/50 rounded-lg">
             <div className="text-center">
-              <BarChart3 className="h-12 w-12 text-gray-400 mx-auto mb-2" />
-              <p className="text-gray-500">Revenue chart will be displayed here</p>
+              <BarChart3 className="h-12 w-12 text-muted-foreground/40 mx-auto mb-2" />
+              <p className="text-sm text-muted-foreground">Revenue chart will be displayed here</p>
             </div>
           </div>
         </Card>
         <Card className="p-6">
-          <h3 className="text-lg font-semibold mb-4">Profit Analysis</h3>
-          <div className="h-64 flex items-center justify-center bg-gray-50 rounded-lg">
+          <h3 className="text-base font-semibold text-foreground mb-4">Profit Analysis</h3>
+          <div className="h-64 flex items-center justify-center bg-muted/50 rounded-lg">
             <div className="text-center">
-              <TrendingUp className="h-12 w-12 text-gray-400 mx-auto mb-2" />
-              <p className="text-gray-500">Profit chart will be displayed here</p>
+              <TrendingUp className="h-12 w-12 text-muted-foreground/40 mx-auto mb-2" />
+              <p className="text-sm text-muted-foreground">Profit chart will be displayed here</p>
             </div>
           </div>
         </Card>
       </div>
 
-      {/* City Performance Comparison */}
       <Card className="p-6">
-        <h3 className="text-lg font-semibold mb-4">Performance by City</h3>
+        <h3 className="text-base font-semibold text-foreground mb-4">Performance by City</h3>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {revenue.revenueByCity.map((city, index) => {
             const cityProfit = profit.profitByCity.find(p => p.city === city.city);
             return (
-              <div key={index} className="border rounded-lg p-4">
-                <h4 className="font-medium text-lg mb-3">{city.city}</h4>
+              <div key={index} className="bg-muted rounded-xl p-6">
+                <h4 className="text-base font-semibold text-foreground mb-3">{city.city}</h4>
                 <div className="space-y-2">
                   <div className="flex justify-between">
-                    <span className="text-gray-600">Revenue:</span>
-                    <span className="font-medium"><SARAmount amount={city.revenue || 0} /></span>
+                    <span className="text-sm text-muted-foreground">Revenue:</span>
+                    <span className="text-sm font-medium text-foreground"><SARAmount amount={city.revenue || 0} /></span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-gray-600">Bookings:</span>
-                    <span className="font-medium">{city.bookingCount || 0}</span>
+                    <span className="text-sm text-muted-foreground">Bookings:</span>
+                    <span className="text-sm font-medium text-foreground">{city.bookingCount || 0}</span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-gray-600">Avg Booking Value:</span>
-                    <span className="font-medium"><SARAmount amount={city.averageBookingValue || 0} /></span>
+                    <span className="text-sm text-muted-foreground">Avg Booking Value:</span>
+                    <span className="text-sm font-medium text-foreground"><SARAmount amount={city.averageBookingValue || 0} /></span>
                   </div>
                   {cityProfit && (
                     <>
                       <div className="flex justify-between">
-                        <span className="text-gray-600">Net Profit:</span>
-                        <span className={`font-medium ${(cityProfit.netProfit || 0) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                        <span className="text-sm text-muted-foreground">Net Profit:</span>
+                        <span className={`text-sm font-medium ${(cityProfit.netProfit || 0) >= 0 ? 'text-green-600' : 'text-destructive'}`}>
                           <SARAmount amount={cityProfit.netProfit || 0} />
                         </span>
                       </div>
                       <div className="flex justify-between">
-                        <span className="text-gray-600">Profit Margin:</span>
-                        <span className={`font-medium ${(cityProfit.profitMargin || 0) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                        <span className="text-sm text-muted-foreground">Profit Margin:</span>
+                        <span className={`text-sm font-medium ${(cityProfit.profitMargin || 0) >= 0 ? 'text-green-600' : 'text-destructive'}`}>
                           {(cityProfit.profitMargin || 0).toFixed(1)}%
                         </span>
                       </div>
@@ -249,36 +228,35 @@ export function AnalyticsDashboard() {
         </div>
       </Card>
 
-      {/* Cost Breakdown */}
       <Card className="p-6">
-        <h3 className="text-lg font-semibold mb-4">Cost Breakdown</h3>
+        <h3 className="text-base font-semibold text-foreground mb-4">Cost Breakdown</h3>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div>
-            <h4 className="font-medium mb-3">Total Costs</h4>
+            <h4 className="text-sm font-semibold text-foreground mb-3">Total Costs</h4>
             <div className="space-y-2">
               <div className="flex justify-between">
-                <span className="text-gray-600">Hotel Costs:</span>
-                <span className="font-medium"><SARAmount amount={profit.costBreakdown?.totalHotelCosts || 0} /></span>
+                <span className="text-sm text-muted-foreground">Hotel Costs:</span>
+                <span className="text-sm font-medium text-foreground"><SARAmount amount={profit.costBreakdown?.totalHotelCosts || 0} /></span>
               </div>
               <div className="flex justify-between">
-                <span className="text-gray-600">Operational Costs:</span>
-                <span className="font-medium"><SARAmount amount={profit.costBreakdown?.totalOperationalCosts || 0} /></span>
+                <span className="text-sm text-muted-foreground">Operational Costs:</span>
+                <span className="text-sm font-medium text-foreground"><SARAmount amount={profit.costBreakdown?.totalOperationalCosts || 0} /></span>
               </div>
-              <div className="flex justify-between border-t pt-2">
-                <span className="font-medium">Total:</span>
-                <span className="font-medium">
+              <div className="flex justify-between border-t border-border pt-2">
+                <span className="text-sm font-semibold text-foreground">Total:</span>
+                <span className="text-sm font-semibold text-foreground">
                   <SARAmount amount={(profit.costBreakdown?.totalHotelCosts || 0) + (profit.costBreakdown?.totalOperationalCosts || 0)} />
                 </span>
               </div>
             </div>
           </div>
           <div>
-            <h4 className="font-medium mb-3">Operational Costs by Type</h4>
+            <h4 className="text-sm font-semibold text-foreground mb-3">Operational Costs by Type</h4>
             <div className="space-y-2">
               {(profit.costBreakdown?.operationalCostsByType || []).map((cost, index) => (
                 <div key={index} className="flex justify-between">
-                  <span className="text-gray-600">{cost.costType}:</span>
-                  <span className="font-medium">
+                  <span className="text-sm text-muted-foreground">{cost.costType}:</span>
+                  <span className="text-sm font-medium text-foreground">
                     <SARAmount amount={cost.amount || 0} /> ({(cost.percentage || 0).toFixed(1)}%)
                   </span>
                 </div>
@@ -288,27 +266,26 @@ export function AnalyticsDashboard() {
         </div>
       </Card>
 
-      {/* Detailed Tables */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <Card className="p-6">
-          <h3 className="text-lg font-semibold mb-4">Revenue by Period</h3>
+          <h3 className="text-base font-semibold text-foreground mb-4">Revenue by Period</h3>
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b">
-                  <th className="text-left py-2">Period</th>
-                  <th className="text-right py-2">Revenue</th>
-                  <th className="text-right py-2">Bookings</th>
-                  <th className="text-right py-2">Avg Value</th>
+                <tr className="border-b border-border">
+                  <th className="text-left py-2 text-xs font-medium text-muted-foreground uppercase tracking-wide">Period</th>
+                  <th className="text-right py-2 text-xs font-medium text-muted-foreground uppercase tracking-wide">Revenue</th>
+                  <th className="text-right py-2 text-xs font-medium text-muted-foreground uppercase tracking-wide">Bookings</th>
+                  <th className="text-right py-2 text-xs font-medium text-muted-foreground uppercase tracking-wide">Avg Value</th>
                 </tr>
               </thead>
               <tbody>
                 {(revenue.revenueByPeriod || []).map((period, index) => (
-                  <tr key={index} className="border-b">
-                    <td className="py-2">{period.period}</td>
-                    <td className="text-right py-2"><SARAmount amount={period.revenue || 0} /></td>
-                    <td className="text-right py-2">{period.bookingCount || 0}</td>
-                    <td className="text-right py-2">
+                  <tr key={index} className="border-b border-border last:border-b-0">
+                    <td className="py-2.5 text-sm text-foreground">{period.period}</td>
+                    <td className="text-right py-2.5 text-sm text-foreground"><SARAmount amount={period.revenue || 0} /></td>
+                    <td className="text-right py-2.5 text-sm text-foreground">{period.bookingCount || 0}</td>
+                    <td className="text-right py-2.5 text-sm text-foreground">
                       <SARAmount amount={(period.revenue || 0) / (period.bookingCount || 1)} />
                     </td>
                   </tr>
@@ -319,33 +296,33 @@ export function AnalyticsDashboard() {
         </Card>
 
         <Card className="p-6">
-          <h3 className="text-lg font-semibold mb-4">Profit by Period</h3>
+          <h3 className="text-base font-semibold text-foreground mb-4">Profit by Period</h3>
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b">
-                  <th className="text-left py-2">Period</th>
-                  <th className="text-right py-2">Revenue</th>
-                  <th className="text-right py-2">Costs</th>
-                  <th className="text-right py-2">Net Profit</th>
-                  <th className="text-right py-2">Margin</th>
+                <tr className="border-b border-border">
+                  <th className="text-left py-2 text-xs font-medium text-muted-foreground uppercase tracking-wide">Period</th>
+                  <th className="text-right py-2 text-xs font-medium text-muted-foreground uppercase tracking-wide">Revenue</th>
+                  <th className="text-right py-2 text-xs font-medium text-muted-foreground uppercase tracking-wide">Costs</th>
+                  <th className="text-right py-2 text-xs font-medium text-muted-foreground uppercase tracking-wide">Net Profit</th>
+                  <th className="text-right py-2 text-xs font-medium text-muted-foreground uppercase tracking-wide">Margin</th>
                 </tr>
               </thead>
               <tbody>
                 {(profit.profitByPeriod || []).map((period, index) => (
-                  <tr key={index} className="border-b">
-                    <td className="py-2">{period.period}</td>
-                    <td className="text-right py-2"><SARAmount amount={period.revenue || 0} /></td>
-                    <td className="text-right py-2">
+                  <tr key={index} className="border-b border-border last:border-b-0">
+                    <td className="py-2.5 text-sm text-foreground">{period.period}</td>
+                    <td className="text-right py-2.5 text-sm text-foreground"><SARAmount amount={period.revenue || 0} /></td>
+                    <td className="text-right py-2.5 text-sm text-foreground">
                       <SARAmount amount={(period.hotelCosts || 0) + (period.operationalCosts || 0)} />
                     </td>
-                    <td className="text-right py-2 font-medium">
-                      <span className={(period.netProfit || 0) >= 0 ? 'text-green-600' : 'text-red-600'}>
+                    <td className="text-right py-2.5 text-sm font-medium">
+                      <span className={(period.netProfit || 0) >= 0 ? 'text-green-600' : 'text-destructive'}>
                         <SARAmount amount={period.netProfit || 0} />
                       </span>
                     </td>
-                    <td className="text-right py-2">
-                      <span className={(period.profitMargin || 0) >= 0 ? 'text-green-600' : 'text-red-600'}>
+                    <td className="text-right py-2.5">
+                      <span className={`text-sm font-medium ${(period.profitMargin || 0) >= 0 ? 'text-green-600' : 'text-destructive'}`}>
                         {(period.profitMargin || 0).toFixed(1)}%
                       </span>
                     </td>
@@ -360,7 +337,6 @@ export function AnalyticsDashboard() {
   );
 }
 
-// Helper functions for trend calculations
 function calculateTrendPercentage(data: Array<{ revenue: number }>): number {
   if (data.length < 2) return 0;
   const current = data[data.length - 1].revenue;
