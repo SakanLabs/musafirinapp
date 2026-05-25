@@ -62,43 +62,44 @@ function ClientsIndexPage() {
       key: 'id',
       header: 'ID',
       sortable: true,
-      width: 'w-20'
+      width: 'w-16'
     },
     {
       key: 'actions',
       header: 'Actions',
       render: (client) => (
-        <div className="flex space-x-1">
+        <div className="flex items-center space-x-1.5">
           <Button
             size="sm"
             variant="outline"
             onClick={() => navigate({ to: "/client-detail/$clientId", params: { clientId: client.id.toString() } })}
             title="View Client Details"
-            className="flex items-center space-x-1"
+            className="h-8 px-2.5 border-[#e5e7eb] text-xs font-medium hover:bg-gray-50 text-[#111111] flex items-center space-x-1 rounded-md"
           >
-            <Eye className="h-4 w-4" />
-            <span>View</span>
+            <Eye className="h-3.5 w-3.5 text-gray-500" />
+            <span>Details</span>
           </Button>
           <Button
             size="sm"
             variant="ghost"
             onClick={() => handleEditClient(client)}
             title="Edit Client"
+            className="h-8 w-8 p-0 text-gray-500 hover:text-[#111111] hover:bg-gray-50 rounded-md"
           >
-            <Edit className="h-4 w-4" />
+            <Edit className="h-3.5 w-3.5" />
           </Button>
           <Button
             size="sm"
             variant="ghost"
             onClick={() => handleDeleteClient(client.id)}
             title="Delete Client"
-            className="text-red-600 hover:text-red-700"
+            className="h-8 w-8 p-0 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-md"
           >
-            <Trash2 className="h-4 w-4" />
+            <Trash2 className="h-3.5 w-3.5" />
           </Button>
         </div>
       ),
-      width: 'w-40'
+      width: 'w-44'
     },
     {
       key: 'name',
@@ -110,8 +111,8 @@ function ClientsIndexPage() {
       header: 'Email',
       render: (client) => (
         <div className="flex items-center space-x-2">
-          <Mail className="h-4 w-4 text-gray-400" />
-          <span>{client.email}</span>
+          <Mail className="h-3.5 w-3.5 text-gray-400" />
+          <span className="text-gray-700">{client.email}</span>
         </div>
       ),
       sortable: true
@@ -121,8 +122,8 @@ function ClientsIndexPage() {
       header: 'Phone',
       render: (client) => (
         <div className="flex items-center space-x-2">
-          <Phone className="h-4 w-4 text-gray-400" />
-          <span>{client.phone}</span>
+          <Phone className="h-3.5 w-3.5 text-gray-400" />
+          <span className="text-gray-700">{client.phone}</span>
         </div>
       ),
       sortable: true
@@ -132,18 +133,18 @@ function ClientsIndexPage() {
       header: 'Address',
       render: (client) => client.address ? (
         <div className="flex items-center space-x-2">
-          <MapPin className="h-4 w-4 text-gray-400" />
-          <span className="truncate max-w-xs">{client.address}</span>
+          <MapPin className="h-3.5 w-3.5 text-gray-400" />
+          <span className="truncate max-w-xs text-gray-600">{client.address}</span>
         </div>
       ) : (
-        <span className="text-gray-400">-</span>
+        <span className="text-gray-400 font-mono text-xs">-</span>
       ),
       sortable: true
     },
     {
       key: 'createdAt',
       header: 'Created',
-      render: (client) => formatDate(client.createdAt),
+      render: (client) => <span className="text-gray-600 text-xs font-mono">{formatDate(client.createdAt)}</span>,
       sortable: true,
       width: 'w-32'
     }
@@ -241,7 +242,7 @@ function ClientsIndexPage() {
       actions={
         <Button
           onClick={() => navigate({ to: "/clients/create" })}
-          className="flex items-center space-x-2"
+          className="flex items-center space-x-2 bg-[#111111] hover:bg-[#242424] text-white h-9 px-4 rounded-md font-medium text-sm transition-colors border border-transparent shadow-sm"
         >
           <Plus className="h-4 w-4" />
           <span>Add Client</span>
@@ -249,45 +250,46 @@ function ClientsIndexPage() {
       }
     >
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Clients</CardTitle>
-            <Users className="h-4 w-4 text-muted-foreground" />
+        <Card className="border border-[#e5e7eb] rounded-xl shadow-none bg-white">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1">
+            <CardTitle className="text-xs font-semibold uppercase tracking-wider text-gray-500">Total Clients</CardTitle>
+            <Users className="h-4 w-4 text-gray-400" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{clients.length}</div>
+            <div className="text-2xl font-bold tracking-tight text-[#111111]">{clients.length}</div>
           </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Active Clients</CardTitle>
-            <Users className="h-4 w-4 text-muted-foreground" />
+        <Card className="border border-[#e5e7eb] rounded-xl shadow-none bg-white">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1">
+            <CardTitle className="text-xs font-semibold uppercase tracking-wider text-gray-500">Active Clients</CardTitle>
+            <Users className="h-4 w-4 text-gray-400" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{clients.length}</div>
-            <p className="text-xs text-muted-foreground">All clients are active</p>
+            <div className="text-2xl font-bold tracking-tight text-[#111111]">{clients.length}</div>
+            <p className="text-xs text-gray-400 mt-1">All registered clients are active</p>
           </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">With Deposits</CardTitle>
-            <Wallet className="h-4 w-4 text-muted-foreground" />
+        <Card className="border border-[#e5e7eb] rounded-xl shadow-none bg-white">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1">
+            <CardTitle className="text-xs font-semibold uppercase tracking-wider text-gray-500">With Deposits</CardTitle>
+            <Wallet className="h-4 w-4 text-gray-400" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">-</div>
-            <p className="text-xs text-muted-foreground">Loading...</p>
+            <div className="text-2xl font-bold tracking-tight text-[#111111]">-</div>
+            <p className="text-xs text-gray-400 mt-1">Unavailable in list view</p>
           </CardContent>
         </Card>
       </div>
 
-      <div className="bg-white rounded-lg border border-gray-200">
+      <div className="overflow-hidden border border-[#e5e7eb] rounded-xl bg-white shadow-none">
         <DataTable
           data={clients}
           columns={clientColumns}
           loading={isLoading}
           emptyMessage="No clients found"
+          noCard={true}
         />
       </div>
 
@@ -297,19 +299,20 @@ function ClientsIndexPage() {
         title="Edit Client"
       >
         <div className="space-y-4">
-          <div>
-            <Label htmlFor="edit-name">Full Name *</Label>
+          <div className="space-y-1.5">
+            <Label htmlFor="edit-name" className="text-xs font-semibold text-gray-700 uppercase tracking-wider">Full Name *</Label>
             <Input
               id="edit-name"
               value={formData.name}
               onChange={(e) => handleInputChange('name', e.target.value)}
               placeholder="Enter client's full name"
               required
+              className="h-10 px-3 border-[#e5e7eb] rounded-md focus:border-[#111111] focus:ring-1 focus:ring-[#111111] focus-visible:ring-[#111111] focus-visible:border-[#111111] focus-visible:ring-offset-0 focus-visible:ring-1 bg-white"
             />
           </div>
 
-          <div>
-            <Label htmlFor="edit-email">Email Address *</Label>
+          <div className="space-y-1.5">
+            <Label htmlFor="edit-email" className="text-xs font-semibold text-gray-700 uppercase tracking-wider">Email Address *</Label>
             <Input
               id="edit-email"
               type="email"
@@ -317,28 +320,31 @@ function ClientsIndexPage() {
               onChange={(e) => handleInputChange('email', e.target.value)}
               placeholder="Enter email address"
               required
+              className="h-10 px-3 border-[#e5e7eb] rounded-md focus:border-[#111111] focus:ring-1 focus:ring-[#111111] focus-visible:ring-[#111111] focus-visible:border-[#111111] focus-visible:ring-offset-0 focus-visible:ring-1 bg-white"
             />
           </div>
 
-          <div>
-            <Label htmlFor="edit-phone">Phone Number *</Label>
+          <div className="space-y-1.5">
+            <Label htmlFor="edit-phone" className="text-xs font-semibold text-gray-700 uppercase tracking-wider">Phone Number *</Label>
             <Input
               id="edit-phone"
               value={formData.phone}
               onChange={(e) => handleInputChange('phone', e.target.value)}
               placeholder="Enter phone number"
               required
+              className="h-10 px-3 border-[#e5e7eb] rounded-md focus:border-[#111111] focus:ring-1 focus:ring-[#111111] focus-visible:ring-[#111111] focus-visible:border-[#111111] focus-visible:ring-offset-0 focus-visible:ring-1 bg-white"
             />
           </div>
 
-          <div>
-            <Label htmlFor="edit-address">Address</Label>
+          <div className="space-y-1.5">
+            <Label htmlFor="edit-address" className="text-xs font-semibold text-gray-700 uppercase tracking-wider">Address</Label>
             <Textarea
               id="edit-address"
               value={formData.address}
               onChange={(e) => handleInputChange('address', e.target.value)}
               placeholder="Enter client's address (optional)"
               rows={3}
+              className="px-3 py-2 border-[#e5e7eb] rounded-md focus:border-[#111111] focus:ring-1 focus:ring-[#111111] focus-visible:ring-[#111111] focus-visible:border-[#111111] focus-visible:ring-offset-0 focus-visible:ring-1 bg-white"
             />
           </div>
 
@@ -346,7 +352,7 @@ function ClientsIndexPage() {
             <Button
               onClick={handleUpdateClient}
               disabled={updateClientMutation.isPending || !formData.name || !formData.email || !formData.phone}
-              className="flex-1"
+              className="flex-1 h-10 font-semibold bg-[#111111] hover:bg-[#242424] text-white rounded-md transition-colors border border-transparent shadow-sm"
             >
               {updateClientMutation.isPending ? (
                 <>
@@ -360,7 +366,7 @@ function ClientsIndexPage() {
             <Button
               variant="outline"
               onClick={() => setIsEditDrawerOpen(false)}
-              className="flex-1"
+              className="flex-1 h-10 border-[#e5e7eb] hover:bg-gray-50 text-gray-700 font-semibold rounded-md"
             >
               Cancel
             </Button>
@@ -375,7 +381,10 @@ function ClientsIndexPage() {
         title={errorModalContent.title}
         size="md"
         footer={
-          <Button onClick={() => setIsErrorModalOpen(false)}>
+          <Button
+            onClick={() => setIsErrorModalOpen(false)}
+            className="h-10 px-5 bg-[#111111] hover:bg-[#242424] text-white font-semibold rounded-md transition-colors border border-transparent"
+          >
             OK
           </Button>
         }
@@ -384,8 +393,8 @@ function ClientsIndexPage() {
           <div className="flex-shrink-0">
             <AlertTriangle
               className={`h-6 w-6 ${errorModalContent.type === 'warning'
-                  ? 'text-amber-500'
-                  : 'text-red-500'
+                ? 'text-amber-500'
+                : 'text-red-500'
                 }`}
             />
           </div>
@@ -394,7 +403,7 @@ function ClientsIndexPage() {
               {errorModalContent.message}
             </p>
             {errorModalContent.type === 'warning' && (
-              <div className="mt-3 p-3 bg-amber-50 border border-amber-200 rounded-md">
+              <div className="mt-3 p-3 bg-amber-50/40 border border-amber-200/60 rounded-md">
                 <p className="text-sm text-amber-800">
                   <strong>Tips:</strong> Anda dapat melihat booking klien dengan mengklik tombol "View" untuk melihat booking mana yang perlu diselesaikan atau dibatalkan.
                 </p>

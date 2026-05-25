@@ -11,7 +11,8 @@ import { formatCurrency, formatDate } from "@/lib/utils";
 import { useInvoice, usePayInvoice, type Invoice } from "@/lib/queries/invoices";
 import { useReceiptsByBooking, useGenerateReceipt } from "@/lib/queries/receipts";
 import { authService } from "@/lib/auth";
-import { FileText, Download, Banknote, CalendarDays, Loader2, Info, MessageCircle } from "lucide-react";
+import { FileText, Download, Banknote, CalendarDays, Loader2, Info, MessageCircle, ArrowLeft } from "lucide-react";
+import { useNavigate } from "@tanstack/react-router";
 
 export const Route = createFileRoute("/invoice-detail")({
   validateSearch: (search: Record<string, unknown>) => {
@@ -38,33 +39,32 @@ export const Route = createFileRoute("/invoice-detail")({
 });
 
 function getInvoiceStatusColor(status: Invoice["status"]) {
-  switch (status) {
+  switch (status?.toLowerCase()) {
     case "paid":
-      return "bg-green-100 text-green-800";
+      return "bg-emerald-50 text-emerald-700 border-emerald-200/50";
     case "pending":
-      return "bg-yellow-100 text-yellow-800";
-    case "overdue":
-      return "bg-red-100 text-red-800";
-    case "cancelled":
-      return "bg-gray-100 text-gray-800";
-    case "draft":
     case "sent":
+      return "bg-amber-50 text-amber-700 border-amber-200/50";
+    case "overdue":
+      return "bg-rose-50 text-rose-700 border-rose-200/50";
+    case "cancelled":
+    case "draft":
     default:
-      return "bg-gray-100 text-gray-800";
+      return "bg-zinc-50 text-zinc-700 border-zinc-200/60";
   }
 }
 
 function getPaymentStatusColor(status?: "unpaid" | "partial" | "paid" | "overdue") {
-  switch (status) {
+  switch (status?.toLowerCase()) {
     case "paid":
-      return "bg-green-100 text-green-800";
+      return "bg-emerald-50 text-emerald-700 border-emerald-200/50";
     case "partial":
-      return "bg-yellow-100 text-yellow-800";
+      return "bg-amber-50 text-amber-700 border-amber-200/50";
     case "unpaid":
     case "overdue":
-      return "bg-red-100 text-red-800";
+      return "bg-rose-50 text-rose-700 border-rose-200/50";
     default:
-      return "bg-gray-100 text-gray-800";
+      return "bg-zinc-50 text-zinc-700 border-zinc-200/60";
   }
 }
 
@@ -122,6 +122,7 @@ function getPayments(meta: unknown): PaymentEntry[] {
 }
 
 function InvoiceDetailPage() {
+  const navigate = useNavigate();
   const { id } = Route.useSearch();
   const { data: invoice, isLoading, error } = useInvoice(id);
   const payInvoiceMutation = usePayInvoice();
@@ -227,7 +228,7 @@ function InvoiceDetailPage() {
     return (
       <PageLayout title="Loading Invoice..." subtitle="Fetching invoice details">
         <div className="flex items-center justify-center h-64">
-          <Loader2 className="h-8 w-8 animate-spin" />
+          <Loader2 className="h-8 w-8 animate-spin text-zinc-500" />
         </div>
       </PageLayout>
     );
@@ -256,176 +257,191 @@ function InvoiceDetailPage() {
     <PageLayout
       title={`Invoice ${invoice.number}`}
       subtitle="Invoice details, payment, and summary"
-      actions={
-        <div className="flex space-x-3">
-          <Button variant="outline" onClick={handleDownload}>
-            <Download className="h-4 w-4 mr-2" />
-            Download PDF
-          </Button>
-          <Button variant="outline" onClick={handleShareWhatsApp} className="text-green-600 border-green-200 hover:bg-green-50 hover:text-green-700">
-            <MessageCircle className="h-4 w-4 mr-2" />
-            Kirim via WA
-          </Button>
-          {isAdmin && invoice.status === 'paid' && (receiptsForBooking?.length ?? 0) === 0 && (
-            <Button
-              onClick={handleGenerateReceipt}
-              disabled={generateReceiptMutation.isPending}
-              title="Generate receipt for this booking (requires paid invoice)"
-            >
-              {generateReceiptMutation.isPending ? (<><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Generating...</>) : 'Generate Receipt'}
-            </Button>
-          )}
-          {isAdmin && (receiptsForBooking?.length ?? 0) > 0 && (
-            <Button
-              variant="secondary"
-              onClick={() => {
-                const r = receiptsForBooking[0];
-                const API_BASE_URL = import.meta.env.VITE_API_URL || window.location.origin.replace(':5173', ':3000');
-                window.open(`${API_BASE_URL}/api/receipts/${r.id}/download`, '_blank');
-              }}
-              title="Download existing receipt"
-            >
-              Download Receipt
-            </Button>
-          )}
-        </div>
-      }
     >
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Left column: Details */}
-        <div className="lg:col-span-2 space-y-6">
-          {/* Invoice Summary */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center space-x-2">
-                <FileText className="h-5 w-5 text-blue-600" />
+      <div className="space-y-6">
+        {/* Header Actions toolbar dock */}
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-2">
+          <div className="flex items-center space-x-3 flex-wrap gap-y-2">
+            <Button
+              variant="outline"
+              onClick={() => navigate({ to: "/invoices" })}
+              className="h-9 px-4 border-[#e5e7eb] text-zinc-700 hover:bg-gray-50 hover:text-black flex items-center rounded-md font-medium text-xs bg-white shadow-none"
+            >
+              <ArrowLeft className="h-4 w-4 mr-2" />
+              Kembali ke Registrasi
+            </Button>
+            <span className={`inline-flex items-center px-2.5 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider border ${getInvoiceStatusColor(invoice.status)}`}>
+              {invoice.status}
+            </span>
+          </div>
+          
+          <div className="flex flex-wrap items-center gap-2">
+            <Button 
+              variant="outline" 
+              onClick={handleDownload}
+              className="h-9 px-3.5 border-zinc-200 text-zinc-700 hover:bg-zinc-50 hover:text-[#111111] flex items-center rounded-md text-xs font-semibold transition-colors bg-white shadow-none"
+            >
+              <Download className="h-4 w-4 mr-2 text-zinc-500" />
+              Download PDF
+            </Button>
+            <Button 
+              variant="outline" 
+              onClick={handleShareWhatsApp}
+              className="h-9 px-3.5 border-emerald-250 text-emerald-700 hover:bg-emerald-50 hover:text-emerald-800 flex items-center rounded-md text-xs font-semibold transition-colors bg-white shadow-none"
+            >
+              <MessageCircle className="h-4 w-4 mr-2 text-emerald-500" />
+              Kirim via WhatsApp
+            </Button>
+            {isAdmin && invoice.status === 'paid' && (receiptsForBooking?.length ?? 0) === 0 && (
+              <Button
+                onClick={handleGenerateReceipt}
+                disabled={generateReceiptMutation.isPending}
+                className="bg-[#111111] hover:bg-[#242424] text-white h-9 px-4 rounded-md text-xs font-semibold transition-colors border border-transparent shadow-none"
+              >
+                {generateReceiptMutation.isPending ? (<><Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" /> Generating...</>) : 'Generate Receipt'}
+              </Button>
+            )}
+            {isAdmin && (receiptsForBooking?.length ?? 0) > 0 && (
+              <Button
+                variant="outline"
+                onClick={() => {
+                  const r = receiptsForBooking[0];
+                  const API_BASE_URL = import.meta.env.VITE_API_URL || window.location.origin.replace(':5173', ':3000');
+                  window.open(`${API_BASE_URL}/api/receipts/${r.id}/download`, '_blank');
+                }}
+                className="h-9 px-3.5 border-zinc-200 text-zinc-700 hover:bg-zinc-50 hover:text-[#111111] flex items-center rounded-md text-xs font-semibold transition-colors bg-white shadow-none"
+              >
+                <Download className="h-4 w-4 mr-2 text-zinc-500" />
+                Download Receipt
+              </Button>
+            )}
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* Details Column */}
+          <div className="lg:col-span-2 space-y-6">
+            {/* Invoice Summary */}
+            <div className="border border-[#e5e7eb] rounded-xl bg-white shadow-none p-6">
+              <h2 className="text-sm font-bold text-[#111111] uppercase tracking-wider mb-6 pb-2 border-b border-gray-100 flex items-center space-x-2">
+                <FileText className="h-4.5 w-4.5 text-zinc-700" />
                 <span>Invoice Summary</span>
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <span className="text-gray-500 text-sm">Number</span>
-                  <p className="font-semibold">{invoice.number}</p>
+              </h2>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-y-5 gap-x-8">
+                <div className="space-y-1">
+                  <label className="block text-[10px] font-bold text-zinc-400 uppercase tracking-wider">Invoice Number</label>
+                  <p className="text-sm font-semibold text-[#111111]">{invoice.number}</p>
                 </div>
-                <div>
-                  <span className="text-gray-500 text-sm">Status</span>
+                <div className="space-y-1">
+                  <label className="block text-[10px] font-bold text-zinc-400 uppercase tracking-wider">Status</label>
                   <div className="mt-1">
-                    <Badge className={getInvoiceStatusColor(invoice.status)}>
+                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider border ${getInvoiceStatusColor(invoice.status)}`}>
                       {invoice.status}
-                    </Badge>
+                    </span>
                   </div>
                 </div>
-                <div>
-                  <span className="text-gray-500 text-sm">Amount</span>
-                  <p className="font-semibold">
+                <div className="space-y-1">
+                  <label className="block text-[10px] font-bold text-zinc-400 uppercase tracking-wider">Amount</label>
+                  <p className="text-sm font-semibold text-[#111111]">
                     {formatCurrency(invoice.amount, invoice.currency)}
                   </p>
                 </div>
-                <div>
-                  <span className="text-gray-500 text-sm">Currency</span>
-                  <p className="font-semibold">{invoice.currency}</p>
+                <div className="space-y-1">
+                  <label className="block text-[10px] font-bold text-zinc-400 uppercase tracking-wider">Currency</label>
+                  <p className="text-sm font-semibold text-[#111111]">{invoice.currency}</p>
                 </div>
-                <div>
-                  <span className="text-gray-500 text-sm">Issue Date</span>
-                  <p className="font-semibold">{formatDate(invoice.issueDate)}</p>
+                <div className="space-y-1">
+                  <label className="block text-[10px] font-bold text-zinc-400 uppercase tracking-wider">Issue Date</label>
+                  <p className="text-sm font-semibold text-[#111111]">{formatDate(invoice.issueDate)}</p>
                 </div>
-                <div>
-                  <span className="text-gray-500 text-sm">Due Date</span>
-                  <p className="font-semibold">{formatDate(invoice.dueDate)}</p>
+                <div className="space-y-1">
+                  <label className="block text-[10px] font-bold text-zinc-400 uppercase tracking-wider">Due Date</label>
+                  <p className="text-sm font-semibold text-[#111111]">{formatDate(invoice.dueDate)}</p>
                 </div>
               </div>
-            </CardContent>
-          </Card>
+            </div>
 
-          {/* Booking Summary */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center space-x-2">
-                <CalendarDays className="h-5 w-5 text-blue-600" />
-                <span>Booking Summary</span>
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <span className="text-gray-500 text-sm">Booking Code</span>
-                  <p className="font-semibold">{invoice.bookingCode}</p>
+            {/* Booking Summary */}
+            <div className="border border-[#e5e7eb] rounded-xl bg-white shadow-none p-6">
+              <h2 className="text-sm font-bold text-[#111111] uppercase tracking-wider mb-6 pb-2 border-b border-gray-100 flex items-center space-x-2">
+                <CalendarDays className="h-4.5 w-4.5 text-zinc-700" />
+                <span>Booking Details</span>
+              </h2>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-y-5 gap-x-8">
+                <div className="space-y-1">
+                  <label className="block text-[10px] font-bold text-zinc-400 uppercase tracking-wider">Booking Code</label>
+                  <p className="text-sm font-semibold text-[#111111]">{invoice.bookingCode}</p>
                 </div>
-                <div>
-                  <span className="text-gray-500 text-sm">Hotel</span>
-                  <p className="font-semibold">{invoice.hotelName}</p>
+                <div className="space-y-1">
+                  <label className="block text-[10px] font-bold text-zinc-400 uppercase tracking-wider">Hotel Name</label>
+                  <p className="text-sm font-semibold text-[#111111]">{invoice.hotelName || "-"}</p>
                 </div>
-                <div>
-                  <span className="text-gray-500 text-sm">City</span>
-                  <p className="font-semibold">{invoice.city}</p>
+                <div className="space-y-1">
+                  <label className="block text-[10px] font-bold text-zinc-400 uppercase tracking-wider">City</label>
+                  <p className="text-sm font-semibold text-[#111111]">{invoice.city || "-"}</p>
                 </div>
-                <div>
-                  <span className="text-gray-500 text-sm">Payment Status</span>
+                <div className="space-y-1">
+                  <label className="block text-[10px] font-bold text-zinc-400 uppercase tracking-wider">Payment Status</label>
                   <div className="mt-1">
-                    <Badge className={getPaymentStatusColor(invoice.bookingPaymentStatus)}>
+                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider border ${getPaymentStatusColor(invoice.bookingPaymentStatus)}`}>
                       {invoice.bookingPaymentStatus || "unknown"}
-                    </Badge>
+                    </span>
                   </div>
                 </div>
-                <div>
-                  <span className="text-gray-500 text-sm">Remaining Balance</span>
-                  <p className="font-semibold">
+                <div className="space-y-1">
+                  <label className="block text-[10px] font-bold text-zinc-400 uppercase tracking-wider">Remaining Balance</label>
+                  <p className="text-sm font-semibold text-[#111111]">
                     {formatCurrency(remainingBalance.toString(), "SAR")}
                   </p>
                 </div>
               </div>
-            </CardContent>
-          </Card>
+            </div>
 
-          {/* Payments History */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center space-x-2">
-                <Info className="h-5 w-5 text-blue-600" />
+            {/* Payments History */}
+            <div className="border border-[#e5e7eb] rounded-xl bg-white shadow-none p-6">
+              <h2 className="text-sm font-bold text-[#111111] uppercase tracking-wider mb-6 pb-2 border-b border-gray-100 flex items-center space-x-2">
+                <Info className="h-4.5 w-4.5 text-zinc-700" />
                 <span>Payments History</span>
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
+              </h2>
               {payments.length === 0 ? (
-                <p className="text-gray-600">No payments recorded yet.</p>
+                <p className="text-xs text-zinc-500 italic py-2">Belum ada data pembayaran untuk invoice ini.</p>
               ) : (
-                <div className="space-y-2">
+                <div className="space-y-2.5">
                   {payments.map((p, idx) => (
-                    <div key={idx} className="flex items-center justify-between border rounded-md p-3">
+                    <div key={idx} className="flex items-center justify-between border border-[#e5e7eb] rounded-lg p-3.5 bg-white transition-all hover:border-[#111111]/30">
                       <div className="flex items-center space-x-3">
-                        <Banknote className="h-4 w-4 text-green-600" />
+                        <div className="p-2 bg-emerald-50 rounded-lg">
+                          <Banknote className="h-4 w-4 text-emerald-600" />
+                        </div>
                         <div>
-                          <div className="text-sm font-semibold">
+                          <div className="text-xs font-bold text-[#111111]">
                             {p.method.toUpperCase()} • {formatCurrency(p.amount.toString(), "SAR")}
                           </div>
-                          <div className="text-xs text-gray-500">
+                          <div className="text-[10px] text-zinc-400 font-bold uppercase tracking-wider mt-0.5">
                             {new Date(p.date).toLocaleString()} • Ref: {p.reference || "-"}
                           </div>
                         </div>
                       </div>
-                      <Badge className="bg-green-100 text-green-800">{p.status}</Badge>
+                      <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[9px] font-bold uppercase tracking-wider border bg-emerald-50 text-emerald-700 border-emerald-200/50">
+                        {p.status}
+                      </span>
                     </div>
                   ))}
                 </div>
               )}
-            </CardContent>
-          </Card>
-        </div>
+            </div>
+          </div>
 
-        {/* Right column: Payment Form */}
-        <div className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center space-x-2">
-                <Banknote className="h-5 w-5 text-blue-600" />
+          {/* Record Payment Sidebar */}
+          <div className="space-y-6">
+            <div className="border border-[#e5e7eb] rounded-xl bg-white shadow-none p-6">
+              <h2 className="text-sm font-bold text-[#111111] uppercase tracking-wider mb-6 pb-2 border-b border-gray-100 flex items-center space-x-2">
+                <Banknote className="h-4.5 w-4.5 text-zinc-700" />
                 <span>Record Payment</span>
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <form onSubmit={handleSubmitPay} className="space-y-3">
-                <div className="space-y-2">
-                  <Label htmlFor="payMethod">Method</Label>
+              </h2>
+              <form onSubmit={handleSubmitPay} className="space-y-4">
+                <div className="space-y-1">
+                  <label htmlFor="payMethod" className="block text-[10px] font-bold text-zinc-400 uppercase tracking-wider mb-1.5">Payment Method</label>
                   <select
                     id="payMethod"
                     value={payForm.method}
@@ -435,7 +451,7 @@ function InvoiceDetailPage() {
                         method: e.target.value as "bank_transfer" | "deposit" | "cash",
                       }))
                     }
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    className="w-full h-10 px-3 border border-[#e5e7eb] rounded-lg bg-white text-sm font-medium text-zinc-950 focus:outline-none focus:border-[#111111] focus:ring-1 focus:ring-[#111111]"
                   >
                     <option value="cash">Cash</option>
                     <option value="bank_transfer">Bank Transfer</option>
@@ -443,8 +459,8 @@ function InvoiceDetailPage() {
                   </select>
                 </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="payAmount">Amount (SAR)</Label>
+                <div className="space-y-1">
+                  <label htmlFor="payAmount" className="block text-[10px] font-bold text-zinc-400 uppercase tracking-wider mb-1.5">Amount (SAR) *</label>
                   <Input
                     id="payAmount"
                     type="number"
@@ -453,34 +469,41 @@ function InvoiceDetailPage() {
                     value={payForm.amount}
                     onChange={(e) => setPayForm((prev) => ({ ...prev, amount: e.target.value }))}
                     required
+                    className="h-10 px-3 border border-[#e5e7eb] rounded-lg bg-white text-sm font-medium text-zinc-950 focus:border-[#111111] focus:ring-1 focus:ring-[#111111] shadow-none"
                   />
                 </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="payReference">Reference</Label>
+                <div className="space-y-1">
+                  <label htmlFor="payReference" className="block text-[10px] font-bold text-zinc-400 uppercase tracking-wider mb-1.5">Reference Number</label>
                   <Input
                     id="payReference"
                     value={payForm.referenceNumber}
                     onChange={(e) => setPayForm((prev) => ({ ...prev, referenceNumber: e.target.value }))}
                     placeholder="Optional reference"
+                    className="h-10 px-3 border border-[#e5e7eb] rounded-lg bg-white text-sm font-medium text-zinc-950 focus:border-[#111111] focus:ring-1 focus:ring-[#111111] shadow-none"
                   />
                 </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="payDescription">Description</Label>
+                <div className="space-y-1">
+                  <label htmlFor="payDescription" className="block text-[10px] font-bold text-zinc-400 uppercase tracking-wider mb-1.5">Description Notes</label>
                   <Input
                     id="payDescription"
                     value={payForm.description}
                     onChange={(e) => setPayForm((prev) => ({ ...prev, description: e.target.value }))}
                     placeholder="Optional description"
+                    className="h-10 px-3 border border-[#e5e7eb] rounded-lg bg-white text-sm font-medium text-zinc-950 focus:border-[#111111] focus:ring-1 focus:ring-[#111111] shadow-none"
                   />
                 </div>
 
-                <div className="flex justify-end">
-                  <Button type="submit" disabled={payInvoiceMutation.isPending}>
+                <div className="flex justify-end pt-2">
+                  <Button 
+                    type="submit" 
+                    disabled={payInvoiceMutation.isPending}
+                    className="w-full bg-[#111111] hover:bg-[#242424] text-white h-10 rounded-lg text-sm font-semibold transition-colors border border-transparent shadow-none"
+                  >
                     {payInvoiceMutation.isPending ? (
                       <>
-                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin text-white" />
                         Recording...
                       </>
                     ) : (
@@ -490,11 +513,11 @@ function InvoiceDetailPage() {
                 </div>
               </form>
 
-              <div className="mt-4 text-xs text-gray-500">
+              <div className="mt-4 text-[10px] font-semibold text-zinc-400 uppercase tracking-wider leading-relaxed">
                 Payments are only allowed when an invoice exists. Surplus payments via bank transfer or cash will be credited to the client's deposit automatically.
               </div>
-            </CardContent>
-          </Card>
+            </div>
+          </div>
         </div>
       </div>
     </PageLayout>
@@ -502,3 +525,5 @@ function InvoiceDetailPage() {
 }
 
 export default InvoiceDetailPage;
+
+

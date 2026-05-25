@@ -15,12 +15,17 @@ import {
   Loader2,
   Plus,
   Trash2,
-  CalendarDays
+  CalendarDays,
+  Sparkles,
+  Layers,
+  ShieldCheck,
+  TrendingUp
 } from "lucide-react"
 import { authService } from "@/lib/auth"
 import { useCreateBooking, type CreateBookingData, type CreateBookingRoomItem, type PricingPeriod } from "@/lib/queries/bookings"
 import { useClients } from "@/lib/queries"
 import { useHotels, useHotelPricing } from "@/lib/queries/master"
+import { formatCurrency } from "@/lib/utils"
 
 export const Route = createFileRoute("/create-booking")({
   beforeLoad: async () => {
@@ -347,11 +352,9 @@ function CreateBookingPage() {
 
       // Navigate to booking detail page or bookings list
       navigate({ to: "/bookings" })
+      toast.success('Pemesanan hotel baru berhasil disimpan!')
     } catch (error) {
       console.error("Failed to create booking:", error)
-      console.error("Error details:", error instanceof Error ? error.message : error)
-
-      // Show error to user
       toast.error(`Failed to create booking: ${error instanceof Error ? error.message : 'Unknown error'}`)
     }
   }
@@ -474,7 +477,6 @@ function CreateBookingPage() {
     const updatedRooms = [...rooms]
 
     if (field === 'hasPricingPeriods' && value === true) {
-      // Initialize with one pricing period covering the full stay
       const nights = calculateNights()
       updatedRooms[index] = {
         ...updatedRooms[index],
@@ -489,7 +491,6 @@ function CreateBookingPage() {
         }]
       }
     } else if (field === 'hasPricingPeriods' && value === false) {
-      // Remove pricing periods and use single price
       updatedRooms[index] = {
         ...updatedRooms[index],
         [field]: value,
@@ -529,7 +530,6 @@ function CreateBookingPage() {
       room.pricingPeriods = []
     }
 
-    // Get the last period's end date or check-in date
     const lastPeriod = room.pricingPeriods[room.pricingPeriods.length - 1]
     const startDate = lastPeriod ? lastPeriod.endDate : formData.checkInDate
 
@@ -564,14 +564,12 @@ function CreateBookingPage() {
 
     const period = room.pricingPeriods[periodIndex]
 
-    // Type-safe field assignment
     if (field === 'startDate' || field === 'endDate') {
       (period as any)[field] = value as string
     } else {
       (period as any)[field] = Number(value)
     }
 
-    // Recalculate nights and subtotal when dates or prices change
     if (field === 'startDate' || field === 'endDate') {
       const startDate = new Date(period.startDate)
       const endDate = new Date(period.endDate)
@@ -586,812 +584,668 @@ function CreateBookingPage() {
   }
 
   return (
-    <>
-      <PageLayout
-        title="Create New Booking"
-        subtitle="Add a new hotel booking to the system"
-        actions={
-          <Button
-            variant="outline"
-            onClick={() => navigate({ to: "/bookings" })}
-          >
-            <ArrowLeft className="h-4 w-4 mr-2" />
-            Back to Bookings
-          </Button>
-        }
-      >
-        <form onSubmit={handleSubmit} className="max-w-4xl mx-auto space-y-8">
-          {/* Guest Information */}
-          <Card className="p-6">
-            <div className="flex items-center space-x-2 mb-6">
-              <Users className="h-5 w-5 text-blue-600" />
-              <h3 className="text-lg font-semibold">Guest Information</h3>
-            </div>
+    <PageLayout
+      title="Create New Booking"
+      subtitle="Input client credentials, lodging slices, and invoice rates."
+      actions={
+        <Button
+          variant="outline"
+          onClick={() => navigate({ to: "/bookings" })}
+          className="text-xs h-9 border-[#e5e7eb] hover:bg-gray-50 text-[#374151] font-semibold"
+        >
+          <ArrowLeft className="h-3.5 w-3.5 mr-1" />
+          Cancel
+        </Button>
+      }
+    >
+      <form onSubmit={handleSubmit} className="max-w-4xl mx-auto space-y-8 pb-20 text-xs font-semibold text-gray-700">
+        {/* Guest Information */}
+        <Card className="p-6 border border-[#e5e7eb] rounded-xl shadow-[0_1px_2px_rgba(0,0,0,0.04)] bg-white">
+          <div className="flex items-center space-x-2 mb-6">
+            <Users className="h-4.5 w-4.5 text-[#111111]" />
+            <h3 className="text-sm font-bold text-[#111111] tracking-[-0.02em]">Guest Information</h3>
+          </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div className="md:col-span-2">
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Client
-                </label>
-                <div className="flex flex-col gap-2 md:flex-row md:items-center">
-                  <select
-                    value={selectedClientId}
-                    onChange={(e) => handleClientSelection(e.target.value)}
-                    className="w-full flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    disabled={isClientsLoading && clients.length === 0}
-                  >
-                    <option value="">
-                      {isClientsLoading && clients.length === 0
-                        ? "Loading clients..."
-                        : "Select existing client"}
-                    </option>
-                    {clients.map((client) => (
-                      <option key={client.id} value={client.id.toString()}>
-                        {client.name} • {client.email}
-                      </option>
-                    ))}
-                  </select>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={() => navigate({ to: "/clients/create", search: { redirectTo: "/create-booking" } })}
-                  >
-                    New Client
-                  </Button>
-                </div>
-                {selectedClientId && (
-                  <p className="text-xs text-gray-500 mt-2">
-                    Guest details are pre-filled from the selected client.
-                  </p>
-                )}
-                {!isClientsLoading && clients.length === 0 && (
-                  <p className="text-xs text-gray-500 mt-2">
-                    No clients found. Create a new client to continue.
-                  </p>
-                )}
-                {errors.client && (
-                  <p className="text-red-500 text-sm mt-2">{errors.client}</p>
-                )}
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Guest Name *
-                </label>
-                <Input
-                  value={formData.guestName}
-                  onChange={(e) => handleInputChange('guestName', e.target.value)}
-                  placeholder="Enter guest full name"
-                  className={errors.guestName ? "border-red-500" : ""}
-                  disabled={!selectedClientId}
-                  readOnly={!!selectedClientId}
-                />
-                {errors.guestName && (
-                  <p className="text-red-500 text-sm mt-1">{errors.guestName}</p>
-                )}
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Email Address *
-                </label>
-                <Input
-                  type="email"
-                  value={formData.guestEmail}
-                  onChange={(e) => handleInputChange('guestEmail', e.target.value)}
-                  placeholder="guest@example.com"
-                  className={errors.guestEmail ? "border-red-500" : ""}
-                  disabled={!selectedClientId}
-                  readOnly={!!selectedClientId}
-                />
-                {errors.guestEmail && (
-                  <p className="text-red-500 text-sm mt-1">{errors.guestEmail}</p>
-                )}
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Phone Number *
-                </label>
-                <Input
-                  value={formData.guestPhone}
-                  onChange={(e) => handleInputChange('guestPhone', e.target.value)}
-                  placeholder="+62 812 3456 7890"
-                  className={errors.guestPhone ? "border-red-500" : ""}
-                  disabled={!selectedClientId}
-                  readOnly={!!selectedClientId}
-                />
-                {errors.guestPhone && (
-                  <p className="text-red-500 text-sm mt-1">{errors.guestPhone}</p>
-                )}
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Number of Guests *
-                </label>
-                <Input
-                  type="number"
-                  min="1"
-                  max="10"
-                  value={formData.numberOfGuests}
-                  onChange={(e) => handleInputChange('numberOfGuests', parseInt(e.target.value) || 1)}
-                  className={errors.numberOfGuests ? "border-red-500" : ""}
-                />
-                {errors.numberOfGuests && (
-                  <p className="text-red-500 text-sm mt-1">{errors.numberOfGuests}</p>
-                )}
-              </div>
-            </div>
-          </Card>
-
-          {/* Hotel Information */}
-          <Card className="p-6">
-            <div className="flex items-center space-x-2 mb-6">
-              <MapPin className="h-5 w-5 text-purple-600" />
-              <h3 className="text-lg font-semibold">Hotel Information</h3>
-            </div>
-
-            <div className="mb-6 bg-blue-50 border border-blue-100 p-4 rounded-md">
-              <label className="block text-sm font-medium text-blue-900 mb-2">
-                Quick Select from Master Data
-              </label>
-              <select
-                value={selectedMasterHotelId}
-                onChange={(e) => handleMasterHotelSelection(e.target.value)}
-                className="w-full px-3 py-2 border border-blue-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
-                disabled={isHotelsLoading}
-              >
-                <option value="">-- Custom Hotel Entry --</option>
-                {masterHotels.map(hotel => (
-                  <option key={hotel.id} value={hotel.id.toString()}>
-                    {hotel.name} ({hotel.city}) {hotel.starRating ? ` - ${hotel.starRating} Stars` : ''}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="md:col-span-2 space-y-1.5">
+              <label className="block text-xs font-semibold text-gray-500">Client CRM Lookup</label>
+              <div className="flex flex-col gap-2 md:flex-row md:items-center">
+                <select
+                  value={selectedClientId}
+                  onChange={(e) => handleClientSelection(e.target.value)}
+                  className="flex-1 h-9 px-3 border border-[#e5e7eb] rounded-md bg-white text-xs font-semibold focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[#111111] focus-visible:border-[#111111]"
+                  disabled={isClientsLoading && clients.length === 0}
+                >
+                  <option value="">
+                    {isClientsLoading && clients.length === 0
+                      ? "Loading clients..."
+                      : "-- Select Existing CRM Client --"}
                   </option>
-                ))}
-              </select>
-              {masterHotels.length === 0 && !isHotelsLoading && (
-                <p className="text-xs text-blue-600 mt-2">No master hotels configured. Using custom entry.</p>
+                  {clients.map((client) => (
+                    <option key={client.id} value={client.id.toString()}>
+                      {client.name} ({client.email || 'No email'})
+                    </option>
+                  ))}
+                </select>
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="text-xs h-9 px-4 border-[#e5e7eb] hover:bg-gray-50 text-[#374151]"
+                  onClick={() => navigate({ to: "/clients", search: { redirectTo: "/create-booking" } })}
+                >
+                  New Client
+                </Button>
+              </div>
+              {errors.client && (
+                <p className="text-red-500 text-xs mt-1">{errors.client}</p>
               )}
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Hotel Name *
-                </label>
-                <Input
-                  value={formData.hotelName}
-                  onChange={(e) => handleInputChange('hotelName', e.target.value)}
-                  placeholder="Enter hotel name"
-                  className={errors.hotelName ? "border-red-500" : ""}
-                />
-                {errors.hotelName && (
-                  <p className="text-red-500 text-sm mt-1">{errors.hotelName}</p>
-                )}
-              </div>
+            <div className="space-y-1.5">
+              <label className="block text-xs font-semibold text-gray-500">Guest Name *</label>
+              <Input
+                value={formData.guestName}
+                onChange={(e) => handleInputChange('guestName', e.target.value)}
+                placeholder="Full Name"
+                className={`h-9 border-[#e5e7eb] rounded focus-visible:ring-[#111111] bg-white ${errors.guestName ? "border-red-500" : ""}`}
+                disabled={!selectedClientId}
+                readOnly={!!selectedClientId}
+              />
+              {errors.guestName && (
+                <p className="text-red-500 text-xs mt-1">{errors.guestName}</p>
+              )}
+            </div>
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  City *
-                </label>
-                <select
-                  value={formData.city}
-                  onChange={(e) => handleInputChange('city', e.target.value)}
-                  className={`w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent ${errors.city ? "border-red-500" : ""}`}
+            <div className="space-y-1.5">
+              <label className="block text-xs font-semibold text-gray-500">Email Address *</label>
+              <Input
+                type="email"
+                value={formData.guestEmail}
+                onChange={(e) => handleInputChange('guestEmail', e.target.value)}
+                placeholder="guest@domain.com"
+                className={`h-9 border-[#e5e7eb] rounded focus-visible:ring-[#111111] bg-white ${errors.guestEmail ? "border-red-500" : ""}`}
+                disabled={!selectedClientId}
+                readOnly={!!selectedClientId}
+              />
+              {errors.guestEmail && (
+                <p className="text-red-500 text-xs mt-1">{errors.guestEmail}</p>
+              )}
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="block text-xs font-semibold text-gray-500">WhatsApp Phone *</label>
+              <Input
+                value={formData.guestPhone}
+                onChange={(e) => handleInputChange('guestPhone', e.target.value)}
+                placeholder="08123456789"
+                className={`h-9 border-[#e5e7eb] rounded focus-visible:ring-[#111111] bg-white ${errors.guestPhone ? "border-red-500" : ""}`}
+                disabled={!selectedClientId}
+                readOnly={!!selectedClientId}
+              />
+              {errors.guestPhone && (
+                <p className="text-red-500 text-xs mt-1">{errors.guestPhone}</p>
+              )}
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="block text-xs font-semibold text-gray-500">Total Guests *</label>
+              <Input
+                type="number"
+                min="1"
+                value={formData.numberOfGuests}
+                onChange={(e) => handleInputChange('numberOfGuests', parseInt(e.target.value) || 1)}
+                className={`h-9 border-[#e5e7eb] rounded focus-visible:ring-[#111111] bg-white ${errors.numberOfGuests ? "border-red-500" : ""}`}
+              />
+              {errors.numberOfGuests && (
+                <p className="text-red-500 text-xs mt-1">{errors.numberOfGuests}</p>
+              )}
+            </div>
+          </div>
+        </Card>
+
+        {/* Hotel Information */}
+        <Card className="p-6 border border-[#e5e7eb] rounded-xl shadow-[0_1px_2px_rgba(0,0,0,0.04)] bg-white">
+          <div className="flex items-center space-x-2 mb-6">
+            <MapPin className="h-4.5 w-4.5 text-[#111111]" />
+            <h3 className="text-sm font-bold text-[#111111] tracking-[-0.02em]">Hotel Information</h3>
+          </div>
+
+          {/* Master Hotel Selection in Surface Card style */}
+          <div className="mb-6 bg-[#f5f5f5] border border-[#e5e7eb]/60 p-5 rounded-lg space-y-2">
+            <label className="block text-xs font-bold text-[#111111]">
+              Auto-select from Master Registry
+            </label>
+            <select
+              value={selectedMasterHotelId}
+              onChange={(e) => handleMasterHotelSelection(e.target.value)}
+              className="w-full h-9 px-3 border border-[#e5e7eb] rounded-md bg-white text-xs font-semibold focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[#111111]"
+              disabled={isHotelsLoading}
+            >
+              <option value="">-- Custom Manual Entry --</option>
+              {masterHotels.map(hotel => (
+                <option key={hotel.id} value={hotel.id.toString()}>
+                  {hotel.name} ({hotel.city}) {hotel.starRating ? ` - ${hotel.starRating} Stars` : ''}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="space-y-1.5">
+              <label className="block text-xs font-semibold text-gray-500">Hotel Name *</label>
+              <Input
+                value={formData.hotelName}
+                onChange={(e) => handleInputChange('hotelName', e.target.value)}
+                placeholder="Hotel Name"
+                className={`h-9 border-[#e5e7eb] rounded focus-visible:ring-[#111111] bg-white ${errors.hotelName ? "border-red-500" : ""}`}
+              />
+              {errors.hotelName && (
+                <p className="text-red-500 text-xs mt-1">{errors.hotelName}</p>
+              )}
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="block text-xs font-semibold text-gray-500">City *</label>
+              <select
+                value={formData.city}
+                onChange={(e) => handleInputChange('city', e.target.value)}
+                className={`w-full h-9 px-3 border border-gray-300 rounded-md bg-white text-xs font-semibold focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[#111111] ${errors.city ? "border-red-500" : ""}`}
+              >
+                <option value="">Select City</option>
+                <option value="Makkah">Makkah</option>
+                <option value="Madinah">Madinah</option>
+              </select>
+              {errors.city && (
+                <p className="text-red-500 text-xs mt-1">{errors.city}</p>
+              )}
+            </div>
+          </div>
+        </Card>
+
+        {/* Lodging & Slices */}
+        <Card className="p-6 border border-[#e5e7eb] rounded-xl shadow-[0_1px_2px_rgba(0,0,0,0.04)] bg-white">
+          <div className="flex items-center space-x-2 mb-6">
+            <Calendar className="h-4.5 w-4.5 text-[#111111]" />
+            <h3 className="text-sm font-bold text-[#111111] tracking-[-0.02em]">Lodging & Slices</h3>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="space-y-1.5">
+              <label className="block text-xs font-semibold text-gray-500 font-sans">Check-in Date *</label>
+              <Input
+                type="date"
+                value={formData.checkInDate}
+                onChange={(e) => handleInputChange('checkInDate', e.target.value)}
+                min={new Date().toISOString().split('T')[0]}
+                className={`h-9 border-[#e5e7eb] rounded focus-visible:ring-[#111111] bg-white ${errors.checkInDate ? "border-red-500" : ""}`}
+              />
+              {errors.checkInDate && (
+                <p className="text-red-500 text-xs mt-1">{errors.checkInDate}</p>
+              )}
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="block text-xs font-semibold text-gray-500 font-sans">Check-out Date *</label>
+              <Input
+                type="date"
+                value={formData.checkOutDate}
+                onChange={(e) => handleInputChange('checkOutDate', e.target.value)}
+                min={formData.checkInDate || new Date().toISOString().split('T')[0]}
+                className={`h-9 border-[#e5e7eb] rounded focus-visible:ring-[#111111] bg-white ${errors.checkOutDate ? "border-red-500" : ""}`}
+              />
+              {errors.checkOutDate && (
+                <p className="text-red-500 text-xs mt-1">{errors.checkOutDate}</p>
+              )}
+            </div>
+
+            <div className="md:col-span-2 space-y-4 pt-4 border-t border-gray-100">
+              <div className="flex items-center justify-between">
+                <label className="block text-xs font-bold text-[#111111]">Rooms Specification *</label>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={addRoom}
+                  className="text-xs h-8 border-[#e5e7eb] hover:bg-gray-50 text-[#374151]"
                 >
-                  <option value="">Select city</option>
-                  <option value="Makkah">Makkah</option>
-                  <option value="Madinah">Madinah</option>
-                </select>
-                {errors.city && (
-                  <p className="text-red-500 text-sm mt-1">{errors.city}</p>
-                )}
-              </div>
-            </div>
-          </Card>
-
-          {/* Booking Details */}
-          <Card className="p-6">
-            <div className="flex items-center space-x-2 mb-6">
-              <Calendar className="h-5 w-5 text-green-600" />
-              <h3 className="text-lg font-semibold">Booking Details</h3>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Check-in Date *
-                </label>
-                <Input
-                  type="date"
-                  value={formData.checkInDate}
-                  onChange={(e) => handleInputChange('checkInDate', e.target.value)}
-                  min={new Date().toISOString().split('T')[0]}
-                  className={errors.checkInDate ? "border-red-500" : ""}
-                />
-                {errors.checkInDate && (
-                  <p className="text-red-500 text-sm mt-1">{errors.checkInDate}</p>
-                )}
+                  <Plus className="h-3.5 w-3.5 mr-1" />
+                  <span>Add Room</span>
+                </Button>
               </div>
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Check-out Date *
-                </label>
-                <Input
-                  type="date"
-                  value={formData.checkOutDate}
-                  onChange={(e) => handleInputChange('checkOutDate', e.target.value)}
-                  min={formData.checkInDate || new Date().toISOString().split('T')[0]}
-                  className={errors.checkOutDate ? "border-red-500" : ""}
-                />
-                {errors.checkOutDate && (
-                  <p className="text-red-500 text-sm mt-1">{errors.checkOutDate}</p>
-                )}
-              </div>
-
-              <div className="md:col-span-2">
-                <div className="flex items-center justify-between mb-4">
-                  <label className="block text-sm font-medium text-gray-700">
-                    Rooms *
-                  </label>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={addRoom}
-                    className="flex items-center space-x-1"
-                  >
-                    <Plus className="h-4 w-4" />
-                    <span>Add Room</span>
-                  </Button>
-                </div>
-
-                <div className="space-y-4">
-                  {rooms.map((room, index) => (
-                    <div key={index} className="border border-gray-200 rounded-lg p-4 bg-gray-50">
-                      <div className="flex items-center justify-between mb-3">
-                        <h4 className="text-sm font-medium text-gray-700">Room {index + 1}</h4>
-                        {rooms.length > 1 && (
-                          <Button
-                            type="button"
-                            variant="outline"
-                            size="sm"
-                            onClick={() => removeRoom(index)}
-                            className="text-red-600 hover:text-red-700"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        )}
-                      </div>
-
-                      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                        <div>
-                          <label className="block text-xs font-medium text-gray-600 mb-1">
-                            Room Type *
-                          </label>
-                          {availableRoomTypes.length > 0 ? (
-                            <select
-                              value={room.roomType}
-                              title="Select Room Type"
-                              onChange={(e) => updateRoom(index, 'roomType', e.target.value)}
-                              className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white ${errors[`room_${index}_type`] ? "border-red-500" : "border-gray-300"}`}
-                            >
-                              <option value="">Select Room Type</option>
-                              {availableRoomTypes.map(type => (
-                                <option key={type} value={type}>{type}</option>
-                              ))}
-                            </select>
-                          ) : (
-                            <Input
-                              value={room.roomType}
-                              onChange={(e) => updateRoom(index, 'roomType', e.target.value)}
-                              placeholder="e.g., Deluxe Double"
-                              className={errors[`room_${index}_type`] ? "border-red-500" : ""}
-                            />
-                          )}
-                          {errors[`room_${index}_type`] && (
-                            <p className="text-red-500 text-xs mt-1">{errors[`room_${index}_type`]}</p>
-                          )}
-                        </div>
-
-                        <div>
-                          <label className="block text-xs font-medium text-gray-600 mb-1">
-                            Quantity *
-                          </label>
-                          <Input
-                            type="number"
-                            min="1"
-                            value={room.roomCount}
-                            onChange={(e) => updateRoom(index, 'roomCount', parseInt(e.target.value) || 1)}
-                            className={errors[`room_${index}_count`] ? "border-red-500" : ""}
-                          />
-                          {errors[`room_${index}_count`] && (
-                            <p className="text-red-500 text-xs mt-1">{errors[`room_${index}_count`]}</p>
-                          )}
-                        </div>
-
-                        <div>
-                          <label className="block text-xs font-medium text-gray-600 mb-1">
-                            Unit Price (SAR) *
-                          </label>
-                          <Input
-                            type="number"
-                            min="0"
-                            step="any"
-                            value={room.unitPrice}
-                            onChange={(e) => updateRoom(index, 'unitPrice', parseFloat(e.target.value) || 0)}
-                            className={errors[`room_${index}_price`] ? "border-red-500" : ""}
-                          />
-                          {errors[`room_${index}_price`] && (
-                            <p className="text-red-500 text-xs mt-1">{errors[`room_${index}_price`]}</p>
-                          )}
-                        </div>
-
-                        <div>
-                          <label className="block text-xs font-medium text-gray-600 mb-1">
-                            Hotel Cost (SAR)
-                          </label>
-                          <Input
-                            type="number"
-                            min="0"
-                            step="any"
-                            value={room.hotelCostPrice || 0}
-                            onChange={(e) => updateRoom(index, 'hotelCostPrice', parseFloat(e.target.value) || 0)}
-                            className={errors[`room_${index}_cost`] ? "border-red-500" : ""}
-                          />
-                          {errors[`room_${index}_cost`] && (
-                            <p className="text-red-500 text-xs mt-1">{errors[`room_${index}_cost`]}</p>
-                          )}
-                        </div>
-                      </div>
-
-                      {/* Auto Fill Action */}
-                      {selectedMasterHotelId && hotelPricingPeriods.length > 0 && (
-                        <div className="mt-4 flex justify-end">
-                          <Button type="button" variant="secondary" size="sm" onClick={() => autoFillRoomPricing(index)} className="bg-blue-50 text-blue-700 hover:bg-blue-100 border border-blue-200">
-                            ⚡ Auto-Fill Pricing from Master
-                          </Button>
-                        </div>
+              {/* Room list slices */}
+              <div className="space-y-4">
+                {rooms.map((room, index) => (
+                  <div key={index} className="border border-[#e5e7eb] rounded-xl p-5 bg-[#f5f5f5] space-y-4">
+                    <div className="flex items-center justify-between">
+                      <h4 className="text-xs font-bold text-[#111111]">Room Slice #{index + 1}</h4>
+                      {rooms.length > 1 && (
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => removeRoom(index)}
+                          className="h-8 border-[#fee2e2] text-red-600 hover:text-red-700 hover:bg-[#fef2f2]"
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </Button>
                       )}
+                    </div>
 
-                      {/* Pricing Periods Toggle */}
-                      <div className="mt-4 pt-3 border-t border-gray-200">
-                        <div className="flex items-center justify-between mb-3">
-                          <label className="flex items-center space-x-2">
-                            <input
-                              type="checkbox"
-                              checked={room.hasPricingPeriods || false}
-                              onChange={(e) => updateRoom(index, 'hasPricingPeriods', e.target.checked)}
-                              className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                            />
-                            <span className="text-sm font-medium text-gray-700">
-                              Multiple Pricing Periods
-                            </span>
-                          </label>
-                          <CalendarDays className="h-4 w-4 text-gray-400" />
-                        </div>
-
-                        {room.hasPricingPeriods && room.pricingPeriods && (
-                          <div className="space-y-3">
-                            <div className="flex items-center justify-between">
-                              <p className="text-xs text-gray-600">
-                                Configure different prices for different date ranges
-                              </p>
-                              <Button
-                                type="button"
-                                variant="outline"
-                                size="sm"
-                                onClick={() => addPricingPeriod(index)}
-                                className="flex items-center space-x-1"
-                              >
-                                <Plus className="h-3 w-3" />
-                                <span>Add Period</span>
-                              </Button>
-                            </div>
-
-                            {room.pricingPeriods.map((period, periodIndex) => (
-                              <div key={periodIndex} className="bg-white border border-gray-200 rounded-md p-3">
-                                <div className="flex items-center justify-between mb-2">
-                                  <h5 className="text-xs font-medium text-gray-700">
-                                    Period {periodIndex + 1}
-                                  </h5>
-                                  {room.pricingPeriods!.length > 1 && (
-                                    <Button
-                                      type="button"
-                                      variant="outline"
-                                      size="sm"
-                                      onClick={() => removePricingPeriod(index, periodIndex)}
-                                      className="text-red-600 hover:text-red-700 h-6 w-6 p-0"
-                                    >
-                                      <Trash2 className="h-3 w-3" />
-                                    </Button>
-                                  )}
-                                </div>
-
-                                <div className="grid grid-cols-2 md:grid-cols-5 gap-2">
-                                  <div>
-                                    <label className="block text-xs font-medium text-gray-600 mb-1">
-                                      Start Date
-                                    </label>
-                                    <Input
-                                      type="date"
-                                      value={period.startDate}
-                                      onChange={(e) => updatePricingPeriod(index, periodIndex, 'startDate', e.target.value)}
-                                      min={formData.checkInDate}
-                                      max={formData.checkOutDate}
-                                      className="text-xs"
-                                    />
-                                  </div>
-
-                                  <div>
-                                    <label className="block text-xs font-medium text-gray-600 mb-1">
-                                      End Date
-                                    </label>
-                                    <Input
-                                      type="date"
-                                      value={period.endDate}
-                                      onChange={(e) => updatePricingPeriod(index, periodIndex, 'endDate', e.target.value)}
-                                      min={period.startDate}
-                                      max={formData.checkOutDate}
-                                      className="text-xs"
-                                    />
-                                  </div>
-
-                                  <div>
-                                    <label className="block text-xs font-medium text-gray-600 mb-1">
-                                      Nights
-                                    </label>
-                                    <Input
-                                      type="number"
-                                      value={period.nights}
-                                      readOnly
-                                      className="text-xs bg-gray-50"
-                                    />
-                                  </div>
-
-                                  <div>
-                                    <label className="block text-xs font-medium text-gray-600 mb-1">
-                                      Price/Night
-                                    </label>
-                                    <Input
-                                      type="number"
-                                      min="0"
-                                      step="any"
-                                      value={period.unitPrice}
-                                      onChange={(e) => updatePricingPeriod(index, periodIndex, 'unitPrice', parseFloat(e.target.value) || 0)}
-                                      className="text-xs"
-                                    />
-                                  </div>
-
-                                  <div>
-                                    <label className="block text-xs font-medium text-gray-600 mb-1">
-                                      Hotel Cost
-                                    </label>
-                                    <Input
-                                      type="number"
-                                      min="0"
-                                      step="any"
-                                      value={period.hotelCostPrice || 0}
-                                      onChange={(e) => updatePricingPeriod(index, periodIndex, 'hotelCostPrice', parseFloat(e.target.value) || 0)}
-                                      className="text-xs"
-                                    />
-                                  </div>
-                                </div>
-
-                                <div className="mt-2 text-right">
-                                  <p className="text-xs text-gray-600">
-                                    Period Subtotal: <SARAmount amount={period.subtotal} />
-                                  </p>
-                                </div>
-                              </div>
+                    <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                      <div className="space-y-1">
+                        <label className="block text-[10px] font-semibold text-gray-500 uppercase tracking-wider">Room Type *</label>
+                        {availableRoomTypes.length > 0 ? (
+                          <select
+                            value={room.roomType}
+                            title="Select Room Type"
+                            onChange={(e) => updateRoom(index, 'roomType', e.target.value)}
+                            className={`w-full h-9 px-3 border rounded-md focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[#111111] bg-white text-xs font-semibold ${errors[`room_${index}_type`] ? "border-red-500" : "border-[#e5e7eb]"}`}
+                          >
+                            <option value="">Select Room Type</option>
+                            {availableRoomTypes.map(type => (
+                              <option key={type} value={type}>{type}</option>
                             ))}
-                          </div>
+                          </select>
+                        ) : (
+                          <Input
+                            value={room.roomType}
+                            onChange={(e) => updateRoom(index, 'roomType', e.target.value)}
+                            placeholder="e.g. Deluxe Twin"
+                            className={`h-9 border-[#e5e7eb] rounded focus-visible:ring-[#111111] bg-white text-xs ${errors[`room_${index}_type`] ? "border-red-500" : ""}`}
+                          />
+                        )}
+                        {errors[`room_${index}_type`] && (
+                          <p className="text-red-500 text-[10px] mt-1">{errors[`room_${index}_type`]}</p>
                         )}
                       </div>
 
-                      <div className="mt-3 text-right">
-                        <p className="text-sm text-gray-600">
-                          Subtotal: <SARAmount amount={
-                            room.hasPricingPeriods && room.pricingPeriods
-                              ? room.pricingPeriods.reduce((sum, period) => sum + period.subtotal, 0) * room.roomCount
-                              : room.unitPrice * room.roomCount
-                          } />
-                        </p>
+                      <div className="space-y-1">
+                        <label className="block text-[10px] font-semibold text-gray-500 uppercase tracking-wider">Rooms Count *</label>
+                        <Input
+                          type="number"
+                          min="1"
+                          value={room.roomCount}
+                          onChange={(e) => updateRoom(index, 'roomCount', parseInt(e.target.value) || 1)}
+                          className={`h-9 border-[#e5e7eb] rounded focus-visible:ring-[#111111] bg-white text-xs ${errors[`room_${index}_count`] ? "border-red-500" : ""}`}
+                        />
+                        {errors[`room_${index}_count`] && (
+                          <p className="text-red-500 text-[10px] mt-1">{errors[`room_${index}_count`]}</p>
+                        )}
+                      </div>
+
+                      <div className="space-y-1">
+                        <label className="block text-[10px] font-semibold text-gray-500 uppercase tracking-wider">Unit Price (SAR) *</label>
+                        <Input
+                          type="number"
+                          min="0"
+                          step="any"
+                          value={room.unitPrice}
+                          onChange={(e) => updateRoom(index, 'unitPrice', parseFloat(e.target.value) || 0)}
+                          className={`h-9 border-[#e5e7eb] rounded focus-visible:ring-[#111111] bg-white text-xs ${errors[`room_${index}_price`] ? "border-red-500" : ""}`}
+                        />
+                        {errors[`room_${index}_price`] && (
+                          <p className="text-red-500 text-[10px] mt-1">{errors[`room_${index}_price`]}</p>
+                        )}
+                      </div>
+
+                      <div className="space-y-1">
+                        <label className="block text-[10px] font-semibold text-gray-500 uppercase tracking-wider">Hotel Cost (SAR)</label>
+                        <Input
+                          type="number"
+                          min="0"
+                          step="any"
+                          value={room.hotelCostPrice || 0}
+                          onChange={(e) => updateRoom(index, 'hotelCostPrice', parseFloat(e.target.value) || 0)}
+                          className={`h-9 border-[#e5e7eb] rounded focus-visible:ring-[#111111] bg-white text-xs ${errors[`room_${index}_cost`] ? "border-red-500" : ""}`}
+                        />
+                        {errors[`room_${index}_cost`] && (
+                          <p className="text-red-500 text-[10px] mt-1">{errors[`room_${index}_cost`]}</p>
+                        )}
                       </div>
                     </div>
-                  ))}
-                </div>
 
-                {errors.rooms && (
-                  <p className="text-red-500 text-sm mt-2">{errors.rooms}</p>
-                )}
-              </div>
+                    {/* Auto-Fill Trigger inside the room card */}
+                    {selectedMasterHotelId && hotelPricingPeriods.length > 0 && (
+                      <div className="mt-3 flex justify-end">
+                        <Button 
+                          type="button" 
+                          variant="outline" 
+                          size="sm" 
+                          onClick={() => autoFillRoomPricing(index)} 
+                          className="text-[11px] h-8 bg-white border-[#e5e7eb] text-[#111111] font-bold hover:bg-gray-50 flex items-center gap-1.5 rounded-md"
+                        >
+                          <Sparkles className="h-3 w-3 text-orange-400" />
+                          Auto-Fill from Master Registry
+                        </Button>
+                      </div>
+                    )}
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Meal Plan *
-                </label>
-                <select
-                  value={formData.mealPlan}
-                  onChange={(e) => handleInputChange('mealPlan', e.target.value)}
-                  className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent ${errors.mealPlan ? 'border-red-500' : 'border-gray-300'}`}
-                >
-                  <option value="">Select meal plan</option>
-                  <option value="Breakfast">Breakfast</option>
-                  <option value="Half Board">Half Board</option>
-                  <option value="Full Board">Full Board</option>
-                  <option value="Room Only">Room Only</option>
-                </select>
-                {errors.mealPlan && (
-                  <p className="text-red-500 text-sm mt-1">{errors.mealPlan}</p>
-                )}
-              </div>
+                    {/* Pricing Periods breakdown list */}
+                    <div className="mt-4 pt-3 border-t border-[#e5e7eb]">
+                      <div className="flex items-center justify-between mb-3 select-none">
+                        <label className="flex items-center space-x-2 cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={room.hasPricingPeriods || false}
+                            onChange={(e) => updateRoom(index, 'hasPricingPeriods', e.target.checked)}
+                            className="rounded border-[#e5e7eb] text-[#111111] focus:ring-[#111111]"
+                          />
+                          <span className="text-xs font-semibold text-[#111111]">
+                            Enable Multiple Seasonal Pricing Periods
+                          </span>
+                        </label>
+                        <CalendarDays className="h-4 w-4 text-gray-400" />
+                      </div>
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Duration
-                </label>
-                <div className="bg-gray-50 p-3 rounded-md">
-                  <p className="text-sm text-gray-600">
-                    {calculateNights()} night{calculateNights() !== 1 ? 's' : ''}
-                  </p>
-                </div>
-              </div>
-            </div>
-          </Card>
+                      {room.hasPricingPeriods && room.pricingPeriods && (
+                        <div className="space-y-3">
+                          <div className="flex items-center justify-between text-[11px] text-gray-400 font-semibold select-none">
+                            <span>Adjust specific price slots for dates:</span>
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              onClick={() => addPricingPeriod(index)}
+                              className="text-[10px] h-7 border-[#e5e7eb] hover:bg-gray-50 text-[#374151]"
+                            >
+                              <Plus className="h-3 w-3 mr-0.5" /> Add Slot
+                            </Button>
+                          </div>
 
-          {/* Booking Summary */}
-          <Card className="p-6">
-            <div className="flex items-center space-x-2 mb-6">
-              <SaudiRiyalIcon size={16} className="text-yellow-600" />
-              <h3 className="text-lg font-semibold">Booking Summary</h3>
-            </div>
+                          {room.pricingPeriods.map((period, periodIndex) => (
+                            <div key={periodIndex} className="bg-white border border-[#e5e7eb] rounded-lg p-4 space-y-3">
+                              <div className="flex items-center justify-between">
+                                <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Period Slot #{periodIndex + 1}</span>
+                                {room.pricingPeriods!.length > 1 && (
+                                  <Button
+                                    type="button"
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => removePricingPeriod(index, periodIndex)}
+                                    className="h-6 w-6 p-0 border-[#fee2e2] text-red-500 hover:bg-[#fef2f2]"
+                                  >
+                                    <Trash2 className="h-3 w-3" />
+                                  </Button>
+                                )}
+                              </div>
 
-            <div className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Total Rooms
-                  </label>
-                  <div className="bg-blue-50 p-3 rounded-md border border-blue-200">
-                    <p className="text-sm text-blue-800 font-medium">
-                      {rooms.reduce((sum, room) => sum + room.roomCount, 0)} room{rooms.reduce((sum, room) => sum + room.roomCount, 0) !== 1 ? 's' : ''}
-                    </p>
+                              <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+                                <div className="space-y-1">
+                                  <label className="block text-[9px] font-semibold text-gray-400 uppercase">Start Date</label>
+                                  <Input
+                                    type="date"
+                                    value={period.startDate}
+                                    onChange={(e) => updatePricingPeriod(index, periodIndex, 'startDate', e.target.value)}
+                                    min={formData.checkInDate}
+                                    max={formData.checkOutDate}
+                                    className="text-xs h-8 border-[#e5e7eb] bg-white rounded"
+                                  />
+                                </div>
+
+                                <div className="space-y-1">
+                                  <label className="block text-[9px] font-semibold text-gray-400 uppercase">End Date</label>
+                                  <Input
+                                    type="date"
+                                    value={period.endDate}
+                                    onChange={(e) => updatePricingPeriod(index, periodIndex, 'endDate', e.target.value)}
+                                    min={period.startDate}
+                                    max={formData.checkOutDate}
+                                    className="text-xs h-8 border-[#e5e7eb] bg-white rounded"
+                                  />
+                                </div>
+
+                                <div className="space-y-1">
+                                  <label className="block text-[9px] font-semibold text-gray-400 uppercase">Nights</label>
+                                  <Input
+                                    type="number"
+                                    value={period.nights}
+                                    readOnly
+                                    className="text-xs h-8 border-[#e5e7eb] bg-[#f8f9fa] rounded cursor-not-allowed text-gray-400"
+                                  />
+                                </div>
+
+                                <div className="space-y-1">
+                                  <label className="block text-[9px] font-semibold text-gray-400 uppercase">Price/Night</label>
+                                  <Input
+                                    type="number"
+                                    min="0"
+                                    step="any"
+                                    value={period.unitPrice}
+                                    onChange={(e) => updatePricingPeriod(index, periodIndex, 'unitPrice', parseFloat(e.target.value) || 0)}
+                                    className="text-xs h-8 border-[#e5e7eb] bg-white rounded"
+                                  />
+                                </div>
+
+                                <div className="space-y-1">
+                                  <label className="block text-[9px] font-semibold text-gray-400 uppercase">Hotel Cost</label>
+                                  <Input
+                                    type="number"
+                                    min="0"
+                                    step="any"
+                                    value={period.hotelCostPrice || 0}
+                                    onChange={(e) => updatePricingPeriod(index, periodIndex, 'hotelCostPrice', parseFloat(e.target.value) || 0)}
+                                    className="text-xs h-8 border-[#e5e7eb] bg-white rounded"
+                                  />
+                                </div>
+                              </div>
+
+                              <div className="text-right text-[11px] font-bold text-[#111111] pt-1">
+                                Subtotal Slot: {formatCurrency((period.subtotal * room.roomCount).toString(), 'SAR')}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Room Subtotal */}
+                    <div className="text-right text-xs font-bold text-[#111111] pt-1 border-t border-[#e5e7eb]/40">
+                      Room Total: {formatCurrency((room.hasPricingPeriods && room.pricingPeriods
+                        ? room.pricingPeriods.reduce((sum, period) => sum + period.subtotal, 0) * room.roomCount
+                        : room.unitPrice * room.roomCount * calculateNights()).toString(), 'SAR')}
+                    </div>
                   </div>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Total Revenue
-                  </label>
-                  <div className="bg-green-50 p-3 rounded-md border border-green-200">
-                    <p className="text-sm text-green-800 font-medium">
-                      <SARAmount amount={rooms.reduce((sum, room) => {
-                        if (room.hasPricingPeriods && room.pricingPeriods) {
-                          return sum + room.pricingPeriods.reduce((periodSum, period) =>
-                            periodSum + (period.subtotal * room.roomCount), 0)
-                        } else {
-                          const nights = calculateNights()
-                          return sum + (room.unitPrice * room.roomCount * nights)
-                        }
-                      }, 0)} />
-                    </p>
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Total Hotel Cost
-                  </label>
-                  <div className="bg-red-50 p-3 rounded-md border border-red-200">
-                    <p className="text-sm text-red-800 font-medium">
-                      <SARAmount amount={rooms.reduce((sum, room) => {
-                        if (room.hasPricingPeriods && room.pricingPeriods) {
-                          return sum + room.pricingPeriods.reduce((periodSum, period) =>
-                            periodSum + ((period.hotelCostPrice || 0) * room.roomCount), 0)
-                        } else {
-                          const nights = calculateNights()
-                          return sum + ((room.hotelCostPrice || 0) * room.roomCount * nights)
-                        }
-                      }, 0)} />
-                    </p>
-                  </div>
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Estimated Profit
-                </label>
-                <div className={`p-3 rounded-md border ${(() => {
-                    const totalRevenue = rooms.reduce((sum, room) => {
-                      if (room.hasPricingPeriods && room.pricingPeriods) {
-                        return sum + room.pricingPeriods.reduce((periodSum, period) =>
-                          periodSum + (period.subtotal * room.roomCount), 0)
-                      } else {
-                        const nights = calculateNights()
-                        return sum + (room.unitPrice * room.roomCount * nights)
-                      }
-                    }, 0)
-                    const totalCost = rooms.reduce((sum, room) => {
-                      if (room.hasPricingPeriods && room.pricingPeriods) {
-                        return sum + room.pricingPeriods.reduce((periodSum, period) =>
-                          periodSum + ((period.hotelCostPrice || 0) * room.roomCount), 0)
-                      } else {
-                        const nights = calculateNights()
-                        return sum + ((room.hotelCostPrice || 0) * room.roomCount * nights)
-                      }
-                    }, 0)
-                    return (totalRevenue - totalCost) >= 0 ? 'bg-blue-50 border-blue-200' : 'bg-yellow-50 border-yellow-200'
-                  })()
-                  }`}>
-                  <p className={`text-sm font-semibold ${(() => {
-                      const totalRevenue = rooms.reduce((sum, room) => {
-                        if (room.hasPricingPeriods && room.pricingPeriods) {
-                          return sum + room.pricingPeriods.reduce((periodSum, period) =>
-                            periodSum + (period.subtotal * room.roomCount), 0)
-                        } else {
-                          const nights = calculateNights()
-                          return sum + (room.unitPrice * room.roomCount * nights)
-                        }
-                      }, 0)
-                      const totalCost = rooms.reduce((sum, room) => {
-                        if (room.hasPricingPeriods && room.pricingPeriods) {
-                          return sum + room.pricingPeriods.reduce((periodSum, period) =>
-                            periodSum + ((period.hotelCostPrice || 0) * room.roomCount), 0)
-                        } else {
-                          const nights = calculateNights()
-                          return sum + ((room.hotelCostPrice || 0) * room.roomCount * nights)
-                        }
-                      }, 0)
-                      return (totalRevenue - totalCost) >= 0 ? 'text-blue-800' : 'text-yellow-800'
-                    })()
-                    }`}>
-                    <SARAmount amount={(() => {
-                      const totalRevenue = rooms.reduce((sum, room) => {
-                        if (room.hasPricingPeriods && room.pricingPeriods) {
-                          return sum + room.pricingPeriods.reduce((periodSum, period) =>
-                            periodSum + (period.subtotal * room.roomCount), 0)
-                        } else {
-                          const nights = calculateNights()
-                          return sum + (room.unitPrice * room.roomCount * nights)
-                        }
-                      }, 0)
-                      const totalCost = rooms.reduce((sum, room) => {
-                        if (room.hasPricingPeriods && room.pricingPeriods) {
-                          return sum + room.pricingPeriods.reduce((periodSum, period) =>
-                            periodSum + ((period.hotelCostPrice || 0) * room.roomCount), 0)
-                        } else {
-                          const nights = calculateNights()
-                          return sum + ((room.hotelCostPrice || 0) * room.roomCount * nights)
-                        }
-                      }, 0)
-                      return totalRevenue - totalCost
-                    })()} />
-                  </p>
-                </div>
+                ))}
               </div>
             </div>
-          </Card>
 
-          {/* Payment */}
-          <Card className="p-6">
-            <div className="flex items-center space-x-2 mb-6">
-              <SaudiRiyalIcon size={16} className="text-yellow-600" />
-              <h3 className="text-lg font-semibold">Payment</h3>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Payment Method
-                </label>
-                <select
-                  value={formData.paymentMethod}
-                  onChange={(e) => handleInputChange('paymentMethod', e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                >
-                  <option value="">No payment now</option>
-                  <option value="bank_transfer">Bank Transfer</option>
-                  <option value="deposit">Deposit</option>
-                  <option value="cash">Cash</option>
-                </select>
-              </div>
-
-              {formData.paymentMethod && (
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Payment Amount (SAR) {formData.paymentMethod ? '*' : ''}
-                  </label>
-                  <Input
-                    type="number"
-                    min="0"
-                    step="0.01"
-                    value={formData.paymentAmount}
-                    onChange={(e) => handleInputChange('paymentAmount', parseFloat(e.target.value) || 0)}
-                    placeholder="0.00"
-                    className={errors.paymentAmount ? "border-red-500" : ""}
-                  />
-                  {errors.paymentAmount && (
-                    <p className="text-red-500 text-sm mt-1">{errors.paymentAmount}</p>
-                  )}
-                  {formData.paymentMethod === 'deposit' && (
-                    <p className="text-xs text-gray-500 mt-1">
-                      Deposit usage will be validated on server. If sufficient, deposit will be deducted to pay this booking. Partial usage is allowed.
-                    </p>
-                  )}
-                  {(formData.paymentMethod === 'bank_transfer' || formData.paymentMethod === 'cash') && (
-                    <p className="text-xs text-gray-500 mt-1">
-                      If amount exceeds total, the surplus will be credited to the client's deposit automatically.
-                    </p>
-                  )}
-                </div>
+            <div className="space-y-1.5 pt-4">
+              <label className="block text-xs font-semibold text-gray-500">Meal Plan *</label>
+              <select
+                value={formData.mealPlan}
+                onChange={(e) => handleInputChange('mealPlan', e.target.value)}
+                className={`w-full h-9 px-3 border rounded-md bg-white text-xs font-semibold focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[#111111] ${errors.mealPlan ? 'border-red-500' : 'border-gray-300'}`}
+              >
+                <option value="">Select Meal Plan</option>
+                <option value="Breakfast">Breakfast</option>
+                <option value="Half Board">Half Board</option>
+                <option value="Full Board">Full Board</option>
+                <option value="Room Only">Room Only</option>
+              </select>
+              {errors.mealPlan && (
+                <p className="text-red-500 text-xs mt-1">{errors.mealPlan}</p>
               )}
             </div>
 
-            {(formData.paymentMethod === 'bank_transfer' || formData.paymentMethod === 'cash') && formData.paymentAmount > formData.totalAmount && (
-              <div className="mt-4 bg-blue-50 border border-blue-200 p-3 rounded">
-                <p className="text-sm text-blue-800">
-                  Surplus to deposit: SAR {(formData.paymentAmount - formData.totalAmount).toFixed(2)}
+            <div className="space-y-1.5 pt-4">
+              <label className="block text-xs font-semibold text-gray-500 font-sans">Duration of Stay</label>
+              <div className="bg-[#f5f5f5] p-2.5 rounded-md border border-gray-200/40">
+                <span className="text-[#111111] font-bold text-xs">
+                  {calculateNights()} Nights
+                </span>
+              </div>
+            </div>
+          </div>
+        </Card>
+
+        {/* Pricing Summary */}
+        <Card className="p-6 border border-[#e5e7eb] rounded-xl shadow-[0_1px_2px_rgba(0,0,0,0.04)] bg-white">
+          <div className="flex items-center space-x-2 mb-6">
+            <Layers className="h-4.5 w-4.5 text-[#111111]" />
+            <h3 className="text-sm font-bold text-[#111111] tracking-[-0.02em]">Pricing Summary</h3>
+          </div>
+
+          <div className="space-y-6">
+            {/* Monochromatic Grid */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <div className="p-4 bg-[#f8f9fa] rounded-lg border border-[#e5e7eb]">
+                <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Total Rooms</span>
+                <p className="text-base font-bold text-[#111111] mt-1">
+                  {rooms.reduce((sum, room) => sum + room.roomCount, 0)} Rooms
                 </p>
               </div>
-            )}
-          </Card>
 
-          {/* Special Requests */}
-          <Card className="p-6">
-            <div className="flex items-center space-x-2 mb-6">
-              <MapPin className="h-5 w-5 text-purple-600" />
-              <h3 className="text-lg font-semibold">Additional Information</h3>
+              <div className="p-4 bg-[#f8f9fa] rounded-lg border border-[#e5e7eb]">
+                <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Total Accrued Revenue</span>
+                <p className="text-base font-bold text-[#111111] mt-1">
+                  {formatCurrency(rooms.reduce((sum, room) => {
+                    if (room.hasPricingPeriods && room.pricingPeriods) {
+                      return sum + room.pricingPeriods.reduce((periodSum, period) =>
+                        periodSum + (period.subtotal * room.roomCount), 0)
+                    } else {
+                      const nights = calculateNights()
+                      return sum + (room.unitPrice * room.roomCount * nights)
+                    }
+                  }, 0).toString(), 'SAR')}
+                </p>
+              </div>
+
+              <div className="p-4 bg-[#f8f9fa] rounded-lg border border-[#e5e7eb]">
+                <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Total Sourced Cost</span>
+                <p className="text-base font-bold text-[#111111] mt-1">
+                  {formatCurrency(rooms.reduce((sum, room) => {
+                    if (room.hasPricingPeriods && room.pricingPeriods) {
+                      return sum + room.pricingPeriods.reduce((periodSum, period) =>
+                        periodSum + ((period.hotelCostPrice || 0) * room.roomCount), 0)
+                    } else {
+                      const nights = calculateNights()
+                      return sum + ((room.hotelCostPrice || 0) * room.roomCount * nights)
+                    }
+                  }, 0).toString(), 'SAR')}
+                </p>
+              </div>
             </div>
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Special Requests
-              </label>
-              <textarea
-                value={formData.specialRequests}
-                onChange={(e) => handleInputChange('specialRequests', e.target.value)}
-                placeholder="Any special requests or notes..."
-                rows={3}
-                className={`flex min-h-[60px] w-full rounded-md border border-input bg-transparent px-3 py-2 text-base shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50 md:text-sm ${errors.specialRequests ? "border-red-500" : ""}`}
-              />
-              {errors.specialRequests && (
-                <p className="text-red-500 text-sm mt-1">{errors.specialRequests}</p>
-              )}
+            {/* Estimated Net Profit split */}
+            <div className="p-4 bg-[#f5f5f5] rounded-lg border border-[#e5e7eb] flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <TrendingUp className="h-4 w-4 text-[#111111]" />
+                <span className="text-xs font-bold text-gray-500 uppercase tracking-wider">Estimated Profit Margin</span>
+              </div>
+              <span className="text-sm font-bold text-[#111111]">
+                {formatCurrency((rooms.reduce((sum, room) => {
+                  if (room.hasPricingPeriods && room.pricingPeriods) {
+                    return sum + room.pricingPeriods.reduce((periodSum, period) =>
+                      periodSum + (period.subtotal * room.roomCount), 0)
+                  } else {
+                    const nights = calculateNights()
+                    return sum + (room.unitPrice * room.roomCount * nights)
+                  }
+                }, 0) - rooms.reduce((sum, room) => {
+                  if (room.hasPricingPeriods && room.pricingPeriods) {
+                    return sum + room.pricingPeriods.reduce((periodSum, period) =>
+                      periodSum + ((period.hotelCostPrice || 0) * room.roomCount), 0)
+                  } else {
+                    const nights = calculateNights()
+                    return sum + ((room.hotelCostPrice || 0) * room.roomCount * nights)
+                  }
+                }, 0)).toString(), 'SAR')}
+              </span>
             </div>
-          </Card>
-
-          {/* Submit Button */}
-          <div className="flex justify-end space-x-4">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => navigate({ to: "/bookings" })}
-            >
-              Cancel
-            </Button>
-            <Button
-              type="submit"
-              disabled={createBookingMutation.isPending}
-              className="min-w-[120px]"
-            >
-              {createBookingMutation.isPending ? (
-                <>
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  Creating...
-                </>
-              ) : (
-                <>
-                  <Save className="h-4 w-4 mr-2" />
-                  Create Booking
-                </>
-              )}
-            </Button>
           </div>
-        </form>
-      </PageLayout>
-    </>
+        </Card>
+
+        {/* Immediate Payments */}
+        <Card className="p-6 border border-[#e5e7eb] rounded-xl shadow-[0_1px_2px_rgba(0,0,0,0.04)] bg-white">
+          <div className="flex items-center space-x-2 mb-6">
+            <ShieldCheck className="h-4.5 w-4.5 text-[#111111]" />
+            <h3 className="text-sm font-bold text-[#111111] tracking-[-0.02em]">Immediate Payments</h3>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="space-y-1.5">
+              <label className="block text-xs font-semibold text-gray-500">Payment Gateway Method</label>
+              <select
+                value={formData.paymentMethod}
+                onChange={(e) => handleInputChange('paymentMethod', e.target.value)}
+                className="w-full h-9 px-3 border border-gray-300 rounded-md bg-white text-xs font-semibold focus-visible:outline-none focus-visible:ring-1"
+              >
+                <option value="">No payment record now</option>
+                <option value="bank_transfer">Bank Transfer (Giro)</option>
+                <option value="deposit">Client CRM Deposit</option>
+                <option value="cash">Cash (Manual)</option>
+              </select>
+            </div>
+
+            {formData.paymentMethod && (
+              <div className="space-y-1.5">
+                <label className="block text-xs font-semibold text-gray-500">Payment Amount (SAR) *</label>
+                <Input
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  value={formData.paymentAmount}
+                  onChange={(e) => handleInputChange('paymentAmount', parseFloat(e.target.value) || 0)}
+                  placeholder="0.00"
+                  className={`h-9 border-[#e5e7eb] rounded focus-visible:ring-[#111111] bg-white ${errors.paymentAmount ? "border-red-500" : ""}`}
+                />
+                {errors.paymentAmount && (
+                  <p className="text-red-500 text-xs mt-1">{errors.paymentAmount}</p>
+                )}
+              </div>
+            )}
+          </div>
+        </Card>
+
+        {/* Special Requests */}
+        <Card className="p-6 border border-[#e5e7eb] rounded-xl shadow-[0_1px_2px_rgba(0,0,0,0.04)] bg-white">
+          <div className="flex items-center space-x-2 mb-6">
+            <MapPin className="h-4.5 w-4.5 text-[#111111]" />
+            <h3 className="text-sm font-bold text-[#111111] tracking-[-0.02em]">Additional Notes</h3>
+          </div>
+
+          <div className="space-y-1.5">
+            <label className="block text-xs font-semibold text-gray-500">Special Instructions / Requests</label>
+            <textarea
+              value={formData.specialRequests}
+              onChange={(e) => handleInputChange('specialRequests', e.target.value)}
+              placeholder="Input diet requests, high floor preferences, etc..."
+              rows={3}
+              className={`flex min-h-[70px] w-full rounded-md border border-[#e5e7eb] bg-transparent px-3 py-2 text-xs focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[#111111] focus-visible:border-[#111111]`}
+            />
+          </div>
+        </Card>
+
+        {/* Action Panel Buttons */}
+        <div className="flex justify-end space-x-2">
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => navigate({ to: "/bookings" })}
+            className="text-xs h-9 border-[#e5e7eb] text-gray-600 font-semibold px-4"
+          >
+            Cancel
+          </Button>
+          <Button
+            type="submit"
+            disabled={createBookingMutation.isPending}
+            className="bg-[#111111] hover:bg-[#242424] text-white text-xs h-9 px-6 rounded-md transition-all font-semibold shadow-xs"
+          >
+            {createBookingMutation.isPending ? (
+              <>
+                <Loader2 className="h-3.5 w-3.5 mr-2 animate-spin" />
+                Saving...
+              </>
+            ) : (
+              <>
+                <Save className="h-3.5 w-3.5 mr-1.5" />
+                Save Booking
+              </>
+            )}
+          </Button>
+        </div>
+      </form>
+    </PageLayout>
   )
 }

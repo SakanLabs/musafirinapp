@@ -140,88 +140,91 @@ function CreateReceiptPage() {
     return (
         <PageLayout
             title="Create Receipt"
-            subtitle="Log a payment against an invoice to auto-generate a receipt PDF"
+            subtitle="Catat pembayaran invoice untuk menerbitkan kwitansi resmi secara otomatis"
             showBackButton
         >
-            <div className="max-w-3xl mx-auto">
-                <Card className="p-6">
-                    <div className="flex items-center space-x-3 mb-6">
-                        <div className="bg-purple-100 p-3 rounded-full">
-                            <Receipt className="h-6 w-6 text-purple-600" />
-                        </div>
+            <div className="max-w-xl mx-auto">
+                <div className="border border-[#e5e7eb] rounded-xl bg-white shadow-none p-6">
+                    <div className="flex items-center space-x-3 mb-6 pb-4 border-b border-zinc-100">
+                        <Receipt className="h-5 w-5 text-zinc-500" />
                         <div>
-                            <h2 className="text-xl font-semibold text-gray-900">Receipt Details</h2>
-                            <p className="text-sm text-gray-500">Select an invoice and enter the received amount</p>
+                            <h2 className="text-sm font-bold text-[#111111] uppercase tracking-wider">Receipt Specifications</h2>
+                            <p className="text-[10px] font-semibold text-zinc-400 uppercase tracking-wider mt-0.5">Pilih invoice dan masukkan jumlah pembayaran diterima</p>
                         </div>
                     </div>
 
                     <Form {...form}>
-                        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+                        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-5">
 
                             <FormField
                                 control={form.control}
                                 name="invoiceId"
                                 render={({ field }: { field: any }) => (
-                                    <FormItem>
-                                        <FormLabel>Select Invoice *</FormLabel>
+                                    <FormItem className="space-y-1.5">
+                                        <FormLabel className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider">Pilih Invoice *</FormLabel>
                                         <Select
                                             onValueChange={handleInvoiceSelect}
                                             value={field.value}
                                         >
                                             <FormControl>
-                                                <SelectTrigger>
-                                                    <SelectValue placeholder="Choose an unpaid invoice" />
+                                                <SelectTrigger className="h-10 border-[#e5e7eb] rounded-lg bg-white text-sm font-medium text-zinc-950 focus:border-[#111111] focus:ring-1 focus:ring-[#111111] shadow-none w-full">
+                                                    <SelectValue placeholder="Pilih invoice tertunda..." />
                                                 </SelectTrigger>
                                             </FormControl>
-                                            <SelectContent>
+                                            <SelectContent className="bg-white border border-[#e5e7eb] rounded-lg shadow-md">
                                                 {eligibleInvoices.length === 0 ? (
-                                                    <SelectItem value="none" disabled>No pending invoices available</SelectItem>
+                                                    <SelectItem value="none" disabled className="text-zinc-400 text-xs">Tidak ada invoice tertunda</SelectItem>
                                                 ) : (
                                                     eligibleInvoices.map((inv: Invoice) => (
-                                                        <SelectItem key={inv.number} value={inv.number}>
-                                                            {inv.number} - {inv.clientName} (Booking: {inv.bookingCode})
+                                                        <SelectItem key={inv.number} value={inv.number} className="text-zinc-800 text-xs focus:bg-zinc-50 focus:text-black">
+                                                            {inv.number} — {inv.clientName} (Booking: {inv.bookingCode})
                                                         </SelectItem>
                                                     ))
                                                 )}
                                             </SelectContent>
                                         </Select>
-                                        <FormMessage />
+                                        <FormMessage className="text-rose-500 text-xs font-semibold" />
                                     </FormItem>
                                 )}
                             />
 
                             {selectedInvoice && (
-                                <div className="bg-gray-50 p-4 rounded-lg flex justify-between items-center text-sm border border-gray-100">
+                                <div className="bg-zinc-50/50 border border-zinc-150 rounded-lg p-3.5 flex justify-between items-center text-xs">
                                     <div>
-                                        <span className="text-gray-500 block">Total Invoice Amount</span>
-                                        <span className="font-semibold text-gray-900">{formatCurrency(selectedInvoice.amount, selectedInvoice.currency)}</span>
+                                        <span className="block text-[10px] font-bold text-zinc-400 uppercase tracking-wider mb-0.5">Total Tagihan Invoice</span>
+                                        <span className="font-extrabold text-zinc-950">{formatCurrency(selectedInvoice.amount, selectedInvoice.currency)}</span>
                                     </div>
-                                    <div className="text-right">
-                                        <span className="text-gray-500 block">Current Status</span>
-                                        <span className={`font-semibold uppercase ${selectedInvoice.bookingPaymentStatus === 'partial' ? 'text-yellow-600' : 'text-red-600'}`}>
+                                    <div className="text-right flex flex-col items-end">
+                                        <span className="block text-[10px] font-bold text-zinc-400 uppercase tracking-wider mb-1">Status Pembayaran</span>
+                                        <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold border capitalize ${
+                                            (selectedInvoice.bookingPaymentStatus || selectedInvoice.status)?.toLowerCase() === 'partial' 
+                                                ? 'bg-amber-50 text-amber-700 border-amber-200/50' 
+                                                : 'bg-rose-50 text-rose-700 border-rose-200/50'
+                                        }`}>
                                             {selectedInvoice.bookingPaymentStatus || selectedInvoice.status}
                                         </span>
                                     </div>
                                 </div>
                             )}
 
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <FormField
                                     control={form.control}
                                     name="amount"
                                     render={({ field }: { field: any }) => (
-                                        <FormItem>
-                                            <FormLabel>Amount Received *</FormLabel>
+                                        <FormItem className="space-y-1.5">
+                                            <FormLabel className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider">Jumlah Pembayaran Diterima *</FormLabel>
                                             <FormControl>
                                                 <Input
                                                     type="number"
                                                     step="0.01"
                                                     {...field}
                                                     onChange={(e) => field.onChange(parseFloat(e.target.value))}
+                                                    className="h-10 border-[#e5e7eb] rounded-lg bg-white text-sm font-medium text-zinc-950 focus:border-[#111111] focus:ring-1 focus:ring-[#111111] shadow-none w-full"
                                                 />
                                             </FormControl>
-                                            <p className="text-xs text-gray-500">Defaults to remaining balance</p>
-                                            <FormMessage />
+                                            <p className="text-[9px] font-semibold text-zinc-400 uppercase tracking-wider mt-0.5">Otomatis terisi sisa tagihan</p>
+                                            <FormMessage className="text-rose-500 text-xs font-semibold" />
                                         </FormItem>
                                     )}
                                 />
@@ -230,24 +233,24 @@ function CreateReceiptPage() {
                                     control={form.control}
                                     name="method"
                                     render={({ field }: { field: any }) => (
-                                        <FormItem>
-                                            <FormLabel>Payment Method *</FormLabel>
+                                        <FormItem className="space-y-1.5">
+                                            <FormLabel className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider">Metode Pembayaran *</FormLabel>
                                             <Select
                                                 onValueChange={field.onChange}
                                                 defaultValue={field.value}
                                             >
                                                 <FormControl>
-                                                    <SelectTrigger>
-                                                        <SelectValue placeholder="Select method" />
+                                                    <SelectTrigger className="h-10 border-[#e5e7eb] rounded-lg bg-white text-sm font-medium text-zinc-950 focus:border-[#111111] focus:ring-1 focus:ring-[#111111] shadow-none w-full">
+                                                        <SelectValue placeholder="Pilih metode..." />
                                                     </SelectTrigger>
                                                 </FormControl>
-                                                <SelectContent>
-                                                    <SelectItem value="bank_transfer">Bank Transfer</SelectItem>
-                                                    <SelectItem value="cash">Cash</SelectItem>
-                                                    <SelectItem value="deposit">Client Deposit</SelectItem>
+                                                <SelectContent className="bg-white border border-[#e5e7eb] rounded-lg shadow-md">
+                                                    <SelectItem value="bank_transfer" className="text-zinc-800 text-xs focus:bg-zinc-50 focus:text-black">Bank Transfer</SelectItem>
+                                                    <SelectItem value="cash" className="text-zinc-800 text-xs focus:bg-zinc-50 focus:text-black">Cash</SelectItem>
+                                                    <SelectItem value="deposit" className="text-zinc-800 text-xs focus:bg-zinc-50 focus:text-black">Client Deposit</SelectItem>
                                                 </SelectContent>
                                             </Select>
-                                            <FormMessage />
+                                            <FormMessage className="text-rose-500 text-xs font-semibold" />
                                         </FormItem>
                                     )}
                                 />
@@ -256,12 +259,16 @@ function CreateReceiptPage() {
                                     control={form.control}
                                     name="referenceNumber"
                                     render={({ field }: { field: any }) => (
-                                        <FormItem className="md:col-span-2">
-                                            <FormLabel>Reference Number (Optional)</FormLabel>
+                                        <FormItem className="md:col-span-2 space-y-1.5">
+                                            <FormLabel className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider">Nomor Referensi / Bukti Transfer (Opsional)</FormLabel>
                                             <FormControl>
-                                                <Input placeholder="e.g. TRF-123456" {...field} />
+                                                <Input 
+                                                    placeholder="Contoh: TRF-123456 atau Ref Name" 
+                                                    {...field} 
+                                                    className="h-10 border-[#e5e7eb] rounded-lg bg-white text-sm font-medium text-zinc-950 focus:border-[#111111] focus:ring-1 focus:ring-[#111111] shadow-none w-full"
+                                                />
                                             </FormControl>
-                                            <FormMessage />
+                                            <FormMessage className="text-rose-500 text-xs font-semibold" />
                                         </FormItem>
                                     )}
                                 />
@@ -270,33 +277,39 @@ function CreateReceiptPage() {
                                     control={form.control}
                                     name="description"
                                     render={({ field }: { field: any }) => (
-                                        <FormItem className="md:col-span-2">
-                                            <FormLabel>Notes (Optional)</FormLabel>
+                                        <FormItem className="md:col-span-2 space-y-1.5">
+                                            <FormLabel className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider">Catatan Tambahan (Opsional)</FormLabel>
                                             <FormControl>
-                                                <Textarea placeholder="Any additional details for the receipt" {...field} className="resize-none" />
+                                                <Textarea 
+                                                    placeholder="Catatan detail transaksi atau keterangan tambahan..." 
+                                                    {...field} 
+                                                    className="resize-none min-h-[80px] border-[#e5e7eb] rounded-lg bg-white text-sm font-medium text-zinc-950 focus:border-[#111111] focus:ring-1 focus:ring-[#111111] shadow-none w-full"
+                                                />
                                             </FormControl>
-                                            <FormMessage />
+                                            <FormMessage className="text-rose-500 text-xs font-semibold" />
                                         </FormItem>
                                     )}
                                 />
                             </div>
 
-                            <div className="flex justify-end space-x-3 pt-4 border-t border-gray-100">
+                            <div className="flex justify-end items-center space-x-2.5 pt-4 border-t border-zinc-100 mt-2">
                                 <Button
                                     type="button"
                                     variant="outline"
                                     onClick={() => navigate({ to: '/receipts' })}
+                                    className="h-9 px-4 border-[#e5e7eb] text-zinc-700 hover:bg-gray-50 hover:text-black flex items-center rounded-md font-semibold text-xs bg-white shadow-none"
                                 >
                                     Cancel
                                 </Button>
                                 <Button
                                     type="submit"
                                     disabled={payInvoiceMutation.isPending || eligibleInvoices.length === 0}
+                                    className="bg-[#111111] hover:bg-[#242424] text-white h-9 px-4 rounded-md text-xs font-semibold transition-colors border border-transparent shadow-none"
                                 >
                                     {payInvoiceMutation.isPending ? (
                                         <>
-                                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                            Generating...
+                                            <Loader2 className="mr-2 h-4 w-4 animate-spin text-white" />
+                                            Menerbitkan...
                                         </>
                                     ) : (
                                         'Generate Receipt'
@@ -305,7 +318,7 @@ function CreateReceiptPage() {
                             </div>
                         </form>
                     </Form>
-                </Card>
+                </div>
             </div>
         </PageLayout>
     );

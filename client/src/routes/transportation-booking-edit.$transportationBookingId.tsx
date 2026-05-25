@@ -160,8 +160,8 @@ function TransportationBookingEditPage() {
     return (
       <PageLayout title="Loading...">
         <div className="flex items-center justify-center py-12">
-          <Loader2 className="h-8 w-8 animate-spin" />
-          <span className="ml-2">Loading transportation booking...</span>
+          <Loader2 className="h-8 w-8 animate-spin text-zinc-500" />
+          <span className="ml-2 text-zinc-500 text-sm">Loading transportation booking...</span>
         </div>
       </PageLayout>
     );
@@ -173,8 +173,11 @@ function TransportationBookingEditPage() {
       <PageLayout title="Error">
         <div className="flex items-center justify-center py-12">
           <div className="text-center">
-            <p className="text-red-600 mb-4">Failed to load transportation booking</p>
-            <Button onClick={() => navigate({ to: "/transportation-bookings" })}>
+            <p className="text-red-600 text-sm mb-4">Failed to load transportation booking</p>
+            <Button 
+              onClick={() => navigate({ to: "/transportation-bookings" })}
+              className="bg-[#111111] hover:bg-[#242424] text-white h-9 px-4 rounded-md text-xs font-semibold"
+            >
               Back to Transportation Bookings
             </Button>
           </div>
@@ -186,33 +189,39 @@ function TransportationBookingEditPage() {
   return (
     <PageLayout title={`Edit Transportation Booking ${transportationBooking?.number || ''}`}>
       <form onSubmit={handleSubmit} className="space-y-6">
-        {/* Header */}
-        <div className="flex items-center justify-between">
+        {/* Header Actions */}
+        <div className="flex items-center justify-between pb-2 border-b border-gray-100">
           <Button
             type="button"
             variant="outline"
-            size="sm"
             onClick={() => navigate({ to: `/transportation-booking-detail/${transportationBookingId}` })}
+            className="h-9 px-4 border-[#e5e7eb] text-zinc-700 hover:bg-gray-50 hover:text-black flex items-center rounded-md font-medium text-xs bg-white shadow-none"
           >
             <ArrowLeft className="h-4 w-4 mr-2" />
-            Back to Detail
+            Kembali ke Detail
           </Button>
-          <Button type="submit" disabled={updateBookingMutation.isPending}>
+          <Button 
+            type="submit" 
+            disabled={updateBookingMutation.isPending}
+            className="bg-[#111111] hover:bg-[#242424] text-white h-9 px-4 rounded-md text-xs font-semibold transition-colors border border-transparent shadow-none"
+          >
             {updateBookingMutation.isPending ? (
-              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              <Loader2 className="h-4 w-4 mr-2 animate-spin text-white" />
             ) : (
-              <Save className="h-4 w-4 mr-2" />
+              <Save className="h-4 w-4 mr-2 text-white/85" />
             )}
-            {updateBookingMutation.isPending ? 'Saving...' : 'Save Changes'}
+            {updateBookingMutation.isPending ? 'Menyimpan...' : 'Simpan Perubahan'}
           </Button>
         </div>
 
-        {/* Customer Information */}
-        <Card className="p-6">
-          <h2 className="text-lg font-semibold mb-4">Customer Information</h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {/* Customer Information Card */}
+        <div className="border border-[#e5e7eb] rounded-xl bg-white shadow-none p-6">
+          <h2 className="text-sm font-bold text-[#111111] uppercase tracking-wider mb-6 pb-2 border-b border-gray-100">
+            Customer Information
+          </h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-y-4 gap-x-6">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-[10px] font-bold text-zinc-400 uppercase tracking-wider mb-1.5">
                 Customer Name *
               </label>
               <Input
@@ -220,10 +229,11 @@ function TransportationBookingEditPage() {
                 value={formData.customerName}
                 onChange={(e) => setFormData({ ...formData, customerName: e.target.value })}
                 required
+                className="h-10 px-3 border border-[#e5e7eb] rounded-lg bg-white text-sm font-medium text-zinc-950 focus:border-[#111111] focus:ring-1 focus:ring-[#111111] shadow-none"
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-[10px] font-bold text-zinc-400 uppercase tracking-wider mb-1.5">
                 Phone Number *
               </label>
               <Input
@@ -231,70 +241,73 @@ function TransportationBookingEditPage() {
                 value={formData.customerPhone}
                 onChange={(e) => setFormData({ ...formData, customerPhone: e.target.value })}
                 required
+                className="h-10 px-3 border border-[#e5e7eb] rounded-lg bg-white text-sm font-medium text-zinc-950 focus:border-[#111111] focus:ring-1 focus:ring-[#111111] shadow-none"
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-[10px] font-bold text-zinc-400 uppercase tracking-wider mb-1.5">
                 Email Address
               </label>
               <Input
                 type="email"
                 value={formData.customerEmail}
                 onChange={(e) => setFormData({ ...formData, customerEmail: e.target.value })}
+                className="h-10 px-3 border border-[#e5e7eb] rounded-lg bg-white text-sm font-medium text-zinc-950 focus:border-[#111111] focus:ring-1 focus:ring-[#111111] shadow-none"
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Notes
+              <label className="block text-[10px] font-bold text-zinc-400 uppercase tracking-wider mb-1.5">
+                General Notes
               </label>
               <Input
                 type="text"
                 value={formData.notes}
                 onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
                 placeholder="Additional notes..."
+                className="h-10 px-3 border border-[#e5e7eb] rounded-lg bg-white text-sm font-medium text-zinc-950 focus:border-[#111111] focus:ring-1 focus:ring-[#111111] shadow-none"
               />
             </div>
           </div>
-        </Card>
+        </div>
 
-        {/* Transportation Routes */}
-        <Card className="p-6">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-semibold">Transportation Routes</h2>
+        {/* Transportation Routes Card */}
+        <div className="border border-[#e5e7eb] rounded-xl bg-white shadow-none p-6">
+          <div className="flex items-center justify-between mb-6 pb-2 border-b border-gray-100">
+            <h2 className="text-sm font-bold text-[#111111] uppercase tracking-wider">
+              Transportation Routes
+            </h2>
             <Button
               type="button"
               variant="outline"
-              size="sm"
               onClick={addRoute}
-              className="flex items-center space-x-2"
+              className="h-9 px-3.5 border-zinc-200 text-zinc-700 hover:bg-zinc-50 hover:text-[#111111] flex items-center rounded-md text-xs font-semibold transition-colors bg-white shadow-none"
             >
-              <Plus className="h-4 w-4" />
-              <span>Add Route</span>
+              <Plus className="h-4 w-4 mr-2 text-zinc-500" />
+              <span>Tambah Rute</span>
             </Button>
           </div>
 
           <div className="space-y-6">
             {routes.map((route, index) => (
-              <div key={route.id} className="border border-gray-200 rounded-lg p-4">
-                <div className="flex items-center justify-between mb-4">
-                  <h3 className="text-md font-medium text-gray-900">
-                    Route {index + 1}
+              <div key={route.id} className="border border-[#e5e7eb] rounded-lg p-5 bg-white transition-all hover:border-[#111111]/30">
+                <div className="flex items-center justify-between border-b border-gray-100 pb-3 mb-4">
+                  <h3 className="text-xs font-bold text-[#111111] uppercase tracking-wider">
+                    Rute Segment #{index + 1}
                   </h3>
                   {routes.length > 1 && (
                     <Button
                       type="button"
-                      variant="destructive"
-                      size="sm"
                       onClick={() => removeRoute(route.id.toString())}
+                      className="bg-rose-50 hover:bg-rose-100 text-rose-600 border border-rose-200/60 h-8 w-8 p-0 rounded-md flex items-center justify-center transition-colors shadow-none"
                     >
-                      <Trash2 className="h-4 w-4" />
+                      <Trash2 className="h-4 w-4 text-rose-500" />
                     </Button>
                   )}
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-y-4 gap-x-6">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                    <label className="block text-[10px] font-bold text-zinc-400 uppercase tracking-wider mb-1.5">
                       Pickup Date & Time *
                     </label>
                     <Input
@@ -302,11 +315,12 @@ function TransportationBookingEditPage() {
                       value={route.pickupDateTime}
                       onChange={(e) => updateRoute(route.id, 'pickupDateTime', e.target.value)}
                       required
+                      className="h-10 px-3 border border-[#e5e7eb] rounded-lg bg-white text-sm font-medium text-zinc-950 focus:border-[#111111] focus:ring-1 focus:ring-[#111111] shadow-none"
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      From Location *
+                    <label className="block text-[10px] font-bold text-zinc-400 uppercase tracking-wider mb-1.5">
+                      From Location (Origin) *
                     </label>
                     <Input
                       type="text"
@@ -314,11 +328,12 @@ function TransportationBookingEditPage() {
                       onChange={(e) => updateRoute(route.id, 'originLocation', e.target.value)}
                       placeholder="Origin location"
                       required
+                      className="h-10 px-3 border border-[#e5e7eb] rounded-lg bg-white text-sm font-medium text-zinc-950 focus:border-[#111111] focus:ring-1 focus:ring-[#111111] shadow-none"
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      To Location *
+                    <label className="block text-[10px] font-bold text-zinc-400 uppercase tracking-wider mb-1.5">
+                      To Location (Destination) *
                     </label>
                     <Input
                       type="text"
@@ -326,16 +341,17 @@ function TransportationBookingEditPage() {
                       onChange={(e) => updateRoute(route.id, 'destinationLocation', e.target.value)}
                       placeholder="Destination location"
                       required
+                      className="h-10 px-3 border border-[#e5e7eb] rounded-lg bg-white text-sm font-medium text-zinc-950 focus:border-[#111111] focus:ring-1 focus:ring-[#111111] shadow-none"
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                    <label className="block text-[10px] font-bold text-zinc-400 uppercase tracking-wider mb-1.5">
                       Vehicle Type
                     </label>
                     <select
                       value={route.vehicleType}
                       onChange={(e) => updateRoute(route.id, 'vehicleType', e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      className="w-full h-10 px-3 border border-[#e5e7eb] rounded-lg bg-white text-sm font-medium text-zinc-950 focus:outline-none focus:border-[#111111] focus:ring-1 focus:ring-[#111111]"
                     >
                       <option value="sedan">Sedan</option>
                       <option value="staria">Staria</option>
@@ -346,7 +362,7 @@ function TransportationBookingEditPage() {
                     </select>
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                    <label className="block text-[10px] font-bold text-zinc-400 uppercase tracking-wider mb-1.5">
                       Price (SAR)
                     </label>
                     <Input
@@ -355,45 +371,50 @@ function TransportationBookingEditPage() {
                       step="0.01"
                       value={route.price}
                       onChange={(e) => updateRoute(route.id, 'price', parseFloat(e.target.value) || 0)}
+                      className="h-10 px-3 border border-[#e5e7eb] rounded-lg bg-white text-sm font-medium text-zinc-950 focus:border-[#111111] focus:ring-1 focus:ring-[#111111] shadow-none"
                     />
                   </div>
                   <div className="md:col-span-2 lg:col-span-3">
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Route Notes
+                    <label className="block text-[10px] font-bold text-zinc-400 uppercase tracking-wider mb-1.5">
+                      Route Segment Notes
                     </label>
                     <Input
                       type="text"
                       value={route.notes}
                       onChange={(e) => updateRoute(route.id, 'notes', e.target.value)}
-                      placeholder="Additional notes for this route..."
+                      placeholder="Additional notes for this route segment..."
+                      className="h-10 px-3 border border-[#e5e7eb] rounded-lg bg-white text-sm font-medium text-zinc-950 focus:border-[#111111] focus:ring-1 focus:ring-[#111111] shadow-none"
                     />
                   </div>
                 </div>
               </div>
             ))}
           </div>
-        </Card>
+        </div>
 
-        {/* Summary */}
-        <Card className="p-6">
-          <h2 className="text-lg font-semibold mb-4">Summary</h2>
+        {/* Summary Card */}
+        <div className="border border-[#e5e7eb] rounded-xl bg-white shadow-none p-6">
           <div className="flex justify-between items-center">
-            <span className="text-lg font-medium">Total Amount:</span>
-            <span className="text-xl font-bold text-blue-600">
+            <span className="text-xs font-bold text-[#111111] uppercase tracking-wider">Grand Total Amount</span>
+            <span className="text-xl font-bold text-[#111111] tracking-tight">
               {totalAmount.toFixed(2)} SAR
             </span>
           </div>
-        </Card>
+        </div>
 
-        {/* Submit Button */}
-        <div className="flex justify-end">
-          <Button type="submit" size="lg" disabled={updateBookingMutation.isPending}>
+        {/* Submit Actions */}
+        <div className="flex justify-end pt-2">
+          <Button 
+            type="submit" 
+            disabled={updateBookingMutation.isPending}
+            className="bg-[#111111] hover:bg-[#242424] text-white h-10 px-6 rounded-md text-sm font-semibold transition-colors border border-transparent shadow-none"
+          >
             {updateBookingMutation.isPending ? (
-              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              <Loader2 className="h-4 w-4 mr-2 animate-spin text-white" />
             ) : (
-              <Save className="h-4 w-4 mr-2" />
+              <Save className="h-4 w-4 mr-2 text-white/85" />
             )}
-            {updateBookingMutation.isPending ? 'Saving...' : 'Save Changes'}
+            {updateBookingMutation.isPending ? 'Menyimpan...' : 'Simpan Perubahan'}
           </Button>
         </div>
       </form>

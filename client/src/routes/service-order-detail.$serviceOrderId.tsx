@@ -186,224 +186,247 @@ Total: ${serviceOrder.totalPriceUSD ? formatCurrency(serviceOrder.totalPriceUSD,
   }
 
   return (
-    <PageLayout title="Visa Details" subtitle={`Visa Number: ${serviceOrder.number}`}>
-      <div className="space-y-6">
-        {/* Header */}
-        <div className="flex items-center justify-between">
-          <div className="flex items-center space-x-4">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => navigate({ to: "/service-orders" })}
-            >
-              <ArrowLeft className="h-4 w-4 mr-2" />
-              Back to Visa
-            </Button>
-          </div>
-          <div className="flex items-center space-x-2">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleEdit}
-            >
-              <Edit className="h-4 w-4 mr-2" />
-              Edit
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleDelete}
-              disabled={deleteServiceOrder.isPending}
-            >
-              {deleteServiceOrder.isPending ? (
-                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-              ) : (
-                <Trash2 className="h-4 w-4 mr-2" />
-              )}
-              Delete
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleShareWhatsApp}
-            >
-              <Share className="h-4 w-4 mr-2" />
-              Share
-            </Button>
-            {/* Invoice buttons - show different buttons based on whether invoice exists */}
-            {(!serviceOrder?.customLaRequestId) && (
-              !isInvoiceLoading && existingInvoice ? (
-                // Show View and Regenerate buttons if invoice exists
-                <>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={handleViewInvoice}
-                  >
-                    <Eye className="h-4 w-4 mr-2" />
-                    View Invoice
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={openRegenerateModal}
-                    disabled={regenerateInvoice.isPending}
-                  >
-                    {regenerateInvoice.isPending ? (
-                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                    ) : (
-                      <RefreshCw className="h-4 w-4 mr-2" />
-                    )}
-                    Regenerate Invoice
-                  </Button>
-                </>
-              ) : (
-                // Show Generate button if no invoice exists
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={openGenerateModal}
-                  disabled={generateInvoice.isPending || isInvoiceLoading}
-                >
-                  {generateInvoice.isPending ? (
-                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  ) : (
-                    <Receipt className="h-4 w-4 mr-2" />
-                  )}
-                  Generate Invoice
-                </Button>
-              )
-            )}
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setIsStatusModalOpen(true)}
-              disabled={updateStatus.isPending}
-            >
-              {updateStatus.isPending ? (
-                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-              ) : (
-                <RefreshCw className="h-4 w-4 mr-2" />
-              )}
-              Update Status
-            </Button>
-          </div>
+    <PageLayout
+      title="Visa Details"
+      subtitle={`Visa Number: ${serviceOrder.number}`}
+      actions={
+        <div className="flex items-center space-x-2.5">
+          <Badge variant="outline" className={`text-[10px] font-semibold py-0.5 px-2.5 rounded-full shadow-none capitalize ${getStatusColor(serviceOrder.status)}`}>
+            {serviceOrder.status}
+          </Badge>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => navigate({ to: "/service-orders" })}
+            className="h-8 px-3 border-[#e5e7eb] hover:bg-gray-50 text-gray-700 font-medium rounded-md flex items-center space-x-1.5 transition-colors"
+          >
+            <ArrowLeft className="h-3.5 w-3.5" />
+            <span>Back to Visa</span>
+          </Button>
         </div>
+      }
+    >
+      <div className="space-y-6 max-w-4xl mx-auto">
+        {/* Actions Toolbar */}
+        <Card className="border border-[#e5e7eb] rounded-xl shadow-none bg-white p-4">
+          <div className="flex flex-wrap gap-2 items-center justify-between">
+            <div className="flex flex-wrap gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setIsStatusModalOpen(true)}
+                disabled={updateStatus.isPending}
+                className="h-9 px-4 border-[#e5e7eb] hover:bg-gray-50 text-gray-700 font-semibold text-xs rounded-md transition-colors flex items-center space-x-1.5"
+              >
+                {updateStatus.isPending ? (
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                ) : (
+                  <RefreshCw className="h-3.5 w-3.5 text-gray-400" />
+                )}
+                <span>Update Status</span>
+              </Button>
+
+              {/* Invoice Actions */}
+              {(!serviceOrder?.customLaRequestId) && (
+                !isInvoiceLoading && existingInvoice ? (
+                  <>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={handleViewInvoice}
+                      className="h-9 px-4 border-[#e5e7eb] hover:bg-gray-50 text-gray-700 font-semibold text-xs rounded-md transition-colors flex items-center space-x-1.5"
+                    >
+                      <Eye className="h-3.5 w-3.5 text-gray-400" />
+                      <span>View Invoice</span>
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={openRegenerateModal}
+                      disabled={regenerateInvoice.isPending}
+                      className="h-9 px-4 border-[#e5e7eb] hover:bg-gray-50 text-gray-700 font-semibold text-xs rounded-md transition-colors flex items-center space-x-1.5"
+                    >
+                      {regenerateInvoice.isPending ? (
+                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                      ) : (
+                        <RefreshCw className="h-3.5 w-3.5 text-gray-400" />
+                      )}
+                      <span>Regenerate Invoice</span>
+                    </Button>
+                  </>
+                ) : (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={openGenerateModal}
+                    disabled={generateInvoice.isPending || isInvoiceLoading}
+                    className="h-9 px-4 border-[#e5e7eb] hover:bg-gray-50 text-gray-700 font-semibold text-xs rounded-md transition-colors flex items-center space-x-1.5"
+                  >
+                    {generateInvoice.isPending ? (
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    ) : (
+                      <Receipt className="h-3.5 w-3.5 text-gray-400" />
+                    )}
+                    <span>Generate Invoice</span>
+                  </Button>
+                )
+              )}
+
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleShareWhatsApp}
+                className="h-9 px-4 border-[#e5e7eb] hover:bg-gray-50 text-gray-700 font-semibold text-xs rounded-md transition-colors flex items-center space-x-1.5"
+              >
+                <Share className="h-3.5 w-3.5 text-gray-400" />
+                <span>Share</span>
+              </Button>
+            </div>
+
+            <div className="flex gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleEdit}
+                className="h-9 px-4 border-[#e5e7eb] hover:bg-gray-50 text-gray-700 font-semibold text-xs rounded-md transition-colors flex items-center space-x-1.5"
+              >
+                <Edit className="h-3.5 w-3.5 text-gray-400" />
+                <span>Edit</span>
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleDelete}
+                disabled={deleteServiceOrder.isPending}
+                className="h-9 px-4 text-red-600 border-[#e5e7eb] hover:bg-red-50 hover:text-red-700 font-semibold text-xs rounded-md transition-colors flex items-center space-x-1.5"
+              >
+                {deleteServiceOrder.isPending ? (
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                ) : (
+                  <Trash2 className="h-3.5 w-3.5" />
+                )}
+                <span>Delete</span>
+              </Button>
+            </div>
+          </div>
+        </Card>
 
         {/* LA Integration Banner */}
         {serviceOrder.customLaRequestId && (
-          <div className="bg-purple-50 border border-purple-200 rounded-lg p-4 flex items-center justify-between">
-            <div className="flex items-center text-purple-900">
-              <Package className="h-5 w-5 mr-3" />
+          <div className="bg-[#fcf8ff] border border-purple-100 rounded-xl p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div className="flex items-start space-x-3.5">
+              <div className="p-2 bg-purple-50 rounded-lg text-purple-600 shrink-0">
+                <Package className="h-4 w-4" />
+              </div>
               <div>
-                <p className="font-semibold">Paket LA Terkait</p>
-                <p className="text-sm">Visa/Handling ini merupakan bagian dari Land Arrangement.</p>
+                <p className="text-xs font-semibold uppercase tracking-wider text-purple-800">Paket LA Terkait</p>
+                <p className="text-sm text-purple-950/70 mt-0.5">Visa/Handling ini merupakan bagian dari Land Arrangement.</p>
               </div>
             </div>
             <Button 
               variant="outline" 
-              className="border-purple-300 text-purple-700 hover:bg-purple-100"
               onClick={() => navigate({ to: `/custom-la-detail/${serviceOrder.customLaRequestId}` })}
+              className="h-9 px-4 border-purple-200 text-purple-700 hover:bg-purple-50 hover:text-purple-800 font-semibold text-xs rounded-md transition-colors"
             >
               Kembali ke Ringkasan LA
             </Button>
           </div>
         )}
 
-        {/* Service Order Status */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center justify-between">
-              <span>Order Status</span>
-              <Badge
-                className={getStatusColor(serviceOrder.status)}
-              >
-                {serviceOrder.status}
-              </Badge>
-            </CardTitle>
-          </CardHeader>
-        </Card>
-
         {/* Client Information */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center">
-              <Users className="h-5 w-5 mr-2" />
-              Client Information
+        <Card className="border border-[#e5e7eb] rounded-xl shadow-none bg-white">
+          <CardHeader className="border-b border-gray-100 pb-3">
+            <CardTitle className="text-xs font-semibold uppercase tracking-wider text-gray-500 flex items-center space-x-2">
+              <Users className="h-4 w-4 text-gray-400" />
+              <span>Client Information</span>
             </CardTitle>
           </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="text-sm font-medium text-gray-500">Client Name</label>
-                <p className="text-lg">{serviceOrder.clientName || 'N/A'}</p>
+          <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4">
+            <div className="flex items-center space-x-3">
+              <div className="p-2 bg-[#f5f5f5] rounded-lg">
+                <Users className="h-4 w-4 text-gray-500" />
               </div>
               <div>
-                <label className="text-sm font-medium text-gray-500">Product Type</label>
-                <div className="flex items-center">
-                  <Plane className="h-4 w-4 mr-2 text-gray-400" />
-                  <p className="capitalize">{serviceOrder.productType?.replace('_', ' ') || 'N/A'}</p>
-                </div>
+                <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-400">Client Name</p>
+                <p className="font-semibold text-gray-800 text-sm">{serviceOrder.clientName || 'N/A'}</p>
+              </div>
+            </div>
+            <div className="flex items-center space-x-3">
+              <div className="p-2 bg-[#f5f5f5] rounded-lg">
+                <Plane className="h-4 w-4 text-gray-500" />
+              </div>
+              <div>
+                <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-400">Product Type</p>
+                <p className="font-semibold text-gray-800 text-sm capitalize">{serviceOrder.productType?.replace('_', ' ') || 'N/A'}</p>
               </div>
             </div>
           </CardContent>
         </Card>
 
         {/* Booking Details */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center">
-              <FileText className="h-5 w-5 mr-2" />
-              Booking Details
+        <Card className="border border-[#e5e7eb] rounded-xl shadow-none bg-white">
+          <CardHeader className="border-b border-gray-100 pb-3">
+            <CardTitle className="text-xs font-semibold uppercase tracking-wider text-gray-500 flex items-center space-x-2">
+              <FileText className="h-4 w-4 text-gray-400" />
+              <span>Booking Details</span>
             </CardTitle>
           </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="text-sm font-medium text-gray-500">Group Leader</label>
-                <p className="text-lg">{serviceOrder.groupLeaderName || 'N/A'}</p>
+          <CardContent className="grid grid-cols-1 md:grid-cols-3 gap-6 pt-4">
+            <div className="flex items-center space-x-3">
+              <div className="p-2 bg-[#f5f5f5] rounded-lg">
+                <User className="h-4 w-4 text-gray-500" />
               </div>
               <div>
-                <label className="text-sm font-medium text-gray-500">Group Leader Phone</label>
-                <div className="flex items-center">
-                  <Phone className="h-4 w-4 mr-2 text-gray-400" />
-                  <p className="text-lg">{serviceOrder.groupLeaderPhone || 'N/A'}</p>
-                </div>
+                <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-400">Group Leader</p>
+                <p className="font-semibold text-gray-800 text-sm">{serviceOrder.groupLeaderName || 'N/A'}</p>
+              </div>
+            </div>
+            <div className="flex items-center space-x-3">
+              <div className="p-2 bg-[#f5f5f5] rounded-lg">
+                <Phone className="h-4 w-4 text-gray-500" />
               </div>
               <div>
-                <label className="text-sm font-medium text-gray-500">Total People</label>
-                <div className="flex items-center">
-                  <Users className="h-4 w-4 mr-2 text-gray-400" />
-                  <p className="text-lg">{serviceOrder.totalPeople} people</p>
-                </div>
+                <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-400">Group Leader Phone</p>
+                <p className="font-semibold text-gray-800 text-sm font-mono">{serviceOrder.groupLeaderPhone || 'N/A'}</p>
+              </div>
+            </div>
+            <div className="flex items-center space-x-3">
+              <div className="p-2 bg-[#f5f5f5] rounded-lg">
+                <Users className="h-4 w-4 text-gray-500" />
+              </div>
+              <div>
+                <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-400">Total People</p>
+                <p className="font-semibold text-gray-800 text-sm">{serviceOrder.totalPeople} Pax</p>
               </div>
             </div>
           </CardContent>
         </Card>
 
         {/* Travel Information */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center">
-              <Calendar className="h-5 w-5 mr-2" />
-              Travel Information
+        <Card className="border border-[#e5e7eb] rounded-xl shadow-none bg-white">
+          <CardHeader className="border-b border-gray-100 pb-3">
+            <CardTitle className="text-xs font-semibold uppercase tracking-wider text-gray-500 flex items-center space-x-2">
+              <Calendar className="h-4 w-4 text-gray-400" />
+              <span>Travel Information</span>
             </CardTitle>
           </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="text-sm font-medium text-gray-500">Departure Date</label>
-                <div className="flex items-center">
-                  <Calendar className="h-4 w-4 mr-2 text-gray-400" />
-                  <p className="text-lg">{serviceOrder.departureDate ? formatDate(serviceOrder.departureDate) : 'N/A'}</p>
-                </div>
+          <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4">
+            <div className="flex items-center space-x-3">
+              <div className="p-2 bg-[#f5f5f5] rounded-lg">
+                <Calendar className="h-4 w-4 text-gray-500" />
               </div>
               <div>
-                <label className="text-sm font-medium text-gray-500">Return Date</label>
-                <div className="flex items-center">
-                  <Calendar className="h-4 w-4 mr-2 text-gray-400" />
-                  <p className="text-lg">{serviceOrder.returnDate ? formatDate(serviceOrder.returnDate) : 'N/A'}</p>
-                </div>
+                <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-400">Departure Date</p>
+                <p className="font-semibold text-gray-800 text-sm font-mono">{serviceOrder.departureDate ? formatDate(serviceOrder.departureDate) : 'N/A'}</p>
+              </div>
+            </div>
+            <div className="flex items-center space-x-3">
+              <div className="p-2 bg-[#f5f5f5] rounded-lg">
+                <Calendar className="h-4 w-4 text-gray-500" />
+              </div>
+              <div>
+                <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-400">Return Date</p>
+                <p className="font-semibold text-gray-800 text-sm font-mono">{serviceOrder.returnDate ? formatDate(serviceOrder.returnDate) : 'N/A'}</p>
               </div>
             </div>
           </CardContent>
@@ -411,48 +434,48 @@ Total: ${serviceOrder.totalPriceUSD ? formatCurrency(serviceOrder.totalPriceUSD,
 
         {/* Hotel Information */}
         {serviceOrder.meta && (serviceOrder.meta.hotelMakkah?.name || serviceOrder.meta.hotelMadinah?.name) && (
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center">
-                <Building className="h-5 w-5 mr-2" />
-                Hotel Information
+          <Card className="border border-[#e5e7eb] rounded-xl shadow-none bg-white">
+            <CardHeader className="border-b border-gray-100 pb-3">
+              <CardTitle className="text-xs font-semibold uppercase tracking-wider text-gray-500 flex items-center space-x-2">
+                <Building className="h-4 w-4 text-gray-400" />
+                <span>Hotel Information</span>
               </CardTitle>
             </CardHeader>
-            <CardContent className="space-y-6">
+            <CardContent className="space-y-6 pt-4">
               {serviceOrder.meta.hotelMakkah?.name && (
-                <div>
-                  <h4 className="font-semibold text-gray-900 mb-2 border-b pb-1">Makkah Hotel</h4>
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="space-y-2">
+                  <h4 className="text-xs font-bold uppercase tracking-wider text-gray-400 border-b pb-1">Makkah Hotel</h4>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-1">
                     <div>
-                      <label className="text-sm font-medium text-gray-500">Name</label>
-                      <p className="text-base">{serviceOrder.meta.hotelMakkah.name}</p>
+                      <label className="text-[10px] font-semibold uppercase tracking-wider text-gray-400 block">Name</label>
+                      <p className="font-semibold text-sm text-gray-800">{serviceOrder.meta.hotelMakkah.name}</p>
                     </div>
                     <div>
-                      <label className="text-sm font-medium text-gray-500">Check In</label>
-                      <p className="text-base">{serviceOrder.meta.hotelMakkah.checkIn ? formatDate(serviceOrder.meta.hotelMakkah.checkIn) : 'N/A'}</p>
+                      <label className="text-[10px] font-semibold uppercase tracking-wider text-gray-400 block">Check In</label>
+                      <p className="font-semibold text-sm text-gray-800 font-mono">{serviceOrder.meta.hotelMakkah.checkIn ? formatDate(serviceOrder.meta.hotelMakkah.checkIn) : 'N/A'}</p>
                     </div>
                     <div>
-                      <label className="text-sm font-medium text-gray-500">Check Out</label>
-                      <p className="text-base">{serviceOrder.meta.hotelMakkah.checkOut ? formatDate(serviceOrder.meta.hotelMakkah.checkOut) : 'N/A'}</p>
+                      <label className="text-[10px] font-semibold uppercase tracking-wider text-gray-400 block">Check Out</label>
+                      <p className="font-semibold text-sm text-gray-800 font-mono">{serviceOrder.meta.hotelMakkah.checkOut ? formatDate(serviceOrder.meta.hotelMakkah.checkOut) : 'N/A'}</p>
                     </div>
                   </div>
                 </div>
               )}
               {serviceOrder.meta.hotelMadinah?.name && (
-                <div>
-                  <h4 className="font-semibold text-gray-900 mb-2 border-b pb-1">Madinah Hotel</h4>
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="space-y-2 pt-4 border-t border-gray-100">
+                  <h4 className="text-xs font-bold uppercase tracking-wider text-gray-400 border-b pb-1">Madinah Hotel</h4>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-1">
                     <div>
-                      <label className="text-sm font-medium text-gray-500">Name</label>
-                      <p className="text-base">{serviceOrder.meta.hotelMadinah.name}</p>
+                      <label className="text-[10px] font-semibold uppercase tracking-wider text-gray-400 block">Name</label>
+                      <p className="font-semibold text-sm text-gray-800">{serviceOrder.meta.hotelMadinah.name}</p>
                     </div>
                     <div>
-                      <label className="text-sm font-medium text-gray-500">Check In</label>
-                      <p className="text-base">{serviceOrder.meta.hotelMadinah.checkIn ? formatDate(serviceOrder.meta.hotelMadinah.checkIn) : 'N/A'}</p>
+                      <label className="text-[10px] font-semibold uppercase tracking-wider text-gray-400 block">Check In</label>
+                      <p className="font-semibold text-sm text-gray-800 font-mono">{serviceOrder.meta.hotelMadinah.checkIn ? formatDate(serviceOrder.meta.hotelMadinah.checkIn) : 'N/A'}</p>
                     </div>
                     <div>
-                      <label className="text-sm font-medium text-gray-500">Check Out</label>
-                      <p className="text-base">{serviceOrder.meta.hotelMadinah.checkOut ? formatDate(serviceOrder.meta.hotelMadinah.checkOut) : 'N/A'}</p>
+                      <label className="text-[10px] font-semibold uppercase tracking-wider text-gray-400 block">Check Out</label>
+                      <p className="font-semibold text-sm text-gray-800 font-mono">{serviceOrder.meta.hotelMadinah.checkOut ? formatDate(serviceOrder.meta.hotelMadinah.checkOut) : 'N/A'}</p>
                     </div>
                   </div>
                 </div>
@@ -463,26 +486,26 @@ Total: ${serviceOrder.totalPriceUSD ? formatCurrency(serviceOrder.totalPriceUSD,
 
         {/* Transportation */}
         {serviceOrder.meta?.transportation && (
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center">
-                <Car className="h-5 w-5 mr-2" />
-                Transportation
+          <Card className="border border-[#e5e7eb] rounded-xl shadow-none bg-white">
+            <CardHeader className="border-b border-gray-100 pb-3">
+              <CardTitle className="text-xs font-semibold uppercase tracking-wider text-gray-500 flex items-center space-x-2">
+                <Car className="h-4 w-4 text-gray-400" />
+                <span>Transportation</span>
               </CardTitle>
             </CardHeader>
-            <CardContent>
+            <CardContent className="pt-5">
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div className="bg-gray-50 p-3 rounded-md">
-                  <label className="text-xs font-medium text-gray-500 uppercase tracking-wider block mb-1">Route 1: Airport - Hotel</label>
-                  <p className="text-base font-semibold">{serviceOrder.meta.transportation.route1Vehicle || 'Not Specified'}</p>
+                <div className="bg-[#f9fafb] border border-[#e5e7eb] p-3.5 rounded-xl">
+                  <label className="text-[9px] font-bold text-gray-400 uppercase tracking-wider block mb-1">Route 1: Airport - Hotel</label>
+                  <p className="text-sm font-semibold text-gray-800">{serviceOrder.meta.transportation.route1Vehicle || 'Not Specified'}</p>
                 </div>
-                <div className="bg-gray-50 p-3 rounded-md">
-                  <label className="text-xs font-medium text-gray-500 uppercase tracking-wider block mb-1">Route 2: City - City</label>
-                  <p className="text-base font-semibold">{serviceOrder.meta.transportation.route2Vehicle || 'Not Specified'}</p>
+                <div className="bg-[#f9fafb] border border-[#e5e7eb] p-3.5 rounded-xl">
+                  <label className="text-[9px] font-bold text-gray-400 uppercase tracking-wider block mb-1">Route 2: City - City</label>
+                  <p className="text-sm font-semibold text-gray-800">{serviceOrder.meta.transportation.route2Vehicle || 'Not Specified'}</p>
                 </div>
-                <div className="bg-gray-50 p-3 rounded-md">
-                  <label className="text-xs font-medium text-gray-500 uppercase tracking-wider block mb-1">Route 3: Hotel - Airport</label>
-                  <p className="text-base font-semibold">{serviceOrder.meta.transportation.route3Vehicle || 'Not Specified'}</p>
+                <div className="bg-[#f9fafb] border border-[#e5e7eb] p-3.5 rounded-xl">
+                  <label className="text-[9px] font-bold text-gray-400 uppercase tracking-wider block mb-1">Route 3: Hotel - Airport</label>
+                  <p className="text-sm font-semibold text-gray-800">{serviceOrder.meta.transportation.route3Vehicle || 'Not Specified'}</p>
                 </div>
               </div>
             </CardContent>
@@ -491,34 +514,36 @@ Total: ${serviceOrder.totalPriceUSD ? formatCurrency(serviceOrder.totalPriceUSD,
 
         {/* Jamaah List */}
         {serviceOrder.meta?.jamaah && serviceOrder.meta.jamaah.length > 0 && (
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center justify-between">
-                <div className="flex items-center">
-                  <Users className="h-5 w-5 mr-2" />
-                  Jamaah Details
-                </div>
-                <Badge variant="outline">{serviceOrder.meta.jamaah.length} People</Badge>
-              </CardTitle>
+          <Card className="border border-[#e5e7eb] rounded-xl shadow-none bg-white overflow-hidden">
+            <CardHeader className="border-b border-gray-100 py-4 px-6 flex flex-row items-center justify-between space-y-0">
+              <div>
+                <CardTitle className="text-xs font-semibold uppercase tracking-wider text-gray-500 flex items-center space-x-2">
+                  <Users className="h-4 w-4 text-gray-400" />
+                  <span>Jamaah Details</span>
+                </CardTitle>
+              </div>
+              <Badge variant="outline" className="text-[10px] font-semibold py-0.5 px-2.5 border-[#e5e7eb] rounded-md shadow-none bg-gray-50 text-gray-600 font-mono">
+                {serviceOrder.meta.jamaah.length} Pax
+              </Badge>
             </CardHeader>
-            <CardContent>
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm text-left">
-                  <thead className="text-xs text-gray-700 uppercase bg-gray-50">
-                    <tr>
-                      <th className="px-4 py-3 rounded-tl-md">No</th>
-                      <th className="px-4 py-3">Nama</th>
-                      <th className="px-4 py-3">No. Paspor</th>
-                      <th className="px-4 py-3 rounded-tr-md">L/P</th>
+            <CardContent className="p-0">
+              <div className="overflow-x-auto w-full">
+                <table className="w-full border-collapse text-sm">
+                  <thead className="bg-[#f9fafb]">
+                    <tr className="border-b border-[#e5e7eb]">
+                      <th className="text-left text-[10px] font-semibold uppercase tracking-wider text-gray-400 px-6 py-3">No</th>
+                      <th className="text-left text-[10px] font-semibold uppercase tracking-wider text-gray-400 px-6 py-3">Nama</th>
+                      <th className="text-left text-[10px] font-semibold uppercase tracking-wider text-gray-400 px-6 py-3">No. Paspor</th>
+                      <th className="text-[10px] font-semibold uppercase tracking-wider text-gray-400 px-6 py-3 text-right">L/P</th>
                     </tr>
                   </thead>
-                  <tbody>
+                  <tbody className="divide-y divide-[#e5e7eb]">
                     {serviceOrder.meta.jamaah.map((j: any, index: number) => (
-                      <tr key={index} className="border-b last:border-0 hover:bg-gray-50">
-                        <td className="px-4 py-3">{index + 1}</td>
-                        <td className="px-4 py-3 font-medium">{j.name}</td>
-                        <td className="px-4 py-3">{j.passportNo}</td>
-                        <td className="px-4 py-3">{j.gender === 'L' ? 'Laki-laki' : j.gender === 'P' ? 'Perempuan' : j.gender}</td>
+                      <tr key={index} className="hover:bg-gray-50/50 transition-colors">
+                        <td className="px-6 py-3 text-gray-500 font-mono">{index + 1}</td>
+                        <td className="px-6 py-3 font-semibold text-gray-800">{j.name}</td>
+                        <td className="px-6 py-3 font-mono text-gray-600">{j.passportNo}</td>
+                        <td className="px-6 py-3 text-right font-medium text-gray-600">{j.gender === 'L' ? 'Laki-laki' : j.gender === 'P' ? 'Perempuan' : j.gender}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -530,24 +555,24 @@ Total: ${serviceOrder.totalPriceUSD ? formatCurrency(serviceOrder.totalPriceUSD,
 
         {/* Documents Link */}
         {serviceOrder.meta?.googleDriveLink && (
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center">
-                <LinkIcon className="h-5 w-5 mr-2" />
-                Documents
+          <Card className="border border-[#e5e7eb] rounded-xl shadow-none bg-white">
+            <CardHeader className="border-b border-gray-100 pb-3">
+              <CardTitle className="text-xs font-semibold uppercase tracking-wider text-gray-500 flex items-center space-x-2">
+                <LinkIcon className="h-4 w-4 text-gray-400" />
+                <span>Documents Folder</span>
               </CardTitle>
             </CardHeader>
-            <CardContent>
+            <CardContent className="pt-5">
               <a 
                 href={serviceOrder.meta.googleDriveLink} 
                 target="_blank" 
                 rel="noopener noreferrer"
-                className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                className="inline-flex items-center justify-center h-9 px-4 bg-[#111111] hover:bg-[#242424] text-white font-semibold text-xs rounded-md transition-colors border border-transparent shadow-sm"
               >
-                <LinkIcon className="h-4 w-4 mr-2" />
+                <LinkIcon className="h-3.5 w-3.5 mr-2" />
                 Open Google Drive Folder
               </a>
-              <p className="mt-2 text-sm text-gray-500">
+              <p className="mt-2 text-xs text-gray-400">
                 Contains all jamaah documents (Visa, Passport, KTP, KK, etc).
               </p>
             </CardContent>
@@ -555,45 +580,41 @@ Total: ${serviceOrder.totalPriceUSD ? formatCurrency(serviceOrder.totalPriceUSD,
         )}
 
         {/* Pricing Information */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center">
-              <DollarSign className="h-5 w-5 mr-2" />
-              Pricing Information
+        <Card className="border border-[#e5e7eb] rounded-xl shadow-none bg-white">
+          <CardHeader className="border-b border-gray-100 pb-3">
+            <CardTitle className="text-xs font-semibold uppercase tracking-wider text-gray-500 flex items-center space-x-2">
+              <DollarSign className="h-4 w-4 text-gray-400" />
+              <span>Pricing Information</span>
             </CardTitle>
           </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div>
-                <label className="text-sm font-medium text-gray-500">Unit Price (USD)</label>
-                <p className="text-lg font-semibold">{formatCurrency(serviceOrder.unitPriceUSD, 'USD')}</p>
-              </div>
-              <div>
-                <label className="text-sm font-medium text-gray-500">Total Price (USD)</label>
-                <p className="text-lg font-semibold text-green-600">{formatCurrency(serviceOrder.totalPriceUSD, 'USD')}</p>
-              </div>
-              <div>
-                <label className="text-sm font-medium text-gray-500">Total Price (SAR)</label>
-                <p className="text-lg font-semibold text-blue-600">{formatCurrency(serviceOrder.totalPriceSAR, 'SAR')}</p>
-              </div>
+          <CardContent className="grid grid-cols-1 md:grid-cols-3 gap-6 pt-4">
+            <div>
+              <label className="text-[10px] font-semibold uppercase tracking-wider text-gray-400 block mb-0.5">Unit Price (USD)</label>
+              <p className="text-lg font-bold text-gray-800 font-mono">{formatCurrency(serviceOrder.unitPriceUSD, 'USD')}</p>
+            </div>
+            <div>
+              <label className="text-[10px] font-semibold uppercase tracking-wider text-gray-400 block mb-0.5">Total Price (USD)</label>
+              <p className="text-lg font-bold text-emerald-600 font-mono">{formatCurrency(serviceOrder.totalPriceUSD, 'USD')}</p>
+            </div>
+            <div>
+              <label className="text-[10px] font-semibold uppercase tracking-wider text-gray-400 block mb-0.5">Total Price (SAR)</label>
+              <p className="text-lg font-bold text-blue-600 font-mono">{formatCurrency(serviceOrder.totalPriceSAR, 'SAR')}</p>
             </div>
           </CardContent>
         </Card>
 
         {/* Timestamps */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center">
-              <Clock className="h-5 w-5 mr-2" />
-              Order Information
+        <Card className="border border-[#e5e7eb] rounded-xl shadow-none bg-white">
+          <CardHeader className="border-b border-gray-100 pb-3">
+            <CardTitle className="text-xs font-semibold uppercase tracking-wider text-gray-500 flex items-center space-x-2">
+              <Clock className="h-4 w-4 text-gray-400" />
+              <span>Order Metadata</span>
             </CardTitle>
           </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="text-sm font-medium text-gray-500">Created At</label>
-                <p className="text-lg">{serviceOrder.createdAt ? formatDate(serviceOrder.createdAt) : 'N/A'}</p>
-              </div>
+          <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4">
+            <div>
+              <label className="text-[10px] font-semibold uppercase tracking-wider text-gray-400 block mb-0.5">Created At</label>
+              <p className="text-sm font-semibold text-gray-800 font-mono">{serviceOrder.createdAt ? formatDate(serviceOrder.createdAt) : 'N/A'}</p>
             </div>
           </CardContent>
         </Card>

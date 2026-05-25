@@ -271,8 +271,6 @@ function CreateInvoicePage() {
         await generateServiceOrderInvoice({ serviceOrderId: selectedServiceOrderId, customDueDate: dueDate })
       }
       navigate({ to: "/invoices" })
-    } catch (err) {
-      console.error('Gagal generate invoice:', err)
     } finally {
       setIsLoading(false)
     }
@@ -280,25 +278,32 @@ function CreateInvoicePage() {
 
   return (
     <PageLayout
-      title="Create Invoice (Multi-Service)"
-      subtitle="Gabungkan layanan (Visa, Transportasi, dll) ke dalam satu invoice berbasis Booking"
-      showBackButton={true}
+      title="Create Invoice"
+      subtitle="Gabungkan layanan (Visa, Transportasi, dll) ke dalam satu invoice resmi"
       actions={
-        <div className="flex space-x-3">
-          <Button variant="outline" onClick={() => navigate({ to: "/invoices" })}>
+        <div className="flex items-center space-x-2.5">
+          <Button 
+            variant="outline" 
+            onClick={() => navigate({ to: "/invoices" })}
+            className="h-9 px-4 border-[#e5e7eb] text-zinc-700 hover:bg-gray-50 hover:text-black flex items-center rounded-md font-semibold text-xs bg-white shadow-none"
+          >
             <ArrowLeft className="h-4 w-4 mr-2" />
-            Cancel
+            Batal
           </Button>
-          <Button onClick={handleGenerateInvoice} disabled={isLoading || (sourceType === 'hotel' ? !selectedBookingId : sourceType === 'transportation' ? !selectedTransportationId : !selectedServiceOrderId)}>
+          <Button 
+            onClick={handleGenerateInvoice} 
+            disabled={isLoading || (sourceType === 'hotel' ? !selectedBookingId : sourceType === 'transportation' ? !selectedTransportationId : !selectedServiceOrderId)}
+            className="bg-[#111111] hover:bg-[#242424] text-white h-9 px-4 rounded-md text-xs font-semibold transition-colors border border-transparent shadow-none"
+          >
             {isLoading ? (
               <>
-                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                Creating...
+                <Loader2 className="h-4 w-4 mr-2 animate-spin text-white" />
+                Menerbitkan...
               </>
             ) : (
               <>
-                <Save className="h-4 w-4 mr-2" />
-                Create Invoice
+                <Save className="h-4 w-4 mr-2 text-white/80" />
+                Terbitkan Invoice
               </>
             )}
           </Button>
@@ -306,55 +311,78 @@ function CreateInvoicePage() {
       }
     >
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Form */}
+        {/* Form Container */}
         <div className="lg:col-span-2 space-y-6">
           {/* Client & Booking Selection */}
-          <Card className="p-6">
-            <div className="flex items-center space-x-2 mb-4">
-              <User className="h-5 w-5 text-blue-600" />
-              <h3 className="text-lg font-semibold">Pilih Client & Booking</h3>
+          <div className="border border-[#e5e7eb] rounded-xl bg-white shadow-none p-6">
+            <div className="flex items-center space-x-2 mb-6 pb-2 border-b border-gray-100">
+              <User className="h-4.5 w-4.5 text-zinc-700" />
+              <h3 className="text-sm font-bold text-[#111111] uppercase tracking-wider">Pilih Client & Booking</h3>
             </div>
-            <div className="space-y-4">
+            <div className="space-y-5">
               {/* Select existing client */}
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
                 <div className="md:col-span-2">
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Client Existing</label>
+                  <label className="block text-[10px] font-bold text-zinc-400 uppercase tracking-wider mb-1.5">Client Existing</label>
                   <select
                     value={selectedClientId}
                     onChange={(e) => setSelectedClientId(e.target.value)}
-                    className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-base shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring md:text-sm"
+                    className="w-full h-10 px-3 border border-[#e5e7eb] rounded-lg bg-white text-sm font-medium text-zinc-950 focus:outline-none focus:border-[#111111] focus:ring-1 focus:ring-[#111111]"
                   >
-                    <option value="">Pilih Client</option>
+                    <option value="">Pilih Client Existing</option>
                     {clients.map(c => (
                       <option key={c.id} value={c.id.toString()}>{c.name} — {c.email}</option>
                     ))}
                   </select>
                 </div>
-                <div className="flex gap-2">
-                  <Button type="button" variant="outline" onClick={() => setIsAddingClient(v => !v)}>
-                    <Plus className="h-4 w-4 mr-2" /> Client Baru
+                <div className="flex">
+                  <Button 
+                    type="button" 
+                    variant="outline" 
+                    onClick={() => setIsAddingClient(v => !v)}
+                    className="w-full h-10 px-4 border-[#e5e7eb] text-zinc-700 hover:bg-gray-50 hover:text-black flex items-center justify-center rounded-lg font-semibold text-xs bg-white shadow-none"
+                  >
+                    <Plus className="h-4 w-4 mr-1.5 text-zinc-500" /> Client Baru
                   </Button>
                 </div>
               </div>
 
               {/* Inline new client form */}
               {isAddingClient && (
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-4 p-4 bg-zinc-50/60 border border-zinc-150 rounded-lg">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Nama</label>
-                    <Input value={newClient.name} onChange={(e) => setNewClient({ ...newClient, name: e.target.value })} />
+                    <label className="block text-[10px] font-bold text-zinc-400 uppercase tracking-wider mb-1.5">Nama Lengkap</label>
+                    <Input 
+                      value={newClient.name} 
+                      onChange={(e) => setNewClient({ ...newClient, name: e.target.value })} 
+                      className="h-10 px-3 border border-[#e5e7eb] rounded-lg bg-white text-sm font-medium text-zinc-950 focus:border-[#111111] focus:ring-1 focus:ring-[#111111] shadow-none"
+                    />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Email</label>
-                    <Input type="email" value={newClient.email} onChange={(e) => setNewClient({ ...newClient, email: e.target.value })} />
+                    <label className="block text-[10px] font-bold text-zinc-400 uppercase tracking-wider mb-1.5">Email Address</label>
+                    <Input 
+                      type="email" 
+                      value={newClient.email} 
+                      onChange={(e) => setNewClient({ ...newClient, email: e.target.value })} 
+                      className="h-10 px-3 border border-[#e5e7eb] rounded-lg bg-white text-sm font-medium text-zinc-950 focus:border-[#111111] focus:ring-1 focus:ring-[#111111] shadow-none"
+                    />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Phone</label>
-                    <Input value={newClient.phone} onChange={(e) => setNewClient({ ...newClient, phone: e.target.value })} />
+                    <label className="block text-[10px] font-bold text-zinc-400 uppercase tracking-wider mb-1.5">No. Telepon</label>
+                    <Input 
+                      value={newClient.phone} 
+                      onChange={(e) => setNewClient({ ...newClient, phone: e.target.value })} 
+                      className="h-10 px-3 border border-[#e5e7eb] rounded-lg bg-white text-sm font-medium text-zinc-950 focus:border-[#111111] focus:ring-1 focus:ring-[#111111] shadow-none"
+                    />
                   </div>
-                  <div className="flex items-end">
-                    <Button type="button" onClick={handleCreateClient} disabled={creatingClient}>
-                      {creatingClient ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Plus className="h-4 w-4 mr-2" />}
+                  <div className="flex">
+                    <Button 
+                      type="button" 
+                      onClick={handleCreateClient} 
+                      disabled={creatingClient}
+                      className="w-full bg-[#111111] hover:bg-[#242424] text-white h-10 rounded-lg text-xs font-semibold transition-colors border border-transparent shadow-none"
+                    >
+                      {creatingClient ? <Loader2 className="h-4 w-4 mr-2 animate-spin text-white" /> : <Plus className="h-4 w-4 mr-2 text-white/80" />}
                       Simpan Client
                     </Button>
                   </div>
@@ -364,11 +392,11 @@ function CreateInvoicePage() {
               {/* Sumber & Booking milik Client */}
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Tipe Sumber</label>
+                  <label className="block text-[10px] font-bold text-zinc-400 uppercase tracking-wider mb-1.5">Tipe Sumber</label>
                   <select
                     value={sourceType}
                     onChange={(e) => setSourceType(e.target.value as any)}
-                    className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-base shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring md:text-sm"
+                    className="w-full h-10 px-3 border border-[#e5e7eb] rounded-lg bg-white text-sm font-medium text-zinc-950 focus:outline-none focus:border-[#111111] focus:ring-1 focus:ring-[#111111]"
                   >
                     <option value="hotel">Hotel Booking</option>
                     <option value="transportation">Transportasi</option>
@@ -376,32 +404,32 @@ function CreateInvoicePage() {
                   </select>
                 </div>
                 <div className="md:col-span-2">
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Booking milik Client</label>
+                  <label className="block text-[10px] font-bold text-zinc-400 uppercase tracking-wider mb-1.5">Booking milik Client</label>
                   {sourceType === 'hotel' && (
                     <select
                       value={selectedBookingId}
                       onChange={(e) => setSelectedBookingId(e.target.value)}
                       disabled={!selectedClientId || loadingBookings}
-                      className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-base shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring md:text-sm"
+                      className="w-full h-10 px-3 border border-[#e5e7eb] rounded-lg bg-white text-sm font-medium text-zinc-950 focus:outline-none focus:border-[#111111] focus:ring-1 focus:ring-[#111111] disabled:opacity-50"
                     >
-                      <option value="">{selectedClientId ? 'Pilih Booking' : 'Pilih client dulu'}</option>
+                      <option value="">{selectedClientId ? 'Pilih Booking' : 'Pilih client terlebih dahulu'}</option>
                       {hotelBookingOptions.map(b => (
                         <option key={b.id} value={b.id.toString()}>{b.code} — {b.hotelName} ({formatDate(b.checkIn)} - {formatDate(b.checkOut)})</option>
                       ))}
                     </select>
                   )}
                   {sourceType === 'hotel' && selectedClientId && selectedBookingId && (
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4 pt-4 border-t border-gray-100">
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">Tambahkan Transportasi ke invoice</label>
-                        <div className="space-y-2 max-h-40 overflow-auto border rounded-md p-2">
+                        <label className="block text-[10px] font-bold text-zinc-400 uppercase tracking-wider mb-1.5">Tambahkan Transportasi</label>
+                        <div className="space-y-1.5 max-h-40 overflow-auto border border-[#e5e7eb] rounded-lg p-3 bg-zinc-50/50">
                           {transportationOptions.length === 0 ? (
-                            <p className="text-xs text-gray-500">Tidak ada transportasi yang belum ber-invoice.</p>
+                            <p className="text-xs text-zinc-500 italic">Tidak ada transportasi yang belum ber-invoice.</p>
                           ) : (
                             transportationOptions.map(t => {
                               const checked = selectedTransportationIdsMulti.includes(t.id.toString())
                               return (
-                                <label key={t.id} className="flex items-center gap-2 text-sm">
+                                <label key={t.id} className="flex items-start gap-2.5 text-xs text-zinc-700 cursor-pointer font-medium">
                                   <input
                                     type="checkbox"
                                     checked={checked}
@@ -412,8 +440,9 @@ function CreateInvoicePage() {
                                         return prev.filter(x => x !== id)
                                       })
                                     }}
+                                    className="h-4 w-4 rounded border-gray-300 text-zinc-950 focus:ring-zinc-950 mt-0.5 accent-black shrink-0"
                                   />
-                                  <span>{t.number} — Routes: {t.routeCount} • Total: {formatCurrency(parseFloat(t.totalAmount), t.currency || 'SAR')}</span>
+                                  <span>{t.number} ({t.routeCount} rute) • {formatCurrency(parseFloat(t.totalAmount), t.currency || 'SAR')}</span>
                                 </label>
                               )
                             })
@@ -421,15 +450,15 @@ function CreateInvoicePage() {
                         </div>
                       </div>
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">Tambahkan Visa ke invoice</label>
-                        <div className="space-y-2 max-h-40 overflow-auto border rounded-md p-2">
+                        <label className="block text-[10px] font-bold text-zinc-400 uppercase tracking-wider mb-1.5">Tambahkan Visa</label>
+                        <div className="space-y-1.5 max-h-40 overflow-auto border border-[#e5e7eb] rounded-lg p-3 bg-zinc-50/50">
                           {serviceOrdersOptions.length === 0 ? (
-                            <p className="text-xs text-gray-500">Tidak ada visa yang belum ber-invoice.</p>
+                            <p className="text-xs text-zinc-500 italic">Tidak ada visa yang belum ber-invoice.</p>
                           ) : (
                             serviceOrdersOptions.map(so => {
                               const checked = selectedServiceOrderIdsMulti.includes(so.id.toString())
                               return (
-                                <label key={so.id} className="flex items-center gap-2 text-sm">
+                                <label key={so.id} className="flex items-start gap-2.5 text-xs text-zinc-700 cursor-pointer font-medium">
                                   <input
                                     type="checkbox"
                                     checked={checked}
@@ -440,8 +469,9 @@ function CreateInvoicePage() {
                                         return prev.filter(x => x !== id)
                                       })
                                     }}
+                                    className="h-4 w-4 rounded border-gray-300 text-zinc-950 focus:ring-zinc-950 mt-0.5 accent-black shrink-0"
                                   />
-                                  <span>{so.number} — {so.productType} • {so.totalPeople} org • Total: {formatCurrency(parseFloat(so.totalPriceSAR), 'SAR')}</span>
+                                  <span>{so.number} ({so.totalPeople} org) • {formatCurrency(parseFloat(so.totalPriceSAR), 'SAR')}</span>
                                 </label>
                               )
                             })
@@ -455,11 +485,11 @@ function CreateInvoicePage() {
                       value={selectedTransportationId}
                       onChange={(e) => setSelectedTransportationId(e.target.value)}
                       disabled={!selectedClientId}
-                      className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-base shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring md:text-sm"
+                      className="w-full h-10 px-3 border border-[#e5e7eb] rounded-lg bg-white text-sm font-medium text-zinc-950 focus:outline-none focus:border-[#111111] focus:ring-1 focus:ring-[#111111] disabled:opacity-50"
                     >
-                      <option value="">{selectedClientId ? 'Pilih Transportasi' : 'Pilih client dulu'}</option>
+                      <option value="">{selectedClientId ? 'Pilih Transportasi' : 'Pilih client terlebih dahulu'}</option>
                       {transportationOptions.map(t => (
-                        <option key={t.id} value={t.id.toString()}>{t.number} — {t.customerName} • Routes: {t.routeCount} • Total: {formatCurrency(parseFloat(t.totalAmount), t.currency || 'SAR')}</option>
+                        <option key={t.id} value={t.id.toString()}>{t.number} — Rute: {t.routeCount} • Total: {formatCurrency(parseFloat(t.totalAmount), t.currency || 'SAR')}</option>
                       ))}
                     </select>
                   )}
@@ -468,42 +498,47 @@ function CreateInvoicePage() {
                       value={selectedServiceOrderId}
                       onChange={(e) => setSelectedServiceOrderId(e.target.value)}
                       disabled={!selectedClientId}
-                      className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-base shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring md:text-sm"
+                      className="w-full h-10 px-3 border border-[#e5e7eb] rounded-lg bg-white text-sm font-medium text-zinc-950 focus:outline-none focus:border-[#111111] focus:ring-1 focus:ring-[#111111] disabled:opacity-50"
                     >
-                      <option value="">{selectedClientId ? 'Pilih Visa' : 'Pilih client dulu'}</option>
+                      <option value="">{selectedClientId ? 'Pilih Visa' : 'Pilih client terlebih dahulu'}</option>
                       {serviceOrdersOptions.map(so => (
-                        <option key={so.id} value={so.id.toString()}>{so.number} — {so.productType} • {so.groupLeaderName} • {so.totalPeople} org • Total: {formatCurrency(parseFloat(so.totalPriceSAR), 'SAR')}</option>
+                        <option key={so.id} value={so.id.toString()}>{so.number} — {so.productType} • {so.totalPeople} org • Total: {formatCurrency(parseFloat(so.totalPriceSAR), 'SAR')}</option>
                       ))}
                     </select>
                   )}
                 </div>
               </div>
             </div>
-          </Card>
+          </div>
+
           {/* Service Items */}
           {sourceType === 'hotel' && (
-            <Card className="p-6">
-              <div className="flex items-center space-x-2 mb-4">
-                <Building className="h-5 w-5 text-green-600" />
-                <h3 className="text-lg font-semibold">Service Items (Visa, Transportasi, Lainnya)</h3>
+            <div className="border border-[#e5e7eb] rounded-xl bg-white shadow-none p-6">
+              <div className="flex items-center space-x-2 mb-6 pb-2 border-b border-gray-100">
+                <Building className="h-4.5 w-4.5 text-zinc-700" />
+                <h3 className="text-sm font-bold text-[#111111] uppercase tracking-wider">Service Items (Visa, Transportasi, Lainnya)</h3>
               </div>
-              <div className="space-y-4">
+              <div className="space-y-5">
                 {/* Existing items list */}
                 <div className="space-y-2">
                   {serviceItems.length === 0 ? (
-                    <p className="text-sm text-gray-600">Belum ada layanan ditambahkan untuk booking ini.</p>
+                    <p className="text-xs text-zinc-500 italic py-2">Belum ada layanan tambahan ditambahkan untuk booking ini.</p>
                   ) : (
                     <div className="space-y-2">
                       {serviceItems.map(item => (
-                        <div key={item.id} className="flex items-center justify-between border rounded-md p-3">
-                          <div className="space-y-1">
-                            <p className="text-sm font-medium">{item.description}</p>
-                            <p className="text-xs text-gray-600">Tipe: {item.serviceType} • Qty: {item.quantity} • Unit: {formatCurrency(parseFloat(item.unitPrice as any), 'SAR')}</p>
+                        <div key={item.id} className="flex items-center justify-between border border-[#e5e7eb] rounded-lg p-3.5 bg-white transition-all hover:border-[#111111]/30">
+                          <div className="space-y-0.5">
+                            <p className="text-sm font-bold text-zinc-800">{item.description}</p>
+                            <p className="text-[10px] text-zinc-400 font-bold uppercase tracking-wider">Tipe: {item.serviceType} • Qty: {item.quantity} • Harga Unit: {formatCurrency(parseFloat(item.unitPrice as any), 'SAR')}</p>
                           </div>
                           <div className="flex items-center gap-3">
-                            <span className="text-sm font-semibold text-green-700">{formatCurrency(parseFloat(item.subtotal as any), 'SAR')}</span>
-                            <Button variant="destructive" size="icon" onClick={() => handleDeleteServiceItem(item.id)}>
-                              <Trash className="h-4 w-4" />
+                            <span className="text-sm font-bold text-[#111111]">{formatCurrency(parseFloat(item.subtotal as any), 'SAR')}</span>
+                            <Button 
+                              variant="outline" 
+                              onClick={() => handleDeleteServiceItem(item.id)}
+                              className="bg-rose-50 hover:bg-rose-100 text-rose-600 border border-rose-200/60 h-8 w-8 p-0 rounded-md flex items-center justify-center transition-colors shadow-none"
+                            >
+                              <Trash className="h-4 w-4 text-rose-500" />
                             </Button>
                           </div>
                         </div>
@@ -513,13 +548,13 @@ function CreateInvoicePage() {
                 </div>
 
                 {/* Add new item */}
-                <div className="grid grid-cols-1 md:grid-cols-5 gap-3 items-end">
+                <div className="grid grid-cols-1 md:grid-cols-5 gap-3 items-end pt-4 border-t border-gray-100/80">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Tipe Layanan</label>
+                    <label className="block text-[10px] font-bold text-zinc-400 uppercase tracking-wider mb-1.5">Tipe Layanan</label>
                     <select
                       value={newItem.serviceType}
                       onChange={(e) => setNewItem({ ...newItem, serviceType: e.target.value as ServiceItemType })}
-                      className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-base shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring md:text-sm"
+                      className="w-full h-10 px-3 border border-[#e5e7eb] rounded-lg bg-white text-sm font-medium text-zinc-950 focus:outline-none focus:border-[#111111] focus:ring-1 focus:ring-[#111111]"
                     >
                       <option value="visa_umrah">Visa/Umrah</option>
                       <option value="transportasi">Transportasi</option>
@@ -527,111 +562,147 @@ function CreateInvoicePage() {
                     </select>
                   </div>
                   <div className="md:col-span-2">
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Deskripsi</label>
-                    <Input value={newItem.description} onChange={(e) => setNewItem({ ...newItem, description: e.target.value })} placeholder="Contoh: Visa Umrah 5 pax / Bus Full Trip" />
+                    <label className="block text-[10px] font-bold text-zinc-400 uppercase tracking-wider mb-1.5">Deskripsi Rincian Layanan</label>
+                    <Input 
+                      value={newItem.description} 
+                      onChange={(e) => setNewItem({ ...newItem, description: e.target.value })} 
+                      placeholder="Contoh: Visa Umrah 5 pax / Bus Full Trip" 
+                      className="h-10 px-3 border border-[#e5e7eb] rounded-lg bg-white text-sm font-medium text-zinc-950 focus:border-[#111111] focus:ring-1 focus:ring-[#111111] shadow-none"
+                    />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Qty</label>
-                    <Input type="number" min={1} value={newItem.quantity} onChange={(e) => setNewItem({ ...newItem, quantity: parseInt(e.target.value) || 1 })} />
+                    <label className="block text-[10px] font-bold text-zinc-400 uppercase tracking-wider mb-1.5">Quantity</label>
+                    <Input 
+                      type="number" 
+                      min={1} 
+                      value={newItem.quantity} 
+                      onChange={(e) => setNewItem({ ...newItem, quantity: parseInt(e.target.value) || 1 })} 
+                      className="h-10 px-3 border border-[#e5e7eb] rounded-lg bg-white text-sm font-medium text-zinc-950 focus:border-[#111111] focus:ring-1 focus:ring-[#111111] shadow-none"
+                    />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Unit Price (SAR)</label>
-                    <Input type="number" min={0} step={0.01} value={newItem.unitPrice} onChange={(e) => setNewItem({ ...newItem, unitPrice: parseFloat(e.target.value) || 0 })} />
+                    <label className="block text-[10px] font-bold text-zinc-400 uppercase tracking-wider mb-1.5">Unit Price (SAR)</label>
+                    <Input 
+                      type="number" 
+                      min={0} 
+                      step={0.01} 
+                      value={newItem.unitPrice} 
+                      onChange={(e) => setNewItem({ ...newItem, unitPrice: parseFloat(e.target.value) || 0 })} 
+                      className="h-10 px-3 border border-[#e5e7eb] rounded-lg bg-white text-sm font-medium text-zinc-950 focus:border-[#111111] focus:ring-1 focus:ring-[#111111] shadow-none"
+                    />
                   </div>
-                  <div className="md:col-span-5 flex justify-end">
-                    <Button type="button" onClick={handleAddServiceItem} disabled={!selectedBookingId || creatingItem}>
-                      {creatingItem ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Plus className="h-4 w-4 mr-2" />}
+                  <div className="md:col-span-5 flex justify-end mt-2">
+                    <Button 
+                      type="button" 
+                      onClick={handleAddServiceItem} 
+                      disabled={!selectedBookingId || creatingItem}
+                      className="h-9 px-4 border-[#e5e7eb] text-zinc-700 hover:bg-gray-50 hover:text-black flex items-center rounded-md font-semibold text-xs bg-white shadow-none border"
+                    >
+                      {creatingItem ? <Loader2 className="h-4 w-4 mr-2 animate-spin text-zinc-500" /> : <Plus className="h-4 w-4 mr-1.5 text-zinc-500" />}
                       Tambah Item
                     </Button>
                   </div>
                 </div>
               </div>
-            </Card>
+            </div>
           )}
 
           {/* Invoice Details */}
-          <Card className="p-6">
-            <div className="flex items-center space-x-2 mb-4">
-              <FileText className="h-5 w-5 text-indigo-600" />
-              <h3 className="text-lg font-semibold">Invoice Details</h3>
+          <div className="border border-[#e5e7eb] rounded-xl bg-white shadow-none p-6">
+            <div className="flex items-center space-x-2 mb-6 pb-2 border-b border-gray-100">
+              <FileText className="h-4.5 w-4.5 text-zinc-700" />
+              <h3 className="text-sm font-bold text-[#111111] uppercase tracking-wider">Invoice Settings</h3>
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Due Date *
+                <label className="block text-[10px] font-bold text-zinc-400 uppercase tracking-wider mb-1.5">
+                  Due Date (Tanggal Jatuh Tempo) *
                 </label>
                 <Input
                   type="date"
                   value={dueDate}
                   onChange={(e) => setDueDate(e.target.value)}
+                  className="h-10 px-3 border border-[#e5e7eb] rounded-lg bg-white text-sm font-medium text-zinc-950 focus:border-[#111111] focus:ring-1 focus:ring-[#111111] shadow-none"
                 />
               </div>
-              <div className="md:col-span-2">
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Catatan (opsional)
-                </label>
-                <p className="text-sm text-gray-600">Invoice akan menggunakan mata uang SAR dan total otomatis dihitung dari Booking + Service Items.</p>
+              <div className="md:col-span-2 space-y-1">
+                <label className="block text-[10px] font-bold text-zinc-400 uppercase tracking-wider">Informasi Nilai</label>
+                <p className="text-xs text-zinc-500">Invoice akan diterbitkan dalam mata uang default SAR. Nilai total akhir akan diakumulasikan otomatis dari seluruh layanan terkait.</p>
               </div>
             </div>
-          </Card>
+          </div>
         </div>
 
-        {/* Preview */}
+        {/* Sidebar Invoice Preview */}
         <div className="space-y-6">
-          <Card className="p-6">
-            <h3 className="text-lg font-semibold mb-4">Invoice Preview</h3>
-            <div className="space-y-4 text-sm">
-              <div>
-                <span className="text-gray-500">Client:</span>
-                <p className="font-semibold">{clients.find(c => c.id.toString() === selectedClientId)?.name || "Pilih Client"}</p>
-                <p className="text-gray-600">{clients.find(c => c.id.toString() === selectedClientId)?.email || "email@client.com"}</p>
+          <div className="border border-[#e5e7eb] rounded-xl bg-white shadow-none p-6 sticky top-6">
+            <h3 className="text-sm font-bold text-[#111111] uppercase tracking-wider mb-6 pb-2 border-b border-gray-100">
+              Invoice Checkout Preview
+            </h3>
+            <div className="space-y-5 text-xs text-zinc-600">
+              <div className="space-y-1">
+                <span className="block text-[10px] font-bold text-zinc-400 uppercase tracking-wider">Client Recipient</span>
+                <p className="font-bold text-zinc-900 text-sm">{clients.find(c => c.id.toString() === selectedClientId)?.name || "Pilih Client..."}</p>
+                <p className="text-zinc-500 font-medium">{clients.find(c => c.id.toString() === selectedClientId)?.email || "email@client.com"}</p>
               </div>
 
-              <div>
-                <span className="text-gray-500">Booking:</span>
+              <div className="space-y-1">
+                <span className="block text-[10px] font-bold text-zinc-400 uppercase tracking-wider">Selected Booking Base</span>
                 {booking ? (
-                  <>
-                    <p className="font-semibold">{booking.code} — {booking.hotelName}</p>
-                    <p className="text-gray-600">{booking.city} • {formatDate(booking.checkIn)} - {formatDate(booking.checkOut)}</p>
-                  </>
+                  <div className="bg-zinc-50 border border-zinc-150 rounded-lg p-3 space-y-0.5">
+                    <p className="font-bold text-zinc-800 text-xs">{booking.code} — {booking.hotelName}</p>
+                    <p className="text-zinc-500 font-semibold">{booking.city} • {formatDate(booking.checkIn)} s/d {formatDate(booking.checkOut)}</p>
+                  </div>
                 ) : (
-                  <p className="text-gray-600">Pilih booking</p>
+                  <p className="text-zinc-400 italic">Pilih hotel booking...</p>
                 )}
               </div>
 
-              <div>
-                <span className="text-gray-500">Ringkasan Harga:</span>
-                <div className="mt-1 space-y-1">
-                  <div className="flex justify-between"><span>Booking (Hotel)</span><span>{formatCurrency(bookingTotal || 0, 'SAR')}</span></div>
-                  <div className="flex justify-between"><span>Service Items</span><span>{formatCurrency(extraTotal || 0, 'SAR')}</span></div>
+              <div className="space-y-2">
+                <span className="block text-[10px] font-bold text-zinc-400 uppercase tracking-wider">Pricing Breakdown Summary</span>
+                <div className="space-y-1.5 bg-zinc-50/50 border border-zinc-100 rounded-lg p-3">
+                  <div className="flex justify-between font-medium">
+                    <span className="text-zinc-500">Booking (Hotel)</span>
+                    <span className="font-bold text-zinc-800">{formatCurrency(bookingTotal || 0, 'SAR')}</span>
+                  </div>
+                  <div className="flex justify-between font-medium">
+                    <span className="text-zinc-500">Service Items</span>
+                    <span className="font-bold text-zinc-800">{formatCurrency(extraTotal || 0, 'SAR')}</span>
+                  </div>
                   {sourceType === 'hotel' && (
                     <>
-                      <div className="flex justify-between"><span>Transportasi dipilih</span><span>{formatCurrency(
-                        transportationOptions.reduce((sum, t) => sum + (selectedTransportationIdsMulti.includes(t.id.toString()) ? parseFloat(t.totalAmount || '0') : 0), 0),
-                        'SAR'
-                      )}</span></div>
-                      <div className="flex justify-between"><span>Visa dipilih</span><span>{formatCurrency(
-                        serviceOrdersOptions.reduce((sum, so) => sum + (selectedServiceOrderIdsMulti.includes(so.id.toString()) ? parseFloat(so.totalPriceSAR || '0') : 0), 0),
-                        'SAR'
-                      )}</span></div>
+                      <div className="flex justify-between font-medium border-t border-dashed border-gray-200/80 pt-1.5">
+                        <span className="text-zinc-500">Combined Transport</span>
+                        <span className="font-bold text-zinc-800">{formatCurrency(
+                          transportationOptions.reduce((sum, t) => sum + (selectedTransportationIdsMulti.includes(t.id.toString()) ? parseFloat(t.totalAmount || '0') : 0), 0),
+                          'SAR'
+                        )}</span>
+                      </div>
+                      <div className="flex justify-between font-medium">
+                        <span className="text-zinc-500">Combined Visa</span>
+                        <span className="font-bold text-zinc-800">{formatCurrency(
+                          serviceOrdersOptions.reduce((sum, so) => sum + (selectedServiceOrderIdsMulti.includes(so.id.toString()) ? parseFloat(so.totalPriceSAR || '0') : 0), 0),
+                          'SAR'
+                        )}</span>
+                      </div>
                     </>
                   )}
                 </div>
               </div>
 
-              <div className="border-t pt-4">
-                <div className="flex justify-between font-bold text-lg border-t pt-2 mt-2">
-                  <span>Total:</span>
-                  <span className="text-green-600">{formatCurrency((sourceType === 'hotel' ? computedGrandTotal : grandTotal) || 0, 'SAR')}</span>
+              <div className="border-t border-zinc-200 pt-4 mt-2">
+                <div className="flex justify-between items-center font-bold border-t border-[#111111] pt-3 text-[#111111]">
+                  <span className="text-xs uppercase tracking-wider font-bold">Grand Total Amount</span>
+                  <span className="text-base tracking-tight font-extrabold">{formatCurrency((sourceType === 'hotel' ? computedGrandTotal : grandTotal) || 0, 'SAR')}</span>
                 </div>
               </div>
 
-              <div>
-                <span className="text-gray-500">Due Date:</span>
-                <p className="font-semibold">{dueDate ? formatDate(dueDate) : "Due Date"}</p>
+              <div className="space-y-1 pt-2 border-t border-zinc-50">
+                <span className="block text-[10px] font-bold text-zinc-400 uppercase tracking-wider">Tanggal Jatuh Tempo</span>
+                <p className="font-bold text-zinc-800">{dueDate ? formatDate(dueDate) : "-"}</p>
               </div>
             </div>
-          </Card>
+          </div>
         </div>
       </div>
     </PageLayout>

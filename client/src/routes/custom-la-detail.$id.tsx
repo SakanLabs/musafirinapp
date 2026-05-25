@@ -141,16 +141,21 @@ Silakan hubungi kami jika ada penyesuaian yang ingin dilakukan.`
       <div className="space-y-6">
 
         {/* Header Actions */}
-        <div className="flex items-center justify-between">
-          <Button variant="outline" size="sm" onClick={() => navigate({ to: "/custom-la-requests" })}>
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <Button 
+            variant="outline" 
+            size="sm" 
+            onClick={() => navigate({ to: "/custom-la-requests" })}
+            className="h-9 px-4 border-[#e5e7eb] text-zinc-700 hover:bg-gray-50 hover:text-black flex items-center rounded-md font-medium text-xs self-start"
+          >
             <ArrowLeft className="h-4 w-4 mr-2" />
             Kembali
           </Button>
 
-          <div className="flex space-x-2 items-center">
+          <div className="flex flex-wrap items-center gap-2">
             <div className="flex items-center space-x-2 mr-2">
               <select
-                className="border border-gray-300 rounded-md text-sm px-2 py-1.5 h-9"
+                className="w-24 h-9 px-3 border border-[#e5e7eb] rounded-md focus:border-[#111111] focus:ring-1 focus:ring-[#111111] bg-white text-xs font-semibold text-zinc-800"
                 value={displayCurrency}
                 onChange={(e) => setDisplayCurrency(e.target.value)}
               >
@@ -163,27 +168,43 @@ Silakan hubungi kami jika ada penyesuaian yang ingin dilakukan.`
                   placeholder="Kurs SAR ke IDR"
                   value={exchangeRate}
                   onChange={(e) => setExchangeRate(e.target.value)}
-                  className="border border-gray-300 rounded-md text-sm px-2 py-1.5 h-9 w-32"
+                  className="w-32 h-9 px-3 border border-[#e5e7eb] rounded-md focus:border-[#111111] focus:ring-1 focus:ring-[#111111] bg-white text-xs font-semibold text-zinc-800"
                 />
               )}
             </div>
-            <Button variant="outline" className="border-amber-500 text-amber-600 hover:bg-amber-50" onClick={() => navigate({ to: `/custom-la-quotation/${id}?currency=${displayCurrency}&rate=${exchangeRate}` })}>
-              <FileText className="h-4 w-4 mr-2" />
+            <Button 
+              variant="outline" 
+              onClick={() => navigate({ to: `/custom-la-quotation/${id}?currency=${displayCurrency}&rate=${exchangeRate}` })}
+              className="h-9 px-3.5 border-zinc-200 text-zinc-700 hover:bg-zinc-50 hover:text-black flex items-center rounded-md text-xs font-semibold transition-colors"
+            >
+              <FileText className="h-4 w-4 mr-2 text-zinc-500" />
               Lihat Penawaran (PDF)
             </Button>
-            <Button variant="outline" onClick={handleShareWhatsApp}>
-              <Share className="h-4 w-4 mr-2" />
+            <Button 
+              variant="outline" 
+              onClick={handleShareWhatsApp}
+              className="h-9 px-3.5 border-zinc-200 text-zinc-700 hover:bg-zinc-50 hover:text-black flex items-center rounded-md text-xs font-semibold transition-colors"
+            >
+              <Share className="h-4 w-4 mr-2 text-zinc-500" />
               Kirim via WhatsApp
             </Button>
             {request.status === 'pending' && (
-              <Button onClick={() => handleUpdateStatus('quoted')} disabled={isUpdating} className="bg-blue-600 hover:bg-blue-700 text-white">
-                <RefreshCw className={`h-4 w-4 mr-2 ${isUpdating ? 'animate-spin' : ''}`} />
+              <Button 
+                onClick={() => handleUpdateStatus('quoted')} 
+                disabled={isUpdating} 
+                className="bg-[#111111] hover:bg-[#242424] text-white h-9 px-4 rounded-md text-xs font-semibold transition-colors border border-transparent shadow-none"
+              >
+                <RefreshCw className={`h-3.5 w-3.5 mr-2 text-white ${isUpdating ? 'animate-spin' : ''}`} />
                 Tandai sbg Quoted
               </Button>
             )}
             {(request.status === 'pending' || request.status === 'quoted') && (
-              <Button onClick={() => handleUpdateStatus('invoiced')} disabled={isUpdating} className="bg-green-600 hover:bg-green-700 text-white">
-                <FileText className={`h-4 w-4 mr-2 ${isUpdating ? 'animate-spin' : ''}`} />
+              <Button 
+                onClick={() => handleUpdateStatus('invoiced')} 
+                disabled={isUpdating} 
+                className="bg-[#111111] hover:bg-[#242424] text-white h-9 px-4 rounded-md text-xs font-semibold transition-colors border border-transparent shadow-none"
+              >
+                <FileText className={`h-3.5 w-3.5 mr-2 text-white ${isUpdating ? 'animate-spin' : ''}`} />
                 Terbitkan Invoice Resmi
               </Button>
             )}
@@ -191,9 +212,19 @@ Silakan hubungi kami jika ada penyesuaian yang ingin dilakukan.`
         </div>
 
         <Tabs defaultValue="overview" className="w-full">
-          <TabsList className="mb-4">
-            <TabsTrigger value="overview">Overview & Rincian</TabsTrigger>
-            <TabsTrigger value="billing">Billing & Pembayaran</TabsTrigger>
+          <TabsList className="bg-zinc-100 p-1 rounded-full border border-zinc-200/50 inline-flex mb-4">
+            <TabsTrigger 
+              value="overview"
+              className="px-4 py-1.5 rounded-full text-xs font-semibold text-zinc-500 data-[state=active]:bg-white data-[state=active]:text-zinc-950 data-[state=active]:shadow-sm transition-all"
+            >
+              Overview & Rincian
+            </TabsTrigger>
+            <TabsTrigger 
+              value="billing"
+              className="px-4 py-1.5 rounded-full text-xs font-semibold text-zinc-500 data-[state=active]:bg-white data-[state=active]:text-zinc-950 data-[state=active]:shadow-sm transition-all"
+            >
+              Billing & Pembayaran
+            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="overview">
@@ -202,157 +233,157 @@ Silakan hubungi kami jika ada penyesuaian yang ingin dilakukan.`
               {/* Kolom Kiri: Informasi Data */}
               <div className="md:col-span-2 space-y-6">
 
-                <Card>
-                  <CardHeader className="bg-gray-50 border-b">
-                    <CardTitle className="text-lg flex items-center">
-                      <Users className="w-5 h-5 mr-2" /> Info Pemesan
+                <Card className="border border-[#e5e7eb] rounded-xl bg-white shadow-none overflow-hidden">
+                  <CardHeader className="bg-zinc-50/50 border-b border-[#e5e7eb] px-6 py-4">
+                    <CardTitle className="text-sm font-bold text-zinc-900 flex items-center tracking-tight">
+                      <Users className="w-4 h-4 mr-2 text-zinc-500" /> Info Pemesan
                     </CardTitle>
                   </CardHeader>
-                  <CardContent className="pt-4 grid grid-cols-2 gap-4">
+                  <CardContent className="p-6 grid grid-cols-1 sm:grid-cols-2 gap-6">
                     <div>
-                      <p className="text-sm text-gray-500">Nama PIC</p>
-                      <p className="font-semibold">{request.customerName}</p>
+                      <p className="text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-1">Nama PIC</p>
+                      <p className="font-semibold text-zinc-900 text-sm">{request.customerName}</p>
                     </div>
                     <div>
-                      <p className="text-sm text-gray-500">No. Telepon / WA</p>
-                      <p className="font-semibold">{request.customerPhone || '-'}</p>
+                      <p className="text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-1">No. Telepon / WA</p>
+                      <p className="font-semibold text-zinc-900 text-sm">{request.customerPhone || '-'}</p>
                     </div>
                     <div>
-                      <p className="text-sm text-gray-500">Email</p>
-                      <p className="font-semibold">{request.customerEmail || '-'}</p>
+                      <p className="text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-1">Email</p>
+                      <p className="font-semibold text-zinc-900 text-sm">{request.customerEmail || '-'}</p>
                     </div>
                     <div>
-                      <p className="text-sm text-gray-500">Nama Travel</p>
-                      <p className="font-semibold">{request.travelName || '-'}</p>
+                      <p className="text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-1">Nama Travel</p>
+                      <p className="font-semibold text-zinc-900 text-sm">{request.travelName || '-'}</p>
                     </div>
                     <div>
-                      <p className="text-sm text-gray-500">Total Jamaah</p>
-                      <p className="font-semibold">{totals.totalPax || request.totalPax || 0} Pax</p>
+                      <p className="text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-1">Total Jamaah</p>
+                      <p className="font-semibold text-zinc-900 text-sm">{totals.totalPax || request.totalPax || 0} Pax</p>
                     </div>
                     <div>
-                      <p className="text-sm text-gray-500">Durasi Malam</p>
-                      <p className="font-semibold">{totals.totalMalam || (makkahNights + madinahNights)} Malam</p>
+                      <p className="text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-1">Durasi Malam</p>
+                      <p className="font-semibold text-zinc-900 text-sm">{totals.totalMalam || (makkahNights + madinahNights)} Malam</p>
                     </div>
                   </CardContent>
                 </Card>
 
-                <Card>
-                  <CardHeader className="bg-amber-50 border-b border-amber-100">
-                    <CardTitle className="text-lg flex items-center text-amber-900">
-                      <Building className="w-5 h-5 mr-2" /> Jadwal & Hotel
+                <Card className="border border-[#e5e7eb] rounded-xl bg-white shadow-none overflow-hidden">
+                  <CardHeader className="bg-zinc-50/50 border-b border-[#e5e7eb] px-6 py-4">
+                    <CardTitle className="text-sm font-bold text-zinc-900 flex items-center tracking-tight">
+                      <Building className="w-4 h-4 mr-2 text-zinc-500" /> Jadwal & Hotel
                     </CardTitle>
                   </CardHeader>
-                  <CardContent className="pt-4 space-y-6">
-                    <div className="grid grid-cols-2 gap-4">
+                  <CardContent className="p-6 space-y-6">
+                    <div className="grid grid-cols-2 gap-6">
                       <div>
-                        <p className="text-sm text-gray-500">Kedatangan</p>
-                        <p className="font-semibold">{meta.tanggalKedatangan || '-'}</p>
+                        <p className="text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-1">Kedatangan</p>
+                        <p className="font-semibold text-zinc-900 text-sm">{meta.tanggalKedatangan || '-'}</p>
                       </div>
                       <div>
-                        <p className="text-sm text-gray-500">Keberangkatan</p>
-                        <p className="font-semibold">{meta.tanggalKeberangkatan || '-'}</p>
+                        <p className="text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-1">Keberangkatan</p>
+                        <p className="font-semibold text-zinc-900 text-sm">{meta.tanggalKeberangkatan || '-'}</p>
                       </div>
                     </div>
 
-                    <div className="border-t pt-4">
-                      <div className="flex justify-between items-center mb-2">
-                        <p className="font-semibold">Hotel Makkah ({makkahNights} Malam)</p>
-                        <p className="font-bold text-amber-700">{formatCurrency(totals.makkahHotelTotal || 0, 'SAR')}</p>
+                    <div className="border-t border-[#e5e7eb] pt-6">
+                      <div className="flex justify-between items-center mb-4">
+                        <p className="font-bold text-sm text-zinc-900">Hotel Makkah ({makkahNights} Malam)</p>
+                        <p className="font-bold text-zinc-950 text-sm">{formatCurrency(totals.makkahHotelTotal || 0, 'SAR')}</p>
                       </div>
 
                       {makkahNights > 0 ? (
                         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
-                          <div className="bg-gray-50 p-2 rounded-md">
-                            <p className="text-xs text-gray-500">Single ({meta.rooms?.makkah?.singleQty || 0} Kamar)</p>
-                            <p className="font-semibold">{formatCurrency(meta.rooms?.makkah?.singlePrice || 0, 'SAR')} / mlm</p>
+                          <div className="bg-zinc-50/50 border border-zinc-150 p-3 rounded-lg">
+                            <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider">Single ({meta.rooms?.makkah?.singleQty || 0} Kamar)</p>
+                            <p className="font-bold text-zinc-900 mt-1 text-sm">{formatCurrency(meta.rooms?.makkah?.singlePrice || 0, 'SAR')} <span className="text-[10px] font-normal text-zinc-500">/mlm</span></p>
                           </div>
-                          <div className="bg-gray-50 p-2 rounded-md">
-                            <p className="text-xs text-gray-500">Double ({meta.rooms?.makkah?.doubleQty || 0} Kamar)</p>
-                            <p className="font-semibold">{formatCurrency(meta.rooms?.makkah?.doublePrice || 0, 'SAR')} / mlm</p>
+                          <div className="bg-zinc-50/50 border border-zinc-150 p-3 rounded-lg">
+                            <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider">Double ({meta.rooms?.makkah?.doubleQty || 0} Kamar)</p>
+                            <p className="font-bold text-zinc-900 mt-1 text-sm">{formatCurrency(meta.rooms?.makkah?.doublePrice || 0, 'SAR')} <span className="text-[10px] font-normal text-zinc-500">/mlm</span></p>
                           </div>
-                          <div className="bg-gray-50 p-2 rounded-md">
-                            <p className="text-xs text-gray-500">Triple ({meta.rooms?.makkah?.tripleQty || 0} Kamar)</p>
-                            <p className="font-semibold">{formatCurrency(meta.rooms?.makkah?.triplePrice || 0, 'SAR')} / mlm</p>
+                          <div className="bg-zinc-50/50 border border-zinc-150 p-3 rounded-lg">
+                            <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider">Triple ({meta.rooms?.makkah?.tripleQty || 0} Kamar)</p>
+                            <p className="font-bold text-zinc-900 mt-1 text-sm">{formatCurrency(meta.rooms?.makkah?.triplePrice || 0, 'SAR')} <span className="text-[10px] font-normal text-zinc-500">/mlm</span></p>
                           </div>
-                          <div className="bg-gray-50 p-2 rounded-md">
-                            <p className="text-xs text-gray-500">Quad ({meta.rooms?.makkah?.quadQty || 0} Kamar)</p>
-                            <p className="font-semibold">{formatCurrency(meta.rooms?.makkah?.quadPrice || 0, 'SAR')} / mlm</p>
+                          <div className="bg-zinc-50/50 border border-zinc-150 p-3 rounded-lg">
+                            <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider">Quad ({meta.rooms?.makkah?.quadQty || 0} Kamar)</p>
+                            <p className="font-bold text-zinc-900 mt-1 text-sm">{formatCurrency(meta.rooms?.makkah?.quadPrice || 0, 'SAR')} <span className="text-[10px] font-normal text-zinc-500">/mlm</span></p>
                           </div>
                         </div>
                       ) : (
-                        <p className="text-sm text-gray-500 italic">Tidak ada pemesanan Hotel Makkah.</p>
+                        <p className="text-xs text-zinc-400 italic">Tidak ada pemesanan Hotel Makkah.</p>
                       )}
                     </div>
 
-                    <div className="border-t pt-4">
-                      <div className="flex justify-between items-center mb-2">
-                        <p className="font-semibold">Hotel Madinah ({madinahNights} Malam)</p>
-                        <p className="font-bold text-amber-700">{formatCurrency(totals.madinahHotelTotal || 0, 'SAR')}</p>
+                    <div className="border-t border-[#e5e7eb] pt-6">
+                      <div className="flex justify-between items-center mb-4">
+                        <p className="font-bold text-sm text-zinc-900">Hotel Madinah ({madinahNights} Malam)</p>
+                        <p className="font-bold text-zinc-950 text-sm">{formatCurrency(totals.madinahHotelTotal || 0, 'SAR')}</p>
                       </div>
 
                       {madinahNights > 0 ? (
                         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
-                          <div className="bg-gray-50 p-2 rounded-md">
-                            <p className="text-xs text-gray-500">Single ({meta.rooms?.madinah?.singleQty || 0} Kamar)</p>
-                            <p className="font-semibold">{formatCurrency(meta.rooms?.madinah?.singlePrice || 0, 'SAR')} / mlm</p>
+                          <div className="bg-zinc-50/50 border border-zinc-150 p-3 rounded-lg">
+                            <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider">Single ({meta.rooms?.madinah?.singleQty || 0} Kamar)</p>
+                            <p className="font-bold text-zinc-900 mt-1 text-sm">{formatCurrency(meta.rooms?.madinah?.singlePrice || 0, 'SAR')} <span className="text-[10px] font-normal text-zinc-500">/mlm</span></p>
                           </div>
-                          <div className="bg-gray-50 p-2 rounded-md">
-                            <p className="text-xs text-gray-500">Double ({meta.rooms?.madinah?.doubleQty || 0} Kamar)</p>
-                            <p className="font-semibold">{formatCurrency(meta.rooms?.madinah?.doublePrice || 0, 'SAR')} / mlm</p>
+                          <div className="bg-zinc-50/50 border border-zinc-150 p-3 rounded-lg">
+                            <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider">Double ({meta.rooms?.madinah?.doubleQty || 0} Kamar)</p>
+                            <p className="font-bold text-zinc-900 mt-1 text-sm">{formatCurrency(meta.rooms?.madinah?.doublePrice || 0, 'SAR')} <span className="text-[10px] font-normal text-zinc-500">/mlm</span></p>
                           </div>
-                          <div className="bg-gray-50 p-2 rounded-md">
-                            <p className="text-xs text-gray-500">Triple ({meta.rooms?.madinah?.tripleQty || 0} Kamar)</p>
-                            <p className="font-semibold">{formatCurrency(meta.rooms?.madinah?.triplePrice || 0, 'SAR')} / mlm</p>
+                          <div className="bg-zinc-50/50 border border-zinc-150 p-3 rounded-lg">
+                            <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider">Triple ({meta.rooms?.madinah?.tripleQty || 0} Kamar)</p>
+                            <p className="font-bold text-zinc-900 mt-1 text-sm">{formatCurrency(meta.rooms?.madinah?.triplePrice || 0, 'SAR')} <span className="text-[10px] font-normal text-zinc-500">/mlm</span></p>
                           </div>
-                          <div className="bg-gray-50 p-2 rounded-md">
-                            <p className="text-xs text-gray-500">Quad ({meta.rooms?.madinah?.quadQty || 0} Kamar)</p>
-                            <p className="font-semibold">{formatCurrency(meta.rooms?.madinah?.quadPrice || 0, 'SAR')} / mlm</p>
+                          <div className="bg-zinc-50/50 border border-zinc-150 p-3 rounded-lg">
+                            <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider">Quad ({meta.rooms?.madinah?.quadQty || 0} Kamar)</p>
+                            <p className="font-bold text-zinc-900 mt-1 text-sm">{formatCurrency(meta.rooms?.madinah?.quadPrice || 0, 'SAR')} <span className="text-[10px] font-normal text-zinc-500">/mlm</span></p>
                           </div>
                         </div>
                       ) : (
-                        <p className="text-sm text-gray-500 italic">Tidak ada pemesanan Hotel Madinah.</p>
+                        <p className="text-xs text-zinc-400 italic">Tidak ada pemesanan Hotel Madinah.</p>
                       )}
                     </div>
                   </CardContent>
                 </Card>
 
-                <Card>
-                  <CardHeader className="bg-blue-50 border-b border-blue-100">
-                    <CardTitle className="text-lg flex items-center text-blue-900">
-                      <Plane className="w-5 h-5 mr-2" /> Transportasi
+                <Card className="border border-[#e5e7eb] rounded-xl bg-white shadow-none overflow-hidden">
+                  <CardHeader className="bg-zinc-50/50 border-b border-[#e5e7eb] px-6 py-4">
+                    <CardTitle className="text-sm font-bold text-zinc-900 flex items-center tracking-tight">
+                      <Plane className="w-4 h-4 mr-2 text-zinc-500" /> Transportasi
                     </CardTitle>
                   </CardHeader>
-                  <CardContent className="pt-4">
+                  <CardContent className="p-6 space-y-4">
                     <div className="flex justify-between items-center">
                       <div>
-                        <p className="font-medium">Total Transportasi</p>
-                        <p className="text-sm text-gray-500">Sesuai pengaturan rute / bus (Fixed)</p>
+                        <p className="font-bold text-zinc-900 text-sm">Total Transportasi</p>
+                        <p className="text-xs text-zinc-500 mt-0.5">Sesuai pengaturan rute / bus (Fixed)</p>
                       </div>
                       <div className="text-right">
-                        <p className="font-semibold">{formatCurrency(totals.totalTransport || 0, 'SAR')}</p>
+                        <p className="font-bold text-zinc-950 text-sm">{formatCurrency(totals.totalTransport || 0, 'SAR')}</p>
                       </div>
                     </div>
                     {meta.handlingDetails?.keretaCepat > 0 && (
-                      <div className="flex justify-between items-center mt-2 pt-2 border-t">
+                      <div className="flex justify-between items-center mt-2 pt-4 border-t border-zinc-150">
                         <div>
-                          <p className="font-medium">Kereta Cepat</p>
-                          <p className="text-sm text-gray-500">Per Pax</p>
+                          <p className="font-semibold text-zinc-800 text-sm">Kereta Cepat</p>
+                          <p className="text-xs text-zinc-500 mt-0.5">Per Pax</p>
                         </div>
                         <div className="text-right">
-                          <p className="font-semibold">{formatCurrency(meta.handlingDetails.keretaCepat, 'SAR')}</p>
+                          <p className="font-bold text-zinc-900 text-sm">{formatCurrency(meta.handlingDetails.keretaCepat, 'SAR')}</p>
                         </div>
                       </div>
                     )}
                   </CardContent>
                 </Card>
 
-                <Card>
-                  <CardHeader className="bg-green-50 border-b border-green-100">
-                    <CardTitle className="text-lg flex items-center text-green-900">
-                      <Package className="w-5 h-5 mr-2" /> Layanan Tambahan (Handling)
+                <Card className="border border-[#e5e7eb] rounded-xl bg-white shadow-none overflow-hidden">
+                  <CardHeader className="bg-zinc-50/50 border-b border-[#e5e7eb] px-6 py-4">
+                    <CardTitle className="text-sm font-bold text-zinc-900 flex items-center tracking-tight">
+                      <Package className="w-4 h-4 mr-2 text-zinc-500" /> Layanan Tambahan (Handling)
                     </CardTitle>
                   </CardHeader>
-                  <CardContent className="pt-4 space-y-2">
+                  <CardContent className="p-6 space-y-3">
                     {Object.entries(meta.handlingDetails || {}).map(([key, value]) => {
                       // Filter out known legacy hardcoded keys to prevent them from showing up on old bookings
                       const legacyKeys = ['muthowifTourType', 'handlingAirport', 'handlingHotel', 'tiketMuseum', 'muthowif', 'muthowifahRaudhah', 'tipDriver', 'biayaTakTerduga'];
@@ -369,59 +400,78 @@ Silakan hubungi kami jika ada penyesuaian yang ingin dilakukan.`
                       }
 
                       return (
-                        <div key={key} className="flex justify-between items-center py-1 border-b last:border-b-0">
-                          <span className="text-gray-600">{label}</span>
-                          <span className="font-semibold">{formatCurrency(numVal, 'SAR')}</span>
+                        <div key={key} className="flex justify-between items-center py-2 border-b border-zinc-100 last:border-b-0">
+                          <span className="text-xs font-medium text-zinc-600 uppercase tracking-wider">{label}</span>
+                          <span className="font-bold text-zinc-900 text-sm">{formatCurrency(numVal, 'SAR')}</span>
                         </div>
                       );
                     })}
                     {totals.includeVisa && (
-                      <div className="flex justify-between items-center py-1 mt-2 border-t pt-2 border-gray-200">
-                        <span className="text-gray-600 font-medium">Total Layanan Tambahan</span>
-                        <span className="font-semibold">{formatCurrency(totals.visaTotal || 0, 'SAR')}</span>
+                      <div className="flex justify-between items-center py-2 mt-2 border-t pt-4 border-[#e5e7eb]">
+                        <span className="text-xs font-bold text-zinc-700 uppercase tracking-wider">Total Layanan Tambahan</span>
+                        <span className="font-bold text-zinc-900 text-sm">{formatCurrency(totals.visaTotal || 0, 'SAR')}</span>
                       </div>
                     )}
                   </CardContent>
                 </Card>
 
-                <Card>
-                  <CardHeader className="bg-emerald-50 border-b border-emerald-100">
+                <Card className="border border-[#e5e7eb] rounded-xl bg-white shadow-none overflow-hidden">
+                  <CardHeader className="bg-zinc-50/50 border-b border-[#e5e7eb] px-6 py-4">
                     <div className="flex items-center justify-between">
-                      <CardTitle className="text-lg flex items-center text-emerald-900">
-                        <Map className="w-5 h-5 mr-2" /> City Tour & Penugasan Muthowif
+                      <CardTitle className="text-sm font-bold text-zinc-900 flex items-center tracking-tight">
+                        <Map className="w-4 h-4 mr-2 text-zinc-500" /> City Tour & Penugasan Muthowif
                       </CardTitle>
-                      <Button variant="outline" size="sm" onClick={() => setIsAssignMuthowifOpen(true)}>
-                        <UserCheck className="mr-2 h-4 w-4" />
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        onClick={() => setIsAssignMuthowifOpen(true)}
+                        className="h-8 px-3 rounded-md text-xs font-semibold border-zinc-200 text-zinc-700 hover:bg-zinc-50 hover:text-black flex items-center transition-colors"
+                      >
+                        <UserCheck className="mr-1.5 h-3.5 w-3.5" />
                         Assign Muthowif Tour
                       </Button>
                     </div>
                   </CardHeader>
-                  <CardContent className="pt-4 space-y-4">
-                    <div className="bg-white p-3 rounded border text-sm text-gray-700">
+                  <CardContent className="p-6 space-y-6">
+                    <div className="bg-zinc-50/50 border border-zinc-200/60 p-4 rounded-lg text-xs font-medium text-zinc-600">
                       <strong>Jadwal City Tour:</strong> Muthowif akan ditugaskan untuk mengawal City Tour (Makkah, Madinah, Jeddah, Thaif, dll) sesuai kebutuhan rombongan.
                     </div>
 
-                    <div className="space-y-3">
+                    <div className="space-y-4">
                       {isAssignmentsLoading ? (
-                        <p className="text-gray-500 text-sm">Loading...</p>
+                        <p className="text-zinc-400 text-xs italic">Loading...</p>
                       ) : assignmentsData?.assignments && assignmentsData.assignments.length > 0 ? (
                         assignmentsData.assignments.map((assignment, idx) => (
-                          <div key={idx} className="bg-gray-50 p-4 rounded-lg flex flex-col md:flex-row md:items-center justify-between gap-4 border">
+                          <div key={idx} className="bg-white p-4 rounded-xl flex flex-col md:flex-row md:items-center justify-between gap-4 border border-[#e5e7eb]">
                             <div>
-                              <p className="font-semibold text-gray-900">{assignment.muthowif?.name} <Badge variant={assignment.status === 'active' ? 'default' : 'secondary'} className="ml-2">{assignment.status}</Badge></p>
-                              <p className="text-sm text-gray-500 mt-1">Visa: {assignment.muthowif?.visaStatus} | Tipe: {assignment.muthowif?.residentType}</p>
-                              <p className="text-sm text-gray-500">Tugas: {formatDate(assignment.startDate)} - {formatDate(assignment.endDate)}</p>
-                              {assignment.taskDescription && <p className="text-sm text-gray-600 mt-2 bg-white p-2 rounded border">Catatan Tour: {assignment.taskDescription}</p>}
+                              <p className="font-bold text-zinc-900 text-sm flex items-center">
+                                {assignment.muthowif?.name} 
+                                <Badge 
+                                  variant="outline" 
+                                  className={`ml-2 text-[9px] font-semibold uppercase px-1.5 py-0.5 rounded ${assignment.status === 'active' ? 'bg-emerald-50 text-emerald-700 border-emerald-200/50' : 'bg-zinc-50 text-zinc-500 border-zinc-200'}`}
+                                >
+                                  {assignment.status}
+                                </Badge>
+                              </p>
+                              <p className="text-xs text-zinc-500 mt-2">Visa: {assignment.muthowif?.visaStatus} | Tipe: {assignment.muthowif?.residentType}</p>
+                              <p className="text-xs text-zinc-500 mt-1">Tugas: {formatDate(assignment.startDate)} - {formatDate(assignment.endDate)}</p>
+                              {assignment.taskDescription && <p className="text-xs text-zinc-600 mt-3 bg-zinc-50 p-2.5 rounded-lg border border-zinc-200/50">Catatan Tour: {assignment.taskDescription}</p>}
                             </div>
                             {assignment.status === 'active' && (
-                              <Button variant="secondary" size="sm" onClick={() => handleCompleteTask(assignment.id)} disabled={completeTaskMutation.isPending}>
+                              <Button 
+                                variant="outline" 
+                                size="sm" 
+                                onClick={() => handleCompleteTask(assignment.id)} 
+                                disabled={completeTaskMutation.isPending}
+                                className="h-8 text-xs px-3 border-zinc-200 text-zinc-700 hover:bg-zinc-50"
+                              >
                                 {completeTaskMutation.isPending ? 'Memproses...' : 'Selesaikan Tugas'}
                               </Button>
                             )}
                           </div>
                         ))
                       ) : (
-                        <p className="text-gray-500 text-sm italic">Belum ada muthowif yang ditugaskan untuk City Tour rombongan ini.</p>
+                        <p className="text-zinc-400 text-xs italic text-center py-4">Belum ada muthowif yang ditugaskan untuk City Tour rombongan ini.</p>
                       )}
                     </div>
                   </CardContent>
@@ -431,123 +481,147 @@ Silakan hubungi kami jika ada penyesuaian yang ingin dilakukan.`
 
               {/* Kolom Kanan: Pricing Summary */}
               <div className="space-y-6">
-                <Card>
-                  <CardHeader className="bg-purple-50 border-b border-purple-100">
-                    <CardTitle className="text-lg flex items-center text-purple-900">
-                      <Package className="w-5 h-5 mr-2" /> Detail Layanan (Sub-Bookings)
+                <Card className="border border-[#e5e7eb] rounded-xl bg-white shadow-none overflow-hidden">
+                  <CardHeader className="bg-zinc-50/50 border-b border-[#e5e7eb] px-6 py-4">
+                    <CardTitle className="text-sm font-bold text-zinc-900 flex items-center tracking-tight">
+                      <Package className="w-4 h-4 mr-2 text-zinc-500" /> Detail Layanan (Sub-Bookings)
                     </CardTitle>
                   </CardHeader>
-                  <CardContent className="pt-4 space-y-3">
-                    <p className="text-sm text-gray-500 mb-2">Layanan berikut digenerate otomatis. Klik untuk mengelola spesifik.</p>
+                  <CardContent className="p-6 space-y-3">
+                    <p className="text-xs text-zinc-400 mb-4 italic">Layanan berikut digenerate otomatis. Klik untuk mengelola spesifik.</p>
 
                     {request.linkedBookings?.map((b) => (
-                      <div key={b.id} className="flex justify-between items-center p-3 border rounded-md hover:bg-gray-50">
+                      <div key={b.id} className="flex justify-between items-center p-3.5 border border-zinc-100 rounded-xl hover:bg-zinc-50 transition-colors">
                         <div>
-                          <p className="font-semibold">{b.hotelName} <Badge variant="outline">{b.city}</Badge></p>
-                          <p className="text-xs text-gray-500">Check-in: {formatDate(b.checkIn)}</p>
+                          <p className="font-bold text-zinc-900 text-xs">{b.hotelName}</p>
+                          <p className="text-[10px] text-zinc-500 mt-1 flex items-center gap-1.5">
+                            Check-in: {formatDate(b.checkIn)}
+                            <Badge variant="outline" className="text-[8px] font-bold py-0 px-1 bg-zinc-50 text-zinc-600 rounded">{b.city}</Badge>
+                          </p>
                         </div>
-                        <Button variant="outline" size="sm" onClick={() => navigate({ to: `/booking-view/${b.id}` })}>
+                        <Button 
+                          variant="ghost" 
+                          size="sm" 
+                          onClick={() => navigate({ to: `/booking-view/${b.id}` })}
+                          className="h-8 text-xs font-semibold px-2 hover:bg-zinc-100 text-zinc-700"
+                        >
                           Hotel ➔
                         </Button>
                       </div>
                     ))}
 
                     {request.linkedTransport?.map((t) => (
-                      <div key={t.id} className="flex justify-between items-center p-3 border rounded-md hover:bg-gray-50">
+                      <div key={t.id} className="flex justify-between items-center p-3.5 border border-zinc-100 rounded-xl hover:bg-zinc-50 transition-colors">
                         <div>
-                          <p className="font-semibold">Transportasi <Badge variant="outline">{t.status}</Badge></p>
-                          <p className="text-xs text-gray-500">{t.number}</p>
+                          <p className="font-bold text-zinc-900 text-xs">Transportasi</p>
+                          <p className="text-[10px] text-zinc-500 mt-1 flex items-center gap-1.5">
+                            {t.number}
+                            <Badge variant="outline" className="text-[8px] font-bold py-0 px-1 bg-zinc-50 text-zinc-600 rounded capitalize">{t.status}</Badge>
+                          </p>
                         </div>
-                        <Button variant="outline" size="sm" onClick={() => navigate({ to: `/transportation-booking-detail/${t.id}` })}>
+                        <Button 
+                          variant="ghost" 
+                          size="sm" 
+                          onClick={() => navigate({ to: `/transportation-booking-detail/${t.id}` })}
+                          className="h-8 text-xs font-semibold px-2 hover:bg-zinc-100 text-zinc-700"
+                        >
                           Transport ➔
                         </Button>
                       </div>
                     ))}
 
                     {request.linkedServiceOrders?.map((so) => (
-                      <div key={so.id} className="flex justify-between items-center p-3 border rounded-md hover:bg-gray-50">
+                      <div key={so.id} className="flex justify-between items-center p-3.5 border border-zinc-100 rounded-xl hover:bg-zinc-50 transition-colors">
                         <div>
-                          <p className="font-semibold">Visa <Badge variant="outline">{so.status}</Badge></p>
-                          <p className="text-xs text-gray-500">{so.number} • {so.totalPax} Pax</p>
+                          <p className="font-bold text-zinc-900 text-xs">Visa</p>
+                          <p className="text-[10px] text-zinc-500 mt-1 flex items-center gap-1.5">
+                            {so.number} • {so.totalPax} Pax
+                            <Badge variant="outline" className="text-[8px] font-bold py-0 px-1 bg-zinc-50 text-zinc-600 rounded capitalize">{so.status}</Badge>
+                          </p>
                         </div>
-                        <Button variant="outline" size="sm" onClick={() => navigate({ to: `/service-orders/${so.id}` })}>
+                        <Button 
+                          variant="ghost" 
+                          size="sm" 
+                          onClick={() => navigate({ to: `/service-orders/${so.id}` })}
+                          className="h-8 text-xs font-semibold px-2 hover:bg-zinc-100 text-zinc-700"
+                        >
                           Visa ➔
                         </Button>
                       </div>
                     ))}
 
                     {(!request.linkedBookings?.length && !request.linkedTransport?.length && !request.linkedServiceOrders?.length) && (
-                      <p className="text-sm text-gray-400 italic">Belum ada layanan yang terhubung.</p>
+                      <p className="text-xs text-zinc-400 italic text-center py-4">Belum ada layanan yang terhubung.</p>
                     )}
                   </CardContent>
                 </Card>
 
-                <Card className="border-amber-200 shadow-md">
-                  <CardHeader className="bg-amber-50 border-b border-amber-200">
-                    <CardTitle className="text-xl">Ringkasan Harga</CardTitle>
+                <Card className="border border-[#e5e7eb] rounded-xl bg-white shadow-none overflow-hidden">
+                  <CardHeader className="bg-zinc-50/50 border-b border-[#e5e7eb] px-6 py-4">
+                    <CardTitle className="text-sm font-bold text-zinc-900 tracking-tight">Ringkasan Harga</CardTitle>
                   </CardHeader>
-                  <CardContent className="pt-6 space-y-4">
+                  <CardContent className="p-6 space-y-4">
 
-                    <div className="flex justify-between items-center text-sm">
-                      <span className="text-gray-600">Total Jamaah</span>
-                      <span className="font-bold">{totals.totalPax || 0} Pax</span>
+                    <div className="flex justify-between items-center text-xs font-semibold text-zinc-600 uppercase tracking-wider">
+                      <span>Total Jamaah</span>
+                      <span className="font-bold text-zinc-900">{totals.totalPax || 0} Pax</span>
                     </div>
-                    <div className="flex justify-between items-center text-sm">
-                      <span className="text-gray-600">Total Hotel Makkah</span>
-                      <span className="font-semibold">{formatCurrency(totals.makkahHotelTotal || 0, 'SAR')}</span>
+                    <div className="flex justify-between items-center text-xs font-semibold text-zinc-600 uppercase tracking-wider">
+                      <span>Total Hotel Makkah</span>
+                      <span className="font-semibold text-zinc-900">{formatCurrency(totals.makkahHotelTotal || 0, 'SAR')}</span>
                     </div>
-                    <div className="flex justify-between items-center text-sm">
-                      <span className="text-gray-600">Total Hotel Madinah</span>
-                      <span className="font-semibold">{formatCurrency(totals.madinahHotelTotal || 0, 'SAR')}</span>
+                    <div className="flex justify-between items-center text-xs font-semibold text-zinc-600 uppercase tracking-wider">
+                      <span>Total Hotel Madinah</span>
+                      <span className="font-semibold text-zinc-900">{formatCurrency(totals.madinahHotelTotal || 0, 'SAR')}</span>
                     </div>
-                    <div className="flex justify-between items-center text-sm">
-                      <span className="text-gray-600">Total Transportasi</span>
-                      <span className="font-semibold">{formatCurrency(totals.totalTransport || 0, 'SAR')}</span>
+                    <div className="flex justify-between items-center text-xs font-semibold text-zinc-600 uppercase tracking-wider">
+                      <span>Total Transportasi</span>
+                      <span className="font-semibold text-zinc-900">{formatCurrency(totals.totalTransport || 0, 'SAR')}</span>
                     </div>
-                    <div className="flex justify-between items-center text-sm">
-                      <span className="text-gray-600">Layanan Tambahan</span>
-                      <span className="font-semibold">{formatCurrency((totals.subTotalHandling || 0) - (totals.totalTransport || 0), 'SAR')}</span>
+                    <div className="flex justify-between items-center text-xs font-semibold text-zinc-600 uppercase tracking-wider">
+                      <span>Layanan Tambahan</span>
+                      <span className="font-semibold text-zinc-900">{formatCurrency((totals.subTotalHandling || 0) - (totals.totalTransport || 0), 'SAR')}</span>
                     </div>
-                    <div className="flex justify-between items-center text-sm text-amber-600">
-                      <span className="font-semibold">Profit ({meta.profitType === 'percentage' ? `${meta.profitValue}%` : 'Fixed Amount'})</span>
-                      <span className="font-semibold">+{formatCurrency(totals.profit || 0, 'SAR')}</span>
+                    <div className="flex justify-between items-center text-xs font-bold text-[#b45309] uppercase tracking-wider">
+                      <span>Profit ({meta.profitType === 'percentage' ? `${meta.profitValue}%` : 'Fixed Amount'})</span>
+                      <span>+{formatCurrency(totals.profit || 0, 'SAR')}</span>
                     </div>
 
-                    <div className="pt-4 border-t mt-4">
-                      <div className="flex justify-between items-center mb-1">
-                        <span className="text-gray-800 font-bold">GRAND TOTAL</span>
+                    <div className="pt-4 border-t border-[#e5e7eb] mt-4">
+                      <div className="flex justify-between items-start mb-4">
+                        <span className="text-xs font-bold text-zinc-900 uppercase tracking-wider mt-1">GRAND TOTAL</span>
                         <div className="text-right">
-                          <span className="text-xl font-black text-amber-600 block">{formatCurrency(totals.grandTotal || 0, 'SAR')}</span>
+                          <span className="text-2xl font-bold text-[#111111] block tracking-tight">{formatCurrency(totals.grandTotal || 0, 'SAR')}</span>
                           {displayCurrency === 'IDR' && (
-                            <span className="text-sm font-bold text-gray-500">{formatCurrency((totals.grandTotal || 0) * Number(exchangeRate), 'IDR')}</span>
+                            <span className="text-xs font-semibold text-zinc-400">{formatCurrency((totals.grandTotal || 0) * Number(exchangeRate), 'IDR')}</span>
                           )}
                         </div>
                       </div>
 
-                      <div className="mt-3 space-y-1">
-                        <div className="flex justify-between text-xs text-gray-500">
+                      <div className="mt-3 space-y-3 pt-3 border-t border-zinc-100">
+                        <div className="flex justify-between text-[10px] font-bold text-zinc-400 uppercase tracking-wider">
                           <span>Sub-Total Non-Hotel / Pax</span>
                           <span>{formatCurrency(nonHotelPerPax, 'SAR')}</span>
                         </div>
                         <div className="flex justify-between items-center">
-                          <span className="text-gray-500 text-sm">Harga Per Pax (Double)</span>
+                          <span className="text-zinc-500 text-xs font-semibold uppercase tracking-wider">Pax (Double)</span>
                           <div className="text-right">
-                            <span className="text-sm font-bold text-green-600 block">{formatCurrency(priceDouble, 'SAR')}</span>
-                            {displayCurrency === 'IDR' && <span className="text-xs text-gray-500">{formatCurrency(priceDouble * Number(exchangeRate), 'IDR')}</span>}
+                            <span className="text-sm font-bold text-zinc-900 block">{formatCurrency(priceDouble, 'SAR')}</span>
+                            {displayCurrency === 'IDR' && <span className="text-[10px] text-zinc-400 font-semibold">{formatCurrency(priceDouble * Number(exchangeRate), 'IDR')}</span>}
                           </div>
                         </div>
                         <div className="flex justify-between items-center">
-                          <span className="text-gray-500 text-sm">Harga Per Pax (Triple)</span>
+                          <span className="text-zinc-500 text-xs font-semibold uppercase tracking-wider">Pax (Triple)</span>
                           <div className="text-right">
-                            <span className="text-sm font-bold text-green-600 block">{formatCurrency(priceTriple, 'SAR')}</span>
-                            {displayCurrency === 'IDR' && <span className="text-xs text-gray-500">{formatCurrency(priceTriple * Number(exchangeRate), 'IDR')}</span>}
+                            <span className="text-sm font-bold text-zinc-900 block">{formatCurrency(priceTriple, 'SAR')}</span>
+                            {displayCurrency === 'IDR' && <span className="text-[10px] text-zinc-400 font-semibold">{formatCurrency(priceTriple * Number(exchangeRate), 'IDR')}</span>}
                           </div>
                         </div>
                         <div className="flex justify-between items-center">
-                          <span className="text-gray-500 text-sm">Harga Per Pax (Quad)</span>
+                          <span className="text-zinc-500 text-xs font-semibold uppercase tracking-wider">Pax (Quad)</span>
                           <div className="text-right">
-                            <span className="text-sm font-bold text-green-600 block">{formatCurrency(priceQuad, 'SAR')}</span>
-                            {displayCurrency === 'IDR' && <span className="text-xs text-gray-500">{formatCurrency(priceQuad * Number(exchangeRate), 'IDR')}</span>}
+                            <span className="text-sm font-bold text-zinc-900 block">{formatCurrency(priceQuad, 'SAR')}</span>
+                            {displayCurrency === 'IDR' && <span className="text-[10px] text-zinc-400 font-semibold">{formatCurrency(priceQuad * Number(exchangeRate), 'IDR')}</span>}
                           </div>
                         </div>
                       </div>

@@ -191,25 +191,30 @@ function CreateVoucherPage() {
     return (
       <PageLayout
         title="Voucher Preview"
-        subtitle="Review voucher before creating"
+        subtitle="Review detail voucher hotel dan reservasi sebelum diterbitkan"
         actions={
-          <div className="flex space-x-3">
+          <div className="flex items-center space-x-2.5">
             <Button 
               variant="outline" 
               onClick={() => setShowPreview(false)}
+              className="h-9 px-4 border-[#e5e7eb] text-zinc-700 hover:bg-gray-50 hover:text-black flex items-center rounded-md font-semibold text-xs bg-white shadow-none"
             >
               <ArrowLeft className="h-4 w-4 mr-2" />
               Back to Edit
             </Button>
-            <Button onClick={handleSubmit} disabled={isLoading}>
+            <Button 
+              onClick={handleSubmit} 
+              disabled={isLoading}
+              className="bg-[#111111] hover:bg-[#242424] text-white h-9 px-4 rounded-md text-xs font-semibold transition-colors border border-transparent shadow-none"
+            >
               {isLoading ? (
                 <>
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  Creating...
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin text-white" />
+                  Menerbitkan...
                 </>
               ) : (
                 <>
-                  <Save className="h-4 w-4 mr-2" />
+                  <Save className="h-4 w-4 mr-2 text-white" />
                   Create Voucher
                 </>
               )}
@@ -217,134 +222,139 @@ function CreateVoucherPage() {
           </div>
         }
       >
-        {/* Voucher Preview */}
-        <div className="max-w-4xl mx-auto">
-          <Card className="p-8 bg-gradient-to-br from-blue-50 to-indigo-100 border-2 border-blue-200">
-            {/* Header */}
-            <div className="text-center mb-8">
-              <div className="flex items-center justify-center mb-4">
-                <div className="bg-blue-600 p-3 rounded-full">
-                  <Ticket className="h-8 w-8 text-white" />
-                </div>
-              </div>
-              <h1 className="text-3xl font-bold text-gray-900 mb-2">Travel Voucher</h1>
-              <p className="text-lg text-gray-600">{formData.voucherNumber}</p>
-              <Badge className="mt-2 bg-green-100 text-green-800 border-green-200">
-                {formData.status.toUpperCase()}
-              </Badge>
-            </div>
+        {/* Voucher Boarding-Pass Preview */}
+        <div className="max-w-2xl mx-auto">
+          <div className="bg-[#111111] border border-zinc-800 rounded-2xl shadow-xl p-8 text-white relative overflow-hidden">
+            {/* Ambient Background Circles */}
+            <div className="absolute top-0 right-0 w-48 h-48 bg-zinc-800/10 rounded-full blur-2xl -mr-16 -mt-16 pointer-events-none" />
+            <div className="absolute bottom-0 left-0 w-48 h-48 bg-zinc-800/10 rounded-full blur-2xl -ml-16 -mb-16 pointer-events-none" />
 
-            {/* Guest Information */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
-              <div className="bg-white rounded-lg p-6 shadow-sm">
-                <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
-                  <Users className="h-5 w-5 mr-2 text-blue-600" />
-                  Guest Information
-                </h3>
-                <div className="space-y-3">
-                  <div>
-                    <p className="text-sm text-gray-600">Name</p>
-                    <p className="font-medium text-gray-900">{formData.guestName}</p>
-                  </div>
-                  <div>
-                    <p className="text-sm text-gray-600">Email</p>
-                    <p className="font-medium text-gray-900">{formData.guestEmail}</p>
-                  </div>
-                  <div>
-                    <p className="text-sm text-gray-600">Booking Code</p>
-                    <p className="font-medium text-gray-900">{formData.bookingCode}</p>
-                  </div>
-                </div>
-              </div>
-
-              <div className="bg-white rounded-lg p-6 shadow-sm">
-                <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
-                  <MapPin className="h-5 w-5 mr-2 text-blue-600" />
-                  Trip Details
-                </h3>
-                <div className="space-y-3">
-                  <div>
-                    <p className="text-sm text-gray-600">Package</p>
-                    <p className="font-medium text-gray-900">{formData.packageName}</p>
-                  </div>
-                  <div>
-                    <p className="text-sm text-gray-600">Destination</p>
-                    <p className="font-medium text-gray-900">{formData.destination}</p>
-                  </div>
-                  <div>
-                    <p className="text-sm text-gray-600">Duration</p>
-                    <p className="font-medium text-gray-900">{calculateDays()} days</p>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Travel Dates */}
-            <div className="bg-white rounded-lg p-6 shadow-sm mb-8">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
-                <Calendar className="h-5 w-5 mr-2 text-blue-600" />
-                Travel Dates
-              </h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {/* Top Brand Header */}
+            <div className="flex justify-between items-start border-b border-zinc-800/80 pb-6 mb-6">
+              <div className="flex items-center space-x-3">
+                <Ticket className="h-5 w-5 text-zinc-400" />
                 <div>
-                  <p className="text-sm text-gray-600">Check-in Date</p>
-                  <p className="text-xl font-semibold text-gray-900">
-                    {formatDate(formData.checkInDate)}
-                  </p>
+                  <h1 className="text-xs font-bold uppercase tracking-[0.2em] text-zinc-400">Musafirin Travel</h1>
+                  <h2 className="text-lg font-extrabold tracking-tight text-white mt-0.5">Hotel Reservation Voucher</h2>
                 </div>
-                <div>
-                  <p className="text-sm text-gray-600">Check-out Date</p>
-                  <p className="text-xl font-semibold text-gray-900">
-                    {formatDate(formData.checkOutDate)}
-                  </p>
+              </div>
+              <div className="text-right">
+                <span className="block text-[9px] font-bold text-zinc-400 uppercase tracking-wider mb-1">Voucher Status</span>
+                <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[9px] font-bold border border-emerald-500/20 bg-emerald-500/10 text-emerald-400 uppercase">
+                  {formData.status}
+                </span>
+              </div>
+            </div>
+
+            {/* Voucher Number Tagline */}
+            <div className="flex justify-between items-center bg-zinc-900 border border-zinc-800/60 rounded-xl px-4 py-3 mb-6">
+              <div>
+                <span className="block text-[9px] font-bold text-zinc-500 uppercase tracking-wider">Voucher Number</span>
+                <span className="text-sm font-mono font-bold text-white mt-0.5">{formData.voucherNumber}</span>
+              </div>
+              <div className="text-right">
+                <span className="block text-[9px] font-bold text-zinc-500 uppercase tracking-wider">Booking Reference</span>
+                <span className="text-sm font-mono font-bold text-white mt-0.5">{formData.bookingCode}</span>
+              </div>
+            </div>
+
+            {/* Guest & Trip Grid */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+              <div className="bg-zinc-900 border border-zinc-800/60 rounded-xl p-4">
+                <span className="block text-[9px] font-bold text-zinc-500 uppercase tracking-wider mb-2">Guest Specifications</span>
+                <div className="space-y-2">
+                  <div>
+                    <span className="block text-[8px] font-bold text-zinc-500 uppercase tracking-wider">Guest Name</span>
+                    <p className="text-xs font-bold text-white">{formData.guestName}</p>
+                  </div>
+                  <div>
+                    <span className="block text-[8px] font-bold text-zinc-500 uppercase tracking-wider">Email Address</span>
+                    <p className="text-xs font-semibold text-zinc-300">{formData.guestEmail}</p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="bg-zinc-900 border border-zinc-800/60 rounded-xl p-4">
+                <span className="block text-[9px] font-bold text-zinc-500 uppercase tracking-wider mb-2">Package Details</span>
+                <div className="space-y-2">
+                  <div>
+                    <span className="block text-[8px] font-bold text-zinc-500 uppercase tracking-wider">Package Name</span>
+                    <p className="text-xs font-bold text-white">{formData.packageName}</p>
+                  </div>
+                  <div>
+                    <span className="block text-[8px] font-bold text-zinc-500 uppercase tracking-wider">Destination</span>
+                    <p className="text-xs font-bold text-white">{formData.destination}</p>
+                  </div>
                 </div>
               </div>
             </div>
 
-            {/* Pricing */}
-            <div className="bg-white rounded-lg p-6 shadow-sm mb-8">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
-                <SARCurrency amount="" iconSize={20} className="mr-2 text-blue-600" showSymbol={true} />
-                Pricing
-              </h3>
-              <div className="text-center">
-                <p className="text-sm text-gray-600 mb-2">Total Amount</p>
-                <p className="text-4xl font-bold text-blue-600">
+            {/* Travel Dates Block */}
+            <div className="bg-zinc-900 border border-zinc-800/60 rounded-xl p-4 mb-6">
+              <span className="block text-[9px] font-bold text-zinc-500 uppercase tracking-wider mb-3">Travel Accommodation Schedule</span>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <span className="block text-[8px] font-bold text-zinc-500 uppercase tracking-wider">Check-In Date</span>
+                  <p className="text-sm font-bold text-white mt-0.5">{formatDate(formData.checkInDate)}</p>
+                </div>
+                <div>
+                  <span className="block text-[8px] font-bold text-zinc-500 uppercase tracking-wider">Check-Out Date</span>
+                  <p className="text-sm font-bold text-white mt-0.5">{formatDate(formData.checkOutDate)}</p>
+                </div>
+              </div>
+              <div className="border-t border-zinc-800/80 pt-3 mt-3 flex justify-between items-center">
+                <span className="text-[9px] font-bold text-zinc-400 uppercase tracking-wider">Duration of Stay</span>
+                <span className="text-xs font-extrabold text-white bg-zinc-850 px-2.5 py-0.5 rounded border border-zinc-700/50">{calculateDays()} Nights</span>
+              </div>
+            </div>
+
+            {/* Dashed Separator Tear-off Coupon */}
+            <div className="relative my-6 -mx-8">
+              <div className="absolute left-0 top-1/2 -translate-y-1/2 w-4 h-8 bg-[#ffffff] rounded-r-full border-r border-[#e5e7eb]" />
+              <div className="absolute right-0 top-1/2 -translate-y-1/2 w-4 h-8 bg-[#ffffff] rounded-l-full border-l border-[#e5e7eb]" />
+              <div className="border-t border-dashed border-zinc-700/80 w-full" />
+            </div>
+
+            {/* Coupon Section (Validity & Price) */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="space-y-3 bg-zinc-900 border border-zinc-800/60 rounded-xl p-4">
+                <span className="block text-[9px] font-bold text-zinc-500 uppercase tracking-wider mb-1">Validity Specifications</span>
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <span className="block text-[8px] font-bold text-zinc-500 uppercase tracking-wider">Issue Date</span>
+                    <p className="text-[11px] font-bold text-white mt-0.5">{formatDate(formData.issueDate)}</p>
+                  </div>
+                  <div>
+                    <span className="block text-[8px] font-bold text-zinc-500 uppercase tracking-wider">Valid Until</span>
+                    <p className="text-[11px] font-bold text-white mt-0.5">{formatDate(formData.validUntil)}</p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="bg-zinc-900 border border-zinc-800/60 rounded-xl p-4 flex flex-col justify-center items-center text-center">
+                <span className="block text-[9px] font-bold text-zinc-500 uppercase tracking-wider mb-1">Total Valuation</span>
+                <p className="text-2xl font-extrabold text-white tracking-tight">
                   {formatCurrency(formData.totalAmount, formData.currency)}
                 </p>
-              </div>
-            </div>
-
-            {/* Validity */}
-            <div className="bg-white rounded-lg p-6 shadow-sm mb-8">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">Validity</h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                  <p className="text-sm text-gray-600">Issue Date</p>
-                  <p className="font-medium text-gray-900">{formatDate(formData.issueDate)}</p>
-                </div>
-                <div>
-                  <p className="text-sm text-gray-600">Valid Until</p>
-                  <p className="font-medium text-gray-900">{formatDate(formData.validUntil)}</p>
-                </div>
+                <span className="block text-[8px] font-semibold text-zinc-400 uppercase tracking-wider mt-0.5">Semua Layanan Sudah Termasuk</span>
               </div>
             </div>
 
             {/* Notes */}
             {formData.notes && (
-              <div className="bg-white rounded-lg p-6 shadow-sm">
-                <h3 className="text-lg font-semibold text-gray-900 mb-4">Notes</h3>
-                <p className="text-gray-700">{formData.notes}</p>
+              <div className="bg-zinc-900 border border-zinc-800/60 rounded-xl p-4 mt-4">
+                <span className="block text-[9px] font-bold text-zinc-500 uppercase tracking-wider mb-1.5">Special Instructions / Notes</span>
+                <p className="text-xs font-semibold text-zinc-300 leading-relaxed">{formData.notes}</p>
               </div>
             )}
 
-            {/* Footer */}
-            <div className="text-center mt-8 pt-6 border-t border-gray-200">
-              <p className="text-sm text-gray-600">
-                This voucher is valid for the specified travel dates and must be presented during check-in.
+            {/* Footer Rules */}
+            <div className="text-center mt-6 pt-4 border-t border-zinc-800">
+              <p className="text-[9px] font-bold text-zinc-500 uppercase tracking-wider">
+                Voucher ini sah dan wajib ditunjukkan kepada resepsionis hotel saat check-in.
               </p>
             </div>
-          </Card>
+          </div>
         </div>
       </PageLayout>
     )
@@ -353,12 +363,13 @@ function CreateVoucherPage() {
   return (
     <PageLayout
       title="Create Voucher"
-      subtitle="Generate a new travel voucher"
+      subtitle="Terbitkan voucher baru untuk reservasi hotel dan perjalanan"
       actions={
-        <div className="flex space-x-3">
+        <div className="flex items-center space-x-2.5">
           <Button 
             variant="outline" 
             onClick={() => navigate({ to: "/vouchers" })}
+            className="h-9 px-4 border-[#e5e7eb] text-zinc-700 hover:bg-gray-50 hover:text-black flex items-center rounded-md font-semibold text-xs bg-white shadow-none"
           >
             <ArrowLeft className="h-4 w-4 mr-2" />
             Back
@@ -366,19 +377,24 @@ function CreateVoucherPage() {
           <Button 
             variant="outline" 
             onClick={handlePreview}
+            className="h-9 px-4 border-[#e5e7eb] text-zinc-700 hover:bg-gray-50 hover:text-black flex items-center rounded-md font-semibold text-xs bg-white shadow-none"
           >
             <Eye className="h-4 w-4 mr-2" />
             Preview
           </Button>
-          <Button onClick={handleSubmit} disabled={isLoading}>
+          <Button 
+            onClick={handleSubmit} 
+            disabled={isLoading}
+            className="bg-[#111111] hover:bg-[#242424] text-white h-9 px-4 rounded-md text-xs font-semibold transition-colors border border-transparent shadow-none"
+          >
             {isLoading ? (
               <>
-                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                Creating...
+                <Loader2 className="h-4 w-4 mr-2 animate-spin text-white" />
+                Menerbitkan...
               </>
             ) : (
               <>
-                <Save className="h-4 w-4 mr-2" />
+                <Save className="h-4 w-4 mr-2 text-white" />
                 Create Voucher
               </>
             )}
@@ -386,60 +402,72 @@ function CreateVoucherPage() {
         </div>
       }
     >
-      <form onSubmit={handleSubmit} className="max-w-4xl mx-auto space-y-8">
+      <form onSubmit={handleSubmit} className="max-w-xl mx-auto space-y-6">
         {/* Basic Information */}
-        <Card className="p-6">
-          <h3 className="text-lg font-semibold text-gray-900 mb-6">Basic Information</h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="border border-[#e5e7eb] rounded-xl bg-white shadow-none p-6">
+          <div className="flex items-center space-x-3 mb-6 pb-4 border-b border-zinc-100">
+            <Ticket className="h-5 w-5 text-zinc-500" />
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <h3 className="text-sm font-bold text-[#111111] uppercase tracking-wider">Basic Information</h3>
+              <p className="text-[10px] font-semibold text-zinc-400 uppercase tracking-wider mt-0.5">Nomor voucher dan tanggal terbit</p>
+            </div>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-1.5">
+              <label className="block text-[10px] font-bold text-zinc-400 uppercase tracking-wider">
                 Voucher Number
               </label>
               <Input
                 value={formData.voucherNumber}
                 onChange={(e) => handleInputChange('voucherNumber', e.target.value)}
-                placeholder="VCH-2024-001"
+                placeholder="VCH-2026-001"
                 disabled
-                className="bg-gray-50"
+                className="h-10 border-[#e5e7eb] rounded-lg bg-zinc-50/80 text-sm font-medium text-zinc-400 shadow-none w-full cursor-not-allowed border-dashed"
               />
             </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Issue Date
+            <div className="space-y-1.5">
+              <label className="block text-[10px] font-bold text-zinc-400 uppercase tracking-wider">
+                Issue Date *
               </label>
               <Input
                 type="date"
                 value={formData.issueDate}
                 onChange={(e) => handleInputChange('issueDate', e.target.value)}
-                className={errors.issueDate ? "border-red-500" : ""}
+                className={`h-10 border-[#e5e7eb] rounded-lg bg-white text-sm font-medium text-zinc-950 focus:border-[#111111] focus:ring-1 focus:ring-[#111111] shadow-none w-full ${errors.issueDate ? "border-rose-500 focus:border-rose-500 focus:ring-rose-500" : ""}`}
               />
               {errors.issueDate && (
-                <p className="text-red-500 text-sm mt-1">{errors.issueDate}</p>
+                <p className="text-rose-500 text-xs font-semibold mt-1">{errors.issueDate}</p>
               )}
             </div>
           </div>
-        </Card>
+        </div>
 
         {/* Guest Information */}
-        <Card className="p-6">
-          <h3 className="text-lg font-semibold text-gray-900 mb-6">Guest Information</h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="border border-[#e5e7eb] rounded-xl bg-white shadow-none p-6">
+          <div className="flex items-center space-x-3 mb-6 pb-4 border-b border-zinc-100">
+            <Users className="h-5 w-5 text-zinc-500" />
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <h3 className="text-sm font-bold text-[#111111] uppercase tracking-wider">Guest Information</h3>
+              <p className="text-[10px] font-semibold text-zinc-400 uppercase tracking-wider mt-0.5">Identitas tamu dan kode booking reservasi</p>
+            </div>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-1.5 md:col-span-2">
+              <label className="block text-[10px] font-bold text-zinc-400 uppercase tracking-wider">
                 Guest Name *
               </label>
               <Input
                 value={formData.guestName}
                 onChange={(e) => handleInputChange('guestName', e.target.value)}
-                placeholder="Enter guest name"
-                className={errors.guestName ? "border-red-500" : ""}
+                placeholder="Nama Lengkap Jamaah Utama"
+                className={`h-10 border-[#e5e7eb] rounded-lg bg-white text-sm font-medium text-zinc-950 focus:border-[#111111] focus:ring-1 focus:ring-[#111111] shadow-none w-full ${errors.guestName ? "border-rose-500 focus:border-rose-500 focus:ring-rose-500" : ""}`}
               />
               {errors.guestName && (
-                <p className="text-red-500 text-sm mt-1">{errors.guestName}</p>
+                <p className="text-rose-500 text-xs font-semibold mt-1">{errors.guestName}</p>
               )}
             </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+            <div className="space-y-1.5">
+              <label className="block text-[10px] font-bold text-zinc-400 uppercase tracking-wider">
                 Guest Email *
               </label>
               <Input
@@ -447,147 +475,160 @@ function CreateVoucherPage() {
                 value={formData.guestEmail}
                 onChange={(e) => handleInputChange('guestEmail', e.target.value)}
                 placeholder="guest@example.com"
-                className={errors.guestEmail ? "border-red-500" : ""}
+                className={`h-10 border-[#e5e7eb] rounded-lg bg-white text-sm font-medium text-zinc-950 focus:border-[#111111] focus:ring-1 focus:ring-[#111111] shadow-none w-full ${errors.guestEmail ? "border-rose-500 focus:border-rose-500 focus:ring-rose-500" : ""}`}
               />
               {errors.guestEmail && (
-                <p className="text-red-500 text-sm mt-1">{errors.guestEmail}</p>
+                <p className="text-rose-500 text-xs font-semibold mt-1">{errors.guestEmail}</p>
               )}
             </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+            <div className="space-y-1.5">
+              <label className="block text-[10px] font-bold text-zinc-400 uppercase tracking-wider">
                 Booking Code *
               </label>
               <Input
                 value={formData.bookingCode}
                 onChange={(e) => handleInputChange('bookingCode', e.target.value)}
-                placeholder="BK001"
-                className={errors.bookingCode ? "border-red-500" : ""}
+                placeholder="Contoh: BK-123"
+                className={`h-10 border-[#e5e7eb] rounded-lg bg-white text-sm font-medium text-zinc-950 focus:border-[#111111] focus:ring-1 focus:ring-[#111111] shadow-none w-full ${errors.bookingCode ? "border-rose-500 focus:border-rose-500 focus:ring-rose-500" : ""}`}
               />
               {errors.bookingCode && (
-                <p className="text-red-500 text-sm mt-1">{errors.bookingCode}</p>
+                <p className="text-rose-500 text-xs font-semibold mt-1">{errors.bookingCode}</p>
               )}
             </div>
           </div>
-        </Card>
+        </div>
 
         {/* Trip Details */}
-        <Card className="p-6">
-          <h3 className="text-lg font-semibold text-gray-900 mb-6">Trip Details</h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="border border-[#e5e7eb] rounded-xl bg-white shadow-none p-6">
+          <div className="flex items-center space-x-3 mb-6 pb-4 border-b border-zinc-100">
+            <MapPin className="h-5 w-5 text-zinc-500" />
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <h3 className="text-sm font-bold text-[#111111] uppercase tracking-wider">Trip Details</h3>
+              <p className="text-[10px] font-semibold text-zinc-400 uppercase tracking-wider mt-0.5">Destinasi hotel dan durasi akomodasi</p>
+            </div>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-1.5">
+              <label className="block text-[10px] font-bold text-zinc-400 uppercase tracking-wider">
                 Package Name *
               </label>
               <Input
                 value={formData.packageName}
                 onChange={(e) => handleInputChange('packageName', e.target.value)}
-                placeholder="Bali Adventure Package"
-                className={errors.packageName ? "border-red-500" : ""}
+                placeholder="Nama Paket Layanan"
+                className={`h-10 border-[#e5e7eb] rounded-lg bg-white text-sm font-medium text-zinc-950 focus:border-[#111111] focus:ring-1 focus:ring-[#111111] shadow-none w-full ${errors.packageName ? "border-rose-500 focus:border-rose-500 focus:ring-rose-500" : ""}`}
               />
               {errors.packageName && (
-                <p className="text-red-500 text-sm mt-1">{errors.packageName}</p>
+                <p className="text-rose-500 text-xs font-semibold mt-1">{errors.packageName}</p>
               )}
             </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+            <div className="space-y-1.5">
+              <label className="block text-[10px] font-bold text-zinc-400 uppercase tracking-wider">
                 Destination *
               </label>
               <Input
                 value={formData.destination}
                 onChange={(e) => handleInputChange('destination', e.target.value)}
-                placeholder="Bali, Indonesia"
-                className={errors.destination ? "border-red-500" : ""}
+                placeholder="Contoh: Makkah / Madinah"
+                className={`h-10 border-[#e5e7eb] rounded-lg bg-white text-sm font-medium text-zinc-950 focus:border-[#111111] focus:ring-1 focus:ring-[#111111] shadow-none w-full ${errors.destination ? "border-rose-500 focus:border-rose-500 focus:ring-rose-500" : ""}`}
               />
               {errors.destination && (
-                <p className="text-red-500 text-sm mt-1">{errors.destination}</p>
+                <p className="text-rose-500 text-xs font-semibold mt-1">{errors.destination}</p>
               )}
             </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+            <div className="space-y-1.5">
+              <label className="block text-[10px] font-bold text-zinc-400 uppercase tracking-wider">
                 Check-in Date *
               </label>
               <Input
                 type="date"
                 value={formData.checkInDate}
                 onChange={(e) => handleInputChange('checkInDate', e.target.value)}
-                className={errors.checkInDate ? "border-red-500" : ""}
+                className={`h-10 border-[#e5e7eb] rounded-lg bg-white text-sm font-medium text-zinc-950 focus:border-[#111111] focus:ring-1 focus:ring-[#111111] shadow-none w-full ${errors.checkInDate ? "border-rose-500 focus:border-rose-500 focus:ring-rose-500" : ""}`}
               />
               {errors.checkInDate && (
-                <p className="text-red-500 text-sm mt-1">{errors.checkInDate}</p>
+                <p className="text-rose-500 text-xs font-semibold mt-1">{errors.checkInDate}</p>
               )}
             </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+            <div className="space-y-1.5">
+              <label className="block text-[10px] font-bold text-zinc-400 uppercase tracking-wider">
                 Check-out Date *
               </label>
               <Input
                 type="date"
                 value={formData.checkOutDate}
                 onChange={(e) => handleInputChange('checkOutDate', e.target.value)}
-                className={errors.checkOutDate ? "border-red-500" : ""}
+                className={`h-10 border-[#e5e7eb] rounded-lg bg-white text-sm font-medium text-zinc-950 focus:border-[#111111] focus:ring-1 focus:ring-[#111111] shadow-none w-full ${errors.checkOutDate ? "border-rose-500 focus:border-rose-500 focus:ring-rose-500" : ""}`}
               />
               {errors.checkOutDate && (
-                <p className="text-red-500 text-sm mt-1">{errors.checkOutDate}</p>
+                <p className="text-rose-500 text-xs font-semibold mt-1">{errors.checkOutDate}</p>
               )}
             </div>
           </div>
-        </Card>
+        </div>
 
         {/* Pricing & Validity */}
-        <Card className="p-6">
-          <h3 className="text-lg font-semibold text-gray-900 mb-6">Pricing & Validity</h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="border border-[#e5e7eb] rounded-xl bg-white shadow-none p-6">
+          <div className="flex items-center space-x-3 mb-6 pb-4 border-b border-zinc-100">
+            <Calendar className="h-5 w-5 text-zinc-500" />
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <h3 className="text-sm font-bold text-[#111111] uppercase tracking-wider">Pricing & Validity</h3>
+              <p className="text-[10px] font-semibold text-zinc-400 uppercase tracking-wider mt-0.5">Nilai akomodasi dan validitas voucher</p>
+            </div>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-1.5">
+              <label className="block text-[10px] font-bold text-zinc-400 uppercase tracking-wider">
                 Total Amount *
               </label>
               <Input
                 type="number"
                 value={formData.totalAmount}
                 onChange={(e) => handleInputChange('totalAmount', e.target.value)}
-                placeholder="2500000"
-                className={errors.totalAmount ? "border-red-500" : ""}
+                placeholder="Masukkan nominal harga..."
+                className={`h-10 border-[#e5e7eb] rounded-lg bg-white text-sm font-medium text-zinc-950 focus:border-[#111111] focus:ring-1 focus:ring-[#111111] shadow-none w-full ${errors.totalAmount ? "border-rose-500 focus:border-rose-500 focus:ring-rose-500" : ""}`}
               />
               {errors.totalAmount && (
-                <p className="text-red-500 text-sm mt-1">{errors.totalAmount}</p>
+                <p className="text-rose-500 text-xs font-semibold mt-1">{errors.totalAmount}</p>
               )}
             </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+            <div className="space-y-1.5">
+              <label className="block text-[10px] font-bold text-zinc-400 uppercase tracking-wider">
                 Currency
               </label>
               <select
                 value={formData.currency}
                 onChange={(e) => handleInputChange('currency', e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                className="h-10 px-3 border border-[#e5e7eb] rounded-lg bg-white text-sm font-medium text-zinc-950 focus:outline-none focus:border-[#111111] focus:ring-1 focus:ring-[#111111] shadow-none w-full"
               >
                 <option value="IDR">IDR</option>
                 <option value="USD">USD</option>
                 <option value="EUR">EUR</option>
+                <option value="SAR">SAR</option>
               </select>
             </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+            <div className="space-y-1.5">
+              <label className="block text-[10px] font-bold text-zinc-400 uppercase tracking-wider">
                 Valid Until *
               </label>
               <Input
                 type="date"
                 value={formData.validUntil}
                 onChange={(e) => handleInputChange('validUntil', e.target.value)}
-                className={errors.validUntil ? "border-red-500" : ""}
+                className={`h-10 border-[#e5e7eb] rounded-lg bg-white text-sm font-medium text-zinc-950 focus:border-[#111111] focus:ring-1 focus:ring-[#111111] shadow-none w-full ${errors.validUntil ? "border-rose-500 focus:border-rose-500 focus:ring-rose-500" : ""}`}
               />
               {errors.validUntil && (
-                <p className="text-red-500 text-sm mt-1">{errors.validUntil}</p>
+                <p className="text-rose-500 text-xs font-semibold mt-1">{errors.validUntil}</p>
               )}
             </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+            <div className="space-y-1.5">
+              <label className="block text-[10px] font-bold text-zinc-400 uppercase tracking-wider">
                 Status
               </label>
               <select
                 value={formData.status}
                 onChange={(e) => handleInputChange('status', e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                className="h-10 px-3 border border-[#e5e7eb] rounded-lg bg-white text-sm font-medium text-zinc-950 focus:outline-none focus:border-[#111111] focus:ring-1 focus:ring-[#111111] shadow-none w-full"
               >
                 <option value="active">Active</option>
                 <option value="used">Used</option>
@@ -596,24 +637,30 @@ function CreateVoucherPage() {
               </select>
             </div>
           </div>
-        </Card>
+        </div>
 
         {/* Notes */}
-        <Card className="p-6">
-          <h3 className="text-lg font-semibold text-gray-900 mb-6">Additional Notes</h3>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+        <div className="border border-[#e5e7eb] rounded-xl bg-white shadow-none p-6">
+          <div className="flex items-center space-x-3 mb-6 pb-4 border-b border-zinc-100">
+            <Ticket className="h-5 w-5 text-zinc-500" />
+            <div>
+              <h3 className="text-sm font-bold text-[#111111] uppercase tracking-wider">Additional Notes</h3>
+              <p className="text-[10px] font-semibold text-zinc-400 uppercase tracking-wider mt-0.5">Catatan tambahan atau instruksi khusus</p>
+            </div>
+          </div>
+          <div className="space-y-1.5">
+            <label className="block text-[10px] font-bold text-zinc-400 uppercase tracking-wider">
               Notes
             </label>
             <textarea
               value={formData.notes}
               onChange={(e) => handleInputChange('notes', e.target.value)}
-              placeholder="Any additional notes or special instructions..."
+              placeholder="Masukkan instruksi khusus atau catatan tambahan untuk hotel/jamaah..."
               rows={4}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              className="w-full px-3 py-2 border border-[#e5e7eb] rounded-lg bg-white text-sm font-medium text-zinc-950 focus:outline-none focus:border-[#111111] focus:ring-1 focus:ring-[#111111] shadow-none w-full resize-none min-h-[100px]"
             />
           </div>
-        </Card>
+        </div>
       </form>
     </PageLayout>
   )

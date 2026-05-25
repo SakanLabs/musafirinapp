@@ -64,10 +64,17 @@ function CustomLaQuotationPage() {
   return (
     <div className="min-h-screen bg-gray-100 py-8 font-sans print:bg-white print:py-0">
       <div className="max-w-[210mm] mx-auto mb-4 flex justify-between print:hidden">
-        <Button variant="outline" onClick={() => navigate({ to: `/custom-la-detail/${id}` })}>
+        <Button 
+          variant="outline" 
+          onClick={() => navigate({ to: `/custom-la-detail/${id}` })}
+          className="h-9 px-4 border-[#e5e7eb] text-zinc-700 hover:bg-zinc-50 hover:text-black flex items-center rounded-md font-medium text-xs shadow-none"
+        >
           <ArrowLeft className="h-4 w-4 mr-2" /> Kembali
         </Button>
-        <Button onClick={() => window.print()} className="bg-blue-600 hover:bg-blue-700 text-white">
+        <Button 
+          onClick={() => window.print()} 
+          className="bg-[#111111] hover:bg-[#242424] text-white flex items-center h-9 px-4 rounded-md font-semibold text-xs transition-colors border border-transparent shadow-none"
+        >
           <Printer className="h-4 w-4 mr-2" /> Cetak PDF
         </Button>
       </div>

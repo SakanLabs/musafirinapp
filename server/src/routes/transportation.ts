@@ -42,34 +42,39 @@ transportationApp.get('/', requireAdmin, async (c) => {
       .from(transportationBookings)
       .orderBy(desc(transportationBookings.createdAt));
 
-    // Get route count for each booking
+    // Get routes for each booking
     const bookingIds = result.map(booking => booking.id).filter(id => id !== null);
 
-    let routeCountsByBookingId: Record<number, number> = {};
+    let routesByBookingId: Record<number, any[]> = {};
     if (bookingIds.length > 0) {
-      const routeCounts = await db
-        .select({
-          bookingId: transportationRoutesTable.transportationBookingId,
-          count: sql`count(*)`.mapWith(Number).as('count')
-        })
+      const allRoutes = await db
+        .select()
         .from(transportationRoutesTable)
         .where(sql`${transportationRoutesTable.transportationBookingId} IN(${sql.join(bookingIds, sql`, `)})`)
-        .groupBy(transportationRoutesTable.transportationBookingId);
+        .orderBy(transportationRoutesTable.pickupDateTime);
 
-      routeCountsByBookingId = routeCounts.reduce((acc, item) => {
-        if (item.bookingId) {
-          acc[item.bookingId] = Number(item.count);
+      routesByBookingId = allRoutes.reduce((acc, item) => {
+        const bId = item.transportationBookingId;
+        if (bId !== null && bId !== undefined) {
+          if (!acc[bId]) {
+            acc[bId] = [];
+          }
+          acc[bId]!.push(item);
         }
         return acc;
-      }, {} as Record<number, number>);
+      }, {} as Record<number, any[]>);
     }
 
-    const bookingsWithRouteCount = result.map(booking => ({
-      ...booking,
-      routeCount: booking.id ? routeCountsByBookingId[booking.id] || 0 : 0
-    }));
+    const bookingsWithRoutes = result.map(booking => {
+      const routes = booking.id ? routesByBookingId[booking.id] || [] : [];
+      return {
+        ...booking,
+        routes,
+        routeCount: routes.length
+      };
+    });
 
-    return c.json(bookingsWithRouteCount);
+    return c.json(bookingsWithRoutes);
   } catch (error) {
     console.error('Error fetching transportation bookings:', error);
     return c.json({ error: 'Failed to fetch transportation bookings' }, 500);

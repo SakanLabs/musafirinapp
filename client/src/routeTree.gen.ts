@@ -43,6 +43,7 @@ import { Route as BookingDetailRouteImport } from './routes/booking-detail'
 import { Route as AnalyticsRouteImport } from './routes/analytics'
 import { Route as AdminRouteImport } from './routes/admin'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as VouchersIndexRouteImport } from './routes/vouchers/index'
 import { Route as ClientsIndexRouteImport } from './routes/clients/index'
 import { Route as VouchersCreateRouteImport } from './routes/vouchers/create'
 import { Route as TransportationBookingEditTransportationBookingIdRouteImport } from './routes/transportation-booking-edit.$transportationBookingId'
@@ -241,6 +242,11 @@ const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
+} as any)
+const VouchersIndexRoute = VouchersIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => VouchersRoute,
 } as any)
 const ClientsIndexRoute = ClientsIndexRouteImport.update({
   id: '/',
@@ -447,6 +453,7 @@ export interface FileRoutesByFullPath {
   '/transportation-booking-edit/$transportationBookingId': typeof TransportationBookingEditTransportationBookingIdRoute
   '/vouchers/create': typeof VouchersCreateRoute
   '/clients/': typeof ClientsIndexRoute
+  '/vouchers/': typeof VouchersIndexRoute
   '/bookings/$bookingId/edit': typeof BookingsBookingIdEditRoute
   '/dashboard/muthowifs/$id': typeof DashboardMuthowifsIdRoute
   '/edit-hotel-pricing/$hotelId/$pricingId': typeof EditHotelPricingHotelIdPricingIdRoute
@@ -485,7 +492,6 @@ export interface FileRoutesByTo {
   '/register': typeof RegisterRoute
   '/service-orders': typeof ServiceOrdersRouteWithChildren
   '/transportation-bookings': typeof TransportationBookingsRoute
-  '/vouchers': typeof VouchersRouteWithChildren
   '/custom-la-quotation': typeof CustomLaQuotationRoute
   '/auth/callback': typeof AuthCallbackRoute
   '/booking-view/$bookingId': typeof BookingViewBookingIdRoute
@@ -509,6 +515,7 @@ export interface FileRoutesByTo {
   '/transportation-booking-edit/$transportationBookingId': typeof TransportationBookingEditTransportationBookingIdRoute
   '/vouchers/create': typeof VouchersCreateRoute
   '/clients': typeof ClientsIndexRoute
+  '/vouchers': typeof VouchersIndexRoute
   '/bookings/$bookingId/edit': typeof BookingsBookingIdEditRoute
   '/dashboard/muthowifs/$id': typeof DashboardMuthowifsIdRoute
   '/edit-hotel-pricing/$hotelId/$pricingId': typeof EditHotelPricingHotelIdPricingIdRoute
@@ -573,6 +580,7 @@ export interface FileRoutesById {
   '/transportation-booking-edit/$transportationBookingId': typeof TransportationBookingEditTransportationBookingIdRoute
   '/vouchers/create': typeof VouchersCreateRoute
   '/clients/': typeof ClientsIndexRoute
+  '/vouchers/': typeof VouchersIndexRoute
   '/bookings/$bookingId/edit': typeof BookingsBookingIdEditRoute
   '/dashboard/muthowifs/$id': typeof DashboardMuthowifsIdRoute
   '/edit-hotel-pricing/$hotelId/$pricingId': typeof EditHotelPricingHotelIdPricingIdRoute
@@ -638,6 +646,7 @@ export interface FileRouteTypes {
     | '/transportation-booking-edit/$transportationBookingId'
     | '/vouchers/create'
     | '/clients/'
+    | '/vouchers/'
     | '/bookings/$bookingId/edit'
     | '/dashboard/muthowifs/$id'
     | '/edit-hotel-pricing/$hotelId/$pricingId'
@@ -676,7 +685,6 @@ export interface FileRouteTypes {
     | '/register'
     | '/service-orders'
     | '/transportation-bookings'
-    | '/vouchers'
     | '/custom-la-quotation'
     | '/auth/callback'
     | '/booking-view/$bookingId'
@@ -700,6 +708,7 @@ export interface FileRouteTypes {
     | '/transportation-booking-edit/$transportationBookingId'
     | '/vouchers/create'
     | '/clients'
+    | '/vouchers'
     | '/bookings/$bookingId/edit'
     | '/dashboard/muthowifs/$id'
     | '/edit-hotel-pricing/$hotelId/$pricingId'
@@ -763,6 +772,7 @@ export interface FileRouteTypes {
     | '/transportation-booking-edit/$transportationBookingId'
     | '/vouchers/create'
     | '/clients/'
+    | '/vouchers/'
     | '/bookings/$bookingId/edit'
     | '/dashboard/muthowifs/$id'
     | '/edit-hotel-pricing/$hotelId/$pricingId'
@@ -1064,6 +1074,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/vouchers/': {
+      id: '/vouchers/'
+      path: '/'
+      fullPath: '/vouchers/'
+      preLoaderRoute: typeof VouchersIndexRouteImport
+      parentRoute: typeof VouchersRoute
+    }
     '/clients/': {
       id: '/clients/'
       path: '/'
@@ -1322,10 +1339,12 @@ const ServiceOrdersRouteWithChildren = ServiceOrdersRoute._addFileChildren(
 
 interface VouchersRouteChildren {
   VouchersCreateRoute: typeof VouchersCreateRoute
+  VouchersIndexRoute: typeof VouchersIndexRoute
 }
 
 const VouchersRouteChildren: VouchersRouteChildren = {
   VouchersCreateRoute: VouchersCreateRoute,
+  VouchersIndexRoute: VouchersIndexRoute,
 }
 
 const VouchersRouteWithChildren = VouchersRoute._addFileChildren(

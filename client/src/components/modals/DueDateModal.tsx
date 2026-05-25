@@ -59,29 +59,30 @@ export function DueDateModal({
       title="Set Invoice Due Date"
       size="sm"
       footer={
-        <>
+        <div className="flex justify-end space-x-2.5 w-full">
           <Button
             variant="outline"
             onClick={handleClose}
             disabled={isLoading}
+            className="h-9 px-4 border-[#e5e7eb] hover:bg-gray-50 text-gray-700 font-semibold text-xs rounded-md"
           >
             Cancel
           </Button>
           <Button
             onClick={handleSubmit}
             disabled={isLoading}
-            className="min-w-[100px]"
+            className="h-9 px-4 bg-[#111111] hover:bg-[#242424] text-white font-semibold text-xs rounded-md transition-colors border border-transparent shadow-sm min-w-[120px]"
           >
             {isLoading ? 'Generating...' : 'Generate Invoice'}
           </Button>
-        </>
+        </div>
       }
     >
       <form onSubmit={handleSubmit} className="space-y-4">
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            <Calendar className="h-4 w-4 inline mr-2" />
-            Due Date
+        <div className="space-y-1.5">
+          <label className="text-[10px] font-semibold uppercase tracking-wider text-gray-500 flex items-center">
+            <Calendar className="h-3.5 w-3.5 mr-1.5 text-gray-400" />
+            <span>Due Date</span>
           </label>
           <Input
             type="date"
@@ -90,20 +91,20 @@ export function DueDateModal({
               setDueDate(e.target.value);
               setError('');
             }}
-            className="w-full"
+            className="h-10 px-3 border-[#e5e7eb] rounded-md focus:border-[#111111] focus:ring-1 focus:ring-[#111111] bg-white font-mono w-full"
             min={new Date().toISOString().split('T')[0]}
             required
           />
           {error && (
-            <div className="flex items-center mt-2 text-sm text-red-600">
-              <AlertCircle className="h-4 w-4 mr-1" />
-              {error}
+            <div className="flex items-center mt-2 text-xs font-semibold text-red-600">
+              <AlertCircle className="h-3.5 w-3.5 mr-1" />
+              <span>{error}</span>
             </div>
           )}
         </div>
         
-        <div className="bg-blue-50 p-3 rounded-lg">
-          <p className="text-sm text-blue-800">
+        <div className="bg-zinc-50 border border-zinc-100 p-3 rounded-lg">
+          <p className="text-xs text-zinc-600 leading-relaxed">
             <strong>Note:</strong> The invoice will be generated with the selected due date. 
             You can change this later if needed.
           </p>

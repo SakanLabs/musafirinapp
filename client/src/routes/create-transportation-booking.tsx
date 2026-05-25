@@ -380,30 +380,31 @@ function CreateTransportationBookingPage() {
             <Button
               variant="outline"
               onClick={() => navigate({ to: "/transportation-bookings" })}
+              className="h-9 px-4 border-[#e5e7eb] text-zinc-700 hover:bg-zinc-50 hover:text-black flex items-center rounded-md font-medium text-xs shadow-none"
             >
               <ArrowLeft className="h-4 w-4 mr-2" />
               Kembali
             </Button>
             <div>
-              <h1 className="text-2xl font-bold text-gray-900">Buat Pemesanan Transportasi</h1>
-              <p className="text-gray-600">Isi form di bawah untuk membuat pemesanan baru</p>
+              <h1 className="text-xl font-bold text-zinc-950 tracking-tight">Buat Pemesanan Transportasi</h1>
+              <p className="text-xs text-zinc-500 mt-1">Isi form di bawah untuk membuat pemesanan baru</p>
             </div>
           </div>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-6">
           {/* Customer Information */}
-          <Card className="p-6">
-            <h2 className="text-lg font-semibold text-gray-900 mb-4">Informasi Customer</h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <Card className="p-6 border border-[#e5e7eb] rounded-xl bg-white shadow-none">
+            <h2 className="text-sm font-bold text-zinc-900 mb-6 tracking-tight">Informasi Customer</h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="md:col-span-2">
-                <Label htmlFor="clientSelect">Client</Label>
+                <Label htmlFor="clientSelect" className="block text-xs font-semibold text-zinc-700 uppercase tracking-wider mb-2">Client *</Label>
                 <div className="flex flex-col gap-2 md:flex-row md:items-center">
                   <select
                     id="clientSelect"
                     value={selectedClientId}
                     onChange={(e) => handleClientSelect(e.target.value)}
-                    className="w-full flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full flex-1 h-10 px-3 border border-[#e5e7eb] rounded-md focus:border-[#111111] focus:ring-1 focus:ring-[#111111] bg-white text-sm text-zinc-800"
                     disabled={isClientsLoading && clients.length === 0}
                   >
                     <option value="">
@@ -421,17 +422,18 @@ function CreateTransportationBookingPage() {
                     type="button"
                     variant="outline"
                     onClick={() => navigate({ to: "/clients/create", search: { redirectTo: "/create-transportation-booking" } })}
+                    className="h-10 px-4 border-zinc-200 text-zinc-700 hover:bg-zinc-50 hover:text-black font-semibold text-sm rounded-md shadow-none flex items-center transition-colors"
                   >
                     Client Baru
                   </Button>
                 </div>
                 {selectedClientId && (
-                  <p className="text-xs text-gray-500 mt-2">
+                  <p className="text-xs text-zinc-400 mt-2 font-medium">
                     Detail customer diisi otomatis dari client yang dipilih.
                   </p>
                 )}
                 {!isClientsLoading && clients.length === 0 && (
-                  <p className="text-xs text-gray-500 mt-2">
+                  <p className="text-xs text-zinc-400 mt-2 font-medium">
                     Tidak ada client ditemukan. Buat client baru untuk melanjutkan.
                   </p>
                 )}
@@ -440,7 +442,7 @@ function CreateTransportationBookingPage() {
                 )}
               </div>
               <div>
-                <Label htmlFor="customerName">Nama Customer *</Label>
+                <Label htmlFor="customerName" className="block text-xs font-semibold text-zinc-700 uppercase tracking-wider mb-2">Nama Customer *</Label>
                 <Input
                   id="customerName"
                   value={formData.customerName}
@@ -448,14 +450,14 @@ function CreateTransportationBookingPage() {
                   placeholder="Masukkan nama customer"
                   required
                   readOnly={!!selectedClientId}
-                  className={errors.customerName ? "border-red-500" : ""}
+                  className={`h-10 border-[#e5e7eb] rounded-md focus-visible:ring-[#111111] focus-visible:border-[#111111] ${errors.customerName ? "border-red-500" : ""}`}
                 />
                 {errors.customerName && (
                   <p className="text-red-500 text-sm mt-1">{errors.customerName}</p>
                 )}
               </div>
               <div>
-                <Label htmlFor="customerPhone">Nomor Telepon *</Label>
+                <Label htmlFor="customerPhone" className="block text-xs font-semibold text-zinc-700 uppercase tracking-wider mb-2">Nomor Telepon *</Label>
                 <Input
                   id="customerPhone"
                   value={formData.customerPhone}
@@ -463,14 +465,14 @@ function CreateTransportationBookingPage() {
                   placeholder="Contoh: +62812345678"
                   required
                   readOnly={!!selectedClientId}
-                  className={errors.customerPhone ? "border-red-500" : ""}
+                  className={`h-10 border-[#e5e7eb] rounded-md focus-visible:ring-[#111111] focus-visible:border-[#111111] ${errors.customerPhone ? "border-red-500" : ""}`}
                 />
                 {errors.customerPhone && (
                   <p className="text-red-500 text-sm mt-1">{errors.customerPhone}</p>
                 )}
               </div>
               <div>
-                <Label htmlFor="customerEmail">Email</Label>
+                <Label htmlFor="customerEmail" className="block text-xs font-semibold text-zinc-700 uppercase tracking-wider mb-2">Email</Label>
                 <Input
                   id="customerEmail"
                   type="email"
@@ -478,50 +480,51 @@ function CreateTransportationBookingPage() {
                   onChange={(e) => handleInputChange("customerEmail", e.target.value)}
                   placeholder="customer@email.com"
                   readOnly={!!selectedClientId}
-                  className={errors.customerEmail ? "border-red-500" : ""}
+                  className={`h-10 border-[#e5e7eb] rounded-md focus-visible:ring-[#111111] focus-visible:border-[#111111] ${errors.customerEmail ? "border-red-500" : ""}`}
                 />
                 {errors.customerEmail && (
                   <p className="text-red-500 text-sm mt-1">{errors.customerEmail}</p>
                 )}
               </div>
               <div>
-                <Label htmlFor="notes">Catatan</Label>
+                <Label htmlFor="notes" className="block text-xs font-semibold text-zinc-700 uppercase tracking-wider mb-2">Catatan</Label>
                 <Textarea
                   id="notes"
                   value={formData.notes}
                   onChange={(e) => handleInputChange("notes", e.target.value)}
                   placeholder="Catatan tambahan untuk pemesanan"
                   rows={3}
+                  className="p-3 border border-[#e5e7eb] rounded-md focus:border-[#111111] focus:ring-1 focus:ring-[#111111] bg-white text-sm focus:outline-none"
                 />
               </div>
             </div>
           </Card>
 
           {/* Transportation Routes */}
-          <Card className="p-6">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-lg font-semibold text-gray-900">Rute Transportasi</h2>
+          <Card className="p-6 border border-[#e5e7eb] rounded-xl bg-white shadow-none">
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-sm font-bold text-zinc-900 tracking-tight">Rute Transportasi</h2>
               {routeMode === 'perRoute' && (
                 <Button
                   type="button"
                   variant="outline"
                   onClick={addRoute}
-                  className="flex items-center space-x-2"
+                  className="h-9 px-4 border-zinc-200 text-zinc-700 hover:bg-zinc-50 hover:text-black flex items-center rounded-md font-medium text-xs shadow-none"
                 >
-                  <Plus className="h-4 w-4" />
+                  <Plus className="h-4 w-4 mr-2" />
                   <span>Tambah Rute</span>
                 </Button>
               )}
             </div>
 
             {/* Route mode selector */}
-            <div className="mb-4">
-              <Label htmlFor="routeMode">Tipe Rute</Label>
+            <div className="mb-6">
+              <Label htmlFor="routeMode" className="block text-xs font-semibold text-zinc-700 uppercase tracking-wider mb-2">Tipe Rute</Label>
               <select
                 id="routeMode"
                 value={routeMode}
                 onChange={(e) => setRouteMode(e.target.value as 'perRoute' | 'fullTrip')}
-                className="mt-1 w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full h-10 px-3 border border-[#e5e7eb] rounded-md focus:border-[#111111] focus:ring-1 focus:ring-[#111111] bg-white text-sm text-zinc-800"
               >
                 <option value="perRoute">Per Rute (detail 1-1)</option>
                 <option value="fullTrip">Full Trip (tanpa input rute 1-1)</option>
@@ -531,9 +534,9 @@ function CreateTransportationBookingPage() {
             <div className="space-y-6">
               {routeMode === 'perRoute' ? (
                 routes.map((route, index) => (
-                  <div key={route.id} className="border border-gray-200 rounded-lg p-4">
-                    <div className="flex items-center justify-between mb-4">
-                      <h3 className="text-md font-medium text-gray-900">
+                  <div key={route.id} className="border border-gray-200 rounded-xl p-6 bg-white space-y-4">
+                    <div className="flex items-center justify-between border-b border-zinc-100 pb-3">
+                      <h3 className="text-sm font-bold text-zinc-950">
                         Rute {index + 1}
                       </h3>
                       {routes.length > 1 && (
@@ -542,19 +545,19 @@ function CreateTransportationBookingPage() {
                           variant="outline"
                           size="sm"
                           onClick={() => removeRoute(route.id)}
-                          className="text-red-600 hover:text-red-700"
+                          className="h-8 w-8 p-0 border-[#e5e7eb] text-red-600 hover:bg-red-50 rounded-md flex items-center justify-center transition-colors"
                         >
                           <Trash2 className="h-4 w-4" />
                         </Button>
                       )}
                     </div>
 
-                    <div className="mb-4 bg-gray-50 border border-gray-200 p-3 rounded-md">
-                      <Label htmlFor={`masterRoute-${route.id}`} className="text-gray-700">Pilih dari Master Data (Opsional)</Label>
+                    <div className="bg-zinc-50/50 border border-zinc-200/60 p-4 rounded-xl space-y-1">
+                      <Label htmlFor={`masterRoute-${route.id}`} className="block text-xs font-semibold text-zinc-700 uppercase tracking-wider mb-2">Pilih dari Master Data (Opsional)</Label>
                       <select
                         id={`masterRoute-${route.id}`}
                         onChange={(e) => handleMasterRouteSelection(route.id, e.target.value)}
-                        className="mt-1 w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+                        className="w-full h-10 px-3 border border-[#e5e7eb] rounded-md focus:border-[#111111] focus:ring-1 focus:ring-[#111111] bg-white text-sm text-zinc-800"
                         disabled={isMasterRoutesLoading}
                       >
                         <option value="">-- Isi Manual --</option>
@@ -566,34 +569,36 @@ function CreateTransportationBookingPage() {
                       </select>
                     </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 pt-2">
                       <div>
-                        <Label htmlFor={`pickupDate-${route.id}`}>Tanggal Penjemputan *</Label>
+                        <Label htmlFor={`pickupDate-${route.id}`} className="block text-xs font-semibold text-zinc-700 uppercase tracking-wider mb-2">Tanggal Penjemputan *</Label>
                         <Input
                           id={`pickupDate-${route.id}`}
                           type="date"
                           value={route.pickupDate}
                           onChange={(e) => handleRouteChange(route.id, "pickupDate", e.target.value)}
+                          className="h-10 border-[#e5e7eb] rounded-md focus-visible:ring-[#111111] focus-visible:border-[#111111]"
                           required
                         />
                       </div>
                       <div>
-                        <Label htmlFor={`pickupTime-${route.id}`}>Jam Penjemputan *</Label>
+                        <Label htmlFor={`pickupTime-${route.id}`} className="block text-xs font-semibold text-zinc-700 uppercase tracking-wider mb-2">Jam Penjemputan *</Label>
                         <Input
                           id={`pickupTime-${route.id}`}
                           type="time"
                           value={route.pickupTime}
                           onChange={(e) => handleRouteChange(route.id, "pickupTime", e.target.value)}
+                          className="h-10 border-[#e5e7eb] rounded-md focus-visible:ring-[#111111] focus-visible:border-[#111111]"
                           required
                         />
                       </div>
                       <div>
-                        <Label htmlFor={`vehicleType-${route.id}`}>Jenis Kendaraan *</Label>
+                        <Label htmlFor={`vehicleType-${route.id}`} className="block text-xs font-semibold text-zinc-700 uppercase tracking-wider mb-2">Jenis Kendaraan *</Label>
                         <select
                           id={`vehicleType-${route.id}`}
                           value={route.vehicleType}
                           onChange={(e) => handleRouteChange(route.id, "vehicleType", e.target.value)}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          className="w-full h-10 px-3 border border-[#e5e7eb] rounded-md focus:border-[#111111] focus:ring-1 focus:ring-[#111111] bg-white text-sm text-zinc-800"
                           required
                         >
                           <option value="">Pilih jenis kendaraan</option>
@@ -605,27 +610,29 @@ function CreateTransportationBookingPage() {
                         </select>
                       </div>
                       <div>
-                        <Label htmlFor={`origin-${route.id}`}>Lokasi Asal *</Label>
+                        <Label htmlFor={`origin-${route.id}`} className="block text-xs font-semibold text-zinc-700 uppercase tracking-wider mb-2">Lokasi Asal *</Label>
                         <Input
                           id={`origin-${route.id}`}
                           value={route.origin}
                           onChange={(e) => handleRouteChange(route.id, "origin", e.target.value)}
                           placeholder="Contoh: Hotel Madinah"
+                          className="h-10 border-[#e5e7eb] rounded-md focus-visible:ring-[#111111] focus-visible:border-[#111111]"
                           required
                         />
                       </div>
                       <div>
-                        <Label htmlFor={`destination-${route.id}`}>Lokasi Tujuan *</Label>
+                        <Label htmlFor={`destination-${route.id}`} className="block text-xs font-semibold text-zinc-700 uppercase tracking-wider mb-2">Lokasi Tujuan *</Label>
                         <Input
                           id={`destination-${route.id}`}
                           value={route.destination}
                           onChange={(e) => handleRouteChange(route.id, "destination", e.target.value)}
                           placeholder="Contoh: Bandara Jeddah"
+                          className="h-10 border-[#e5e7eb] rounded-md focus-visible:ring-[#111111] focus-visible:border-[#111111]"
                           required
                         />
                       </div>
                       <div>
-                        <Label htmlFor={`price-${route.id}`}>Harga (SAR) *</Label>
+                        <Label htmlFor={`price-${route.id}`} className="block text-xs font-semibold text-zinc-700 uppercase tracking-wider mb-2">Harga (SAR) *</Label>
                         <div className="flex space-x-2 mt-1">
                           <Input
                             id={`price-${route.id}`}
@@ -635,15 +642,15 @@ function CreateTransportationBookingPage() {
                             value={route.price}
                             onChange={(e) => handleRouteChange(route.id, "price", e.target.value)}
                             placeholder="0.00"
+                            className="flex-1 h-10 border-[#e5e7eb] rounded-md focus-visible:ring-[#111111] focus-visible:border-[#111111]"
                             required
-                            className="flex-1"
                           />
                           <Button 
                             type="button" 
                             variant="secondary" 
                             onClick={() => autoFillTransportPricing(route.id)}
                             title="Auto-Fill dari Master Data"
-                            className="px-3"
+                            className="h-10 px-3 border border-zinc-200 bg-white hover:bg-zinc-50 text-zinc-800 shadow-none rounded-md"
                           >
                             ⚡
                           </Button>
@@ -652,22 +659,23 @@ function CreateTransportationBookingPage() {
                     </div>
 
                     <div className="mt-4">
-                      <Label htmlFor={`routeNotes-${route.id}`}>Catatan Rute</Label>
-                      <Textarea
+                      <Label htmlFor={`routeNotes-${route.id}`} className="block text-xs font-semibold text-zinc-700 uppercase tracking-wider mb-2">Catatan Rute</Label>
+                      <textarea
                         id={`routeNotes-${route.id}`}
                         value={route.notes}
                         onChange={(e) => handleRouteChange(route.id, "notes", e.target.value)}
                         placeholder="Catatan khusus untuk rute ini"
                         rows={2}
+                        className="w-full p-3 border border-[#e5e7eb] rounded-md focus:border-[#111111] focus:ring-1 focus:ring-[#111111] bg-white text-sm focus:outline-none"
                       />
                     </div>
                   </div>
                 ))
               ) : (
-                <div className="border border-gray-200 rounded-lg p-4">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="border border-gray-200 rounded-xl p-6 bg-white space-y-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div>
-                      <Label htmlFor="fullTripPrice">Total Harga Full Trip (SAR) *</Label>
+                      <Label htmlFor="fullTripPrice" className="block text-xs font-semibold text-zinc-700 uppercase tracking-wider mb-2">Total Harga Full Trip (SAR) *</Label>
                       <Input
                         id="fullTripPrice"
                         type="number"
@@ -677,28 +685,28 @@ function CreateTransportationBookingPage() {
                         onChange={(e) => setFullTripPrice(e.target.value)}
                         placeholder="0.00"
                         required
-                        className={errors.fullTripPrice ? "border-red-500" : ""}
+                        className={`h-10 border-[#e5e7eb] rounded-md focus-visible:ring-[#111111] focus-visible:border-[#111111] ${errors.fullTripPrice ? "border-red-500" : ""}`}
                       />
                       {errors.fullTripPrice && (
                         <p className="text-red-500 text-sm mt-1">{errors.fullTripPrice}</p>
                       )}
                     </div>
                     <div>
-                      <Label htmlFor="fullTripDepartureDate">Tanggal Keberangkatan *</Label>
+                      <Label htmlFor="fullTripDepartureDate" className="block text-xs font-semibold text-zinc-700 uppercase tracking-wider mb-2">Tanggal Keberangkatan *</Label>
                       <Input
                         id="fullTripDepartureDate"
                         type="date"
                         value={fullTripDepartureDate}
                         onChange={(e) => setFullTripDepartureDate(e.target.value)}
                         required
-                        className={errors.fullTripDepartureDate ? "border-red-500" : ""}
+                        className={`h-10 border-[#e5e7eb] rounded-md focus-visible:ring-[#111111] focus-visible:border-[#111111] ${errors.fullTripDepartureDate ? "border-red-500" : ""}`}
                       />
                       {errors.fullTripDepartureDate && (
                         <p className="text-red-500 text-sm mt-1">{errors.fullTripDepartureDate}</p>
                       )}
                     </div>
                     <div>
-                      <Label htmlFor="fullTripDeparturePlace">Tempat Keberangkatan *</Label>
+                      <Label htmlFor="fullTripDeparturePlace" className="block text-xs font-semibold text-zinc-700 uppercase tracking-wider mb-2">Tempat Keberangkatan *</Label>
                       <Input
                         id="fullTripDeparturePlace"
                         type="text"
@@ -706,28 +714,28 @@ function CreateTransportationBookingPage() {
                         value={fullTripDeparturePlace}
                         onChange={(e) => setFullTripDeparturePlace(e.target.value)}
                         required
-                        className={errors.fullTripDeparturePlace ? "border-red-500" : ""}
+                        className={`h-10 border-[#e5e7eb] rounded-md focus-visible:ring-[#111111] focus-visible:border-[#111111] ${errors.fullTripDeparturePlace ? "border-red-500" : ""}`}
                       />
                       {errors.fullTripDeparturePlace && (
                         <p className="text-red-500 text-sm mt-1">{errors.fullTripDeparturePlace}</p>
                       )}
                     </div>
                     <div>
-                      <Label htmlFor="fullTripReturnDate">Tanggal Kepulangan *</Label>
+                      <Label htmlFor="fullTripReturnDate" className="block text-xs font-semibold text-zinc-700 uppercase tracking-wider mb-2">Tanggal Kepulangan *</Label>
                       <Input
                         id="fullTripReturnDate"
                         type="date"
                         value={fullTripReturnDate}
                         onChange={(e) => setFullTripReturnDate(e.target.value)}
                         required
-                        className={errors.fullTripReturnDate ? "border-red-500" : ""}
+                        className={`h-10 border-[#e5e7eb] rounded-md focus-visible:ring-[#111111] focus-visible:border-[#111111] ${errors.fullTripReturnDate ? "border-red-500" : ""}`}
                       />
                       {errors.fullTripReturnDate && (
                         <p className="text-red-500 text-sm mt-1">{errors.fullTripReturnDate}</p>
                       )}
                     </div>
                     <div>
-                      <Label htmlFor="fullTripReturnPlace">Tempat Kepulangan *</Label>
+                      <Label htmlFor="fullTripReturnPlace" className="block text-xs font-semibold text-zinc-700 uppercase tracking-wider mb-2">Tempat Kepulangan *</Label>
                       <Input
                         id="fullTripReturnPlace"
                         type="text"
@@ -735,32 +743,33 @@ function CreateTransportationBookingPage() {
                         value={fullTripReturnPlace}
                         onChange={(e) => setFullTripReturnPlace(e.target.value)}
                         required
-                        className={errors.fullTripReturnPlace ? "border-red-500" : ""}
+                        className={`h-10 border-[#e5e7eb] rounded-md focus-visible:ring-[#111111] focus-visible:border-[#111111] ${errors.fullTripReturnPlace ? "border-red-500" : ""}`}
                       />
                       {errors.fullTripReturnPlace && (
                         <p className="text-red-500 text-sm mt-1">{errors.fullTripReturnPlace}</p>
                       )}
                     </div>
                     <div className="md:col-span-2">
-                      <Label htmlFor="fullTripNotes">Deskripsi / Catatan Full Trip</Label>
-                      <Textarea
+                      <Label htmlFor="fullTripNotes" className="block text-xs font-semibold text-zinc-700 uppercase tracking-wider mb-2">Deskripsi / Catatan Full Trip</Label>
+                      <textarea
                         id="fullTripNotes"
                         value={formData.notes}
                         onChange={(e) => handleInputChange("notes", e.target.value)}
                         placeholder="Contoh: Antar-jemput selama perjalanan umrah, inkl. semua transfer"
                         rows={3}
+                        className="w-full p-3 border border-[#e5e7eb] rounded-md focus:border-[#111111] focus:ring-1 focus:ring-[#111111] bg-white text-sm focus:outline-none"
                       />
-                      <p className="text-xs text-gray-500 mt-2">Tidak perlu menambah rute satu per satu. Sistem akan mencatat sebagai pemesanan Full Trip.</p>
+                      <p className="text-[11px] text-zinc-400 mt-2 font-medium">Tidak perlu menambah rute satu per satu. Sistem akan mencatat sebagai pemesanan Full Trip.</p>
                     </div>
                   </div>
 
                   {/* Ringkasan Full Trip */}
-                  <div className="mt-4 bg-gray-50 p-3 rounded">
-                    <p className="text-sm text-gray-700">
-                      Keberangkatan: {fullTripDepartureDate || '-'} • {fullTripDeparturePlace || '-'}
+                  <div className="mt-4 bg-zinc-50 p-4 border border-zinc-200/60 rounded-xl space-y-1 text-xs text-zinc-600 font-semibold uppercase tracking-wider">
+                    <p className="text-zinc-700 tracking-tight">
+                      Keberangkatan: <span className="text-zinc-900 normal-case">{fullTripDepartureDate || '-'} • {fullTripDeparturePlace || '-'}</span>
                     </p>
-                    <p className="text-sm text-gray-700">
-                      Kepulangan: {fullTripReturnDate || '-'} • {fullTripReturnPlace || '-'}
+                    <p className="text-zinc-700 tracking-tight mt-1">
+                      Kepulangan: <span className="text-zinc-900 normal-case">{fullTripReturnDate || '-'} • {fullTripReturnPlace || '-'}</span>
                     </p>
                   </div>
                 </div>
@@ -769,16 +778,16 @@ function CreateTransportationBookingPage() {
           </Card>
 
           {/* Summary */}
-          <Card className="p-6">
-            <h2 className="text-lg font-semibold text-gray-900 mb-4">Ringkasan</h2>
-            <div className="flex items-center justify-between text-lg">
-              <span className="font-medium">Total Harga:</span>
-              <span className="font-bold text-blue-600">
+          <Card className="p-6 border border-[#e5e7eb] rounded-xl bg-white shadow-none">
+            <h2 className="text-sm font-bold text-zinc-900 mb-4 tracking-tight">Ringkasan</h2>
+            <div className="flex justify-between items-center text-xs font-semibold text-zinc-600 uppercase tracking-wider">
+              <span>Total Harga:</span>
+              <span className="font-bold text-zinc-950 text-lg">
                 {calculateTotalPrice().toFixed(2)} SAR
               </span>
             </div>
-            <div className="text-sm text-gray-600 mt-2">
-              {routes.length} rute transportasi
+            <div className="text-xs text-zinc-400 font-semibold uppercase tracking-wider mt-2">
+              {routeMode === 'perRoute' ? `${routes.length} rute transportasi` : '1 paket full trip'}
             </div>
           </Card>
 
@@ -788,15 +797,20 @@ function CreateTransportationBookingPage() {
               type="button"
               variant="outline"
               onClick={() => navigate({ to: "/transportation-bookings" })}
+              className="h-10 px-5 border-zinc-200 hover:bg-zinc-50 font-medium text-sm rounded-md shadow-none"
             >
               Batal
             </Button>
             <Button
               type="submit"
               disabled={createTransportationBooking.isPending}
-              className="flex items-center space-x-2"
+              className="bg-[#111111] hover:bg-[#242424] text-white h-10 px-6 rounded-md font-semibold text-sm transition-colors border border-transparent shadow-none"
             >
-              <Save className="h-4 w-4" />
+              {createTransportationBooking.isPending ? (
+                <Loader2 className="w-4 h-4 mr-2 animate-spin text-white" />
+              ) : (
+                <Save className="h-4 w-4 mr-2 text-white" />
+              )}
               <span>{createTransportationBooking.isPending ? "Menyimpan..." : "Simpan Pemesanan"}</span>
             </Button>
           </div>

@@ -59,14 +59,18 @@ export function BillingTab({ laId }: { laId: number }) {
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center bg-white p-4 rounded-lg border shadow-sm">
+      <div className="flex justify-between items-center bg-white p-6 rounded-xl border border-[#e5e7eb] shadow-none">
         <div>
-          <h3 className="text-lg font-bold">Tagihan Gabungan (Consolidated Billing)</h3>
-          <p className="text-sm text-gray-500">Kelola invoice dan pembayaran untuk seluruh paket LA ini secara terpusat.</p>
+          <h3 className="text-base font-bold text-zinc-950 tracking-tight">Tagihan Gabungan (Consolidated Billing)</h3>
+          <p className="text-xs text-zinc-500 mt-1">Kelola invoice dan pembayaran untuk seluruh paket LA ini secara terpusat.</p>
         </div>
         {!invoices.length && (
-          <Button onClick={handleGenerateInvoice} disabled={isGenerating}>
-            {isGenerating ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <FileText className="w-4 h-4 mr-2" />}
+          <Button 
+            onClick={handleGenerateInvoice} 
+            disabled={isGenerating}
+            className="bg-[#111111] hover:bg-[#242424] text-white flex items-center h-9 px-4 rounded-md font-semibold text-xs transition-colors border border-transparent shadow-none"
+          >
+            {isGenerating ? <Loader2 className="w-4 h-4 mr-2 animate-spin text-white" /> : <FileText className="w-4 h-4 mr-2 text-white" />}
             Terbitkan Invoice Gabungan
           </Button>
         )}
@@ -77,23 +81,41 @@ export function BillingTab({ laId }: { laId: number }) {
         const balanceDue = Math.max(0, parseFloat(inv.amount) - totalPaid);
 
         return (
-          <Card key={inv.id}>
-            <CardHeader className="bg-gray-50 border-b">
+          <Card key={inv.id} className="border border-[#e5e7eb] rounded-xl bg-white shadow-none overflow-hidden">
+            <CardHeader className="bg-zinc-50/50 border-b border-[#e5e7eb] px-6 py-4">
               <div className="flex justify-between items-center">
-                <CardTitle className="text-lg flex items-center">
+                <CardTitle className="text-sm font-bold text-zinc-900 flex items-center tracking-tight">
                   Invoice {inv.number}
-                  <Badge className="ml-3" variant={inv.status === 'paid' ? 'default' : inv.status === 'partially_paid' ? 'secondary' : 'outline'}>
+                  <Badge 
+                    variant="outline" 
+                    className={`ml-3 text-[10px] font-semibold uppercase px-2 py-0.5 rounded-md ${
+                      inv.status === 'paid' ? 'bg-emerald-50 text-emerald-700 border-emerald-200/50' : 
+                      inv.status === 'partially_paid' ? 'bg-amber-50 text-amber-700 border-amber-200/50' : 
+                      'bg-zinc-50 text-zinc-500 border-zinc-200/50'
+                    }`}
+                  >
                     {inv.status}
                   </Badge>
                 </CardTitle>
                 <div className="space-x-2 flex items-center">
                   {inv.pdfUrl && (
-                    <Button variant="outline" size="sm" onClick={() => window.open(inv.pdfUrl, '_blank')}>
-                      <Eye className="w-4 h-4 mr-2" /> Lihat PDF
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      onClick={() => window.open(inv.pdfUrl, '_blank')}
+                      className="h-8 text-xs px-3 border-zinc-200 text-zinc-700 hover:bg-zinc-50"
+                    >
+                      <Eye className="w-3.5 h-3.5 mr-2 text-zinc-500" /> Lihat PDF
                     </Button>
                   )}
-                  <Button variant="outline" size="sm" onClick={() => handleGenerateInvoice()} disabled={isGenerating}>
-                    {isGenerating ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <FileText className="w-4 h-4 mr-2" />} Perbarui PDF
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    onClick={() => handleGenerateInvoice()} 
+                    disabled={isGenerating}
+                    className="h-8 text-xs px-3 border-zinc-200 text-zinc-700 hover:bg-zinc-50"
+                  >
+                    {isGenerating ? <Loader2 className="w-3.5 h-3.5 mr-2 animate-spin text-zinc-500" /> : <FileText className="w-3.5 h-3.5 mr-2 text-zinc-500" />} Perbarui PDF
                   </Button>
                   {balanceDue > 0 && (
                     <PaymentModal onSubmit={(data) => recordPaymentMutation.mutate(data)} isPending={recordPaymentMutation.isPending} />
@@ -101,61 +123,74 @@ export function BillingTab({ laId }: { laId: number }) {
                 </div>
               </div>
             </CardHeader>
-            <CardContent className="pt-6 space-y-6">
+            <CardContent className="p-6 space-y-6">
               
-              <div className="grid grid-cols-3 gap-4 p-4 bg-gray-50 rounded-lg border">
+              <div className="grid grid-cols-3 gap-6 p-5 bg-zinc-50/50 rounded-xl border border-zinc-200/60">
                 <div>
-                  <p className="text-sm text-gray-500">Total Tagihan</p>
-                  <p className="text-xl font-bold">{formatCurrency(inv.amount, inv.currency)}</p>
+                  <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider mb-1">Total Tagihan</p>
+                  <p className="text-xl font-bold text-zinc-900 tracking-tight">{formatCurrency(inv.amount, inv.currency)}</p>
                 </div>
                 <div>
-                  <p className="text-sm text-gray-500">Telah Dibayar</p>
-                  <p className="text-xl font-bold text-green-600">{formatCurrency(totalPaid, inv.currency)}</p>
+                  <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider mb-1">Telah Dibayar</p>
+                  <p className="text-xl font-bold text-emerald-600 tracking-tight">{formatCurrency(totalPaid, inv.currency)}</p>
                 </div>
                 <div>
-                  <p className="text-sm text-gray-500">Sisa Tagihan</p>
-                  <p className="text-xl font-bold text-red-600">{formatCurrency(balanceDue, inv.currency)}</p>
+                  <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider mb-1">Sisa Tagihan</p>
+                  <p className="text-xl font-bold text-rose-600 tracking-tight">{formatCurrency(balanceDue, inv.currency)}</p>
                 </div>
               </div>
 
               <div>
-                <h4 className="font-semibold mb-3 border-b pb-2">Riwayat Pembayaran & Kwitansi</h4>
+                <h4 className="font-bold text-sm text-zinc-900 mb-4 border-b pb-3 tracking-tight">Riwayat Pembayaran & Kwitansi</h4>
                 {inv.payments?.length > 0 ? (
-                  <table className="w-full text-sm">
-                    <thead>
-                      <tr className="bg-gray-50 border-b">
-                        <th className="text-left py-2 px-2">Tanggal</th>
-                        <th className="text-left py-2 px-2">Metode</th>
-                        <th className="text-right py-2 px-2">Jumlah</th>
-                        <th className="text-right py-2 px-2">Kwitansi (PDF)</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {inv.payments.map((p: any) => {
-                        const receipt = inv.receipts?.find((r: any) => r.paymentId === p.id);
-                        return (
-                          <tr key={p.id} className="border-b last:border-0 hover:bg-gray-50">
-                            <td className="py-2 px-2">{formatDate(p.paymentDate)}</td>
-                            <td className="py-2 px-2">{p.paymentMethod}</td>
-                            <td className="text-right py-2 px-2 font-medium text-green-600">{formatCurrency(p.amount, p.currency)}</td>
-                            <td className="text-right py-2 px-2">
-                              {receipt?.pdfUrl ? (
-                                <Button variant="ghost" size="sm" onClick={() => window.open(receipt.pdfUrl, '_blank')} className="text-blue-600">
-                                  <Receipt className="w-4 h-4 mr-1" /> {receipt.number}
-                                </Button>
-                              ) : (
-                                <Button variant="outline" size="sm" onClick={() => generateReceiptMutation.mutate(p.id)} disabled={generateReceiptMutation.isPending}>
-                                  <PlusCircle className="w-4 h-4 mr-1" /> Generate
-                                </Button>
-                              )}
-                            </td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
+                  <div className="overflow-hidden border border-zinc-200 rounded-lg">
+                    <table className="w-full text-xs">
+                      <thead>
+                        <tr className="bg-zinc-50 border-b border-zinc-200">
+                          <th className="text-left font-bold text-zinc-700 py-2.5 px-3 uppercase tracking-wider">Tanggal</th>
+                          <th className="text-left font-bold text-zinc-700 py-2.5 px-3 uppercase tracking-wider">Metode</th>
+                          <th className="text-right font-bold text-zinc-700 py-2.5 px-3 uppercase tracking-wider">Jumlah</th>
+                          <th className="text-right font-bold text-zinc-700 py-2.5 px-3 uppercase tracking-wider">Kwitansi (PDF)</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {inv.payments.map((p: any) => {
+                          const receipt = inv.receipts?.find((r: any) => r.paymentId === p.id);
+                          return (
+                            <tr key={p.id} className="border-b border-zinc-100 last:border-0 hover:bg-zinc-50/55 transition-colors">
+                              <td className="py-2.5 px-3 font-medium text-zinc-800">{formatDate(p.paymentDate)}</td>
+                              <td className="py-2.5 px-3 text-zinc-600">{p.paymentMethod}</td>
+                              <td className="text-right py-2.5 px-3 font-bold text-emerald-600">{formatCurrency(p.amount, p.currency)}</td>
+                              <td className="text-right py-2.5 px-3">
+                                {receipt?.pdfUrl ? (
+                                  <Button 
+                                    variant="ghost" 
+                                    size="sm" 
+                                    onClick={() => window.open(receipt.pdfUrl, '_blank')} 
+                                    className="h-8 text-xs font-semibold text-zinc-700 hover:text-black hover:bg-zinc-100 px-2.5"
+                                  >
+                                    <Receipt className="w-3.5 h-3.5 mr-1 text-zinc-500" /> {receipt.number}
+                                  </Button>
+                                ) : (
+                                  <Button 
+                                    variant="outline" 
+                                    size="sm" 
+                                    onClick={() => generateReceiptMutation.mutate(p.id)} 
+                                    disabled={generateReceiptMutation.isPending}
+                                    className="h-8 text-xs font-semibold px-2.5 border-zinc-200 text-zinc-700 hover:bg-zinc-50"
+                                  >
+                                    <PlusCircle className="w-3.5 h-3.5 mr-1 text-zinc-500" /> Generate
+                                  </Button>
+                                )}
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
                 ) : (
-                  <p className="text-gray-500 text-sm italic">Belum ada riwayat pembayaran.</p>
+                  <p className="text-zinc-400 text-xs italic text-center py-4">Belum ada riwayat pembayaran.</p>
                 )}
               </div>
             </CardContent>
@@ -173,37 +208,61 @@ function PaymentModal({ onSubmit, isPending }: { onSubmit: (data: any) => void, 
 
   if (!isOpen) {
     return (
-      <Button size="sm" className="bg-green-600 hover:bg-green-700 text-white" onClick={() => setIsOpen(true)}>
-        <CreditCard className="w-4 h-4 mr-2" /> Bayar / Cicil
+      <Button 
+        size="sm" 
+        className="bg-[#111111] hover:bg-[#242424] text-white flex items-center h-8 px-3.5 rounded-md text-xs font-semibold shadow-none border border-transparent"
+        onClick={() => setIsOpen(true)}
+      >
+        <CreditCard className="w-3.5 h-3.5 mr-2 text-white" /> Bayar / Cicil
       </Button>
     );
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-      <div className="bg-white p-6 rounded-lg shadow-lg w-[400px]">
-        <h3 className="text-lg font-bold mb-4">Catat Pembayaran LA</h3>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-zinc-950/40 backdrop-blur-[1px]">
+      <div className="bg-white p-6 rounded-xl border border-zinc-200 w-[400px] shadow-none">
+        <h3 className="text-base font-bold text-zinc-950 mb-4 tracking-tight">Catat Pembayaran LA</h3>
         <div className="space-y-4">
           <div>
-            <label className="block text-sm font-medium mb-1">Jumlah Dibayar (SAR)</label>
-            <input type="number" className="w-full border rounded p-2" value={amount} onChange={e => setAmount(e.target.value)} placeholder="0.00" />
+            <label className="block text-xs font-semibold text-zinc-700 uppercase tracking-wider mb-2">Jumlah Dibayar (SAR)</label>
+            <input 
+              type="number" 
+              className="w-full h-10 px-3 border border-[#e5e7eb] rounded-md focus:border-[#111111] focus:ring-1 focus:ring-[#111111] bg-white text-sm focus:outline-none" 
+              value={amount} 
+              onChange={e => setAmount(e.target.value)} 
+              placeholder="0.00" 
+            />
           </div>
           <div>
-            <label className="block text-sm font-medium mb-1">Metode Pembayaran</label>
-            <select className="w-full border rounded p-2" value={method} onChange={e => setMethod(e.target.value)}>
+            <label className="block text-xs font-semibold text-zinc-700 uppercase tracking-wider mb-2">Metode Pembayaran</label>
+            <select 
+              className="w-full h-10 px-3 border border-[#e5e7eb] rounded-md focus:border-[#111111] focus:ring-1 focus:ring-[#111111] bg-white text-sm focus:outline-none" 
+              value={method} 
+              onChange={e => setMethod(e.target.value)}
+            >
               <option value="Transfer Bank">Transfer Bank</option>
               <option value="Cash">Cash</option>
               <option value="Kartu Kredit">Kartu Kredit</option>
             </select>
           </div>
           <div className="flex justify-end space-x-2 pt-4">
-            <Button variant="outline" onClick={() => setIsOpen(false)}>Batal</Button>
-            <Button onClick={() => {
-              if (amount) {
-                onSubmit({ amount, paymentMethod: method });
-                setIsOpen(false);
-              }
-            }} disabled={isPending || !amount}>
+            <Button 
+              variant="outline" 
+              onClick={() => setIsOpen(false)}
+              className="h-10 px-4 border-zinc-200 hover:bg-zinc-50 font-semibold text-xs rounded-md shadow-none"
+            >
+              Batal
+            </Button>
+            <Button 
+              onClick={() => {
+                if (amount) {
+                  onSubmit({ amount, paymentMethod: method });
+                  setIsOpen(false);
+                }
+              }} 
+              disabled={isPending || !amount}
+              className="bg-[#111111] hover:bg-[#242424] text-white h-10 px-5 rounded-md font-semibold text-xs transition-colors border border-transparent shadow-none"
+            >
               {isPending ? "Memproses..." : "Simpan Pembayaran"}
             </Button>
           </div>

@@ -88,32 +88,34 @@ function ReceiptsPage() {
       key: 'actions',
       header: 'Actions',
       render: (receipt) => (
-        <div className="flex space-x-2">
+        <div className="flex items-center space-x-1">
           <Button
-            size="sm"
+            size="icon"
             variant="ghost"
             asChild
             title="View Receipt Detail"
+            className="h-8 w-8 text-zinc-500 hover:text-[#111111] hover:bg-zinc-100 rounded-full"
           >
             <Link to="/receipt-detail" search={{ id: receipt.id }}>
               <Eye className="h-4 w-4" />
             </Link>
           </Button>
           <Button
-            size="sm"
+            size="icon"
             variant="ghost"
             onClick={() => {
               const API_BASE_URL = import.meta.env.VITE_API_URL || window.location.origin.replace(':5173', ':3000');
               window.open(`${API_BASE_URL}/api/receipts/${receipt.id}/download`, '_blank');
             }}
             title="Download PDF"
+            className="h-8 w-8 text-zinc-500 hover:text-[#111111] hover:bg-zinc-100 rounded-full"
           >
             <Download className="h-4 w-4" />
           </Button>
           <Button
-            size="sm"
+            size="icon"
             variant="ghost"
-            className="text-green-600 hover:text-green-700 hover:bg-green-50"
+            className="h-8 w-8 text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 rounded-full"
             onClick={() => {
               const API_BASE_URL = import.meta.env.VITE_API_URL || window.location.origin.replace(':5173', ':3000');
               const pdfUrl = `${API_BASE_URL}/api/receipts/${receipt.id}/download`;
@@ -148,16 +150,22 @@ function ReceiptsPage() {
   return (
     <PageLayout
       title="Receipts"
-      subtitle="Manage payment receipts and kwitansi"
+      subtitle="Kelola kwitansi pembayaran dan tanda terima transaksi"
       actions={
-        <div className="flex space-x-3">
-          <Button variant="outline">
+        <div className="flex items-center space-x-2.5">
+          <Button 
+            variant="outline"
+            className="h-9 px-4 border-[#e5e7eb] text-zinc-700 hover:bg-gray-50 hover:text-black flex items-center rounded-md font-semibold text-xs bg-white shadow-none"
+          >
             <Filter className="h-4 w-4 mr-2" />
             Filter
           </Button>
-          <Button asChild>
+          <Button 
+            className="bg-[#111111] hover:bg-[#242424] text-white h-9 px-4 rounded-md text-xs font-semibold transition-colors border border-transparent shadow-none"
+            asChild
+          >
             <Link to="/create-receipt">
-              <Plus className="h-4 w-4 mr-2" />
+              <Plus className="h-4 w-4 mr-2 text-white" />
               Create Receipt
             </Link>
           </Button>
@@ -165,59 +173,53 @@ function ReceiptsPage() {
       }
     >
       {/* Summary Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
-        <div className="bg-white rounded-lg border border-gray-200 p-6">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+        <div className="border border-[#e5e7eb] rounded-xl bg-white p-5 shadow-none flex flex-col justify-between hover:border-[#111111]/30 transition-all">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm font-medium text-gray-600">Total Receipts</p>
-              <p className="text-3xl font-bold text-gray-900">{totalReceipts}</p>
+              <h3 className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider mb-2">Total Kwitansi</h3>
+              <p className="text-2xl font-bold text-[#111111] tracking-tight">{totalReceipts}</p>
             </div>
-            <div className="bg-blue-100 p-3 rounded-full">
-              <ReceiptIcon className="h-6 w-6 text-blue-600" />
-            </div>
+            <ReceiptIcon className="h-5 w-5 text-zinc-400" />
           </div>
         </div>
 
-        <div className="bg-white rounded-lg border border-gray-200 p-6">
+        <div className="border border-[#e5e7eb] rounded-xl bg-white p-5 shadow-none flex flex-col justify-between hover:border-[#111111]/30 transition-all">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm font-medium text-gray-600">Current Page</p>
-              <p className="text-3xl font-bold text-gray-900">{receipts.length}</p>
+              <h3 className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider mb-2">Halaman Ini</h3>
+              <p className="text-2xl font-bold text-[#111111] tracking-tight">{receipts.length}</p>
             </div>
-            <div className="bg-green-100 p-3 rounded-full">
-              <FileText className="h-6 w-6 text-green-600" />
-            </div>
+            <FileText className="h-5 w-5 text-zinc-400" />
           </div>
         </div>
 
-        <div className="bg-white rounded-lg border border-gray-200 p-6">
+        <div className="border border-[#e5e7eb] rounded-xl bg-white p-5 shadow-none flex flex-col justify-between hover:border-[#111111]/30 transition-all">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm font-medium text-gray-600">Total Value</p>
-              <p className="text-2xl font-bold text-blue-600">
+              <h3 className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider mb-2">Total Nilai Kwitansi</h3>
+              <p className="text-2xl font-bold text-[#111111] tracking-tight">
                 {formatCurrency(totalAmount.toString(), 'IDR')}
               </p>
             </div>
-            <div className="bg-purple-100 p-3 rounded-full">
-              <ReceiptIcon className="h-6 w-6 text-purple-600" />
-            </div>
+            <ReceiptIcon className="h-5 w-5 text-zinc-400" />
           </div>
         </div>
       </div>
 
-      {/* Receipts Table */}
-      <div className="bg-white rounded-lg border border-gray-200">
-        <div className="px-6 py-4 border-b border-gray-200">
-          <h3 className="text-lg font-semibold text-gray-900">All Receipts</h3>
+      {/* Receipts Table Container */}
+      <div className="overflow-hidden border border-[#e5e7eb] rounded-xl bg-white shadow-none">
+        <div className="px-6 py-4 border-b border-[#e5e7eb] bg-white">
+          <h3 className="text-sm font-bold text-[#111111] uppercase tracking-wider">All Receipts Registry</h3>
         </div>
         {isLoading ? (
           <div className="flex items-center justify-center py-12">
-            <Loader2 className="h-8 w-8 animate-spin text-gray-400" />
-            <span className="ml-2 text-gray-600">Loading receipts...</span>
+            <Loader2 className="h-6 w-6 animate-spin text-zinc-500" />
+            <span className="ml-2 text-zinc-500 text-sm">Loading receipts...</span>
           </div>
         ) : error ? (
           <div className="flex items-center justify-center py-12">
-            <p className="text-red-600">Error loading receipts. Please try again.</p>
+            <p className="text-red-500 text-sm font-medium">Error loading receipts. Please try again.</p>
           </div>
         ) : (
           <>
@@ -225,31 +227,34 @@ function ReceiptsPage() {
               data={receipts}
               columns={receiptColumns}
               emptyMessage="No receipts found"
+              noCard={true}
             />
 
             {/* Pagination */}
             {pagination && pagination.totalPages > 1 && (
-              <div className="px-6 py-4 border-t border-gray-200 flex items-center justify-between">
-                <div className="text-sm text-gray-600">
-                  Showing {((currentPage - 1) * pageSize) + 1} to {Math.min(currentPage * pageSize, pagination.total)} of {pagination.total} receipts
+              <div className="px-6 py-4 border-t border-[#e5e7eb] flex items-center justify-between bg-white">
+                <div className="text-xs font-semibold text-zinc-500">
+                  Menampilkan {((currentPage - 1) * pageSize) + 1} s/d {Math.min(currentPage * pageSize, pagination.total)} dari {pagination.total} kwitansi
                 </div>
-                <div className="flex space-x-2">
+                <div className="flex items-center space-x-2">
                   <Button
                     variant="outline"
                     size="sm"
                     onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
                     disabled={currentPage === 1}
+                    className="h-8 border-[#e5e7eb] hover:bg-gray-50 text-zinc-700 rounded-md font-semibold text-xs bg-white shadow-none"
                   >
                     Previous
                   </Button>
-                  <span className="px-3 py-1 text-sm text-gray-600">
-                    Page {currentPage} of {pagination.totalPages}
+                  <span className="text-xs font-bold text-zinc-700 px-2">
+                    Halaman {currentPage} dari {pagination.totalPages}
                   </span>
                   <Button
                     variant="outline"
                     size="sm"
                     onClick={() => setCurrentPage(prev => Math.min(pagination.totalPages, prev + 1))}
                     disabled={currentPage === pagination.totalPages}
+                    className="h-8 border-[#e5e7eb] hover:bg-gray-50 text-zinc-700 rounded-md font-semibold text-xs bg-white shadow-none"
                   >
                     Next
                   </Button>

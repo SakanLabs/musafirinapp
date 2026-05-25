@@ -27,15 +27,15 @@ export function PageLayout({
   };
 
   return (
-    <div className="h-screen overflow-hidden bg-gray-50 flex">
-      {/* Sidebar */}
+    <div className="h-screen overflow-hidden bg-[#ffffff] flex">
+      {/* Pinned Shell Sidebar */}
       <Sidebar />
 
       {/* Main Content Area */}
-      <div className="flex-1 flex flex-col min-h-0 min-w-0 overflow-hidden">
-        {/* Header */}
-        <header className="flex-shrink-0 bg-white border-b border-gray-200 z-10">
-          <div className="w-full px-4 sm:px-6 lg:px-8">
+      <div className="flex-1 flex flex-col min-h-0 min-w-0 overflow-hidden bg-[#ffffff]">
+        {/* Pinned Shell Header (64px / h-16) */}
+        <header className="flex-shrink-0 bg-white border-b border-[#e5e7eb] z-10">
+          <div className="w-full px-6 sm:px-8">
             <div className="flex items-center justify-between h-16">
               <div className="flex items-center space-x-4 lg:ml-0 ml-12">
                 {showBackButton && (
@@ -43,28 +43,34 @@ export function PageLayout({
                     variant="ghost"
                     size="sm"
                     onClick={handleBack}
-                    className="p-2"
+                    className="p-2 rounded-full hover:bg-gray-50 border border-transparent hover:border-[#e5e7eb] transition-all"
                   >
-                    <ArrowLeft className="h-4 w-4" />
+                    <ArrowLeft className="h-4 w-4 text-[#111111]" />
                   </Button>
                 )}
-                <div>
-                  <h1 className="text-2xl font-bold text-gray-900">{title}</h1>
+                <div className="flex flex-col">
+                  <h1 className="text-lg font-bold tracking-[-0.03em] text-[#111111] font-sans">
+                    {title}
+                  </h1>
                   {subtitle && (
-                    <p className="text-sm text-gray-600 mt-1">{subtitle}</p>
+                    <p className="text-[11px] text-gray-400 font-medium tracking-wide mt-0.5">
+                      {subtitle}
+                    </p>
                   )}
                 </div>
               </div>
+              
+              {/* Toolbar & Profile Dropdown */}
               <div className="flex items-center space-x-3">
-                {actions}
+                {actions && <div className="flex items-center space-x-2">{actions}</div>}
                 <ProfileDropdown />
               </div>
             </div>
           </div>
         </header>
 
-        {/* Main Content */}
-        <main className="flex-1 overflow-y-auto overflow-x-hidden w-full px-4 sm:px-6 lg:px-8 py-6">
+        {/* Main Content Flow */}
+        <main className="flex-1 overflow-y-auto overflow-x-hidden w-full px-6 sm:px-8 py-8 bg-[#ffffff]">
           {children}
         </main>
       </div>

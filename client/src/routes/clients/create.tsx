@@ -128,31 +128,33 @@ function CreateClientPage() {
 
             navigate({ to: "/clients" })
           }}
+          className="h-9 px-4 border-[#e5e7eb] hover:bg-gray-50 text-gray-700 font-medium rounded-md flex items-center space-x-1.5"
         >
-          <ArrowLeft className="h-4 w-4 mr-2" />
-          Back
+          <ArrowLeft className="h-4 w-4" />
+          <span>Back</span>
         </Button>
       }
     >
-      <Card className="max-w-3xl mx-auto p-6">
+      <Card className="max-w-2xl mx-auto p-8 border border-[#e5e7eb] rounded-xl shadow-none bg-white">
         <form onSubmit={handleSubmit} className="space-y-6">
-          <div className="space-y-4">
-            <div>
-              <Label htmlFor="client-name">Full Name *</Label>
+          <div className="space-y-5">
+            <div className="space-y-1.5">
+              <Label htmlFor="client-name" className="text-xs font-semibold text-gray-700 uppercase tracking-wider">Full Name *</Label>
               <Input
                 id="client-name"
                 value={formData.name}
                 onChange={(e) => handleInputChange("name", e.target.value)}
                 placeholder="Enter client's full name"
                 required
+                className="h-10 px-3 border-[#e5e7eb] rounded-md focus:border-[#111111] focus:ring-1 focus:ring-[#111111] focus-visible:ring-[#111111] focus-visible:border-[#111111] focus-visible:ring-offset-0 focus-visible:ring-1 bg-white"
               />
               {errors.name && (
-                <p className="text-red-500 text-sm mt-1">{errors.name}</p>
+                <p className="text-red-600 text-xs font-medium mt-1">{errors.name}</p>
               )}
             </div>
 
-            <div>
-              <Label htmlFor="client-email">Email Address *</Label>
+            <div className="space-y-1.5">
+              <Label htmlFor="client-email" className="text-xs font-semibold text-gray-700 uppercase tracking-wider">Email Address *</Label>
               <Input
                 id="client-email"
                 type="email"
@@ -160,39 +162,42 @@ function CreateClientPage() {
                 onChange={(e) => handleInputChange("email", e.target.value)}
                 placeholder="Enter email address"
                 required
+                className="h-10 px-3 border-[#e5e7eb] rounded-md focus:border-[#111111] focus:ring-1 focus:ring-[#111111] focus-visible:ring-[#111111] focus-visible:border-[#111111] focus-visible:ring-offset-0 focus-visible:ring-1 bg-white"
               />
               {errors.email && (
-                <p className="text-red-500 text-sm mt-1">{errors.email}</p>
+                <p className="text-red-600 text-xs font-medium mt-1">{errors.email}</p>
               )}
             </div>
 
-            <div>
-              <Label htmlFor="client-phone">Phone Number *</Label>
+            <div className="space-y-1.5">
+              <Label htmlFor="client-phone" className="text-xs font-semibold text-gray-700 uppercase tracking-wider">Phone Number *</Label>
               <Input
                 id="client-phone"
                 value={formData.phone}
                 onChange={(e) => handleInputChange("phone", e.target.value)}
                 placeholder="Enter phone number"
                 required
+                className="h-10 px-3 border-[#e5e7eb] rounded-md focus:border-[#111111] focus:ring-1 focus:ring-[#111111] focus-visible:ring-[#111111] focus-visible:border-[#111111] focus-visible:ring-offset-0 focus-visible:ring-1 bg-white"
               />
               {errors.phone && (
-                <p className="text-red-500 text-sm mt-1">{errors.phone}</p>
+                <p className="text-red-600 text-xs font-medium mt-1">{errors.phone}</p>
               )}
             </div>
 
-            <div>
-              <Label htmlFor="client-address">Address</Label>
+            <div className="space-y-1.5">
+              <Label htmlFor="client-address" className="text-xs font-semibold text-gray-700 uppercase tracking-wider">Address</Label>
               <Textarea
                 id="client-address"
                 value={formData.address}
                 onChange={(e) => handleInputChange("address", e.target.value)}
                 placeholder="Enter client's address (optional)"
                 rows={3}
+                className="px-3 py-2 border-[#e5e7eb] rounded-md focus:border-[#111111] focus:ring-1 focus:ring-[#111111] focus-visible:ring-[#111111] focus-visible:border-[#111111] focus-visible:ring-offset-0 focus-visible:ring-1 bg-white"
               />
             </div>
           </div>
 
-          <div className="flex justify-end space-x-3 pt-2">
+          <div className="flex justify-end space-x-3 pt-4 border-t border-[#e5e7eb] mt-6">
             <Button
               type="button"
               variant="outline"
@@ -204,13 +209,14 @@ function CreateClientPage() {
 
                 navigate({ to: "/clients" })
               }}
+              className="h-10 border-[#e5e7eb] hover:bg-gray-50 text-gray-700 font-semibold rounded-md transition-colors"
             >
               Cancel
             </Button>
             <Button
               type="submit"
               disabled={createClientMutation.isPending}
-              className="min-w-[140px]"
+              className="h-10 px-6 bg-[#111111] hover:bg-[#242424] text-white font-semibold rounded-md transition-colors border border-transparent shadow-sm flex items-center justify-center min-w-[140px]"
             >
               {createClientMutation.isPending ? (
                 <>

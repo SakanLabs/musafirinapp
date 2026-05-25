@@ -51,17 +51,26 @@ function InvoicesPage() {
     {
       key: 'number',
       header: 'Invoice Number',
+      render: (invoice) => (
+        <span className="font-bold text-[#111111]">{invoice.number}</span>
+      ),
       sortable: true,
       width: 'w-36'
     },
     {
       key: 'clientName',
       header: 'Client',
+      render: (invoice) => (
+        <span className="font-semibold text-zinc-800">{invoice.clientName}</span>
+      ),
       sortable: true
     },
     {
       key: 'bookingCode',
       header: 'Booking',
+      render: (invoice) => (
+        <span className="font-mono text-xs bg-zinc-100 px-1.5 py-0.5 rounded text-zinc-700 font-semibold">{invoice.bookingCode}</span>
+      ),
       sortable: true,
       width: 'w-24'
     },
@@ -81,7 +90,7 @@ function InvoicesPage() {
         return (
           <Link
             to={bookingLink as any}
-            className="text-blue-600 hover:text-blue-800 underline"
+            className="text-zinc-950 font-bold hover:underline"
           >
             #{invoice.bookingId}
           </Link>
@@ -93,7 +102,11 @@ function InvoicesPage() {
     {
       key: 'amount',
       header: 'Amount',
-      render: (invoice) => formatCurrency(invoice.amount, invoice.currency),
+      render: (invoice) => (
+        <span className="font-bold text-[#111111]">
+          {formatCurrency(invoice.amount, invoice.currency)}
+        </span>
+      ),
       sortable: true,
       width: 'w-32'
     },
@@ -101,9 +114,9 @@ function InvoicesPage() {
       key: 'status',
       header: 'Status',
       render: (invoice) => (
-        <Badge className={getInvoiceStatusColor(invoice.status)}>
+        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider border ${getInvoiceStatusColor(invoice.status)}`}>
           {invoice.status}
-        </Badge>
+        </span>
       ),
       sortable: true,
       width: 'w-24'
@@ -111,14 +124,18 @@ function InvoicesPage() {
     {
       key: 'issueDate',
       header: 'Issue Date',
-      render: (invoice) => formatDate(invoice.issueDate),
+      render: (invoice) => (
+        <span className="text-zinc-600 font-medium">{formatDate(invoice.issueDate)}</span>
+      ),
       sortable: true,
       width: 'w-28'
     },
     {
       key: 'dueDate',
       header: 'Due Date',
-      render: (invoice) => formatDate(invoice.dueDate),
+      render: (invoice) => (
+        <span className="text-zinc-600 font-medium">{formatDate(invoice.dueDate)}</span>
+      ),
       sortable: true,
       width: 'w-28'
     },
@@ -136,26 +153,27 @@ function InvoicesPage() {
         }
 
         return (
-          <div className="flex space-x-2">
+          <div className="flex items-center gap-1.5">
             <Link
               to={detailLink as any}
-              className="inline-flex items-center justify-center rounded-md hover:bg-gray-100 px-2 py-1"
-              title="View Detail"
+              className="h-8 w-8 rounded-md border border-[#e5e7eb] text-zinc-700 hover:bg-zinc-50 hover:text-black flex items-center justify-center transition-colors bg-white shadow-none"
+              title="Lihat Detail"
             >
-              <Eye className="h-4 w-4" />
+              <Eye className="h-3.5 w-3.5" />
             </Link>
             <Button
               size="sm"
-              variant="ghost"
+              variant="outline"
               onClick={() => window.open(`${API_BASE_URL}/api/invoices/by-number/${invoice.number}`, '_blank')}
+              className="h-8 w-8 p-0 border-[#e5e7eb] text-zinc-700 hover:bg-zinc-50 hover:text-[#111111] rounded-md flex items-center justify-center transition-colors bg-white shadow-none"
               title="Download PDF"
             >
-              <Download className="h-4 w-4" />
+              <Download className="h-3.5 w-3.5" />
             </Button>
             <Button
               size="sm"
-              variant="ghost"
-              className="text-green-600 hover:text-green-700 hover:bg-green-50"
+              variant="outline"
+              className="h-8 w-8 p-0 border-[#e5e7eb] text-emerald-600 hover:bg-emerald-50 hover:text-emerald-700 rounded-md flex items-center justify-center transition-colors bg-white shadow-none"
               onClick={() => {
                 const pdfUrl = `${API_BASE_URL}/api/invoices/by-number/${invoice.number}`;
                 const msg = [
@@ -174,13 +192,14 @@ function InvoicesPage() {
               }}
               title="Kirim via WhatsApp"
             >
-              <MessageCircle className="h-4 w-4" />
+              <MessageCircle className="h-3.5 w-3.5" />
             </Button>
             {isAdmin && (
               <Button
                 size="sm"
-                variant="destructive"
-                title="Delete Invoice"
+                variant="outline"
+                className="h-8 w-8 p-0 bg-rose-50 hover:bg-rose-100 text-rose-600 border border-rose-200/60 rounded-md flex items-center justify-center transition-colors shadow-none"
+                title="Hapus Invoice"
                 onClick={async () => {
                   const confirmed = window.confirm(`Hapus invoice ${invoice.number}? Semua payments akan ikut terhapus, receipts akan tidak terhubung.`)
                   if (!confirmed) return
@@ -192,7 +211,7 @@ function InvoicesPage() {
                   }
                 }}
               >
-                {isDeleting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+                {isDeleting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}
               </Button>
             )}
           </div>
@@ -202,20 +221,17 @@ function InvoicesPage() {
     }
   ];
 
-
-
   const getInvoiceStatusColor = (status: string) => {
-    switch (status) {
+    switch (status?.toLowerCase()) {
       case 'paid':
-        return 'bg-green-100 text-green-800 border-green-200'
+        return 'bg-emerald-50 text-emerald-700 border-emerald-200/50'
       case 'pending':
-        return 'bg-yellow-100 text-yellow-800 border-yellow-200'
+      case 'sent':
+        return 'bg-amber-50 text-amber-700 border-amber-200/50'
       case 'overdue':
-        return 'bg-red-100 text-red-800 border-red-200'
-      case 'cancelled':
-        return 'bg-gray-100 text-gray-800 border-gray-200'
+        return 'bg-rose-50 text-rose-700 border-rose-200/50'
       default:
-        return 'bg-gray-100 text-gray-800 border-gray-200'
+        return 'bg-zinc-50 text-zinc-700 border-zinc-200/60'
     }
   }
 
@@ -234,20 +250,25 @@ function InvoicesPage() {
       title="Invoices"
       subtitle="Manage invoices and payment tracking"
       actions={
-        <div className="flex space-x-3">
-          <Button variant="outline">
+        <div className="flex items-center space-x-2.5">
+          <Button 
+            variant="outline"
+            className="h-9 px-4 border-[#e5e7eb] text-zinc-700 hover:bg-gray-50 hover:text-black flex items-center rounded-md font-semibold text-xs bg-white shadow-none"
+          >
             <Filter className="h-4 w-4 mr-2" />
             Filter
           </Button>
           <Link to="/create-invoice">
-            <Button>
-              <Plus className="h-4 w-4 mr-2" />
+            <Button
+              className="bg-[#111111] hover:bg-[#242424] text-white h-9 px-4 rounded-md text-xs font-semibold transition-colors border border-transparent shadow-none"
+            >
+              <Plus className="h-4 w-4 mr-2 text-white/80" />
               Create Invoice
             </Button>
           </Link>
           {isAdmin && (
             <Button
-              variant="secondary"
+              variant="outline"
               onClick={async () => {
                 setSyncError(null)
                 setSyncSummary(null)
@@ -259,118 +280,122 @@ function InvoicesPage() {
                 }
               }}
               disabled={isPending}
+              className="h-9 px-4 border-[#e5e7eb] text-zinc-700 hover:bg-gray-50 hover:text-black flex items-center rounded-md font-semibold text-xs bg-white shadow-none"
               title="Sinkronisasi status invoice vs booking"
             >
-              {isPending ? (<><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Syncing...</>) : 'Sync Status'}
+              {isPending ? (
+                <><Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" /> Syncing...</>
+              ) : (
+                'Sync Status'
+              )}
             </Button>
           )}
         </div>
       }
     >
       <Outlet />
-      {/* Summary Cards */}
+      {/* Sync Status Notifications */}
       {syncSummary && (
-        <div className="mb-4 text-sm text-gray-700">
+        <div className="mb-5 border border-emerald-100 rounded-lg p-3 bg-emerald-50 text-xs font-medium text-emerald-800">
           Sync selesai. Total diproses: {syncSummary.totalProcessed}, diupdate: {syncSummary.updatedCount}.
         </div>
       )}
       {syncError && (
-        <div className="mb-4 text-sm text-red-600">
+        <div className="mb-5 border border-rose-100 rounded-lg p-3 bg-rose-50 text-xs font-medium text-rose-800">
           {syncError}
         </div>
       )}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-        <div className="bg-white rounded-lg border border-gray-200 p-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-gray-600">Total Invoices</p>
-              <p className="text-3xl font-bold text-gray-900">{totalInvoices}</p>
-            </div>
-            <div className="bg-blue-100 p-3 rounded-full">
-              <FileText className="h-6 w-6 text-blue-600" />
-            </div>
+
+      {/* Summary Cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+        <div className="border border-[#e5e7eb] rounded-xl bg-white shadow-none p-5 flex items-center justify-between transition-all hover:border-[#111111]/30">
+          <div>
+            <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider">Total Invoices</p>
+            <p className="text-2xl font-bold text-[#111111] mt-1 tracking-tight">{totalInvoices}</p>
+          </div>
+          <div className="bg-zinc-50 p-2 rounded-lg border border-zinc-200/40">
+            <FileText className="h-5 w-5 text-zinc-700" />
           </div>
         </div>
 
-        <div className="bg-white rounded-lg border border-gray-200 p-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-gray-600">Paid</p>
-              <p className="text-3xl font-bold text-green-600">{paidInvoices}</p>
-            </div>
-            <div className="bg-green-100 p-3 rounded-full">
-              <FileText className="h-6 w-6 text-green-600" />
-            </div>
+        <div className="border border-[#e5e7eb] rounded-xl bg-white shadow-none p-5 flex items-center justify-between transition-all hover:border-[#111111]/30">
+          <div>
+            <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider">Paid Invoices</p>
+            <p className="text-2xl font-bold text-emerald-700 mt-1 tracking-tight">{paidInvoices}</p>
+          </div>
+          <div className="bg-emerald-50/50 p-2 rounded-lg border border-emerald-100">
+            <FileText className="h-5 w-5 text-emerald-700" />
           </div>
         </div>
 
-        <div className="bg-white rounded-lg border border-gray-200 p-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-gray-600">Pending</p>
-              <p className="text-3xl font-bold text-yellow-600">{pendingInvoices}</p>
-            </div>
-            <div className="bg-yellow-100 p-3 rounded-full">
-              <FileText className="h-6 w-6 text-yellow-600" />
-            </div>
+        <div className="border border-[#e5e7eb] rounded-xl bg-white shadow-none p-5 flex items-center justify-between transition-all hover:border-[#111111]/30">
+          <div>
+            <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider">Pending Invoices</p>
+            <p className="text-2xl font-bold text-amber-700 mt-1 tracking-tight">{pendingInvoices}</p>
+          </div>
+          <div className="bg-amber-50/50 p-2 rounded-lg border border-amber-100">
+            <FileText className="h-5 w-5 text-amber-700" />
           </div>
         </div>
 
-        <div className="bg-white rounded-lg border border-gray-200 p-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-gray-600">Overdue</p>
-              <p className="text-3xl font-bold text-red-600">{overdueInvoices}</p>
-            </div>
-            <div className="bg-red-100 p-3 rounded-full">
-              <FileText className="h-6 w-6 text-red-600" />
-            </div>
+        <div className="border border-[#e5e7eb] rounded-xl bg-white shadow-none p-5 flex items-center justify-between transition-all hover:border-[#111111]/30">
+          <div>
+            <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider">Overdue Invoices</p>
+            <p className="text-2xl font-bold text-rose-700 mt-1 tracking-tight">{overdueInvoices}</p>
+          </div>
+          <div className="bg-rose-50/50 p-2 rounded-lg border border-rose-100">
+            <FileText className="h-5 w-5 text-rose-700" />
           </div>
         </div>
       </div>
 
       {/* Revenue Summary */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-        <div className="bg-white rounded-lg border border-gray-200 p-6">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">Total Revenue</h3>
-          <p className="text-3xl font-bold text-blue-600">
-            {formatCurrency(totalAmount.toString(), 'IDR')}
-          </p>
-          <p className="text-sm text-gray-600 mt-2">
-            From {totalInvoices} invoices
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+        <div className="border border-[#e5e7eb] rounded-xl bg-white p-5 shadow-none flex flex-col justify-between hover:border-[#111111]/30 transition-all">
+          <div>
+            <h3 className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider mb-2">Total Revenue</h3>
+            <p className="text-2xl font-bold text-[#111111] tracking-tight">
+              {formatCurrency(totalAmount.toString(), 'IDR')}
+            </p>
+          </div>
+          <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider mt-3">
+            Berdasarkan {totalInvoices} invoice diterbitkan
           </p>
         </div>
 
-        <div className="bg-white rounded-lg border border-gray-200 p-6">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">Collected Revenue</h3>
-          <p className="text-3xl font-bold text-green-600">
-            {formatCurrency(paidAmount.toString(), 'IDR')}
-          </p>
-          <p className="text-sm text-gray-600 mt-2">
-            From {paidInvoices} paid invoices
+        <div className="border border-[#e5e7eb] rounded-xl bg-white p-5 shadow-none flex flex-col justify-between hover:border-[#111111]/30 transition-all">
+          <div>
+            <h3 className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider mb-2">Collected Revenue</h3>
+            <p className="text-2xl font-bold text-[#111111] tracking-tight">
+              {formatCurrency(paidAmount.toString(), 'IDR')}
+            </p>
+          </div>
+          <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider mt-3">
+            Berdasarkan {paidInvoices} invoice lunas
           </p>
         </div>
       </div>
 
-      {/* Invoices Table */}
-      <div className="bg-white rounded-lg border border-gray-200">
-        <div className="px-6 py-4 border-b border-gray-200">
-          <h3 className="text-lg font-semibold text-gray-900">All Invoices</h3>
+      {/* Invoices Table Container */}
+      <div className="overflow-hidden border border-[#e5e7eb] rounded-xl bg-white shadow-none">
+        <div className="px-6 py-4 border-b border-[#e5e7eb] bg-white">
+          <h3 className="text-sm font-bold text-[#111111] uppercase tracking-wider">All Invoices Registry</h3>
         </div>
         {isLoading ? (
           <div className="flex items-center justify-center py-12">
-            <Loader2 className="h-8 w-8 animate-spin text-gray-400" />
-            <span className="ml-2 text-gray-600">Loading invoices...</span>
+            <Loader2 className="h-6 w-6 animate-spin text-zinc-500" />
+            <span className="ml-2 text-zinc-500 text-sm">Loading invoices...</span>
           </div>
         ) : error ? (
           <div className="flex items-center justify-center py-12">
-            <p className="text-red-600">Error loading invoices. Please try again.</p>
+            <p className="text-red-500 text-sm font-medium">Error loading invoices. Please try again.</p>
           </div>
         ) : (
           <DataTable
             data={invoices}
             columns={invoiceColumns}
             emptyMessage="No invoices found"
+            noCard={true}
           />
         )}
       </div>
