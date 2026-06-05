@@ -221,6 +221,38 @@ export const authService = {
     } catch (error) {
       return { success: false, error: error instanceof Error ? error.message : 'Authentication failed' }
     }
+  },
+
+  // Request password reset link
+  forgotPassword: async (email: string, redirectTo: string): Promise<{ success: boolean; error?: string }> => {
+    try {
+      const result = await authClient.forgetPassword({
+        email,
+        redirectTo,
+      })
+      if (result.error) {
+        return { success: false, error: result.error.message || 'Failed to send reset link' }
+      }
+      return { success: true }
+    } catch (error) {
+      return { success: false, error: error instanceof Error ? error.message : 'An unexpected error occurred' }
+    }
+  },
+
+  // Reset password using token
+  resetPassword: async (newPassword: string, token: string): Promise<{ success: boolean; error?: string }> => {
+    try {
+      const result = await authClient.resetPassword({
+        newPassword,
+        token,
+      })
+      if (result.error) {
+        return { success: false, error: result.error.message || 'Failed to reset password' }
+      }
+      return { success: true }
+    } catch (error) {
+      return { success: false, error: error instanceof Error ? error.message : 'An unexpected error occurred' }
+    }
   }
 }
 

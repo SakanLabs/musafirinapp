@@ -13,6 +13,7 @@ import { Route as VouchersRouteImport } from './routes/vouchers'
 import { Route as TransportationBookingsRouteImport } from './routes/transportation-bookings'
 import { Route as StoreRouteImport } from './routes/store'
 import { Route as ServiceOrdersRouteImport } from './routes/service-orders'
+import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as RegisterRouteImport } from './routes/register'
 import { Route as ReceiptsRouteImport } from './routes/receipts'
 import { Route as ReceiptDetailRouteImport } from './routes/receipt-detail'
@@ -97,6 +98,11 @@ const StoreRoute = StoreRouteImport.update({
 const ServiceOrdersRoute = ServiceOrdersRouteImport.update({
   id: '/service-orders',
   path: '/service-orders',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ResetPasswordRoute = ResetPasswordRouteImport.update({
+  id: '/reset-password',
+  path: '/reset-password',
   getParentRoute: () => rootRouteImport,
 } as any)
 const RegisterRoute = RegisterRouteImport.update({
@@ -469,6 +475,7 @@ export interface FileRoutesByFullPath {
   '/receipt-detail': typeof ReceiptDetailRoute
   '/receipts': typeof ReceiptsRoute
   '/register': typeof RegisterRoute
+  '/reset-password': typeof ResetPasswordRoute
   '/service-orders': typeof ServiceOrdersRouteWithChildren
   '/store': typeof StoreRouteWithChildren
   '/transportation-bookings': typeof TransportationBookingsRoute
@@ -539,6 +546,7 @@ export interface FileRoutesByTo {
   '/receipt-detail': typeof ReceiptDetailRoute
   '/receipts': typeof ReceiptsRoute
   '/register': typeof RegisterRoute
+  '/reset-password': typeof ResetPasswordRoute
   '/service-orders': typeof ServiceOrdersRouteWithChildren
   '/transportation-bookings': typeof TransportationBookingsRoute
   '/custom-la-quotation': typeof CustomLaQuotationRoute
@@ -609,6 +617,7 @@ export interface FileRoutesById {
   '/receipt-detail': typeof ReceiptDetailRoute
   '/receipts': typeof ReceiptsRoute
   '/register': typeof RegisterRoute
+  '/reset-password': typeof ResetPasswordRoute
   '/service-orders': typeof ServiceOrdersRouteWithChildren
   '/store': typeof StoreRouteWithChildren
   '/transportation-bookings': typeof TransportationBookingsRoute
@@ -682,6 +691,7 @@ export interface FileRouteTypes {
     | '/receipt-detail'
     | '/receipts'
     | '/register'
+    | '/reset-password'
     | '/service-orders'
     | '/store'
     | '/transportation-bookings'
@@ -752,6 +762,7 @@ export interface FileRouteTypes {
     | '/receipt-detail'
     | '/receipts'
     | '/register'
+    | '/reset-password'
     | '/service-orders'
     | '/transportation-bookings'
     | '/custom-la-quotation'
@@ -821,6 +832,7 @@ export interface FileRouteTypes {
     | '/receipt-detail'
     | '/receipts'
     | '/register'
+    | '/reset-password'
     | '/service-orders'
     | '/store'
     | '/transportation-bookings'
@@ -893,6 +905,7 @@ export interface RootRouteChildren {
   ReceiptDetailRoute: typeof ReceiptDetailRoute
   ReceiptsRoute: typeof ReceiptsRoute
   RegisterRoute: typeof RegisterRoute
+  ResetPasswordRoute: typeof ResetPasswordRoute
   ServiceOrdersRoute: typeof ServiceOrdersRouteWithChildren
   StoreRoute: typeof StoreRouteWithChildren
   TransportationBookingsRoute: typeof TransportationBookingsRoute
@@ -945,6 +958,13 @@ declare module '@tanstack/react-router' {
       path: '/service-orders'
       fullPath: '/service-orders'
       preLoaderRoute: typeof ServiceOrdersRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/reset-password': {
+      id: '/reset-password'
+      path: '/reset-password'
+      fullPath: '/reset-password'
+      preLoaderRoute: typeof ResetPasswordRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/register': {
@@ -1535,6 +1555,7 @@ const rootRouteChildren: RootRouteChildren = {
   ReceiptDetailRoute: ReceiptDetailRoute,
   ReceiptsRoute: ReceiptsRoute,
   RegisterRoute: RegisterRoute,
+  ResetPasswordRoute: ResetPasswordRoute,
   ServiceOrdersRoute: ServiceOrdersRouteWithChildren,
   StoreRoute: StoreRouteWithChildren,
   TransportationBookingsRoute: TransportationBookingsRoute,

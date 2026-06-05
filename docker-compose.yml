@@ -4,6 +4,8 @@ services:
   db:
     image: postgres:15-alpine
     container_name: musafirin_db
+    ports:
+      - "5432:5432"
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres123

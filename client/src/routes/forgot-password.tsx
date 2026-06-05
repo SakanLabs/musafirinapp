@@ -3,7 +3,8 @@ import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Mail, ArrowLeft } from "lucide-react"
+import { Mail, ArrowLeft, AlertCircle } from "lucide-react"
+import { authService } from "@/lib/auth"
 
 export const Route = createFileRoute("/forgot-password")({ 
   component: ForgotPasswordPage,
@@ -12,12 +13,28 @@ export const Route = createFileRoute("/forgot-password")({
 function ForgotPasswordPage() {
   const [email, setEmail] = useState("")
   const [isSubmitted, setIsSubmitted] = useState(false)
+  const [isLoading, setIsLoading] = useState(false)
+  const [error, setError] = useState("")
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    // TODO: Implement password reset logic
-    
-    setIsSubmitted(true)
+    setIsLoading(true)
+    setError("")
+
+    try {
+      const redirectTo = `${window.location.origin}/reset-password`
+      const result = await authService.forgotPassword(email, redirectTo)
+      
+      if (result.success) {
+        setIsSubmitted(true)
+      } else {
+        setError(result.error || "Gagal mengirim link reset password")
+      }
+    } catch {
+      setError("Terjadi kesalahan yang tidak terduga")
+    } finally {
+      setIsLoading(false)
+    }
   }
 
   if (isSubmitted) {
@@ -70,6 +87,13 @@ function ForgotPasswordPage() {
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
+            {error && (
+              <div className="flex items-center space-x-2 text-red-600 bg-red-50 dark:bg-red-900/20 p-3 rounded-lg">
+                <AlertCircle className="h-4 w-4" />
+                <span className="text-sm">{error}</span>
+              </div>
+            )}
+
             <div className="space-y-2">
               <label htmlFor="email" className="text-sm font-medium text-gray-700 dark:text-gray-300">
                 Email Address
@@ -85,6 +109,7 @@ function ForgotPasswordPage() {
                   onChange={(e) => setEmail(e.target.value)}
                   className="pl-10"
                   required
+                  disabled={isLoading}
                 />
               </div>
             </div>
@@ -92,8 +117,9 @@ function ForgotPasswordPage() {
             <Button
               type="submit"
               className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-medium py-2.5 transition-all duration-200 transform hover:scale-[1.02]"
+              disabled={isLoading}
             >
-              Send Reset Link
+              {isLoading ? "Sending..." : "Send Reset Link"}
             </Button>
           </form>
 
