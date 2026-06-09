@@ -146,7 +146,7 @@ function InvoicesPage() {
         let detailLink = `/invoice-detail?id=${invoice.id}`;
         if (invoice.number.startsWith('TI-')) {
           detailLink = `/transportation-booking-detail/${invoice.bookingId}`;
-        } else if (invoice.number.startsWith('SOI-')) {
+        } else if (invoice.number.startsWith('SO-INV-')) {
           detailLink = `/service-order-detail/${invoice.bookingId}`;
         } else if (invoice.number.startsWith('LA-INV-')) {
           detailLink = `/custom-la-detail/${invoice.bookingId}`;

@@ -318,52 +318,11 @@ serviceOrderRoutes.post('/:id/generate-invoice', requireAdminOrFinance, async (c
     // Generate invoice number
     const invoiceNumber = generateServiceOrderInvoiceNumber();
 
-    // Create invoice object for PDF generation
-    const invoiceForPDF = {
-      number: invoiceNumber,
-      amount: parseFloat(serviceOrder.totalPriceSAR),
-      currency: 'SAR',
-      status: 'draft' as const,
-      pdfUrl: null,
-    };
-
-    // Create service order object for PDF generation
-    const serviceOrderForPDF = {
-      id: serviceOrder.id,
-      number: serviceOrder.number,
-      productType: serviceOrder.productType,
-      status: serviceOrder.status,
-      totalAmount: parseFloat(serviceOrder.totalPriceSAR),
-      totalPeople: serviceOrder.totalPeople,
-      createdAt: serviceOrder.createdAt,
-    };
-
-    // Generate PDF
-    const pdfBuffer = await generateServiceOrderInvoicePDF(
-      invoiceForPDF,
-      serviceOrderForPDF,
-      {
-        id: serviceOrder.clientId!,
-        name: serviceOrder.clientName!,
-        email: serviceOrder.clientEmail!,
-        phone: serviceOrder.clientPhone,
-      },
-      customDueDate,
-      customInvoiceDate || new Date()
-    );
-
-    // Upload to MinIO
-    const pdfUrl = await uploadToMinio(
-      `service-order-invoices/${invoiceNumber}.pdf`,
-      pdfBuffer,
-      'application/pdf'
-    );
-
     // Calculate dates
     const issueDate = customInvoiceDate ? new Date(customInvoiceDate) : new Date();
     const dueDate = new Date(customDueDate);
 
-    // Save invoice to database
+    // Save invoice to database FIRST with null pdfUrl
     const newInvoice: NewServiceOrderInvoice = {
       number: invoiceNumber,
       serviceOrderId: serviceOrderId,
@@ -372,7 +331,7 @@ serviceOrderRoutes.post('/:id/generate-invoice', requireAdminOrFinance, async (c
       issueDate: issueDate,
       dueDate: dueDate,
       status: 'draft',
-      pdfUrl: pdfUrl,
+      pdfUrl: null,
     };
 
     const [insertedInvoice] = await db
@@ -380,11 +339,62 @@ serviceOrderRoutes.post('/:id/generate-invoice', requireAdminOrFinance, async (c
       .values(newInvoice)
       .returning();
 
+    // Now attempt to generate PDF
+    try {
+      // Create invoice object for PDF generation
+      const invoiceForPDF = {
+        number: invoiceNumber,
+        amount: parseFloat(serviceOrder.totalPriceSAR),
+        currency: 'SAR',
+        status: 'draft' as const,
+        pdfUrl: null,
+      };
+
+      // Create service order object for PDF generation
+      const serviceOrderForPDF = {
+        id: serviceOrder.id,
+        number: serviceOrder.number,
+        productType: serviceOrder.productType,
+        status: serviceOrder.status,
+        totalAmount: parseFloat(serviceOrder.totalPriceSAR),
+        totalPeople: serviceOrder.totalPeople,
+        createdAt: serviceOrder.createdAt,
+      };
+
+      // Generate PDF
+      const pdfBuffer = await generateServiceOrderInvoicePDF(
+        invoiceForPDF,
+        serviceOrderForPDF,
+        {
+          id: serviceOrder.clientId!,
+          name: serviceOrder.clientName!,
+          email: serviceOrder.clientEmail!,
+          phone: serviceOrder.clientPhone,
+        },
+        customDueDate,
+        customInvoiceDate || new Date()
+      );
+
+      // Upload to MinIO
+      const pdfUrl = await uploadToMinio(
+        `service-order-invoices/${invoiceNumber}.pdf`,
+        pdfBuffer,
+        'application/pdf'
+      );
+
+      // Update the invoice in database with PDF URL
+      await db.update(serviceOrderInvoices).set({ pdfUrl }).where(eq(serviceOrderInvoices.id, insertedInvoice!.id));
+      insertedInvoice!.pdfUrl = pdfUrl;
+    } catch (pdfError) {
+      console.error('Failed to generate/upload PDF, but invoice was created in DB:', pdfError);
+      // Proceed returning the insertedInvoice with null pdfUrl
+    }
+
     return c.json({
       success: true,
       data: insertedInvoice,
       message: 'Service order invoice generated successfully',
-      downloadUrl: pdfUrl
+      downloadUrl: insertedInvoice!.pdfUrl
     }, 201);
   } catch (error) {
     console.error('Error generating service order invoice:', error);
@@ -483,52 +493,11 @@ serviceOrderRoutes.post('/:id/regenerate-invoice', requireAdminOrFinance, async 
     // Generate new invoice number
     const invoiceNumber = generateServiceOrderInvoiceNumber();
 
-    // Create invoice object for PDF generation
-    const invoiceForPDF = {
-      number: invoiceNumber,
-      amount: parseFloat(serviceOrder.totalPriceSAR),
-      currency: 'SAR',
-      status: 'draft' as const,
-      pdfUrl: null,
-    };
-
-    // Create service order object for PDF generation
-    const serviceOrderForPDF = {
-      id: serviceOrder.id,
-      number: serviceOrder.number,
-      productType: serviceOrder.productType,
-      status: serviceOrder.status,
-      totalAmount: parseFloat(serviceOrder.totalPriceSAR),
-      totalPeople: serviceOrder.totalPeople,
-      createdAt: serviceOrder.createdAt,
-    };
-
-    // Generate PDF
-    const pdfBuffer = await generateServiceOrderInvoicePDF(
-      invoiceForPDF,
-      serviceOrderForPDF,
-      {
-        id: serviceOrder.clientId!,
-        name: serviceOrder.clientName!,
-        email: serviceOrder.clientEmail!,
-        phone: serviceOrder.clientPhone,
-      },
-      customDueDate,
-      customInvoiceDate || new Date()
-    );
-
-    // Upload to MinIO
-    const pdfUrl = await uploadToMinio(
-      `service-order-invoices/${invoiceNumber}.pdf`,
-      pdfBuffer,
-      'application/pdf'
-    );
-
     // Calculate dates
     const issueDate = customInvoiceDate ? new Date(customInvoiceDate) : new Date();
     const dueDate = new Date(customDueDate);
 
-    // Save new invoice to database
+    // Save new invoice to database FIRST with null pdfUrl
     const newInvoice: NewServiceOrderInvoice = {
       number: invoiceNumber,
       serviceOrderId: serviceOrderId,
@@ -537,7 +506,7 @@ serviceOrderRoutes.post('/:id/regenerate-invoice', requireAdminOrFinance, async 
       issueDate: issueDate,
       dueDate: dueDate,
       status: 'draft',
-      pdfUrl: pdfUrl,
+      pdfUrl: null,
     };
 
     const [insertedInvoice] = await db
@@ -545,11 +514,61 @@ serviceOrderRoutes.post('/:id/regenerate-invoice', requireAdminOrFinance, async 
       .values(newInvoice)
       .returning();
 
+    // Now attempt to generate PDF
+    try {
+      // Create invoice object for PDF generation
+      const invoiceForPDF = {
+        number: invoiceNumber,
+        amount: parseFloat(serviceOrder.totalPriceSAR),
+        currency: 'SAR',
+        status: 'draft' as const,
+        pdfUrl: null,
+      };
+
+      // Create service order object for PDF generation
+      const serviceOrderForPDF = {
+        id: serviceOrder.id,
+        number: serviceOrder.number,
+        productType: serviceOrder.productType,
+        status: serviceOrder.status,
+        totalAmount: parseFloat(serviceOrder.totalPriceSAR),
+        totalPeople: serviceOrder.totalPeople,
+        createdAt: serviceOrder.createdAt,
+      };
+
+      // Generate PDF
+      const pdfBuffer = await generateServiceOrderInvoicePDF(
+        invoiceForPDF,
+        serviceOrderForPDF,
+        {
+          id: serviceOrder.clientId!,
+          name: serviceOrder.clientName!,
+          email: serviceOrder.clientEmail!,
+          phone: serviceOrder.clientPhone,
+        },
+        customDueDate,
+        customInvoiceDate || new Date()
+      );
+
+      // Upload to MinIO
+      const pdfUrl = await uploadToMinio(
+        `service-order-invoices/${invoiceNumber}.pdf`,
+        pdfBuffer,
+        'application/pdf'
+      );
+
+      // Update the invoice in database with PDF URL
+      await db.update(serviceOrderInvoices).set({ pdfUrl }).where(eq(serviceOrderInvoices.id, insertedInvoice!.id));
+      insertedInvoice!.pdfUrl = pdfUrl;
+    } catch (pdfError) {
+      console.error('Failed to regenerate/upload PDF, but invoice was recreated in DB:', pdfError);
+    }
+
     return c.json({
       success: true,
       data: insertedInvoice,
       message: 'Service order invoice regenerated successfully',
-      downloadUrl: pdfUrl
+      downloadUrl: insertedInvoice!.pdfUrl
     }, 201);
   } catch (error) {
     console.error('Error regenerating service order invoice:', error);

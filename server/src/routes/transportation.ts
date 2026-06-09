@@ -401,30 +401,36 @@ transportationApp.post('/:id/invoice', requireAdminOrFinance, async (c) => {
       issueDate: customInvoiceDate,
       dueDate: customDueDate,
       status: 'draft',
-      pdfUrl: '', // To be filled after upload
+      pdfUrl: null as any, // Initially null
     };
-
-    // Generate PDF
-    const pdfBuffer = await generateTransportationInvoicePDF(
-      newInvoice,
-      bookingData,
-      clientData,
-      routes
-    );
-
-    // Upload to MinIO
-    const pdfUrl = await uploadToMinio(
-      `transportation-invoices/${invoiceNumber}.pdf`,
-      pdfBuffer,
-      'application/pdf'
-    );
-
-    newInvoice.pdfUrl = pdfUrl;
 
     const [createdInvoice] = await db
       .insert(transportationInvoices)
       .values(newInvoice)
       .returning();
+
+    // Now try to generate PDF
+    try {
+      // Generate PDF
+      const pdfBuffer = await generateTransportationInvoicePDF(
+        newInvoice,
+        bookingData,
+        clientData,
+        routes
+      );
+
+      // Upload to MinIO
+      const pdfUrl = await uploadToMinio(
+        `transportation-invoices/${invoiceNumber}.pdf`,
+        pdfBuffer,
+        'application/pdf'
+      );
+
+      createdInvoice!.pdfUrl = pdfUrl;
+      await db.update(transportationInvoices).set({ pdfUrl }).where(eq(transportationInvoices.id, createdInvoice!.id));
+    } catch (pdfError) {
+      console.error('Failed to generate/upload PDF, but invoice was created in DB:', pdfError);
+    }
 
     return c.json(createdInvoice, 201);
   } catch (error) {

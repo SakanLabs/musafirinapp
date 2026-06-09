@@ -172,66 +172,11 @@ invoiceRoutes.get('/booking/:bookingId', requireAdminOrFinance, async (c) => {
     // Generate invoice number
     const invoiceNumber = generateInvoiceNumber();
 
-    // Create invoice object for PDF generation
-    const invoiceForPDF = {
-      id: 0, // temporary ID
-      number: invoiceNumber,
-      bookingId: bookingId,
-      amount: (Number(bookingData.totalAmount) || 0) + extraTotal,
-      currency: 'SAR',
-      issueDate: new Date(), // Use current date as invoice date
-      dueDate: customDueDate, // Use the provided due date
-      status: 'draft' as const,
-      pdfUrl: null,
-    };
-
-    // Create proper booking object for PDF generation
-    const bookingForPDF = {
-      id: bookingData.id,
-      code: bookingData.code,
-      clientId: bookingData.clientId!,
-      hotelName: bookingData.hotelName,
-      city: bookingData.city,
-      checkIn: bookingData.checkIn,
-      checkOut: bookingData.checkOut,
-      totalAmount: bookingData.totalAmount,
-      paymentStatus: bookingData.paymentStatus,
-      bookingStatus: bookingData.bookingStatus,
-      mealPlan: bookingData.mealPlan,
-      meta: null,
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    };
-
-    // Generate PDF
-    const pdfBuffer = await generateInvoicePDF(
-      invoiceForPDF,
-      bookingForPDF,
-      {
-        id: bookingData.clientId!,
-        name: bookingData.clientName!,
-        email: bookingData.clientEmail!,
-        phone: bookingData.clientPhone,
-        createdAt: new Date(),
-      },
-      itemsWithPricingPeriods,
-      customDueDate,
-      new Date(), // Use current date as invoice date
-      extraServiceItems
-    );
-
-    // Upload to MinIO and save to database
-    const pdfUrl = await uploadToMinio(
-      `invoices/${invoiceNumber}.pdf`,
-      pdfBuffer,
-      'application/pdf'
-    );
-
     // Calculate dates
     const issueDate = new Date();
     const dueDate = customDueDate; // Use the provided due date
 
-    // Save invoice to database
+    // Save invoice to database FIRST with null pdfUrl
     const newInvoice: NewInvoice = {
       number: invoiceNumber,
       bookingId: bookingId,
@@ -240,13 +185,78 @@ invoiceRoutes.get('/booking/:bookingId', requireAdminOrFinance, async (c) => {
       issueDate: issueDate,
       dueDate: dueDate,
       status: 'draft',
-      pdfUrl: pdfUrl,
+      pdfUrl: null,
     };
 
     const [insertedInvoice] = await db
       .insert(invoices)
       .values(newInvoice)
       .returning();
+
+    // Now attempt to generate PDF
+    try {
+      // Create invoice object for PDF generation
+      const invoiceForPDF = {
+        id: insertedInvoice!.id,
+        number: invoiceNumber,
+        bookingId: bookingId,
+        amount: (Number(bookingData.totalAmount) || 0) + extraTotal,
+        currency: 'SAR',
+        issueDate: new Date(), // Use current date as invoice date
+        dueDate: customDueDate, // Use the provided due date
+        status: 'draft' as const,
+        pdfUrl: null,
+      };
+
+      // Create proper booking object for PDF generation
+      const bookingForPDF = {
+        id: bookingData.id,
+        code: bookingData.code,
+        clientId: bookingData.clientId!,
+        hotelName: bookingData.hotelName,
+        city: bookingData.city,
+        checkIn: bookingData.checkIn,
+        checkOut: bookingData.checkOut,
+        totalAmount: bookingData.totalAmount,
+        paymentStatus: bookingData.paymentStatus,
+        bookingStatus: bookingData.bookingStatus,
+        mealPlan: bookingData.mealPlan,
+        meta: null,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      };
+
+      // Generate PDF
+      const pdfBuffer = await generateInvoicePDF(
+        invoiceForPDF,
+        bookingForPDF,
+        {
+          id: bookingData.clientId!,
+          name: bookingData.clientName!,
+          email: bookingData.clientEmail!,
+          phone: bookingData.clientPhone,
+          createdAt: new Date(),
+        },
+        itemsWithPricingPeriods,
+        customDueDate,
+        new Date(), // Use current date as invoice date
+        extraServiceItems
+      );
+
+      // Upload to MinIO and save to database
+      const pdfUrl = await uploadToMinio(
+        `invoices/${invoiceNumber}.pdf`,
+        pdfBuffer,
+        'application/pdf'
+      );
+
+      // Update the invoice in database with PDF URL
+      await db.update(invoices).set({ pdfUrl }).where(eq(invoices.id, insertedInvoice!.id));
+      insertedInvoice!.pdfUrl = pdfUrl;
+    } catch (pdfError) {
+      console.error('Failed to generate/upload PDF, but invoice was created in DB:', pdfError);
+      // We don't fail the request, we just return the invoice with pdfUrl: null
+    }
 
     return c.json({
       success: true,
@@ -545,66 +555,11 @@ invoiceRoutes.post('/:bookingId/generate', requireAdminOrFinance, async (c) => {
     // Generate invoice number
     const invoiceNumber = generateInvoiceNumber();
 
-    // Create invoice object for PDF generation
-    const invoiceForPDF = {
-      id: 0, // temporary ID
-      number: invoiceNumber,
-      bookingId: bookingId,
-      amount: (Number(bookingData.totalAmount) || 0) + extraTotal,
-      currency: 'SAR',
-      issueDate: customInvoiceDate,
-      dueDate: customDueDate,
-      status: 'draft' as const,
-      pdfUrl: null,
-    };
-
-    // Create proper booking object for PDF generation
-    const bookingForPDF = {
-      id: bookingData.id,
-      code: bookingData.code,
-      clientId: bookingData.clientId!,
-      hotelName: bookingData.hotelName,
-      city: bookingData.city,
-      checkIn: bookingData.checkIn,
-      checkOut: bookingData.checkOut,
-      totalAmount: bookingData.totalAmount,
-      paymentStatus: bookingData.paymentStatus,
-      bookingStatus: bookingData.bookingStatus,
-      mealPlan: bookingData.mealPlan,
-      meta: null,
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    };
-
-    // Generate PDF
-    const pdfBuffer = await generateInvoicePDF(
-      invoiceForPDF,
-      bookingForPDF,
-      {
-        id: bookingData.clientId!,
-        name: bookingData.clientName!,
-        email: bookingData.clientEmail!,
-        phone: bookingData.clientPhone,
-        createdAt: new Date(),
-      },
-      itemsWithPricingPeriods,
-      customDueDate,
-      customInvoiceDate,
-      extraServiceItems
-    );
-
-    // Upload to MinIO and save to database
-    const pdfUrl = await uploadToMinio(
-      `invoices/${invoiceNumber}.pdf`,
-      pdfBuffer,
-      'application/pdf'
-    );
-
     // Calculate dates
     const issueDate = customInvoiceDate;
-    const dueDate = customDueDate; // Use the provided due date from request body
+    const dueDate = customDueDate;
 
-    // Save invoice to database
+    // Save invoice to database FIRST with null pdfUrl
     const newInvoice: NewInvoice = {
       number: invoiceNumber,
       bookingId: bookingId,
@@ -613,7 +568,7 @@ invoiceRoutes.post('/:bookingId/generate', requireAdminOrFinance, async (c) => {
       issueDate: issueDate,
       dueDate: dueDate,
       status: 'draft',
-      pdfUrl: pdfUrl,
+      pdfUrl: null,
     };
 
     const [insertedInvoice] = await db
@@ -621,11 +576,76 @@ invoiceRoutes.post('/:bookingId/generate', requireAdminOrFinance, async (c) => {
       .values(newInvoice)
       .returning();
 
+    // Now attempt to generate PDF
+    try {
+      // Create invoice object for PDF generation
+      const invoiceForPDF = {
+        id: insertedInvoice!.id,
+        number: invoiceNumber,
+        bookingId: bookingId,
+        amount: (Number(bookingData.totalAmount) || 0) + extraTotal,
+        currency: 'SAR',
+        issueDate: customInvoiceDate,
+        dueDate: customDueDate,
+        status: 'draft' as const,
+        pdfUrl: null,
+      };
+
+      // Create proper booking object for PDF generation
+      const bookingForPDF = {
+        id: bookingData.id,
+        code: bookingData.code,
+        clientId: bookingData.clientId!,
+        hotelName: bookingData.hotelName,
+        city: bookingData.city,
+        checkIn: bookingData.checkIn,
+        checkOut: bookingData.checkOut,
+        totalAmount: bookingData.totalAmount,
+        paymentStatus: bookingData.paymentStatus,
+        bookingStatus: bookingData.bookingStatus,
+        mealPlan: bookingData.mealPlan,
+        meta: null,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      };
+
+      // Generate PDF
+      const pdfBuffer = await generateInvoicePDF(
+        invoiceForPDF,
+        bookingForPDF,
+        {
+          id: bookingData.clientId!,
+          name: bookingData.clientName!,
+          email: bookingData.clientEmail!,
+          phone: bookingData.clientPhone,
+          createdAt: new Date(),
+        },
+        itemsWithPricingPeriods,
+        customDueDate,
+        customInvoiceDate,
+        extraServiceItems
+      );
+
+      // Upload to MinIO
+      const pdfUrl = await uploadToMinio(
+        `invoices/${invoiceNumber}.pdf`,
+        pdfBuffer,
+        'application/pdf'
+      );
+
+      // Update the invoice in database with PDF URL
+      await db.update(invoices).set({ pdfUrl }).where(eq(invoices.id, insertedInvoice!.id));
+      insertedInvoice!.pdfUrl = pdfUrl;
+    } catch (pdfError) {
+      console.error('Failed to generate/upload PDF, but invoice was created in DB:', pdfError);
+      // Proceed returning the insertedInvoice with null pdfUrl
+    }
+
     return c.json({
       success: true,
       data: insertedInvoice,
       message: 'Invoice generated successfully',
-      downloadUrl: pdfUrl
+      downloadUrl: insertedInvoice!.pdfUrl
     }, 201);
   } catch (error) {
     console.error('Error generating invoice:', error);
@@ -648,7 +668,7 @@ invoiceRoutes.get('/by-number/:number', requireAdminOrFinance, async (c) => {
       const invoice = await db.select().from(transportationInvoices).where(eq(transportationInvoices.number, invoiceNumber)).limit(1);
       if (invoice.length === 0) return c.json({ error: 'Invoice not found' }, 404);
       pdfUrl = invoice[0]!.pdfUrl;
-    } else if (invoiceNumber.startsWith('SOI-')) {
+    } else if (invoiceNumber.startsWith('SO-INV-')) {
       const invoice = await db.select().from(serviceOrderInvoices).where(eq(serviceOrderInvoices.number, invoiceNumber)).limit(1);
       if (invoice.length === 0) return c.json({ error: 'Invoice not found' }, 404);
       pdfUrl = invoice[0]!.pdfUrl;
