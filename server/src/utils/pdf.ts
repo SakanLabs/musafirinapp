@@ -7,6 +7,10 @@ import path from 'path';
 import type { Booking, Invoice, Voucher, Client } from '../db/schema';
 import { templateEngine, TemplateHelpers } from './template';
 
+function getClientPublicPath(fileName: string): string {
+  return path.join(process.cwd(), 'client', 'public', fileName);
+}
+
 function getTemplatePath(fileName: string): string {
   return path.join(import.meta.dir, '..', 'templates', fileName);
 }
@@ -148,8 +152,21 @@ export async function generateVoucherPDF(
     brandName: "Musafirin",
     brandTagline: "Atur Sendiri Perjalanan Ibadahmu",
     brandWebsite: "https://hotel.musafirin.co",
-    logoBase64: (() => { try { const logoBuffer = readFileSync(join(process.cwd(), "..", "client", "public", "Logo Musafirin with PT.png")); return logoBuffer.toString("base64"); } catch (e) { console.warn("Voucher logo not found, using fallback"); const fallbackBuffer = readFileSync(join(__dirname, "..", "templates", "logomusafirin.png")); return fallbackBuffer.toString("base64"); } })(),
-    // Voucher info
+    logoBase64: (() => {
+      try {
+        const logoBuffer = readFileSync(
+          getClientPublicPath("Logo Musafirin with PT.png")
+        );
+        return logoBuffer.toString("base64");
+      } catch (e) {
+        console.warn("Voucher logo not found, using fallback");
+
+        const fallbackBuffer = readFileSync(
+          getTemplatePath("logomusafirin.png")
+        );
+        return fallbackBuffer.toString("base64");
+      }
+    })(),
     voucherNo: voucher.number,
     issueDate: formatDate(new Date()),
     paymentType: "Prepaid",
@@ -276,29 +293,41 @@ export async function generateServiceOrderReceiptPDF(
 
   try {
     const { readFileSync } = await import('fs');
-    const { join } = await import('path');
+
     const templatePath = getTemplatePath('kwitansi.html');
     let template = readFileSync(templatePath, 'utf-8');
 
-    const logoPath = join(process.cwd(), '..', 'logomusafirin.png');
     let logoBase64 = '';
     try {
+      const logoPath = getClientPublicPath('Logo Musafirin with PT.png');
       logoBase64 = readFileSync(logoPath).toString('base64');
-    } catch (e) { }
+    } catch (e) {
+      try {
+        const fallbackLogoPath = getTemplatePath('logomusafirin.png');
+        logoBase64 = readFileSync(fallbackLogoPath).toString('base64');
+      } catch (err) {
+        console.warn('Logo file not found, using empty logo');
+      }
+    }
 
-    const saudiRiyalPath = join(process.cwd(), 'client', 'Saudi_Riyal_Symbol.svg');
     let saudiRiyalSVGBase64 = '';
     try {
+      const saudiRiyalPath = getClientPublicPath('Saudi_Riyal_Symbol.svg');
       saudiRiyalSVGBase64 = readFileSync(saudiRiyalPath).toString('base64');
-    } catch (e) { }
+    } catch (e) {
+      console.warn('Saudi Riyal SVG not found, using empty icon');
+    }
 
-    const signaturePath = join(process.cwd(), 'public', 'ttd.png');
     let signatureBase64 = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=';
     try {
+      const signaturePath = getClientPublicPath('ttd.png');
       signatureBase64 = readFileSync(signaturePath).toString('base64');
-    } catch (e) { }
+    } catch (e) {
+      console.warn('Signature image not found, using transparent fallback');
+    }
 
     let renderedHtml = template;
+
     const formatDate = (date: any) => {
       if (!date) return '';
       const d = typeof date === 'string' ? new Date(date) : date;
