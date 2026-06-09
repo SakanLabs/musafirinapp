@@ -7,6 +7,10 @@ import path from 'path';
 import type { Booking, Invoice, Voucher, Client } from '../db/schema';
 import { templateEngine, TemplateHelpers } from './template';
 
+function getTemplatePath(fileName: string): string {
+  return path.join(import.meta.dir, '..', 'templates', fileName);
+}
+
 function getPuppeteerExecutablePath(): string | undefined {
   return process.env.PUPPETEER_EXECUTABLE_PATH || process.env.CHROME_BIN || undefined;
 }
@@ -263,7 +267,7 @@ export async function generateServiceOrderReceiptPDF(
   try {
     const { readFileSync } = await import('fs');
     const { join } = await import('path');
-    const templatePath = join(process.cwd(), 'src', 'templates', 'kwitansi.html');
+    const templatePath = getTemplatePath('kwitansi.html');
     let template = readFileSync(templatePath, 'utf-8');
 
     const logoPath = join(process.cwd(), '..', 'logomusafirin.png');
@@ -438,7 +442,7 @@ export async function generateReceiptPDF(receiptData: any): Promise<string> {
     // Load template directly
     const { readFileSync } = await import('fs');
     const { join } = await import('path');
-    const templatePath = join(process.cwd(), 'src', 'templates', 'kwitansi.html');
+    const templatePath = getTemplatePath('kwitansi.html');
     let template = readFileSync(templatePath, 'utf-8');
 
     // Load logo base64
@@ -603,7 +607,7 @@ export async function generateServiceOrderInvoicePDF(
     // Load template directly
     const { readFileSync } = await import('fs');
     const { join } = await import('path');
-    const templatePath = join(process.cwd(), 'src', 'templates', 'invoice-visa.html');
+    const templatePath = getTemplatePath('invoice-visa.html');
     let template = readFileSync(templatePath, 'utf-8');
 
     // Load logo base64
@@ -784,7 +788,7 @@ export async function generateTransportationInvoicePDF(
     const { readFileSync } = await import('fs');
     const { join } = await import('path');
     const Handlebars = await import('handlebars');
-    const templatePath = join(process.cwd(), 'src', 'templates', 'transportation-invoice.html');
+    const templatePath = getTemplatePath('transportation-invoice.html');
     const templateHtml = readFileSync(templatePath, 'utf-8');
     const template = Handlebars.compile(templateHtml);
 
@@ -901,7 +905,7 @@ export async function generateTransportationReceiptPDF(
     const { readFileSync } = await import('fs');
     const { join } = await import('path');
     const Handlebars = await import('handlebars');
-    const templatePath = join(process.cwd(), 'src', 'templates', 'transportation-receipt.html');
+    const templatePath = getTemplatePath('transportation-receipt.html');
     const templateHtml = readFileSync(templatePath, 'utf-8');
     const template = Handlebars.compile(templateHtml);
 
@@ -1023,7 +1027,7 @@ export async function generateTransportationVoucherPDF(
     const { join } = await import('path');
     const Handlebars = await import('handlebars');
     // We will use transportation-voucher.html
-    const templatePath = join(process.cwd(), 'src', 'templates', 'transportation-voucher.html');
+    const templatePath = getTemplatePath('transportation-voucher.html');
     let templateHtml = '';
     try {
       templateHtml = readFileSync(templatePath, 'utf-8');
