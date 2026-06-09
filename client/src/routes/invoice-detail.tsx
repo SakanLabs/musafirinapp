@@ -10,8 +10,9 @@ import { Label } from "@/components/ui/label";
 import { formatCurrency, formatDate } from "@/lib/utils";
 import { useInvoice, usePayInvoice, type Invoice } from "@/lib/queries/invoices";
 import { useReceiptsByBooking, useGenerateReceipt } from "@/lib/queries/receipts";
+import { useRegenerateInvoice } from "@/lib/queries/bookings";
 import { authService } from "@/lib/auth";
-import { FileText, Download, Banknote, CalendarDays, Loader2, Info, MessageCircle, ArrowLeft } from "lucide-react";
+import { FileText, Download, Banknote, CalendarDays, Loader2, Info, MessageCircle, ArrowLeft, RefreshCw } from "lucide-react";
 import { useNavigate } from "@tanstack/react-router";
 
 export const Route = createFileRoute("/invoice-detail")({
@@ -126,6 +127,7 @@ function InvoiceDetailPage() {
   const { id } = Route.useSearch();
   const { data: invoice, isLoading, error } = useInvoice(id);
   const payInvoiceMutation = usePayInvoice();
+  const regenerateInvoiceMutation = useRegenerateInvoice();
 
   const [payForm, setPayForm] = useState({
     method: "cash" as "bank_transfer" | "deposit" | "cash",
@@ -284,6 +286,28 @@ function InvoiceDetailPage() {
               <Download className="h-4 w-4 mr-2 text-zinc-500" />
               Download PDF
             </Button>
+            {isAdmin && (
+              <Button 
+                variant="outline" 
+                onClick={async () => {
+                  if (!invoice) return;
+                  try {
+                    await regenerateInvoiceMutation.mutateAsync({
+                      bookingId: invoice.bookingId.toString(),
+                      dueDate: new Date(invoice.dueDate).toISOString().split('T')[0],
+                    });
+                    toast.success("Invoice regenerated successfully");
+                  } catch (err: any) {
+                    toast.error(err?.message || "Failed to regenerate invoice");
+                  }
+                }}
+                disabled={regenerateInvoiceMutation.isPending}
+                className="h-9 px-3.5 border-zinc-200 text-zinc-700 hover:bg-zinc-50 hover:text-[#111111] flex items-center rounded-md text-xs font-semibold transition-colors bg-white shadow-none"
+              >
+                {regenerateInvoiceMutation.isPending ? <Loader2 className="h-4 w-4 mr-2 animate-spin text-zinc-500" /> : <RefreshCw className="h-4 w-4 mr-2 text-zinc-500" />}
+                Regenerate
+              </Button>
+            )}
             <Button 
               variant="outline" 
               onClick={handleShareWhatsApp}
