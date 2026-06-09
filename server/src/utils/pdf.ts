@@ -7,6 +7,23 @@ import path from 'path';
 import type { Booking, Invoice, Voucher, Client } from '../db/schema';
 import { templateEngine, TemplateHelpers } from './template';
 
+function getPuppeteerExecutablePath(): string | undefined {
+  return process.env.PUPPETEER_EXECUTABLE_PATH || process.env.CHROME_BIN || undefined;
+}
+
+async function launchBrowser() {
+  return await puppeteer.launch({
+    executablePath: getPuppeteerExecutablePath(),
+    headless: true,
+    args: [
+      '--no-sandbox',
+      '--disable-setuid-sandbox',
+      '--disable-dev-shm-usage',
+      '--disable-gpu'
+    ]
+  });
+}
+
 // Initialize MinIO client
 const minioClient = new MinioClient({
   endPoint: process.env.MINIO_ENDPOINT || 'localhost',
@@ -1110,7 +1127,7 @@ export async function generateCustomLaInvoicePDF(
 
     const logoPath = path.join(__dirname, '../templates/logomusafirin.png');
     const logoBase64 = fs.readFileSync(logoPath, 'base64');
-    
+
     // Default bank if not provided
     const defaultBank = {
       bankName: 'Bank Syariah Indonesia',
@@ -1131,7 +1148,7 @@ export async function generateCustomLaInvoicePDF(
 
     const fileName = `${invoiceData.invoiceNo}.pdf`;
     const tempFilePath = path.join(__dirname, '../../temp', fileName);
-    
+
     if (!fs.existsSync(path.join(__dirname, '../../temp'))) {
       fs.mkdirSync(path.join(__dirname, '../../temp'), { recursive: true });
     }
@@ -1153,7 +1170,7 @@ export async function generateCustomLaInvoicePDF(
     );
 
     fs.unlinkSync(tempFilePath);
-    
+
     // In local dev, use port 3000 mapping if (process.env.MINIO_ENDPOINT || 'localhost') is localhost
     const isLocal = (process.env.MINIO_ENDPOINT || 'localhost').includes('localhost') || (process.env.MINIO_ENDPOINT || 'localhost').includes('127.0.0.1');
     const endpoint = isLocal ? 'localhost:9000' : (process.env.MINIO_ENDPOINT || 'localhost');
@@ -1187,7 +1204,7 @@ export async function generateCustomLaReceiptPDF(
 
     const fileName = `${receiptData.receiptNo}.pdf`;
     const tempFilePath = path.join(__dirname, '../../temp', fileName);
-    
+
     if (!fs.existsSync(path.join(__dirname, '../../temp'))) {
       fs.mkdirSync(path.join(__dirname, '../../temp'), { recursive: true });
     }
@@ -1209,7 +1226,7 @@ export async function generateCustomLaReceiptPDF(
     );
 
     fs.unlinkSync(tempFilePath);
-    
+
     const isLocal = (process.env.MINIO_ENDPOINT || 'localhost').includes('localhost') || (process.env.MINIO_ENDPOINT || 'localhost').includes('127.0.0.1');
     const endpoint = isLocal ? 'localhost:9000' : (process.env.MINIO_ENDPOINT || 'localhost');
     return `http://${endpoint}/${(process.env.MINIO_BUCKET || 'musafirin-assets')}/receipts/${fileName}`;
