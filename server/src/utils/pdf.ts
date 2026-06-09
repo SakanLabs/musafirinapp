@@ -80,7 +80,7 @@ export async function generateInvoicePDF(
   customInvoiceDate?: Date | string,
   extraServiceItems: any[] = []
 ): Promise<Buffer> {
-  const browser = await puppeteer.launch({ headless: true });
+  const browser = await launchBrowser();
   const page = await browser.newPage();
 
   // Prepare data for template
@@ -113,7 +113,7 @@ export async function generateVoucherPDF(
   bookingItems: any[],
   qrCodeDataURL: string
 ): Promise<Buffer> {
-  const browser = await puppeteer.launch({ headless: true });
+  const browser = await launchBrowser();
   const page = await browser.newPage();
 
   // Import required modules for Handlebars template
@@ -257,7 +257,7 @@ export async function generateServiceOrderReceiptPDF(
   clientReq: any,
   invoiceReq: any
 ): Promise<Buffer> {
-  const browser = await puppeteer.launch({ headless: true });
+  const browser = await launchBrowser();
   const page = await browser.newPage();
 
   try {
@@ -431,7 +431,7 @@ export function generateServiceOrderNumber(): string {
 
 // Generate receipt PDF
 export async function generateReceiptPDF(receiptData: any): Promise<string> {
-  const browser = await puppeteer.launch({ headless: true });
+  const browser = await launchBrowser();
   const page = await browser.newPage();
 
   try {
@@ -595,7 +595,8 @@ export async function generateServiceOrderInvoicePDF(
   customDueDate: Date | string,
   customInvoiceDate?: Date | string
 ): Promise<Buffer> {
-  const browser = await puppeteer.launch({ headless: true });
+  const browser = await launchBrowser();
+
   const page = await browser.newPage();
 
   try {
@@ -775,7 +776,7 @@ export async function generateTransportationInvoicePDF(
   client: any,
   routes: any[]
 ): Promise<Buffer> {
-  const browser = await puppeteer.launch({ headless: true });
+  const browser = await launchBrowser();
   const page = await browser.newPage();
 
   try {
@@ -892,7 +893,7 @@ export async function generateTransportationReceiptPDF(
   routes: any[],
   invoice: any
 ): Promise<Buffer> {
-  const browser = await puppeteer.launch({ headless: true });
+  const browser = await launchBrowser();
   const page = await browser.newPage();
 
   try {
@@ -1014,7 +1015,7 @@ export async function generateTransportationVoucherPDF(
   client: any,
   routes: any[]
 ): Promise<Buffer> {
-  const browser = await puppeteer.launch({ headless: true });
+  const browser = await launchBrowser();
   const page = await browser.newPage();
 
   try {
@@ -1118,7 +1119,7 @@ export async function generateTransportationVoucherPDF(
 export async function generateCustomLaInvoicePDF(
   invoiceData: any
 ): Promise<string> {
-  const browser = await puppeteer.launch({ headless: true, args: ['--no-sandbox', '--disable-setuid-sandbox'] });
+  const browser = await launchBrowser();
   try {
     const page = await browser.newPage();
     const templatePath = path.join(__dirname, '../templates/custom-la-invoice.html');
@@ -1183,7 +1184,7 @@ export async function generateCustomLaInvoicePDF(
 export async function generateCustomLaReceiptPDF(
   receiptData: any
 ): Promise<string> {
-  const browser = await puppeteer.launch({ headless: true, args: ['--no-sandbox', '--disable-setuid-sandbox'] });
+  const browser = await launchBrowser();
   try {
     const page = await browser.newPage();
     const templatePath = path.join(__dirname, '../templates/custom-la-receipt.html');
