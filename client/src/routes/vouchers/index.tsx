@@ -119,16 +119,15 @@ function VouchersPage() {
   ]
 
   const handleViewVoucher = (voucher: Voucher) => {
-    window.open(voucher.pdfUrl, '_blank')
+    import("@/lib/api").then(({ apiClient }) => {
+      apiClient.downloadFile(`/api/vouchers/by-number/${voucher.number}`, `Voucher-${voucher.number}.pdf`);
+    });
   }
 
   const handleDownloadPDF = (voucher: Voucher) => {
-    const link = document.createElement('a')
-    link.href = voucher.pdfUrl
-    link.download = `${voucher.number}.pdf`
-    document.body.appendChild(link)
-    link.click()
-    document.body.removeChild(link)
+    import("@/lib/api").then(({ apiClient }) => {
+      apiClient.downloadFile(`/api/vouchers/by-number/${voucher.number}`, `Voucher-${voucher.number}.pdf`);
+    });
   }
 
   const handleShareWhatsApp = (voucher: Voucher) => {

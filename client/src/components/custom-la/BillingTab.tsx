@@ -102,7 +102,11 @@ export function BillingTab({ laId }: { laId: number }) {
                     <Button 
                       variant="outline" 
                       size="sm" 
-                      onClick={() => window.open(inv.pdfUrl, '_blank')}
+                      onClick={() => {
+                        import("@/lib/api").then(({ apiClient }) => {
+                          apiClient.downloadFile(`/api/invoices/by-number/${inv.number}`, `Invoice-${inv.number}.pdf`);
+                        });
+                      }}
                       className="h-8 text-xs px-3 border-zinc-200 text-zinc-700 hover:bg-zinc-50"
                     >
                       <Eye className="w-3.5 h-3.5 mr-2 text-zinc-500" /> Lihat PDF
@@ -166,7 +170,11 @@ export function BillingTab({ laId }: { laId: number }) {
                                   <Button 
                                     variant="ghost" 
                                     size="sm" 
-                                    onClick={() => window.open(receipt.pdfUrl, '_blank')} 
+                                    onClick={() => {
+                                      import("@/lib/api").then(({ apiClient }) => {
+                                        apiClient.downloadFile(`/api/receipts/${receipt.id}/download`, `Receipt-${receipt.number}.pdf`);
+                                      });
+                                    }} 
                                     className="h-8 text-xs font-semibold text-zinc-700 hover:text-black hover:bg-zinc-100 px-2.5"
                                   >
                                     <Receipt className="w-3.5 h-3.5 mr-1 text-zinc-500" /> {receipt.number}

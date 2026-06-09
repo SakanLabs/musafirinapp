@@ -666,9 +666,24 @@ invoiceRoutes.get('/by-number/:number', requireAdminOrFinance, async (c) => {
       return c.json({ error: 'PDF not available for this invoice' }, 404);
     }
 
-    // Redirect to MinIO URL or serve the PDF directly
-    // For now, we'll redirect to the MinIO URL
-    return c.redirect(pdfUrl);
+    const urlParts = pdfUrl.split('/');
+    const fileName = urlParts.slice(-2).join('/');
+
+    const { getFileStreamFromMinio } = await import('../utils/pdf');
+    const fileStream = await getFileStreamFromMinio(fileName);
+
+    c.header('Content-Type', 'application/pdf');
+    c.header('Content-Disposition', `attachment; filename="${invoiceNumber}.pdf"`);
+
+    const webStream = new ReadableStream({
+      start(controller) {
+        fileStream.on('data', (chunk: any) => controller.enqueue(chunk));
+        fileStream.on('end', () => controller.close());
+        fileStream.on('error', (err: any) => controller.error(err));
+      }
+    });
+
+    return c.body(webStream as any);
   } catch (error) {
     console.error('Error serving invoice PDF:', error);
     return c.json({ error: 'Failed to serve invoice PDF' }, 500);

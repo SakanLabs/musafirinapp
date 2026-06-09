@@ -267,8 +267,24 @@ receiptRoutes.get('/:id/download', requireFinance, async (c) => {
       }
     }
 
-    // Redirect to the PDF URL
-    return c.redirect(receipt.pdfUrl);
+    const urlParts = receipt.pdfUrl.split('/');
+    const fileName = urlParts.slice(-2).join('/');
+
+    const { getFileStreamFromMinio } = await import('../utils/pdf');
+    const fileStream = await getFileStreamFromMinio(fileName);
+
+    c.header('Content-Type', 'application/pdf');
+    c.header('Content-Disposition', `attachment; filename="${receipt.number}.pdf"`);
+
+    const webStream = new ReadableStream({
+      start(controller) {
+        fileStream.on('data', (chunk: any) => controller.enqueue(chunk));
+        fileStream.on('end', () => controller.close());
+        fileStream.on('error', (err: any) => controller.error(err));
+      }
+    });
+
+    return c.body(webStream as any);
   } catch (error) {
     console.error('Error downloading receipt:', error);
     return c.json({ error: 'Failed to download receipt' }, 500);

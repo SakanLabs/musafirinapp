@@ -254,6 +254,16 @@ export async function uploadToMinio(
   }
 }
 
+// Get file stream from MinIO
+export async function getFileStreamFromMinio(fileName: string) {
+  try {
+    return await minioClient.getObject(BUCKET_NAME, fileName);
+  } catch (error) {
+    console.error('Error getting file from MinIO:', error);
+    throw new Error('Failed to get file from MinIO');
+  }
+}
+
 // Generate Service Order Receipt PDF
 export async function generateServiceOrderReceiptPDF(
   receiptReq: any,

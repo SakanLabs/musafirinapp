@@ -290,9 +290,24 @@ voucherRoutes.get('/by-number/:number', requireAdmin, async (c) => {
       return c.json({ error: 'PDF not available for this voucher' }, 404);
     }
 
-    // Redirect to MinIO URL or serve the PDF directly
-    // For now, we'll redirect to the MinIO URL
-    return c.redirect(voucherData.pdfUrl);
+    const urlParts = voucherData.pdfUrl.split('/');
+    const fileName = urlParts.slice(-2).join('/');
+
+    const { getFileStreamFromMinio } = await import('../utils/pdf');
+    const fileStream = await getFileStreamFromMinio(fileName);
+
+    c.header('Content-Type', 'application/pdf');
+    c.header('Content-Disposition', `attachment; filename="${voucherData.number}.pdf"`);
+
+    const webStream = new ReadableStream({
+      start(controller) {
+        fileStream.on('data', (chunk: any) => controller.enqueue(chunk));
+        fileStream.on('end', () => controller.close());
+        fileStream.on('error', (err: any) => controller.error(err));
+      }
+    });
+
+    return c.body(webStream as any);
   } catch (error) {
     console.error('Error serving voucher PDF:', error);
     return c.json({ error: 'Failed to serve voucher PDF' }, 500);

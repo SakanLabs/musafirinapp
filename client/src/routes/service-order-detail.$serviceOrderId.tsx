@@ -133,8 +133,10 @@ Total: ${serviceOrder.totalPriceUSD ? formatCurrency(serviceOrder.totalPriceUSD,
   }
 
   const handleViewInvoice = () => {
-    if (existingInvoice?.pdfUrl) {
-      window.open(existingInvoice.pdfUrl, '_blank')
+    if (existingInvoice?.number) {
+      import("@/lib/api").then(({ apiClient }) => {
+        apiClient.downloadFile(`/api/invoices/by-number/${existingInvoice.number}`, `Invoice-${existingInvoice.number}.pdf`);
+      });
     }
   }
 
