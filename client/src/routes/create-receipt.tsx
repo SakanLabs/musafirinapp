@@ -108,7 +108,7 @@ function CreateReceiptPage() {
                     description: values.description,
                 });
                 queryClient.invalidateQueries({ queryKey: ['receipts'] });
-            } else if (invoice.number.startsWith('SOI-')) {
+            } else if (invoice.number.startsWith('SO-')) {
                 await apiClient.post(API_ENDPOINTS.SERVICE_ORDER_RECEIPT(invoice.bookingId), {
                     method: values.method,
                     amount: values.amount,
@@ -196,11 +196,10 @@ function CreateReceiptPage() {
                                     </div>
                                     <div className="text-right flex flex-col items-end">
                                         <span className="block text-[10px] font-bold text-zinc-400 uppercase tracking-wider mb-1">Status Pembayaran</span>
-                                        <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold border capitalize ${
-                                            (selectedInvoice.bookingPaymentStatus || selectedInvoice.status)?.toLowerCase() === 'partial' 
-                                                ? 'bg-amber-50 text-amber-700 border-amber-200/50' 
-                                                : 'bg-rose-50 text-rose-700 border-rose-200/50'
-                                        }`}>
+                                        <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold border capitalize ${(selectedInvoice.bookingPaymentStatus || selectedInvoice.status)?.toLowerCase() === 'partial'
+                                            ? 'bg-amber-50 text-amber-700 border-amber-200/50'
+                                            : 'bg-rose-50 text-rose-700 border-rose-200/50'
+                                            }`}>
                                             {selectedInvoice.bookingPaymentStatus || selectedInvoice.status}
                                         </span>
                                     </div>
@@ -262,9 +261,9 @@ function CreateReceiptPage() {
                                         <FormItem className="md:col-span-2 space-y-1.5">
                                             <FormLabel className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider">Nomor Referensi / Bukti Transfer (Opsional)</FormLabel>
                                             <FormControl>
-                                                <Input 
-                                                    placeholder="Contoh: TRF-123456 atau Ref Name" 
-                                                    {...field} 
+                                                <Input
+                                                    placeholder="Contoh: TRF-123456 atau Ref Name"
+                                                    {...field}
                                                     className="h-10 border-[#e5e7eb] rounded-lg bg-white text-sm font-medium text-zinc-950 focus:border-[#111111] focus:ring-1 focus:ring-[#111111] shadow-none w-full"
                                                 />
                                             </FormControl>
@@ -280,9 +279,9 @@ function CreateReceiptPage() {
                                         <FormItem className="md:col-span-2 space-y-1.5">
                                             <FormLabel className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider">Catatan Tambahan (Opsional)</FormLabel>
                                             <FormControl>
-                                                <Textarea 
-                                                    placeholder="Catatan detail transaksi atau keterangan tambahan..." 
-                                                    {...field} 
+                                                <Textarea
+                                                    placeholder="Catatan detail transaksi atau keterangan tambahan..."
+                                                    {...field}
                                                     className="resize-none min-h-[80px] border-[#e5e7eb] rounded-lg bg-white text-sm font-medium text-zinc-950 focus:border-[#111111] focus:ring-1 focus:ring-[#111111] shadow-none w-full"
                                                 />
                                             </FormControl>
