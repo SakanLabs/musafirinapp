@@ -1,7 +1,7 @@
 import { Hono } from 'hono';
 import { eq, desc } from 'drizzle-orm';
 import { db } from '../db';
-import { receipts, bookings, clients, invoices } from '../db/schema';
+import { receipts, bookings, clients, invoices, transportationReceipts, transportationInvoices, transportationBookings, serviceOrderReceipts, serviceOrderInvoices, serviceOrders, customLaReceipts, customLaInvoices, customLaRequests } from '../db/schema';
 import { requireFinance } from '../middleware/auth';
 import { ReceiptService } from '../services/ReceiptService';
 
@@ -15,6 +15,7 @@ receiptRoutes.get('/', requireFinance, async (c) => {
     const limit = parseInt(c.req.query('limit') || '10');
     const offset = (page - 1) * limit;
 
+    // 1. Regular Receipts
     const allReceipts = await db
       .select({
         id: receipts.id,
@@ -30,31 +31,109 @@ receiptRoutes.get('/', requireFinance, async (c) => {
         hotelName: receipts.hotelName,
         pdfUrl: receipts.pdfUrl,
         createdAt: receipts.createdAt,
-        // Join with booking and invoice data
         bookingCode: bookings.code,
         invoiceNumber: invoices.number,
         clientName: receipts.payerName,
       })
       .from(receipts)
       .leftJoin(invoices, eq(receipts.invoiceId, invoices.id))
-      .leftJoin(bookings, eq(receipts.bookingId, bookings.id))
-      .orderBy(desc(receipts.createdAt))
-      .limit(limit)
-      .offset(offset);
+      .leftJoin(bookings, eq(receipts.bookingId, bookings.id));
 
-    // Get total count for pagination
-    const totalCount = await db
-      .select({ count: receipts.id })
-      .from(receipts);
+    // 2. Transportation Receipts
+    const allTransReceipts = await db
+      .select({
+        id: transportationReceipts.id,
+        number: transportationReceipts.number,
+        invoiceId: transportationReceipts.transportationInvoiceId,
+        totalAmount: transportationReceipts.totalAmount,
+        paidAmount: transportationReceipts.paidAmount,
+        balanceDue: transportationReceipts.balanceDue,
+        currency: transportationReceipts.currency,
+        issueDate: transportationReceipts.issueDate,
+        payerName: transportationReceipts.payerName,
+        payerEmail: transportationReceipts.payerEmail,
+        hotelName: transportationBookings.customerName, // fallback
+        pdfUrl: transportationReceipts.pdfUrl,
+        createdAt: transportationReceipts.createdAt,
+        bookingCode: transportationBookings.number,
+        invoiceNumber: transportationInvoices.number,
+        clientName: transportationReceipts.payerName,
+      })
+      .from(transportationReceipts)
+      .leftJoin(transportationInvoices, eq(transportationReceipts.transportationInvoiceId, transportationInvoices.id))
+      .leftJoin(transportationBookings, eq(transportationReceipts.transportationBookingId, transportationBookings.id));
+
+    // 3. Service Order Receipts
+    const allSOReceipts = await db
+      .select({
+        id: serviceOrderReceipts.id,
+        number: serviceOrderReceipts.number,
+        invoiceId: serviceOrderReceipts.serviceOrderInvoiceId,
+        totalAmount: serviceOrderReceipts.totalAmount,
+        paidAmount: serviceOrderReceipts.paidAmount,
+        balanceDue: serviceOrderReceipts.balanceDue,
+        currency: serviceOrderReceipts.currency,
+        issueDate: serviceOrderReceipts.issueDate,
+        payerName: serviceOrderReceipts.payerName,
+        payerEmail: serviceOrderReceipts.payerEmail,
+        hotelName: serviceOrders.productType, // fallback
+        pdfUrl: serviceOrderReceipts.pdfUrl,
+        createdAt: serviceOrderReceipts.createdAt,
+        bookingCode: serviceOrders.number,
+        invoiceNumber: serviceOrderInvoices.number,
+        clientName: serviceOrderReceipts.payerName,
+      })
+      .from(serviceOrderReceipts)
+      .leftJoin(serviceOrderInvoices, eq(serviceOrderReceipts.serviceOrderInvoiceId, serviceOrderInvoices.id))
+      .leftJoin(serviceOrders, eq(serviceOrderReceipts.serviceOrderId, serviceOrders.id));
+
+    // 4. Custom LA Receipts
+    const allLAReceipts = await db
+      .select({
+        id: customLaReceipts.id,
+        number: customLaReceipts.number,
+        invoiceId: customLaReceipts.invoiceId,
+        totalAmount: customLaReceipts.totalAmount,
+        paidAmount: customLaReceipts.paidAmount,
+        balanceDue: customLaReceipts.balanceDue,
+        currency: customLaReceipts.currency,
+        issueDate: customLaReceipts.issueDate,
+        payerName: customLaReceipts.payerName,
+        payerEmail: customLaReceipts.payerEmail,
+        hotelName: customLaRequests.travelName, // fallback
+        pdfUrl: customLaReceipts.pdfUrl,
+        createdAt: customLaReceipts.createdAt,
+        bookingCode: customLaRequests.number,
+        invoiceNumber: customLaInvoices.number,
+        clientName: customLaReceipts.payerName,
+      })
+      .from(customLaReceipts)
+      .leftJoin(customLaInvoices, eq(customLaReceipts.invoiceId, customLaInvoices.id))
+      .leftJoin(customLaRequests, eq(customLaReceipts.customLaRequestId, customLaRequests.id));
+
+    // Combine all receipts and sort by createdAt descending
+    const combinedReceipts = [
+      ...allReceipts,
+      ...allTransReceipts,
+      ...allSOReceipts,
+      ...allLAReceipts
+    ].sort((a, b) => {
+      const dateA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+      const dateB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+      return dateB - dateA;
+    });
+
+    const totalCount = combinedReceipts.length;
+    const paginatedReceipts = combinedReceipts.slice(offset, offset + limit);
 
     return c.json({
       success: true,
-      data: allReceipts,
+      data: paginatedReceipts,
       pagination: {
         page,
         limit,
-        total: totalCount.length,
-        totalPages: Math.ceil(totalCount.length / limit),
+        total: totalCount,
+        totalPages: Math.ceil(totalCount / limit),
       },
     });
   } catch (error) {
