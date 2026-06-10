@@ -127,6 +127,13 @@
       "when": 1776171369030,
       "tag": "0017_colossal_gravity",
       "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1781034658985,
+      "tag": "0018_daily_jack_flag",
+      "breakpoints": true
     }
   ]
 }

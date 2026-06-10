@@ -1,7 +1,7 @@
 import { Hono } from 'hono';
 import { eq, desc } from 'drizzle-orm';
 import { db } from '../db';
-import { clients, serviceOrders, serviceOrderChecklists, serviceOrderInvoices, serviceOrderReceipts } from '../db/schema';
+import { clients, serviceOrders, serviceOrderChecklists, serviceOrderInvoices, serviceOrderReceipts, serviceOrderInvoicePayments } from '../db/schema';
 import type { NewServiceOrder, NewServiceOrderInvoice, NewServiceOrderReceipt } from '../db/schema';
 import { requireAdmin, requireAdminOrFinance, requireFinance } from '../middleware/auth';
 import { generateServiceOrderNumber, generateServiceOrderInvoicePDF, generateServiceOrderInvoiceNumber, uploadToMinio, generateServiceOrderReceiptPDF } from '../utils/pdf';
@@ -630,9 +630,13 @@ serviceOrderRoutes.patch('/:id/status', requireAdmin, async (c) => {
 });
 
 // POST /api/service-orders/:id/receipt - Generate receipt
+// POST /api/service-orders/:id/receipt - Generate receipt and handle payment
 serviceOrderRoutes.post('/:id/receipt', requireFinance, async (c) => {
   try {
     const id = parseInt(c.req.param('id'));
+    const body = await c.req.json().catch(() => ({}));
+
+    // For payments, body should contain: amount, method, referenceNumber, description
 
     const serviceOrderData = await db
       .select({
@@ -677,16 +681,64 @@ serviceOrderRoutes.post('/:id/receipt', requireFinance, async (c) => {
       .limit(1);
 
     const invoiceData = invoiceQuery.length > 0 ? invoiceQuery[0] : null;
+    
+    // Parse the requested payment amount
+    let paymentAmount = Number(orderReq.totalPriceSAR || 0);
+    if (body.amount) {
+      paymentAmount = Number(body.amount);
+    }
+    
+    // Update invoice status if an invoice exists
+    let invoiceId = null;
+    if (invoiceData) {
+      invoiceId = invoiceData.id;
+      
+      const newPaidAmount = Number(invoiceData.paidAmount || 0) + paymentAmount;
+      const totalAmount = Number(invoiceData.amount || 0);
+      
+      let newStatus: 'draft' | 'unpaid' | 'partial' | 'paid' | 'overdue' = invoiceData.status;
+      if (newPaidAmount >= totalAmount) {
+        newStatus = 'paid';
+      } else if (newPaidAmount > 0) {
+        newStatus = 'partial';
+      }
+      
+      await db.update(serviceOrderInvoices)
+        .set({
+          paidAmount: newPaidAmount.toString(),
+          status: newStatus,
+          updatedAt: new Date()
+        })
+        .where(eq(serviceOrderInvoices.id, invoiceData.id));
+        
+      // Record the payment
+      await db.insert(serviceOrderInvoicePayments).values({
+        invoiceId: invoiceData.id,
+        amount: paymentAmount.toString(),
+        currency: 'SAR',
+        method: body.method || 'cash',
+        referenceNumber: body.referenceNumber || null,
+        paidAt: new Date(),
+        status: 'completed',
+        meta: body.description ? { description: body.description } : null
+      });
+    }
 
     // Generate receipt number
     const receiptNumber = `SOR-${new Date().getFullYear()}-${String(Date.now()).slice(-6)}`;
 
+    // Total should be from invoice if exists, else order
+    const totalDue = invoiceData ? Number(invoiceData.amount) : Number(orderReq.totalPriceSAR || 0);
+    const prevPaid = invoiceData ? Number(invoiceData.paidAmount || 0) : 0;
+    // For this specific receipt, it prints the current payment amount
+    const balanceDue = Math.max(0, totalDue - (prevPaid + paymentAmount));
+
     const newReceipt: NewServiceOrderReceipt = {
       serviceOrderId: id,
       number: receiptNumber,
-      totalAmount: orderReq.totalPriceSAR || '0',
-      paidAmount: orderReq.totalPriceSAR || '0',
-      balanceDue: '0',
+      totalAmount: totalDue.toString(),
+      paidAmount: paymentAmount.toString(), // The receipt reflects THIS payment
+      balanceDue: balanceDue.toString(),
       currency: 'SAR',
       payerName: clientReq.name || 'Unknown',
       pdfUrl: '', // To be filled after upload

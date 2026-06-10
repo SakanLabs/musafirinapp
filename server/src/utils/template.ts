@@ -359,12 +359,18 @@ export class TemplateHelpers {
    */
   static getLogoBase64(): string {
     try {
-      const logoPath = join(__dirname, '..', 'templates', 'logomusafirin.png');
+      const logoPath = join(process.cwd(), 'client', 'public', 'Logo Musafirin with PT.png');
       const logoBuffer = readFileSync(logoPath);
       return logoBuffer.toString('base64');
     } catch (error) {
-      console.warn('Logo file not found, using empty string');
-      return '';
+      try {
+        const fallbackLogoPath = join(__dirname, '..', 'templates', 'logomusafirin.png');
+        const fallbackLogoBuffer = readFileSync(fallbackLogoPath);
+        return fallbackLogoBuffer.toString('base64');
+      } catch (err) {
+        console.warn('Logo file not found, using empty string');
+        return '';
+      }
     }
   }
 

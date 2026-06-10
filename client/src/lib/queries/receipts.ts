@@ -54,15 +54,15 @@ export function useReceipts(page = 1, limit = 10) {
   });
 }
 
-// Get receipt by ID
-export function useReceipt(id: string) {
+// Get receipt by number
+export function useReceipt(number: string) {
   return useQuery({
-    queryKey: receiptKeys.detail(id),
+    queryKey: receiptKeys.detail(number),
     queryFn: async () => {
-      const response = await apiClient.get<{success: boolean, data: Receipt}>(API_ENDPOINTS.RECEIPT_BY_ID(id));
+      const response = await apiClient.get<{success: boolean, data: Receipt}>(API_ENDPOINTS.RECEIPT_BY_NUMBER(number));
       return response.data;
     },
-    enabled: !!id,
+    enabled: !!number,
     staleTime: 5 * 60 * 1000,
   });
 }

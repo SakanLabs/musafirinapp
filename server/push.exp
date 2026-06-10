@@ -1,0 +1,10 @@
+#!/usr/bin/expect -f
+set timeout -1
+spawn bunx @dotenvx/dotenvx run -f ../.env.local -- bunx drizzle-kit push
+expect {
+    "table created or renamed from another table?" {
+        send "\r"
+        exp_continue
+    }
+    eof
+}

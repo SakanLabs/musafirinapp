@@ -177,6 +177,7 @@ export const invoices = pgTable('invoices', {
   number: varchar('number', { length: 50 }).notNull().unique(), // Format: INV-YYYY-XXXX
   bookingId: integer('booking_id').notNull().references(() => bookings.id, { onDelete: 'cascade' }),
   amount: decimal('amount', { precision: 10, scale: 2 }).notNull(),
+  paidAmount: decimal('paid_amount', { precision: 10, scale: 2 }).default('0').notNull(),
   currency: varchar('currency', { length: 3 }).default('SAR').notNull(),
   issueDate: timestamp('issue_date').notNull(),
   dueDate: timestamp('due_date').notNull(),
@@ -344,6 +345,7 @@ export const serviceOrderInvoices = pgTable('service_order_invoices', {
   number: varchar('number', { length: 50 }).notNull().unique(), // Format: SOI-YYYY-XXXX
   serviceOrderId: integer('service_order_id').notNull().references(() => serviceOrders.id, { onDelete: 'cascade' }),
   amount: decimal('amount', { precision: 10, scale: 2 }).notNull(),
+  paidAmount: decimal('paid_amount', { precision: 10, scale: 2 }).default('0').notNull(),
   currency: varchar('currency', { length: 3 }).default('SAR').notNull(),
   issueDate: timestamp('issue_date').notNull(),
   dueDate: timestamp('due_date').notNull(),
@@ -450,6 +452,7 @@ export const transportationInvoices = pgTable('transportation_invoices', {
   number: varchar('number', { length: 50 }).notNull().unique(), // Format: TI-YYYY-XXXX
   transportationBookingId: integer('transportation_booking_id').notNull().references(() => transportationBookings.id, { onDelete: 'cascade' }),
   amount: decimal('amount', { precision: 10, scale: 2 }).notNull(),
+  paidAmount: decimal('paid_amount', { precision: 10, scale: 2 }).default('0').notNull(),
   currency: varchar('currency', { length: 3 }).default('SAR').notNull(),
   issueDate: timestamp('issue_date').notNull(),
   dueDate: timestamp('due_date').notNull(),
@@ -528,6 +531,34 @@ export const invoicePayments = pgTable('invoice_payments', {
   paidAt: timestamp('paid_at').notNull(),
   status: depositTransactionStatusEnum('status').default('completed').notNull(), // reuse existing enum (pending/completed/cancelled/failed)
   meta: jsonb('meta'), // optional payment metadata (bank account used, IBAN, etc.)
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+});
+
+export const serviceOrderInvoicePayments = pgTable('service_order_invoice_payments', {
+  id: serial('id').primaryKey(),
+  invoiceId: integer('invoice_id').notNull().references(() => serviceOrderInvoices.id, { onDelete: 'cascade' }),
+  amount: decimal('amount', { precision: 10, scale: 2 }).notNull(),
+  currency: varchar('currency', { length: 3 }).default('SAR').notNull(),
+  method: varchar('method', { length: 50 }),
+  referenceNumber: varchar('reference_number', { length: 100 }),
+  paidAt: timestamp('paid_at').notNull(),
+  status: depositTransactionStatusEnum('status').default('completed').notNull(),
+  meta: jsonb('meta'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+});
+
+export const transportationInvoicePayments = pgTable('transportation_invoice_payments', {
+  id: serial('id').primaryKey(),
+  invoiceId: integer('invoice_id').notNull().references(() => transportationInvoices.id, { onDelete: 'cascade' }),
+  amount: decimal('amount', { precision: 10, scale: 2 }).notNull(),
+  currency: varchar('currency', { length: 3 }).default('SAR').notNull(),
+  method: varchar('method', { length: 50 }),
+  referenceNumber: varchar('reference_number', { length: 100 }),
+  paidAt: timestamp('paid_at').notNull(),
+  status: depositTransactionStatusEnum('status').default('completed').notNull(),
+  meta: jsonb('meta'),
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
 });
@@ -872,6 +903,10 @@ export type CustomLaInvoice = typeof customLaInvoices.$inferSelect;
 export type NewCustomLaInvoice = typeof customLaInvoices.$inferInsert;
 export type CustomLaInvoicePayment = typeof customLaInvoicePayments.$inferSelect;
 export type NewCustomLaInvoicePayment = typeof customLaInvoicePayments.$inferInsert;
+export type ServiceOrderInvoicePayment = typeof serviceOrderInvoicePayments.$inferSelect;
+export type NewServiceOrderInvoicePayment = typeof serviceOrderInvoicePayments.$inferInsert;
+export type TransportationInvoicePayment = typeof transportationInvoicePayments.$inferSelect;
+export type NewTransportationInvoicePayment = typeof transportationInvoicePayments.$inferInsert;
 export type CustomLaReceipt = typeof customLaReceipts.$inferSelect;
 export type NewCustomLaReceipt = typeof customLaReceipts.$inferInsert;
 

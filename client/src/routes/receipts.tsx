@@ -96,7 +96,7 @@ function ReceiptsPage() {
             title="View Receipt Detail"
             className="h-8 w-8 text-zinc-500 hover:text-[#111111] hover:bg-zinc-100 rounded-full"
           >
-            <Link to="/receipt-detail" search={{ id: receipt.id }}>
+            <Link to="/receipt-detail" search={{ number: receipt.number }}>
               <Eye className="h-4 w-4" />
             </Link>
           </Button>
@@ -105,7 +105,7 @@ function ReceiptsPage() {
             variant="ghost"
             onClick={() => {
               const API_BASE_URL = import.meta.env.VITE_API_URL || window.location.origin.replace(':5173', ':3000');
-              window.open(`${API_BASE_URL}/api/receipts/${receipt.id}/download`, '_blank');
+              window.open(`${API_BASE_URL}/api/receipts/number/${receipt.number}/download`, '_blank');
             }}
             title="Download PDF"
             className="h-8 w-8 text-zinc-500 hover:text-[#111111] hover:bg-zinc-100 rounded-full"
@@ -118,7 +118,7 @@ function ReceiptsPage() {
             className="h-8 w-8 text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 rounded-full"
             onClick={() => {
               const API_BASE_URL = import.meta.env.VITE_API_URL || window.location.origin.replace(':5173', ':3000');
-              const pdfUrl = `${API_BASE_URL}/api/receipts/${receipt.id}/download`;
+              const pdfUrl = `${API_BASE_URL}/api/receipts/number/${receipt.number}/download`;
               const msg = [
                 `Assalamu'alaikum *${receipt.clientName}* 🙏`,
                 ``,
