@@ -8,7 +8,22 @@ import type { Booking, Invoice, Voucher, Client } from '../db/schema';
 import { templateEngine, TemplateHelpers } from './template';
 
 function getClientPublicPath(fileName: string): string {
-  return path.join(process.cwd(), 'client', 'public', fileName);
+  // 1. Try relative to import.meta.dir (server/src/utils)
+  const relativePath = path.join(import.meta.dir, '..', '..', '..', 'client', 'public', fileName);
+  if (fs.existsSync(relativePath)) {
+    return relativePath;
+  }
+  // 2. Try process.cwd() client/public (if running from workspace root)
+  const cwdPath = path.join(process.cwd(), 'client', 'public', fileName);
+  if (fs.existsSync(cwdPath)) {
+    return cwdPath;
+  }
+  // 3. Try process.cwd() sibling (if running from server/)
+  const siblingPath = path.join(process.cwd(), '..', 'client', 'public', fileName);
+  if (fs.existsSync(siblingPath)) {
+    return siblingPath;
+  }
+  return cwdPath;
 }
 
 function getTemplatePath(fileName: string): string {
@@ -297,26 +312,8 @@ export async function generateServiceOrderReceiptPDF(
     const templatePath = getTemplatePath('kwitansi.html');
     let template = readFileSync(templatePath, 'utf-8');
 
-    let logoBase64 = '';
-    try {
-      const logoPath = getClientPublicPath('Logo Musafirin with PT.png');
-      logoBase64 = readFileSync(logoPath).toString('base64');
-    } catch (e) {
-      try {
-        const fallbackLogoPath = getTemplatePath('logomusafirin.png');
-        logoBase64 = readFileSync(fallbackLogoPath).toString('base64');
-      } catch (err) {
-        console.warn('Logo file not found, using empty logo');
-      }
-    }
-
-    let saudiRiyalSVGBase64 = '';
-    try {
-      const saudiRiyalPath = getClientPublicPath('Saudi_Riyal_Symbol.svg');
-      saudiRiyalSVGBase64 = readFileSync(saudiRiyalPath).toString('base64');
-    } catch (e) {
-      console.warn('Saudi Riyal SVG not found, using empty icon');
-    }
+    const logoBase64 = TemplateHelpers.getLogoBase64();
+    const saudiRiyalSVGBase64 = TemplateHelpers.getSaudiRiyalSVGBase64();
 
     let signatureBase64 = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=';
     try {
@@ -485,31 +482,16 @@ export async function generateReceiptPDF(receiptData: any): Promise<string> {
     let template = readFileSync(templatePath, 'utf-8');
 
     // Load logo base64
-    const logoPath = join(process.cwd(), '..', 'logomusafirin.png');
-    let logoBase64 = '';
-    try {
-      const logoBuffer = readFileSync(logoPath);
-      logoBase64 = logoBuffer.toString('base64');
-    } catch (error) {
-      console.warn('Logo file not found, using empty logo');
-    }
+    const logoBase64 = TemplateHelpers.getLogoBase64();
 
     // Load Saudi Riyal SVG base64
-    const saudiRiyalPath = join(process.cwd(), 'client', 'Saudi_Riyal_Symbol.svg');
-    let saudiRiyalSVGBase64 = '';
-    try {
-      const saudiRiyalBuffer = readFileSync(saudiRiyalPath);
-      saudiRiyalSVGBase64 = saudiRiyalBuffer.toString('base64');
-    } catch (error) {
-      console.warn('Saudi Riyal SVG not found, using SAR text');
-    }
+    const saudiRiyalSVGBase64 = TemplateHelpers.getSaudiRiyalSVGBase64();
 
     // Load signature image base64
-    const signaturePath = join(process.cwd(), 'public', 'ttd.png');
     let signatureBase64 = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=';
     try {
-      const sigBuffer = readFileSync(signaturePath);
-      signatureBase64 = sigBuffer.toString('base64');
+      const signaturePath = getClientPublicPath('ttd.png');
+      signatureBase64 = readFileSync(signaturePath).toString('base64');
     } catch (error) {
       console.warn('Signature image not found, using transparent fallback');
     }
