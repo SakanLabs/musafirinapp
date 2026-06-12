@@ -69,7 +69,6 @@ jobs:
           host: ${{ secrets.VPS_HOST }}
           username: ${{ secrets.VPS_USERNAME }}
           password: ${{ secrets.VPS_PASSWORD }}
-          key: ${{ secrets.VPS_SSH_KEY }}
           script: |
             # Navigate to the project directory
             # Make sure this matches your actual path on the VPS
