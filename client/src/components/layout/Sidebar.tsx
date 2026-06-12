@@ -167,7 +167,7 @@ export function Sidebar({ className }: SidebarProps) {
   return (
     <>
       {/* Mobile menu button */}
-      <div className="lg:hidden fixed top-4 left-4 z-50">
+      <div className="lg:hidden fixed top-3.5 left-4 z-50">
         <Button
           variant="outline"
           size="sm"
@@ -192,8 +192,8 @@ export function Sidebar({ className }: SidebarProps) {
 
       {/* Sidebar Container */}
       <div className={cn(
-        "fixed inset-y-0 left-0 z-40 w-64 bg-white border-r border-[#e5e7eb] transform transition-transform duration-200 ease-out lg:translate-x-0 lg:static lg:inset-0",
-        isMobileMenuOpen ? "translate-x-0" : "-translate-x-full",
+        "fixed inset-y-0 left-0 z-40 w-64 bg-white border-r border-[#e5e7eb] transform transition-transform duration-300 ease-in-out lg:translate-x-0 lg:static lg:inset-0",
+        isMobileMenuOpen ? "translate-x-0 shadow-2xl" : "-translate-x-full",
         className
       )}>
         <div className="flex flex-col h-full">
