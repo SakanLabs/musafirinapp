@@ -511,11 +511,11 @@ transportationApp.post('/:id/receipt', requireFinance, async (c) => {
       const newPaidAmount = Number(invoiceData.paidAmount || 0) + paymentAmount;
       const totalAmount = Number(invoiceData.amount || 0);
       
-      let newStatus: 'draft' | 'unpaid' | 'partial' | 'paid' | 'overdue' = invoiceData.status;
+      let newStatus: 'draft' | 'sent' | 'paid' | 'partially_paid' | 'overdue' | 'cancelled' = invoiceData.status;
       if (newPaidAmount >= totalAmount) {
         newStatus = 'paid';
       } else if (newPaidAmount > 0) {
-        newStatus = 'partial';
+        newStatus = 'partially_paid';
       }
       
       await db.update(transportationInvoices)

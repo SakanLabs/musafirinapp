@@ -1,4 +1,4 @@
-import puppeteer from 'puppeteer';
+import puppeteer, { type Browser } from 'puppeteer';
 import QRCode from 'qrcode';
 import { Client as MinioClient } from 'minio';
 import Handlebars from 'handlebars';
@@ -34,17 +34,22 @@ function getPuppeteerExecutablePath(): string | undefined {
   return process.env.PUPPETEER_EXECUTABLE_PATH || process.env.CHROME_BIN || undefined;
 }
 
+let browserInstance: Browser | null = null;
+
 async function launchBrowser() {
-  return await puppeteer.launch({
-    executablePath: getPuppeteerExecutablePath(),
-    headless: true,
-    args: [
-      '--no-sandbox',
-      '--disable-setuid-sandbox',
-      '--disable-dev-shm-usage',
-      '--disable-gpu'
-    ]
-  });
+  if (!browserInstance || !browserInstance.isConnected()) {
+    browserInstance = await puppeteer.launch({
+      executablePath: getPuppeteerExecutablePath(),
+      headless: true,
+      args: [
+        '--no-sandbox',
+        '--disable-setuid-sandbox',
+        '--disable-dev-shm-usage',
+        '--disable-gpu'
+      ]
+    });
+  }
+  return browserInstance;
 }
 
 // Initialize MinIO client
@@ -124,7 +129,7 @@ export async function generateInvoicePDF(
     }
   });
 
-  await browser.close();
+  await page.close();
   return Buffer.from(pdf);
 }
 
@@ -260,7 +265,7 @@ export async function generateVoucherPDF(
     }
   });
 
-  await browser.close();
+  await page.close();
   return Buffer.from(pdf);
 }
 
@@ -401,10 +406,10 @@ export async function generateServiceOrderReceiptPDF(
       printBackground: true,
       margin: { top: '20px', right: '20px', bottom: '20px', left: '20px' }
     });
-    await browser.close();
+    await page.close();
     return Buffer.from(pdf);
   } catch (error) {
-    await browser.close();
+    await page.close();
     throw error;
   }
 }
@@ -599,7 +604,7 @@ export async function generateReceiptPDF(receiptData: any): Promise<string> {
       }
     });
 
-    await browser.close();
+    await page.close();
 
     // Upload to MinIO
     const fileName = `receipts/${receiptData.receipt.number}.pdf`;
@@ -607,7 +612,7 @@ export async function generateReceiptPDF(receiptData: any): Promise<string> {
 
     return pdfUrl;
   } catch (error) {
-    await browser.close();
+    await page.close();
     throw error;
   }
 }
@@ -779,10 +784,10 @@ export async function generateServiceOrderInvoicePDF(
       }
     });
 
-    await browser.close();
+    await page.close();
     return Buffer.from(pdf);
   } catch (error) {
-    await browser.close();
+    await page.close();
     throw error;
   }
 }
@@ -902,10 +907,10 @@ export async function generateTransportationInvoicePDF(
       }
     });
 
-    await browser.close();
+    await page.close();
     return Buffer.from(pdf);
   } catch (error) {
-    await browser.close();
+    await page.close();
     throw error;
   }
 }
@@ -1025,10 +1030,10 @@ export async function generateTransportationReceiptPDF(
       }
     });
 
-    await browser.close();
+    await page.close();
     return Buffer.from(pdf);
   } catch (error) {
-    await browser.close();
+    await page.close();
     throw error;
   }
 }
@@ -1132,10 +1137,10 @@ export async function generateTransportationVoucherPDF(
       }
     });
 
-    await browser.close();
+    await page.close();
     return Buffer.from(pdf);
   } catch (error) {
-    await browser.close();
+    await page.close();
     throw error;
   }
 }
@@ -1145,8 +1150,8 @@ export async function generateCustomLaInvoicePDF(
   invoiceData: any
 ): Promise<string> {
   const browser = await launchBrowser();
+  const page = await browser.newPage();
   try {
-    const page = await browser.newPage();
     const templatePath = path.join(__dirname, '../templates/custom-la-invoice.html');
     const templateSource = fs.readFileSync(templatePath, 'utf8');
     const template = Handlebars.compile(templateSource);
@@ -1202,7 +1207,7 @@ export async function generateCustomLaInvoicePDF(
     const endpoint = isLocal ? 'localhost:9000' : (process.env.MINIO_ENDPOINT || 'localhost');
     return `http://${endpoint}/${(process.env.MINIO_BUCKET || 'musafirin-assets')}/receipts/${fileName}`;
   } finally {
-    await browser.close();
+    await page.close();
   }
 }
 
@@ -1210,8 +1215,8 @@ export async function generateCustomLaReceiptPDF(
   receiptData: any
 ): Promise<string> {
   const browser = await launchBrowser();
+  const page = await browser.newPage();
   try {
-    const page = await browser.newPage();
     const templatePath = path.join(__dirname, '../templates/custom-la-receipt.html');
     const templateSource = fs.readFileSync(templatePath, 'utf8');
     const template = Handlebars.compile(templateSource);
@@ -1257,6 +1262,6 @@ export async function generateCustomLaReceiptPDF(
     const endpoint = isLocal ? 'localhost:9000' : (process.env.MINIO_ENDPOINT || 'localhost');
     return `http://${endpoint}/${(process.env.MINIO_BUCKET || 'musafirin-assets')}/receipts/${fileName}`;
   } finally {
-    await browser.close();
+    await page.close();
   }
 }

@@ -317,7 +317,7 @@ receiptRoutes.get('/number/:number', requireFinance, async (c) => {
       .limit(1);
 
     if (trReceipt.length > 0) {
-      const data = trReceipt[0];
+      const data = trReceipt[0]!;
       return c.json({ success: true, data: { ...data, hotelName: data.hotelName || 'Transportation' } });
     }
 
@@ -347,7 +347,7 @@ receiptRoutes.get('/number/:number', requireFinance, async (c) => {
       .limit(1);
 
     if (soReceipt.length > 0) {
-      const data = soReceipt[0];
+      const data = soReceipt[0]!;
       return c.json({ success: true, data: { ...data, hotelName: data.hotelName ? `Service Order (${data.hotelName})` : 'Service Order' } });
     }
 
@@ -377,7 +377,7 @@ receiptRoutes.get('/number/:number', requireFinance, async (c) => {
       .limit(1);
 
     if (laReceipt.length > 0) {
-      const data = laReceipt[0];
+      const data = laReceipt[0]!;
       return c.json({ success: true, data: { ...data, hotelName: data.hotelName ? `Custom LA (${data.hotelName})` : 'Custom LA' } });
     }
 
@@ -460,22 +460,22 @@ receiptRoutes.get('/number/:number/download', requireFinance, async (c) => {
     // Search in receipts
     if (!pdfUrl) {
       const r = await db.select({ pdfUrl: receipts.pdfUrl }).from(receipts).where(eq(receipts.number, receiptNumber)).limit(1);
-      if (r.length > 0) pdfUrl = r[0].pdfUrl;
+      if (r.length > 0) pdfUrl = r[0]!.pdfUrl;
     }
     // Search in transportationReceipts
     if (!pdfUrl) {
       const r = await db.select({ pdfUrl: transportationReceipts.pdfUrl }).from(transportationReceipts).where(eq(transportationReceipts.number, receiptNumber)).limit(1);
-      if (r.length > 0) pdfUrl = r[0].pdfUrl;
+      if (r.length > 0) pdfUrl = r[0]!.pdfUrl;
     }
     // Search in serviceOrderReceipts
     if (!pdfUrl) {
       const r = await db.select({ pdfUrl: serviceOrderReceipts.pdfUrl }).from(serviceOrderReceipts).where(eq(serviceOrderReceipts.number, receiptNumber)).limit(1);
-      if (r.length > 0) pdfUrl = r[0].pdfUrl;
+      if (r.length > 0) pdfUrl = r[0]!.pdfUrl;
     }
     // Search in customLaReceipts
     if (!pdfUrl) {
       const r = await db.select({ pdfUrl: customLaReceipts.pdfUrl }).from(customLaReceipts).where(eq(customLaReceipts.number, receiptNumber)).limit(1);
-      if (r.length > 0) pdfUrl = r[0].pdfUrl;
+      if (r.length > 0) pdfUrl = r[0]!.pdfUrl;
     }
 
     if (!pdfUrl) {
