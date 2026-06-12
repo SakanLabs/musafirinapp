@@ -57,6 +57,11 @@ jobs:
           push: true
           tags: ${{ env.REGISTRY }}/${{ env.FRONTEND_IMAGE_NAME }}:latest
           labels: ${{ steps.meta-frontend.outputs.labels }}
+      - name: Check secrets
+  run: |
+    echo "HOST EXISTS: ${{ secrets.VPS_HOST != '' }}"
+    echo "USER EXISTS: ${{ secrets.VPS_USERNAME != '' }}"
+    echo "KEY EXISTS: ${{ secrets.VPS_SSH_KEY != '' }}"
 
   deploy:
     needs: build-and-push
@@ -72,7 +77,7 @@ jobs:
           script: |
             # Navigate to the project directory
             # Make sure this matches your actual path on the VPS
-            cd ~/musafirinapp || cd /var/www/musafirinapp
+            cd /var/www/musafirinapp
             
             # Pull the latest code to ensure docker-compose.prod.yml is updated
             git pull origin main
