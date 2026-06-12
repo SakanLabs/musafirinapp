@@ -208,9 +208,7 @@ function CreateBookingPage() {
     if (!formData.guestName.trim()) {
       newErrors.guestName = "Guest name is required"
     }
-    if (!formData.guestEmail.trim()) {
-      newErrors.guestEmail = "Guest email is required"
-    } else if (!/\S+@\S+\.\S+/.test(formData.guestEmail)) {
+    if (formData.guestEmail.trim() && !/\S+@\S+\.\S+/.test(formData.guestEmail)) {
       newErrors.guestEmail = "Please enter a valid email address"
     }
     if (!formData.guestPhone.trim()) {
@@ -648,8 +646,6 @@ function CreateBookingPage() {
                 onChange={(e) => handleInputChange('guestName', e.target.value)}
                 placeholder="Full Name"
                 className={`h-9 border-[#e5e7eb] rounded focus-visible:ring-[#111111] bg-white ${errors.guestName ? "border-red-500" : ""}`}
-                disabled={!selectedClientId}
-                readOnly={!!selectedClientId}
               />
               {errors.guestName && (
                 <p className="text-red-500 text-xs mt-1">{errors.guestName}</p>
@@ -657,15 +653,13 @@ function CreateBookingPage() {
             </div>
 
             <div className="space-y-1.5">
-              <label className="block text-xs font-semibold text-gray-500">Email Address *</label>
+              <label className="block text-xs font-semibold text-gray-500">Email Address (Optional)</label>
               <Input
                 type="email"
                 value={formData.guestEmail}
                 onChange={(e) => handleInputChange('guestEmail', e.target.value)}
                 placeholder="guest@domain.com"
                 className={`h-9 border-[#e5e7eb] rounded focus-visible:ring-[#111111] bg-white ${errors.guestEmail ? "border-red-500" : ""}`}
-                disabled={!selectedClientId}
-                readOnly={!!selectedClientId}
               />
               {errors.guestEmail && (
                 <p className="text-red-500 text-xs mt-1">{errors.guestEmail}</p>
@@ -679,8 +673,6 @@ function CreateBookingPage() {
                 onChange={(e) => handleInputChange('guestPhone', e.target.value)}
                 placeholder="08123456789"
                 className={`h-9 border-[#e5e7eb] rounded focus-visible:ring-[#111111] bg-white ${errors.guestPhone ? "border-red-500" : ""}`}
-                disabled={!selectedClientId}
-                readOnly={!!selectedClientId}
               />
               {errors.guestPhone && (
                 <p className="text-red-500 text-xs mt-1">{errors.guestPhone}</p>
