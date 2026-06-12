@@ -105,7 +105,32 @@ export function DataTable<T extends object>({
 
   const content = (
     <>
-      <div className="overflow-x-auto">
+      {/* Mobile Card View (Hidden on medium screens and up) */}
+      <div className="md:hidden flex flex-col gap-3 p-4 bg-gray-50/50">
+        {data.length === 0 ? (
+          <div className="text-center text-gray-500 py-8 text-sm">
+            {emptyMessage}
+          </div>
+        ) : (
+          data.map((item, index) => (
+            <div key={index} className="bg-white border border-[#e5e7eb] rounded-xl p-4 shadow-sm flex flex-col gap-3">
+              {columns.map((column) => (
+                <div key={column.key.toString()} className="flex flex-col gap-1 border-b border-gray-50 pb-2 last:border-0 last:pb-0">
+                  <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">
+                    {column.header}
+                  </span>
+                  <div className="text-sm text-gray-900">
+                    {renderCell(item, column)}
+                  </div>
+                </div>
+              ))}
+            </div>
+          ))
+        )}
+      </div>
+
+      {/* Desktop Table View (Hidden on small screens) */}
+      <div className="hidden md:block overflow-x-auto">
         <table className="min-w-full divide-y divide-gray-200 w-full">
           <thead className="bg-gray-50">
             <tr>
@@ -142,7 +167,7 @@ export function DataTable<T extends object>({
               </tr>
             ) : (
               data.map((item, index) => (
-                <tr key={index} className="hover:bg-gray-50">
+                <tr key={index} className="hover:bg-gray-50 transition-colors">
                   {columns.map((column) => (
                     <td
                       key={column.key.toString()}
