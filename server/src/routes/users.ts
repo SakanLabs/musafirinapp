@@ -89,7 +89,7 @@ const app = new Hono()
       }
 
       const { data: supabaseUsers } = await supabase.auth.admin.listUsers()
-      const supabaseUserExists = supabaseUsers?.users.some(u => u.email === body.email)
+      const supabaseUserExists = supabaseUsers?.users.some((u: any) => u.email === body.email)
 
       if (supabaseUserExists) {
         return c.json<ApiResponse>({
@@ -225,7 +225,7 @@ const app = new Hono()
       }
 
       const { data: supabaseUsers } = await supabase.auth.admin.listUsers()
-      const supabaseUser = supabaseUsers?.users.find(u => u.email === existingUser.email)
+      const supabaseUser = supabaseUsers?.users.find((u: any) => u.email === existingUser.email)
 
       if (supabaseUser) {
         const { error: deleteSupabaseError } = await supabase.auth.admin.deleteUser(supabaseUser.id)
