@@ -91,6 +91,8 @@ export interface UpdateBookingData {
   roomType?: string;
   hotelCostPerNight?: number;
   totalHotelCost?: number;
+  hotelName?: string;
+  city?: string;
 }
 
 // Query keys
@@ -206,8 +208,8 @@ export function useUpdateBooking() {
       return response.data;
     },
     onSuccess: (response) => {
-      // Update the specific booking in cache
-      queryClient.setQueryData(bookingKeys.detail(response.id), response);
+      // Update the specific booking in cache - use string ID to match useBooking queryKey
+      queryClient.setQueryData(bookingKeys.detail(response.id.toString()), response);
       // Invalidate bookings list to refresh
       queryClient.invalidateQueries({ queryKey: bookingKeys.lists() });
     },

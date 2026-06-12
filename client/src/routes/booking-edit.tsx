@@ -298,6 +298,8 @@ function EditBookingPage() {
         guestName: formData.guestName,
         guestEmail: formData.guestEmail,
         guestPhone: formData.guestPhone,
+        hotelName: formData.hotelName,
+        city: formData.city,
         checkInDate: formData.checkInDate,
         checkOutDate: formData.checkOutDate,
         mealPlan: formData.mealPlan,
@@ -313,7 +315,7 @@ function EditBookingPage() {
 
       await updateBookingMutation.mutateAsync(bookingData)
 
-      navigate({ to: `/booking-view/${booking.id}` })
+      navigate({ to: "/booking-detail", search: { id: booking.id.toString() } })
     } catch (error) {
       console.error('Error updating booking:', error)
     }

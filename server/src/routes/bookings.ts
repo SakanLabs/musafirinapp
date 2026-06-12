@@ -584,6 +584,8 @@ bookingRoutes.put('/:id', requireAdmin, async (c) => {
       guestPhone,
       checkInDate,
       checkOutDate,
+      hotelName,
+      city,
       roomType,
       mealPlan,
       numberOfGuests,
@@ -595,8 +597,8 @@ bookingRoutes.put('/:id', requireAdmin, async (c) => {
       rooms // New field for multiple rooms support
     } = body;
 
-    if (!guestName || !guestEmail || !guestPhone || !checkInDate || !checkOutDate || !numberOfGuests || !totalAmount) {
-      return c.json({ error: 'Missing required fields: hotelName, checkIn, checkOut, and items are required' }, 400);
+    if (!guestName || !checkInDate || !checkOutDate || totalAmount === undefined || totalAmount === null) {
+      return c.json({ error: 'Missing required fields: guestName, checkInDate, checkOutDate, and totalAmount are required' }, 400);
     }
 
     // Support both legacy single room format and new multiple rooms format
@@ -647,17 +649,22 @@ bookingRoutes.put('/:id', requireAdmin, async (c) => {
       metaData.numberOfGuests = numberOfGuests;
     }
 
+    const updatePayload: any = {
+      checkIn: new Date(checkInDate),
+      checkOut: new Date(checkOutDate),
+      totalAmount: totalAmount.toString(),
+      bookingStatus: status || 'pending',
+      mealPlan: mealPlan || 'Room Only',
+      meta: Object.keys(metaData).length > 0 ? metaData : null,
+      updatedAt: new Date(),
+    };
+
+    if (hotelName) updatePayload.hotelName = hotelName;
+    if (city) updatePayload.city = city;
+
     const [updatedBooking] = await db
       .update(bookings)
-      .set({
-        checkIn: new Date(checkInDate),
-        checkOut: new Date(checkOutDate),
-        totalAmount: totalAmount.toString(),
-        bookingStatus: status || 'pending',
-        mealPlan: mealPlan || 'Room Only',
-        meta: Object.keys(metaData).length > 0 ? metaData : null,
-        updatedAt: new Date(),
-      })
+      .set(updatePayload)
       .where(eq(bookings.id, bookingId))
       .returning();
 
