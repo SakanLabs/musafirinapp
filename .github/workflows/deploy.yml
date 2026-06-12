@@ -58,27 +58,3 @@ jobs:
           tags: ${{ env.REGISTRY }}/${{ env.FRONTEND_IMAGE_NAME }}:latest
           labels: ${{ steps.meta-frontend.outputs.labels }}
 
-  deploy:
-    needs: build-and-push
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Execute deployment commands on VPS
-        uses: appleboy/ssh-action@v1.0.3
-        with:
-          host: ${{ secrets.VPS_HOST }}
-          username: ${{ secrets.VPS_USERNAME }}
-          key: ${{ secrets.VPS_SSH_KEY }}
-          script: |
-            # Navigate to the project directory
-            # Make sure this matches your actual path on the VPS
-            cd /var/www/musafirinapp
-            
-            # Pull the latest code to ensure docker-compose.prod.yml is updated
-            git pull origin main
-
-            # Pull the latest images from GHCR
-            sudo docker compose -f docker-compose.prod.yml pull
-            
-            # Restart the containers with the new images
-            sudo docker compose -f docker-compose.prod.yml up -d --remove-orphans
