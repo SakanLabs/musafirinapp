@@ -186,7 +186,7 @@ function ProductDetailPage() {
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-4 bg-white p-5 rounded-2xl border border-gray-150 shadow-xs">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 bg-white p-5 rounded-2xl border border-gray-150 shadow-xs">
             <div className="flex items-center gap-2.5">
               <div className="p-2 bg-gray-50 text-gray-500 rounded-xl">
                 <Scale className="h-4 w-4" />

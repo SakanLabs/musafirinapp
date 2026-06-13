@@ -107,7 +107,7 @@ function ReceiptDetailPage() {
     >
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         {/* Receipt Details */}
-        <div className="md:col-span-2 border border-[#e5e7eb] rounded-xl bg-white shadow-none p-6">
+        <div className="md:col-span-2 border border-[#e5e7eb] rounded-xl bg-white shadow-none p-4 md:p-6">
           <div className="flex items-center space-x-3 mb-6 pb-4 border-b border-zinc-100">
             <FileText className="h-5 w-5 text-zinc-500" />
             <div>
@@ -169,7 +169,7 @@ function ReceiptDetailPage() {
 
         {/* Payer & Booking info */}
         <div className="space-y-6">
-          <div className="border border-[#e5e7eb] rounded-xl bg-white shadow-none p-6">
+          <div className="border border-[#e5e7eb] rounded-xl bg-white shadow-none p-4 md:p-6">
             <div className="flex items-center space-x-3 mb-6 pb-4 border-b border-zinc-100">
               <User className="h-5 w-5 text-zinc-500" />
               <div>
@@ -198,7 +198,7 @@ function ReceiptDetailPage() {
             </div>
           </div>
 
-          <div className="border border-[#e5e7eb] rounded-xl bg-white shadow-none p-6">
+          <div className="border border-[#e5e7eb] rounded-xl bg-white shadow-none p-4 md:p-6">
             <div className="flex items-center space-x-3 mb-6 pb-4 border-b border-zinc-100">
               <Building2 className="h-5 w-5 text-zinc-500" />
               <div>

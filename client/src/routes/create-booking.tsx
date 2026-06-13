@@ -598,13 +598,13 @@ function CreateBookingPage() {
     >
       <form onSubmit={handleSubmit} className="max-w-4xl mx-auto space-y-8 pb-20 text-xs font-semibold text-gray-700">
         {/* Guest Information */}
-        <Card className="p-6 border border-[#e5e7eb] rounded-xl shadow-[0_1px_2px_rgba(0,0,0,0.04)] bg-white">
+        <Card className="p-4 md:p-6 border border-[#e5e7eb] rounded-xl shadow-[0_1px_2px_rgba(0,0,0,0.04)] bg-white">
           <div className="flex items-center space-x-2 mb-6">
             <Users className="h-4.5 w-4.5 text-[#111111]" />
             <h3 className="text-sm font-bold text-[#111111] tracking-[-0.02em]">Guest Information</h3>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:p-6">
             <div className="md:col-span-2 space-y-1.5">
               <label className="block text-xs font-semibold text-gray-500">Client CRM Lookup</label>
               <div className="flex flex-col gap-2 md:flex-row md:items-center">
@@ -696,7 +696,7 @@ function CreateBookingPage() {
         </Card>
 
         {/* Hotel Information */}
-        <Card className="p-6 border border-[#e5e7eb] rounded-xl shadow-[0_1px_2px_rgba(0,0,0,0.04)] bg-white">
+        <Card className="p-4 md:p-6 border border-[#e5e7eb] rounded-xl shadow-[0_1px_2px_rgba(0,0,0,0.04)] bg-white">
           <div className="flex items-center space-x-2 mb-6">
             <MapPin className="h-4.5 w-4.5 text-[#111111]" />
             <h3 className="text-sm font-bold text-[#111111] tracking-[-0.02em]">Hotel Information</h3>
@@ -722,7 +722,7 @@ function CreateBookingPage() {
             </select>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:p-6">
             <div className="space-y-1.5">
               <label className="block text-xs font-semibold text-gray-500">Hotel Name *</label>
               <Input
@@ -755,13 +755,13 @@ function CreateBookingPage() {
         </Card>
 
         {/* Lodging & Slices */}
-        <Card className="p-6 border border-[#e5e7eb] rounded-xl shadow-[0_1px_2px_rgba(0,0,0,0.04)] bg-white">
+        <Card className="p-4 md:p-6 border border-[#e5e7eb] rounded-xl shadow-[0_1px_2px_rgba(0,0,0,0.04)] bg-white">
           <div className="flex items-center space-x-2 mb-6">
             <Calendar className="h-4.5 w-4.5 text-[#111111]" />
             <h3 className="text-sm font-bold text-[#111111] tracking-[-0.02em]">Lodging & Slices</h3>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:p-6">
             <div className="space-y-1.5">
               <label className="block text-xs font-semibold text-gray-500 font-sans">Check-in Date *</label>
               <Input
@@ -1072,7 +1072,7 @@ function CreateBookingPage() {
         </Card>
 
         {/* Pricing Summary */}
-        <Card className="p-6 border border-[#e5e7eb] rounded-xl shadow-[0_1px_2px_rgba(0,0,0,0.04)] bg-white">
+        <Card className="p-4 md:p-6 border border-[#e5e7eb] rounded-xl shadow-[0_1px_2px_rgba(0,0,0,0.04)] bg-white">
           <div className="flex items-center space-x-2 mb-6">
             <Layers className="h-4.5 w-4.5 text-[#111111]" />
             <h3 className="text-sm font-bold text-[#111111] tracking-[-0.02em]">Pricing Summary</h3>
@@ -1080,7 +1080,7 @@ function CreateBookingPage() {
 
           <div className="space-y-6">
             {/* Monochromatic Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:p-6">
               <div className="p-4 bg-[#f8f9fa] rounded-lg border border-[#e5e7eb]">
                 <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Total Rooms</span>
                 <p className="text-base font-bold text-[#111111] mt-1">
@@ -1149,13 +1149,13 @@ function CreateBookingPage() {
         </Card>
 
         {/* Immediate Payments */}
-        <Card className="p-6 border border-[#e5e7eb] rounded-xl shadow-[0_1px_2px_rgba(0,0,0,0.04)] bg-white">
+        <Card className="p-4 md:p-6 border border-[#e5e7eb] rounded-xl shadow-[0_1px_2px_rgba(0,0,0,0.04)] bg-white">
           <div className="flex items-center space-x-2 mb-6">
             <ShieldCheck className="h-4.5 w-4.5 text-[#111111]" />
             <h3 className="text-sm font-bold text-[#111111] tracking-[-0.02em]">Immediate Payments</h3>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:p-6">
             <div className="space-y-1.5">
               <label className="block text-xs font-semibold text-gray-500">Payment Gateway Method</label>
               <select
@@ -1191,7 +1191,7 @@ function CreateBookingPage() {
         </Card>
 
         {/* Special Requests */}
-        <Card className="p-6 border border-[#e5e7eb] rounded-xl shadow-[0_1px_2px_rgba(0,0,0,0.04)] bg-white">
+        <Card className="p-4 md:p-6 border border-[#e5e7eb] rounded-xl shadow-[0_1px_2px_rgba(0,0,0,0.04)] bg-white">
           <div className="flex items-center space-x-2 mb-6">
             <MapPin className="h-4.5 w-4.5 text-[#111111]" />
             <h3 className="text-sm font-bold text-[#111111] tracking-[-0.02em]">Additional Notes</h3>

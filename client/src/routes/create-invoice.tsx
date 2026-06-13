@@ -310,11 +310,11 @@ function CreateInvoicePage() {
         </div>
       }
     >
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 md:p-6">
         {/* Form Container */}
         <div className="lg:col-span-2 space-y-6">
           {/* Client & Booking Selection */}
-          <div className="border border-[#e5e7eb] rounded-xl bg-white shadow-none p-6">
+          <div className="border border-[#e5e7eb] rounded-xl bg-white shadow-none p-4 md:p-6">
             <div className="flex items-center space-x-2 mb-6 pb-2 border-b border-gray-100">
               <User className="h-4.5 w-4.5 text-zinc-700" />
               <h3 className="text-sm font-bold text-[#111111] uppercase tracking-wider">Pilih Client & Booking</h3>
@@ -513,7 +513,7 @@ function CreateInvoicePage() {
 
           {/* Service Items */}
           {sourceType === 'hotel' && (
-            <div className="border border-[#e5e7eb] rounded-xl bg-white shadow-none p-6">
+            <div className="border border-[#e5e7eb] rounded-xl bg-white shadow-none p-4 md:p-6">
               <div className="flex items-center space-x-2 mb-6 pb-2 border-b border-gray-100">
                 <Building className="h-4.5 w-4.5 text-zinc-700" />
                 <h3 className="text-sm font-bold text-[#111111] uppercase tracking-wider">Service Items (Visa, Transportasi, Lainnya)</h3>
@@ -608,7 +608,7 @@ function CreateInvoicePage() {
           )}
 
           {/* Invoice Details */}
-          <div className="border border-[#e5e7eb] rounded-xl bg-white shadow-none p-6">
+          <div className="border border-[#e5e7eb] rounded-xl bg-white shadow-none p-4 md:p-6">
             <div className="flex items-center space-x-2 mb-6 pb-2 border-b border-gray-100">
               <FileText className="h-4.5 w-4.5 text-zinc-700" />
               <h3 className="text-sm font-bold text-[#111111] uppercase tracking-wider">Invoice Settings</h3>
@@ -635,7 +635,7 @@ function CreateInvoicePage() {
 
         {/* Sidebar Invoice Preview */}
         <div className="space-y-6">
-          <div className="border border-[#e5e7eb] rounded-xl bg-white shadow-none p-6 sticky top-6">
+          <div className="border border-[#e5e7eb] rounded-xl bg-white shadow-none p-4 md:p-6 sticky top-4 md:p-6">
             <h3 className="text-sm font-bold text-[#111111] uppercase tracking-wider mb-6 pb-2 border-b border-gray-100">
               Invoice Checkout Preview
             </h3>

@@ -346,7 +346,7 @@ function InvoiceDetailPage() {
           {/* Details Column */}
           <div className="lg:col-span-2 space-y-6">
             {/* Invoice Summary */}
-            <div className="border border-[#e5e7eb] rounded-xl bg-white shadow-none p-6">
+            <div className="border border-[#e5e7eb] rounded-xl bg-white shadow-none p-4 md:p-6">
               <h2 className="text-sm font-bold text-[#111111] uppercase tracking-wider mb-6 pb-2 border-b border-gray-100 flex items-center space-x-2">
                 <FileText className="h-4.5 w-4.5 text-zinc-700" />
                 <span>Invoice Summary</span>
@@ -386,7 +386,7 @@ function InvoiceDetailPage() {
             </div>
 
             {/* Booking Summary */}
-            <div className="border border-[#e5e7eb] rounded-xl bg-white shadow-none p-6">
+            <div className="border border-[#e5e7eb] rounded-xl bg-white shadow-none p-4 md:p-6">
               <h2 className="text-sm font-bold text-[#111111] uppercase tracking-wider mb-6 pb-2 border-b border-gray-100 flex items-center space-x-2">
                 <CalendarDays className="h-4.5 w-4.5 text-zinc-700" />
                 <span>Booking Details</span>
@@ -422,7 +422,7 @@ function InvoiceDetailPage() {
             </div>
 
             {/* Payments History */}
-            <div className="border border-[#e5e7eb] rounded-xl bg-white shadow-none p-6">
+            <div className="border border-[#e5e7eb] rounded-xl bg-white shadow-none p-4 md:p-6">
               <h2 className="text-sm font-bold text-[#111111] uppercase tracking-wider mb-6 pb-2 border-b border-gray-100 flex items-center space-x-2">
                 <Info className="h-4.5 w-4.5 text-zinc-700" />
                 <span>Payments History</span>
@@ -458,7 +458,7 @@ function InvoiceDetailPage() {
 
           {/* Record Payment Sidebar */}
           <div className="space-y-6">
-            <div className="border border-[#e5e7eb] rounded-xl bg-white shadow-none p-6">
+            <div className="border border-[#e5e7eb] rounded-xl bg-white shadow-none p-4 md:p-6">
               <h2 className="text-sm font-bold text-[#111111] uppercase tracking-wider mb-6 pb-2 border-b border-gray-100 flex items-center space-x-2">
                 <Banknote className="h-4.5 w-4.5 text-zinc-700" />
                 <span>Record Payment</span>

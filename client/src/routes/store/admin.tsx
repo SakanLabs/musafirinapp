@@ -1036,7 +1036,7 @@ function StoreAdminPage() {
               </button>
             </div>
 
-            <form onSubmit={handleProductSubmit} className="flex-1 overflow-y-auto p-6 space-y-5 text-xs font-semibold text-gray-700">
+            <form onSubmit={handleProductSubmit} className="flex-1 overflow-y-auto p-4 md:p-6 space-y-5 text-xs font-semibold text-gray-700">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-1">
                   <label className="block text-xs font-medium text-gray-500">Product Name *</label>
@@ -1303,7 +1303,7 @@ function StoreAdminPage() {
               </button>
             </div>
 
-            <div className="flex-1 overflow-y-auto p-6 space-y-6 text-xs font-semibold text-gray-700">
+            <div className="flex-1 overflow-y-auto p-4 md:p-6 space-y-6 text-xs font-semibold text-gray-700">
 
               {/* Order breakdown */}
               <Card className="p-5 border border-[#e5e7eb] rounded-xl bg-white shadow-none">
@@ -1533,7 +1533,7 @@ function StoreAdminPage() {
                 Verify Bank Transfer Payment
               </h4>
             </div>
-            <div className="p-6 space-y-4 text-xs font-semibold text-gray-700">
+            <div className="p-4 md:p-6 space-y-4 text-xs font-semibold text-gray-700">
               <p className="text-gray-500 font-medium">
                 Verify this transfer proof slip details. Ensure the transfer sum matches the invoice target amount perfectly before clicking confirm.
               </p>
@@ -1590,7 +1590,7 @@ function StoreAdminPage() {
               </button>
             </div>
 
-            <form onSubmit={handleShipmentSubmit} className="p-6 space-y-4 text-xs font-semibold text-gray-700">
+            <form onSubmit={handleShipmentSubmit} className="p-4 md:p-6 space-y-4 text-xs font-semibold text-gray-700">
               <div className="space-y-1">
                 <label className="block text-xs font-medium text-gray-500">Airway Bill (AWB) / Tracking Number *</label>
                 <Input
@@ -1694,7 +1694,7 @@ function StoreAdminPage() {
               </button>
             </div>
 
-            <form onSubmit={handleCategorySubmit} className="p-6 space-y-4 text-xs font-semibold text-gray-700">
+            <form onSubmit={handleCategorySubmit} className="p-4 md:p-6 space-y-4 text-xs font-semibold text-gray-700">
               <div className="space-y-1">
                 <label className="block text-xs font-medium text-gray-500">Category Name *</label>
                 <Input

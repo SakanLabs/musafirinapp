@@ -252,7 +252,7 @@ function CartPage() {
 
           {/* Right Column: Address and summary */}
           <div className="space-y-6">
-            <div className="space-y-4 bg-white p-6 rounded-2xl border border-gray-200 shadow-xs">
+            <div className="space-y-4 bg-white p-4 md:p-6 rounded-2xl border border-gray-200 shadow-xs">
               <h3 className="text-xs font-bold text-gray-400 uppercase tracking-widest block">Shipping Address (Indonesia)</h3>
               
               <form onSubmit={handleCheckout} className="space-y-4">
@@ -335,7 +335,7 @@ function CartPage() {
               </form>
             </div>
 
-            <div className="space-y-4 bg-white p-6 rounded-2xl border border-gray-200 shadow-xs">
+            <div className="space-y-4 bg-white p-4 md:p-6 rounded-2xl border border-gray-200 shadow-xs">
               <h3 className="text-xs font-bold text-gray-400 uppercase tracking-widest block">Invoice Summary</h3>
               
               <div className="space-y-2 text-xs font-semibold text-gray-600">

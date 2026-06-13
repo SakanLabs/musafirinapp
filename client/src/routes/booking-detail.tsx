@@ -302,7 +302,7 @@ function BookingDetailPage() {
                   Primary Guest Contact
                 </CardTitle>
               </CardHeader>
-              <CardContent className="p-6 space-y-4">
+              <CardContent className="p-4 md:p-6 space-y-4">
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                   <div className="space-y-1">
                     <label className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider">Full Name</label>
@@ -334,7 +334,7 @@ function BookingDetailPage() {
                   Lodging Specifications & Slices
                 </CardTitle>
               </CardHeader>
-              <CardContent className="p-6 space-y-6">
+              <CardContent className="p-4 md:p-6 space-y-6">
                 {/* Visual duration metadata */}
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6 pb-6 border-b border-gray-100">
                   <div className="space-y-1">

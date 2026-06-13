@@ -144,7 +144,7 @@ function CreateReceiptPage() {
             showBackButton
         >
             <div className="max-w-xl mx-auto">
-                <div className="border border-[#e5e7eb] rounded-xl bg-white shadow-none p-6">
+                <div className="border border-[#e5e7eb] rounded-xl bg-white shadow-none p-4 md:p-6">
                     <div className="flex items-center space-x-3 mb-6 pb-4 border-b border-zinc-100">
                         <Receipt className="h-5 w-5 text-zinc-500" />
                         <div>
