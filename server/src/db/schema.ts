@@ -1024,3 +1024,102 @@ export const storeUserAddressesRelations = relations(storeUserAddresses, ({ one 
 }));
 
 
+
+// Muthowif Bookings
+export const muthowifBookingEventEnum = pgEnum('muthowif_booking_event', ['Umrah', 'Makkah City Tour', 'Madinah City Tour']);
+export const muthowifBookingStatusEnum = pgEnum('muthowif_booking_status', ['pending', 'confirmed', 'completed', 'cancelled']);
+
+export const muthowifBookings = pgTable('muthowif_bookings', {
+  id: serial('id').primaryKey(),
+  number: varchar('number', { length: 50 }).notNull().unique(), // Format: MB-YYYY-XXXX
+  clientId: integer('client_id').notNull().references(() => clients.id, { onDelete: 'cascade' }),
+  guestName: varchar('guest_name', { length: 255 }).notNull(),
+  dateTime: timestamp('date_time').notNull(),
+  event: muthowifBookingEventEnum('event').notNull(),
+  totalPax: integer('total_pax').notNull(),
+  meetingPoint: varchar('meeting_point', { length: 255 }).notNull(),
+  status: muthowifBookingStatusEnum('status').default('pending').notNull(),
+  totalAmount: decimal('total_amount', { precision: 10, scale: 2 }).notNull(),
+  currency: varchar('currency', { length: 3 }).default('SAR').notNull(),
+  assignedMuthowifId: integer('assigned_muthowif_id').references(() => muthowifs.id, { onDelete: 'set null' }),
+  notes: text('notes'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+});
+
+export const muthowifInvoices = pgTable('muthowif_invoices', {
+  id: serial('id').primaryKey(),
+  number: varchar('number', { length: 50 }).notNull().unique(), // Format: MBI-YYYY-XXXX
+  muthowifBookingId: integer('muthowif_booking_id').notNull().references(() => muthowifBookings.id, { onDelete: 'cascade' }),
+  amount: decimal('amount', { precision: 10, scale: 2 }).notNull(),
+  paidAmount: decimal('paid_amount', { precision: 10, scale: 2 }).default('0').notNull(),
+  currency: varchar('currency', { length: 3 }).default('SAR').notNull(),
+  issueDate: timestamp('issue_date').notNull(),
+  dueDate: timestamp('due_date').notNull(),
+  status: invoiceStatusEnum('status').default('draft').notNull(),
+  pdfUrl: text('pdf_url'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+});
+
+export const muthowifInvoicePayments = pgTable('muthowif_invoice_payments', {
+  id: serial('id').primaryKey(),
+  invoiceId: integer('invoice_id').notNull().references(() => muthowifInvoices.id, { onDelete: 'cascade' }),
+  amount: decimal('amount', { precision: 10, scale: 2 }).notNull(),
+  currency: varchar('currency', { length: 3 }).default('SAR').notNull(),
+  method: varchar('method', { length: 50 }),
+  referenceNumber: varchar('reference_number', { length: 100 }),
+  paidAt: timestamp('paid_at').notNull(),
+  status: depositTransactionStatusEnum('status').default('completed').notNull(),
+  meta: jsonb('meta'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+});
+
+export const muthowifReceipts = pgTable('muthowif_receipts', {
+  id: serial('id').primaryKey(),
+  number: varchar('number', { length: 50 }).notNull().unique(), // Format: MBR-YYYY-XXXX
+  muthowifBookingId: integer('muthowif_booking_id').notNull().references(() => muthowifBookings.id, { onDelete: 'cascade' }),
+  muthowifInvoiceId: integer('muthowif_invoice_id').references(() => muthowifInvoices.id, { onDelete: 'set null' }),
+  totalAmount: decimal('total_amount', { precision: 10, scale: 2 }).notNull(),
+  paidAmount: decimal('paid_amount', { precision: 10, scale: 2 }).notNull(),
+  balanceDue: decimal('balance_due', { precision: 10, scale: 2 }).notNull(),
+  currency: varchar('currency', { length: 3 }).default('SAR').notNull(),
+  issueDate: timestamp('issue_date').defaultNow().notNull(),
+  payerName: varchar('payer_name', { length: 255 }).notNull(),
+  payerEmail: varchar('payer_email', { length: 255 }),
+  payerPhone: varchar('payer_phone', { length: 50 }),
+  payerAddress: text('payer_address'),
+  bankName: varchar('bank_name', { length: 255 }),
+  bankCountry: varchar('bank_country', { length: 100 }),
+  accountName: varchar('account_name', { length: 255 }),
+  accountNumberOrIBAN: varchar('account_number_or_iban', { length: 100 }),
+  notes: text('notes'),
+  amountInWords: text('amount_in_words'),
+  pdfUrl: text('pdf_url'),
+  meta: jsonb('meta'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+});
+
+export const muthowifVouchers = pgTable('muthowif_vouchers', {
+  id: serial('id').primaryKey(),
+  number: varchar('number', { length: 50 }).notNull().unique(), // Format: MBV-YYYY-XXXX
+  muthowifBookingId: integer('muthowif_booking_id').notNull().references(() => muthowifBookings.id, { onDelete: 'cascade' }),
+  issueDate: timestamp('issue_date').defaultNow().notNull(),
+  pdfUrl: text('pdf_url'),
+  meta: jsonb('meta'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+});
+
+export type MuthowifBooking = typeof muthowifBookings.$inferSelect;
+export type NewMuthowifBooking = typeof muthowifBookings.$inferInsert;
+export type MuthowifInvoice = typeof muthowifInvoices.$inferSelect;
+export type NewMuthowifInvoice = typeof muthowifInvoices.$inferInsert;
+export type MuthowifInvoicePayment = typeof muthowifInvoicePayments.$inferSelect;
+export type NewMuthowifInvoicePayment = typeof muthowifInvoicePayments.$inferInsert;
+export type MuthowifReceipt = typeof muthowifReceipts.$inferSelect;
+export type NewMuthowifReceipt = typeof muthowifReceipts.$inferInsert;
+export type MuthowifVoucher = typeof muthowifVouchers.$inferSelect;
+export type NewMuthowifVoucher = typeof muthowifVouchers.$inferInsert;

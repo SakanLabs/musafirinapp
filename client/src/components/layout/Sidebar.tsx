@@ -81,6 +81,12 @@ const navigationSections = [
         roles: ['admin', 'owner']
       },
       {
+        name: 'Muthowif Orders',
+        href: '/muthowif-bookings',
+        icon: UserCheck,
+        roles: ['admin', 'owner']
+      },
+      {
         name: 'Souvenir Store',
         href: '/store',
         icon: ShoppingBag,

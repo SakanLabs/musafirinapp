@@ -18,6 +18,7 @@ import { Route as RegisterRouteImport } from './routes/register'
 import { Route as ReceiptsRouteImport } from './routes/receipts'
 import { Route as ReceiptDetailRouteImport } from './routes/receipt-detail'
 import { Route as ProfileRouteImport } from './routes/profile'
+import { Route as MuthowifBookingsRouteImport } from './routes/muthowif-bookings'
 import { Route as MasterTransportRouteImport } from './routes/master-transport'
 import { Route as MasterServicesRouteImport } from './routes/master-services'
 import { Route as MasterHotelsRouteImport } from './routes/master-hotels'
@@ -31,6 +32,7 @@ import { Route as CustomLaRequestsRouteImport } from './routes/custom-la-request
 import { Route as CreateTransportationBookingRouteImport } from './routes/create-transportation-booking'
 import { Route as CreateServiceOrderRouteImport } from './routes/create-service-order'
 import { Route as CreateReceiptRouteImport } from './routes/create-receipt'
+import { Route as CreateMuthowifBookingRouteImport } from './routes/create-muthowif-booking'
 import { Route as CreateMasterTransportRouteImport } from './routes/create-master-transport'
 import { Route as CreateMasterHotelRouteImport } from './routes/create-master-hotel'
 import { Route as CreateInvoiceRouteImport } from './routes/create-invoice'
@@ -58,6 +60,7 @@ import { Route as ServiceOrdersCreateRouteImport } from './routes/service-orders
 import { Route as ServiceOrdersIdRouteImport } from './routes/service-orders/$id'
 import { Route as ServiceOrderEditServiceOrderIdRouteImport } from './routes/service-order-edit.$serviceOrderId'
 import { Route as ServiceOrderDetailServiceOrderIdRouteImport } from './routes/service-order-detail.$serviceOrderId'
+import { Route as MuthowifBookingDetailIdRouteImport } from './routes/muthowif-booking-detail.$id'
 import { Route as MasterTransportEditRouteIdRouteImport } from './routes/master-transport-edit.$routeId'
 import { Route as MasterTransportDetailRouteIdRouteImport } from './routes/master-transport-detail.$routeId'
 import { Route as MasterHotelEditHotelIdRouteImport } from './routes/master-hotel-edit.$hotelId'
@@ -125,6 +128,11 @@ const ProfileRoute = ProfileRouteImport.update({
   path: '/profile',
   getParentRoute: () => rootRouteImport,
 } as any)
+const MuthowifBookingsRoute = MuthowifBookingsRouteImport.update({
+  id: '/muthowif-bookings',
+  path: '/muthowif-bookings',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const MasterTransportRoute = MasterTransportRouteImport.update({
   id: '/master-transport',
   path: '/master-transport',
@@ -189,6 +197,11 @@ const CreateServiceOrderRoute = CreateServiceOrderRouteImport.update({
 const CreateReceiptRoute = CreateReceiptRouteImport.update({
   id: '/create-receipt',
   path: '/create-receipt',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CreateMuthowifBookingRoute = CreateMuthowifBookingRouteImport.update({
+  id: '/create-muthowif-booking',
+  path: '/create-muthowif-booking',
   getParentRoute: () => rootRouteImport,
 } as any)
 const CreateMasterTransportRoute = CreateMasterTransportRouteImport.update({
@@ -330,6 +343,11 @@ const ServiceOrderDetailServiceOrderIdRoute =
     path: '/service-order-detail/$serviceOrderId',
     getParentRoute: () => rootRouteImport,
   } as any)
+const MuthowifBookingDetailIdRoute = MuthowifBookingDetailIdRouteImport.update({
+  id: '/muthowif-booking-detail/$id',
+  path: '/muthowif-booking-detail/$id',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const MasterTransportEditRouteIdRoute =
   MasterTransportEditRouteIdRouteImport.update({
     id: '/master-transport-edit/$routeId',
@@ -458,6 +476,7 @@ export interface FileRoutesByFullPath {
   '/create-invoice': typeof CreateInvoiceRoute
   '/create-master-hotel': typeof CreateMasterHotelRoute
   '/create-master-transport': typeof CreateMasterTransportRoute
+  '/create-muthowif-booking': typeof CreateMuthowifBookingRoute
   '/create-receipt': typeof CreateReceiptRoute
   '/create-service-order': typeof CreateServiceOrderRoute
   '/create-transportation-booking': typeof CreateTransportationBookingRoute
@@ -471,6 +490,7 @@ export interface FileRoutesByFullPath {
   '/master-hotels': typeof MasterHotelsRoute
   '/master-services': typeof MasterServicesRoute
   '/master-transport': typeof MasterTransportRoute
+  '/muthowif-bookings': typeof MuthowifBookingsRoute
   '/profile': typeof ProfileRoute
   '/receipt-detail': typeof ReceiptDetailRoute
   '/receipts': typeof ReceiptsRoute
@@ -495,6 +515,7 @@ export interface FileRoutesByFullPath {
   '/master-hotel-edit/$hotelId': typeof MasterHotelEditHotelIdRoute
   '/master-transport-detail/$routeId': typeof MasterTransportDetailRouteIdRoute
   '/master-transport-edit/$routeId': typeof MasterTransportEditRouteIdRoute
+  '/muthowif-booking-detail/$id': typeof MuthowifBookingDetailIdRoute
   '/service-order-detail/$serviceOrderId': typeof ServiceOrderDetailServiceOrderIdRoute
   '/service-order-edit/$serviceOrderId': typeof ServiceOrderEditServiceOrderIdRoute
   '/service-orders/$id': typeof ServiceOrdersIdRoute
@@ -529,6 +550,7 @@ export interface FileRoutesByTo {
   '/create-invoice': typeof CreateInvoiceRoute
   '/create-master-hotel': typeof CreateMasterHotelRoute
   '/create-master-transport': typeof CreateMasterTransportRoute
+  '/create-muthowif-booking': typeof CreateMuthowifBookingRoute
   '/create-receipt': typeof CreateReceiptRoute
   '/create-service-order': typeof CreateServiceOrderRoute
   '/create-transportation-booking': typeof CreateTransportationBookingRoute
@@ -542,6 +564,7 @@ export interface FileRoutesByTo {
   '/master-hotels': typeof MasterHotelsRoute
   '/master-services': typeof MasterServicesRoute
   '/master-transport': typeof MasterTransportRoute
+  '/muthowif-bookings': typeof MuthowifBookingsRoute
   '/profile': typeof ProfileRoute
   '/receipt-detail': typeof ReceiptDetailRoute
   '/receipts': typeof ReceiptsRoute
@@ -564,6 +587,7 @@ export interface FileRoutesByTo {
   '/master-hotel-edit/$hotelId': typeof MasterHotelEditHotelIdRoute
   '/master-transport-detail/$routeId': typeof MasterTransportDetailRouteIdRoute
   '/master-transport-edit/$routeId': typeof MasterTransportEditRouteIdRoute
+  '/muthowif-booking-detail/$id': typeof MuthowifBookingDetailIdRoute
   '/service-order-detail/$serviceOrderId': typeof ServiceOrderDetailServiceOrderIdRoute
   '/service-order-edit/$serviceOrderId': typeof ServiceOrderEditServiceOrderIdRoute
   '/service-orders/$id': typeof ServiceOrdersIdRoute
@@ -600,6 +624,7 @@ export interface FileRoutesById {
   '/create-invoice': typeof CreateInvoiceRoute
   '/create-master-hotel': typeof CreateMasterHotelRoute
   '/create-master-transport': typeof CreateMasterTransportRoute
+  '/create-muthowif-booking': typeof CreateMuthowifBookingRoute
   '/create-receipt': typeof CreateReceiptRoute
   '/create-service-order': typeof CreateServiceOrderRoute
   '/create-transportation-booking': typeof CreateTransportationBookingRoute
@@ -613,6 +638,7 @@ export interface FileRoutesById {
   '/master-hotels': typeof MasterHotelsRoute
   '/master-services': typeof MasterServicesRoute
   '/master-transport': typeof MasterTransportRoute
+  '/muthowif-bookings': typeof MuthowifBookingsRoute
   '/profile': typeof ProfileRoute
   '/receipt-detail': typeof ReceiptDetailRoute
   '/receipts': typeof ReceiptsRoute
@@ -637,6 +663,7 @@ export interface FileRoutesById {
   '/master-hotel-edit/$hotelId': typeof MasterHotelEditHotelIdRoute
   '/master-transport-detail/$routeId': typeof MasterTransportDetailRouteIdRoute
   '/master-transport-edit/$routeId': typeof MasterTransportEditRouteIdRoute
+  '/muthowif-booking-detail/$id': typeof MuthowifBookingDetailIdRoute
   '/service-order-detail/$serviceOrderId': typeof ServiceOrderDetailServiceOrderIdRoute
   '/service-order-edit/$serviceOrderId': typeof ServiceOrderEditServiceOrderIdRoute
   '/service-orders/$id': typeof ServiceOrdersIdRoute
@@ -674,6 +701,7 @@ export interface FileRouteTypes {
     | '/create-invoice'
     | '/create-master-hotel'
     | '/create-master-transport'
+    | '/create-muthowif-booking'
     | '/create-receipt'
     | '/create-service-order'
     | '/create-transportation-booking'
@@ -687,6 +715,7 @@ export interface FileRouteTypes {
     | '/master-hotels'
     | '/master-services'
     | '/master-transport'
+    | '/muthowif-bookings'
     | '/profile'
     | '/receipt-detail'
     | '/receipts'
@@ -711,6 +740,7 @@ export interface FileRouteTypes {
     | '/master-hotel-edit/$hotelId'
     | '/master-transport-detail/$routeId'
     | '/master-transport-edit/$routeId'
+    | '/muthowif-booking-detail/$id'
     | '/service-order-detail/$serviceOrderId'
     | '/service-order-edit/$serviceOrderId'
     | '/service-orders/$id'
@@ -745,6 +775,7 @@ export interface FileRouteTypes {
     | '/create-invoice'
     | '/create-master-hotel'
     | '/create-master-transport'
+    | '/create-muthowif-booking'
     | '/create-receipt'
     | '/create-service-order'
     | '/create-transportation-booking'
@@ -758,6 +789,7 @@ export interface FileRouteTypes {
     | '/master-hotels'
     | '/master-services'
     | '/master-transport'
+    | '/muthowif-bookings'
     | '/profile'
     | '/receipt-detail'
     | '/receipts'
@@ -780,6 +812,7 @@ export interface FileRouteTypes {
     | '/master-hotel-edit/$hotelId'
     | '/master-transport-detail/$routeId'
     | '/master-transport-edit/$routeId'
+    | '/muthowif-booking-detail/$id'
     | '/service-order-detail/$serviceOrderId'
     | '/service-order-edit/$serviceOrderId'
     | '/service-orders/$id'
@@ -815,6 +848,7 @@ export interface FileRouteTypes {
     | '/create-invoice'
     | '/create-master-hotel'
     | '/create-master-transport'
+    | '/create-muthowif-booking'
     | '/create-receipt'
     | '/create-service-order'
     | '/create-transportation-booking'
@@ -828,6 +862,7 @@ export interface FileRouteTypes {
     | '/master-hotels'
     | '/master-services'
     | '/master-transport'
+    | '/muthowif-bookings'
     | '/profile'
     | '/receipt-detail'
     | '/receipts'
@@ -852,6 +887,7 @@ export interface FileRouteTypes {
     | '/master-hotel-edit/$hotelId'
     | '/master-transport-detail/$routeId'
     | '/master-transport-edit/$routeId'
+    | '/muthowif-booking-detail/$id'
     | '/service-order-detail/$serviceOrderId'
     | '/service-order-edit/$serviceOrderId'
     | '/service-orders/$id'
@@ -888,6 +924,7 @@ export interface RootRouteChildren {
   CreateInvoiceRoute: typeof CreateInvoiceRoute
   CreateMasterHotelRoute: typeof CreateMasterHotelRoute
   CreateMasterTransportRoute: typeof CreateMasterTransportRoute
+  CreateMuthowifBookingRoute: typeof CreateMuthowifBookingRoute
   CreateReceiptRoute: typeof CreateReceiptRoute
   CreateServiceOrderRoute: typeof CreateServiceOrderRoute
   CreateTransportationBookingRoute: typeof CreateTransportationBookingRoute
@@ -901,6 +938,7 @@ export interface RootRouteChildren {
   MasterHotelsRoute: typeof MasterHotelsRoute
   MasterServicesRoute: typeof MasterServicesRoute
   MasterTransportRoute: typeof MasterTransportRoute
+  MuthowifBookingsRoute: typeof MuthowifBookingsRoute
   ProfileRoute: typeof ProfileRoute
   ReceiptDetailRoute: typeof ReceiptDetailRoute
   ReceiptsRoute: typeof ReceiptsRoute
@@ -922,6 +960,7 @@ export interface RootRouteChildren {
   MasterHotelEditHotelIdRoute: typeof MasterHotelEditHotelIdRoute
   MasterTransportDetailRouteIdRoute: typeof MasterTransportDetailRouteIdRoute
   MasterTransportEditRouteIdRoute: typeof MasterTransportEditRouteIdRoute
+  MuthowifBookingDetailIdRoute: typeof MuthowifBookingDetailIdRoute
   ServiceOrderDetailServiceOrderIdRoute: typeof ServiceOrderDetailServiceOrderIdRoute
   ServiceOrderEditServiceOrderIdRoute: typeof ServiceOrderEditServiceOrderIdRoute
   TransportationBookingDetailTransportationBookingIdRoute: typeof TransportationBookingDetailTransportationBookingIdRoute
@@ -993,6 +1032,13 @@ declare module '@tanstack/react-router' {
       path: '/profile'
       fullPath: '/profile'
       preLoaderRoute: typeof ProfileRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/muthowif-bookings': {
+      id: '/muthowif-bookings'
+      path: '/muthowif-bookings'
+      fullPath: '/muthowif-bookings'
+      preLoaderRoute: typeof MuthowifBookingsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/master-transport': {
@@ -1084,6 +1130,13 @@ declare module '@tanstack/react-router' {
       path: '/create-receipt'
       fullPath: '/create-receipt'
       preLoaderRoute: typeof CreateReceiptRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/create-muthowif-booking': {
+      id: '/create-muthowif-booking'
+      path: '/create-muthowif-booking'
+      fullPath: '/create-muthowif-booking'
+      preLoaderRoute: typeof CreateMuthowifBookingRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/create-master-transport': {
@@ -1273,6 +1326,13 @@ declare module '@tanstack/react-router' {
       path: '/service-order-detail/$serviceOrderId'
       fullPath: '/service-order-detail/$serviceOrderId'
       preLoaderRoute: typeof ServiceOrderDetailServiceOrderIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/muthowif-booking-detail/$id': {
+      id: '/muthowif-booking-detail/$id'
+      path: '/muthowif-booking-detail/$id'
+      fullPath: '/muthowif-booking-detail/$id'
+      preLoaderRoute: typeof MuthowifBookingDetailIdRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/master-transport-edit/$routeId': {
@@ -1538,6 +1598,7 @@ const rootRouteChildren: RootRouteChildren = {
   CreateInvoiceRoute: CreateInvoiceRoute,
   CreateMasterHotelRoute: CreateMasterHotelRoute,
   CreateMasterTransportRoute: CreateMasterTransportRoute,
+  CreateMuthowifBookingRoute: CreateMuthowifBookingRoute,
   CreateReceiptRoute: CreateReceiptRoute,
   CreateServiceOrderRoute: CreateServiceOrderRoute,
   CreateTransportationBookingRoute: CreateTransportationBookingRoute,
@@ -1551,6 +1612,7 @@ const rootRouteChildren: RootRouteChildren = {
   MasterHotelsRoute: MasterHotelsRoute,
   MasterServicesRoute: MasterServicesRoute,
   MasterTransportRoute: MasterTransportRoute,
+  MuthowifBookingsRoute: MuthowifBookingsRoute,
   ProfileRoute: ProfileRoute,
   ReceiptDetailRoute: ReceiptDetailRoute,
   ReceiptsRoute: ReceiptsRoute,
@@ -1572,6 +1634,7 @@ const rootRouteChildren: RootRouteChildren = {
   MasterHotelEditHotelIdRoute: MasterHotelEditHotelIdRoute,
   MasterTransportDetailRouteIdRoute: MasterTransportDetailRouteIdRoute,
   MasterTransportEditRouteIdRoute: MasterTransportEditRouteIdRoute,
+  MuthowifBookingDetailIdRoute: MuthowifBookingDetailIdRoute,
   ServiceOrderDetailServiceOrderIdRoute: ServiceOrderDetailServiceOrderIdRoute,
   ServiceOrderEditServiceOrderIdRoute: ServiceOrderEditServiceOrderIdRoute,
   TransportationBookingDetailTransportationBookingIdRoute:

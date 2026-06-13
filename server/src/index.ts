@@ -32,6 +32,7 @@ import customLaBillingRoutes from "./routes/customLaBilling";
 import leadsRoutes from "./routes/leads";
 import profileRoutes from "./routes/profile";
 import storeRoutes from "./routes/store";
+import muthowifBookingsRoutes from "./routes/muthowifBookings";
 
 // Auth instance is now imported from ./lib/auth.ts
 
@@ -92,6 +93,7 @@ export const app = new Hono()
   .route("/api/leads", leadsRoutes)
   .route("/api/profile", profileRoutes)
   .route("/api/store", storeRoutes)
+  .route("/api/muthowif-bookings", muthowifBookingsRoutes)
   .get("/", (c) => {
     return c.text("Hello Hono!");
   })
