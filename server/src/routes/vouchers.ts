@@ -303,10 +303,10 @@ voucherRoutes.get('/by-number/:number', requireFinance, async (c) => {
 
     if (voucherNumber.startsWith('MBV-')) {
       const v = await db.select({ pdfUrl: muthowifVouchers.pdfUrl }).from(muthowifVouchers).where(eq(muthowifVouchers.number, voucherNumber)).limit(1);
-      if (v.length > 0) pdfUrl = v[0].pdfUrl;
+      if (v.length > 0) pdfUrl = v[0]?.pdfUrl;
     } else {
       const v = await db.select({ pdfUrl: vouchers.pdfUrl }).from(vouchers).where(eq(vouchers.number, voucherNumber)).limit(1);
-      if (v.length > 0) pdfUrl = v[0].pdfUrl;
+      if (v.length > 0) pdfUrl = v[0]?.pdfUrl;
     }
 
     if (!pdfUrl) {
