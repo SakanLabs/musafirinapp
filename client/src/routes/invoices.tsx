@@ -150,6 +150,8 @@ function InvoicesPage() {
           detailLink = `/service-order-detail/${invoice.bookingId}`;
         } else if (invoice.number.startsWith('LA-INV-')) {
           detailLink = `/custom-la-detail/${invoice.bookingId}`;
+        } else if (invoice.number.startsWith('MBI-')) {
+          detailLink = `/muthowif-booking-detail/${invoice.bookingId}`;
         }
 
         return (

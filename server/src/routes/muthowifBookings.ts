@@ -1,5 +1,6 @@
 import { Hono } from 'hono';
 import { eq, desc } from 'drizzle-orm';
+import { generateMuthowifInvoicePDF, generateMuthowifReceiptPDF, generateMuthowifVoucherPDF } from '../utils/pdf';
 import { db } from '../db';
 import {
   muthowifBookings,
@@ -10,6 +11,11 @@ import {
   muthowifs,
 } from '../db/schema';
 import { requireAdmin } from '../middleware/auth';
+
+const formatIndoDateTime = (date: Date) => {
+  const months = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
+  return `${String(date.getDate()).padStart(2, '0')} ${months[date.getMonth()]} ${date.getFullYear()}, ${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`;
+};
 
 const muthowifBookingsApp = new Hono();
 
@@ -91,7 +97,7 @@ muthowifBookingsApp.get('/:id', requireAdmin, async (c) => {
 muthowifBookingsApp.post('/', requireAdmin, async (c) => {
   try {
     const body = await c.req.json();
-    const { clientId, guestName, dateTime, event, totalPax, meetingPoint, totalAmount, currency, notes } = body;
+    const { clientId, guestName, dateTime, events, totalPax, meetingPoint, totalAmount, currency, notes } = body;
 
     const bookingNumber = `MB-${new Date().getFullYear()}-${String(Date.now()).slice(-4)}`;
 
@@ -100,7 +106,7 @@ muthowifBookingsApp.post('/', requireAdmin, async (c) => {
       clientId,
       guestName,
       dateTime: new Date(dateTime),
-      event,
+      events,
       totalPax,
       meetingPoint,
       totalAmount: totalAmount.toString(),
@@ -152,6 +158,22 @@ muthowifBookingsApp.post('/:id/invoice', requireAdmin, async (c) => {
 
     const invoiceNumber = `MBI-${new Date().getFullYear()}-${String(Date.now()).slice(-4)}`;
 
+    const client = await db.select().from(clients).where(eq(clients.id, booking[0]!.clientId)).limit(1);
+
+    const pdfUrl = await generateMuthowifInvoicePDF({
+      invoiceNo: invoiceNumber,
+      invoiceDate: new Date(issueDate).toLocaleDateString('id-ID'),
+      dueDate: new Date(dueDate).toLocaleDateString('id-ID'),
+      client: client[0],
+      guestName: booking[0]!.guestName,
+      totalPax: booking[0]!.totalPax,
+      dateTime: formatIndoDateTime(new Date(booking[0]!.dateTime)),
+      currency: booking[0]!.currency,
+      events: booking[0]!.events,
+      meetingPoint: booking[0]!.meetingPoint,
+      totalAmount: amount.toString(),
+    });
+
     const [newInvoice] = await db.insert(muthowifInvoices).values({
       number: invoiceNumber,
       muthowifBookingId: id,
@@ -160,6 +182,7 @@ muthowifBookingsApp.post('/:id/invoice', requireAdmin, async (c) => {
       issueDate: new Date(issueDate),
       dueDate: new Date(dueDate),
       status: 'draft',
+      pdfUrl: pdfUrl,
     }).returning();
 
     return c.json(newInvoice, 201);
@@ -181,6 +204,30 @@ muthowifBookingsApp.post('/:id/receipt', requireAdmin, async (c) => {
 
     const receiptNumber = `MBR-${new Date().getFullYear()}-${String(Date.now()).slice(-4)}`;
 
+    const client = await db.select().from(clients).where(eq(clients.id, booking[0]!.clientId)).limit(1);
+
+
+    let invoice = null;
+    if (invoiceId) {
+      const inv = await db.select().from(muthowifInvoices).where(eq(muthowifInvoices.id, invoiceId)).limit(1);
+      if (inv.length > 0) invoice = inv[0];
+    }
+
+    const pdfUrl = await generateMuthowifReceiptPDF({
+      receiptNo: receiptNumber,
+      receiptDate: new Date().toLocaleDateString('id-ID'),
+      client: client[0],
+      guestName: booking[0]!.guestName,
+      totalPax: booking[0]!.totalPax,
+      dateTime: formatIndoDateTime(new Date(booking[0]!.dateTime)),
+      currency: booking[0]!.currency,
+      events: booking[0]!.events,
+      meetingPoint: booking[0]!.meetingPoint,
+      totalAmount: paidAmount.toString(),
+      balanceDue: balanceDue.toString(),
+      invoice: invoice
+    });
+
     const [newReceipt] = await db.insert(muthowifReceipts).values({
       number: receiptNumber,
       muthowifBookingId: id,
@@ -191,6 +238,7 @@ muthowifBookingsApp.post('/:id/receipt', requireAdmin, async (c) => {
       currency: booking[0]!.currency,
       payerName: payerName || booking[0]!.guestName,
       issueDate: new Date(),
+      pdfUrl: pdfUrl,
     }).returning();
 
     // If an invoice is provided, update its paid amount
@@ -225,10 +273,26 @@ muthowifBookingsApp.post('/:id/voucher', requireAdmin, async (c) => {
 
     const voucherNumber = `MBV-${new Date().getFullYear()}-${String(Date.now()).slice(-4)}`;
 
+    const client = await db.select().from(clients).where(eq(clients.id, booking[0]!.clientId)).limit(1);
+
+    const pdfUrl = await generateMuthowifVoucherPDF({
+      voucherNo: voucherNumber,
+      issueDate: new Date().toLocaleDateString('id-ID'),
+      client: client[0],
+      guestName: booking[0]!.guestName,
+      totalPax: booking[0]!.totalPax,
+      dateTime: formatIndoDateTime(new Date(booking[0]!.dateTime)),
+      currency: booking[0]!.currency,
+      events: booking[0]!.events,
+      meetingPoint: booking[0]!.meetingPoint,
+      totalAmount: booking[0]!.totalAmount,
+    });
+
     const [newVoucher] = await db.insert(muthowifVouchers).values({
       number: voucherNumber,
       muthowifBookingId: id,
       issueDate: new Date(),
+      pdfUrl: pdfUrl,
     }).returning();
 
     // Also update booking status to confirmed if not already

@@ -1,7 +1,7 @@
 import { Hono } from 'hono';
-import { eq, desc } from 'drizzle-orm';
+import { eq, desc, sql } from 'drizzle-orm';
 import { db } from '../db';
-import { invoices, bookings, clients, bookingItems, bookingItemPricingPeriods, clientDeposits, depositTransactions, bookingServiceItems, invoicePayments, transportationInvoices, transportationBookings, serviceOrderInvoices, serviceOrders, customLaInvoices, customLaRequests } from '../db/schema';
+import { invoices, bookings, clients, bookingItems, bookingItemPricingPeriods, clientDeposits, depositTransactions, bookingServiceItems, invoicePayments, transportationInvoices, transportationBookings, serviceOrderInvoices, serviceOrders, customLaInvoices, customLaRequests, muthowifInvoices, muthowifBookings } from '../db/schema';
 import { requireAdminOrFinance } from '../middleware/auth';
 import { generateInvoiceNumber, generateInvoicePDF, uploadToMinio, checkFileExistsInMinio, deleteFromMinio } from '../utils/pdf';
 import { TemplateHelpers } from '../utils/template';
@@ -408,12 +408,35 @@ invoiceRoutes.get('/', requireAdminOrFinance, async (c) => {
       .leftJoin(customLaRequests, eq(customLaInvoices.customLaRequestId, customLaRequests.id))
       .leftJoin(clients, eq(customLaRequests.clientId, clients.id));
 
+
+    const allMuthowifInvoices = await db
+      .select({
+        id: muthowifInvoices.id,
+        number: muthowifInvoices.number,
+        bookingId: muthowifInvoices.muthowifBookingId,
+        amount: muthowifInvoices.amount,
+        currency: muthowifInvoices.currency,
+        issueDate: muthowifInvoices.issueDate,
+        dueDate: muthowifInvoices.dueDate,
+        status: muthowifInvoices.status,
+        pdfUrl: muthowifInvoices.pdfUrl,
+        bookingCode: muthowifBookings.number,
+        clientName: clients.name,
+        clientEmail: clients.email,
+        hotelName: sql`${muthowifBookings.events}::text`,
+        city: muthowifBookings.status,
+      })
+      .from(muthowifInvoices)
+      .leftJoin(muthowifBookings, eq(muthowifInvoices.muthowifBookingId, muthowifBookings.id))
+      .leftJoin(clients, eq(muthowifBookings.clientId, clients.id));
+
     // Combine and sort by issueDate descending
     const combinedInvoices = [
       ...allInvoices,
       ...allTransportationInvoices.map(inv => ({ ...inv, hotelName: 'Transportation' })),
       ...allServiceOrderInvoices.map(inv => ({ ...inv, hotelName: 'Service Order' })),
-      ...allCustomLaInvoices.map(inv => ({ ...inv, hotelName: inv.hotelName ? `Custom LA (${inv.hotelName})` : 'Custom LA' }))
+      ...allCustomLaInvoices.map(inv => ({ ...inv, hotelName: inv.hotelName ? `Custom LA (${inv.hotelName})` : 'Custom LA' })),
+      ...allMuthowifInvoices.map(inv => ({ ...inv, hotelName: 'Muthowif (' + (inv.hotelName || 'Order') + ')' }))
     ].sort((a, b) => {
       const dateA = a.issueDate ? new Date(a.issueDate).getTime() : 0;
       const dateB = b.issueDate ? new Date(b.issueDate).getTime() : 0;
@@ -674,6 +697,10 @@ invoiceRoutes.get('/by-number/:number', requireAdminOrFinance, async (c) => {
       pdfUrl = invoice[0]!.pdfUrl;
     } else if (invoiceNumber.startsWith('LA-INV-')) {
       const invoice = await db.select().from(customLaInvoices).where(eq(customLaInvoices.number, invoiceNumber)).limit(1);
+      if (invoice.length === 0) return c.json({ error: 'Invoice not found' }, 404);
+      pdfUrl = invoice[0]!.pdfUrl;
+    } else if (invoiceNumber.startsWith('MBI-')) {
+      const invoice = await db.select().from(muthowifInvoices).where(eq(muthowifInvoices.number, invoiceNumber)).limit(1);
       if (invoice.length === 0) return c.json({ error: 'Invoice not found' }, 404);
       pdfUrl = invoice[0]!.pdfUrl;
     } else {

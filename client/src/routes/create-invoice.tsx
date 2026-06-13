@@ -25,6 +25,7 @@ import { useInvoices } from "@/lib/queries/invoices"
 import { apiClient, API_ENDPOINTS } from "@/lib/api"
 import { useTransportationBookings, useGenerateTransportationInvoice } from "@/lib/queries/transportationBookings"
 import { useServiceOrders, useGenerateServiceOrderInvoice } from "@/lib/queries/serviceOrders"
+import { useMuthowifBookings, useCreateMuthowifInvoice } from "@/lib/queries/muthowifBookings"
 
 export const Route = createFileRoute("/create-invoice")({
   beforeLoad: async () => {
@@ -55,10 +56,11 @@ function CreateInvoicePage() {
   const navigate = useNavigate()
   const [isLoading, setIsLoading] = useState(false)
   const [selectedClientId, setSelectedClientId] = useState<string>("")
-  const [sourceType, setSourceType] = useState<'hotel' | 'transportation' | 'service_order'>("hotel")
+  const [sourceType, setSourceType] = useState<'hotel' | 'transportation' | 'service_order' | 'muthowif'>("hotel")
   const [selectedBookingId, setSelectedBookingId] = useState<string>("")
   const [selectedTransportationId, setSelectedTransportationId] = useState<string>("")
   const [selectedServiceOrderId, setSelectedServiceOrderId] = useState<string>("")
+  const [selectedMuthowifBookingId, setSelectedMuthowifBookingId] = useState<string>("")
   // Multi-select collections for combining into one Hotel Booking invoice
   const [selectedTransportationIdsMulti, setSelectedTransportationIdsMulti] = useState<string[]>([])
   const [selectedServiceOrderIdsMulti, setSelectedServiceOrderIdsMulti] = useState<string[]>([])
@@ -81,6 +83,8 @@ function CreateInvoicePage() {
   const { data: serviceOrders = [] } = useServiceOrders()
   const { mutateAsync: generateTransportationInvoice } = useGenerateTransportationInvoice()
   const { mutateAsync: generateServiceOrderInvoice } = useGenerateServiceOrderInvoice()
+  const { data: muthowifBookings = [] } = useMuthowifBookings()
+  const { mutateAsync: generateMuthowifInvoice } = useCreateMuthowifInvoice()
 
   // Derived lists filtered by client and invoice-not-created
   const hotelBookingOptions = useMemo(() => {
@@ -101,11 +105,18 @@ function CreateInvoicePage() {
 
   const [serviceOrdersOptions, setServiceOrdersOptions] = useState<any[]>([])
 
+  const muthowifOptionsRaw = useMemo(() => {
+    return (muthowifBookings || []).filter((mb: any) => mb.clientId?.toString() === selectedClientId)
+  }, [muthowifBookings, selectedClientId])
+
+  const [muthowifOptions, setMuthowifOptions] = useState<any[]>([])
+
   // Reset selections when client or source type changes
   useEffect(() => {
     setSelectedBookingId("")
     setSelectedTransportationId("")
     setSelectedServiceOrderId("")
+    setSelectedMuthowifBookingId("")
     setSelectedTransportationIdsMulti([])
     setSelectedServiceOrderIdsMulti([])
   }, [selectedClientId, sourceType])
@@ -147,12 +158,20 @@ function CreateInvoicePage() {
       }
       setServiceOrdersOptions(results)
     }
+    const fetchMuthowifInvoices = async () => {
+      try {
+        const invoicedMBs = new Set(allInvoices.filter((inv: any) => inv.number?.startsWith('MBI-')).map((inv: any) => inv.bookingId))
+        setMuthowifOptions(muthowifOptionsRaw.filter((mb: any) => !invoicedMBs.has(mb.id)))
+      } catch(e) { console.error(e) }
+    }
     if (selectedClientId) {
       fetchServiceOrderInvoices()
+      fetchMuthowifInvoices()
     } else {
       setServiceOrdersOptions([])
+      setMuthowifOptions([])
     }
-  }, [serviceOrdersRaw, selectedClientId])
+  }, [serviceOrdersRaw, muthowifOptionsRaw, selectedClientId, allInvoices])
 
   const bookingTotal = useMemo(() => booking?.totalAmount ?? 0, [booking])
   const extraTotal = useMemo(() => serviceItems.reduce((sum, item) => sum + parseFloat(item.subtotal as any), 0), [serviceItems])
@@ -269,6 +288,14 @@ function CreateInvoicePage() {
       } else if (sourceType === 'service_order') {
         if (!selectedServiceOrderId) return
         await generateServiceOrderInvoice({ serviceOrderId: selectedServiceOrderId, customDueDate: dueDate })
+      } else if (sourceType === 'muthowif') {
+        if (!selectedMuthowifBookingId) return
+        const mb = muthowifOptions.find((m: any) => m.id.toString() === selectedMuthowifBookingId)
+        if (!mb) throw new Error('Muthowif booking not found')
+        await generateMuthowifInvoice({ 
+          id: parseInt(selectedMuthowifBookingId), 
+          payload: { amount: parseFloat(mb.totalAmount), issueDate: new Date().toISOString(), dueDate: dueDate || new Date().toISOString() } 
+        })
       }
       navigate({ to: "/invoices" })
     } finally {
@@ -292,7 +319,7 @@ function CreateInvoicePage() {
           </Button>
           <Button 
             onClick={handleGenerateInvoice} 
-            disabled={isLoading || (sourceType === 'hotel' ? !selectedBookingId : sourceType === 'transportation' ? !selectedTransportationId : !selectedServiceOrderId)}
+            disabled={isLoading || (sourceType === 'hotel' ? !selectedBookingId : sourceType === 'transportation' ? !selectedTransportationId : sourceType === 'service_order' ? !selectedServiceOrderId : !selectedMuthowifBookingId)}
             className="bg-[#111111] hover:bg-[#242424] text-white h-9 px-4 rounded-md text-xs font-semibold transition-colors border border-transparent shadow-none"
           >
             {isLoading ? (

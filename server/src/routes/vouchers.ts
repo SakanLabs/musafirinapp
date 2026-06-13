@@ -1,8 +1,8 @@
 import { Hono } from 'hono';
 import { eq, desc, sql } from 'drizzle-orm';
 import { db } from '../db';
-import { vouchers, bookings, clients, bookingItems } from '../db/schema';
-import { requireAdmin } from '../middleware/auth';
+import { vouchers, bookings, clients, bookingItems, muthowifVouchers, muthowifBookings } from '../db/schema';
+import { requireAdmin, requireFinance } from '../middleware/auth';
 import { generateVoucherNumber, generateVoucherPDF, generateQRCode, uploadToMinio } from '../utils/pdf';
 import type { NewVoucher } from '../db/schema';
 
@@ -11,7 +11,7 @@ const voucherRoutes = new Hono();
 // GET /api/vouchers - List all vouchers
 voucherRoutes.get('/', requireAdmin, async (c) => {
   try {
-    const allVouchers = await db
+    const standardVouchers = await db
       .select({
         id: vouchers.id,
         number: vouchers.number,
@@ -30,12 +30,37 @@ voucherRoutes.get('/', requireAdmin, async (c) => {
       })
       .from(vouchers)
       .leftJoin(bookings, eq(vouchers.bookingId, bookings.id))
-      .leftJoin(clients, eq(bookings.clientId, clients.id))
-      .orderBy(desc(vouchers.createdAt));
+      .leftJoin(clients, eq(bookings.clientId, clients.id));
+
+    const mBookings = await db
+      .select({
+        id: muthowifVouchers.id,
+        number: muthowifVouchers.number,
+        bookingId: muthowifVouchers.muthowifBookingId,
+        guestName: sql`'Customer'`,
+        qrUrl: sql`null`,
+        pdfUrl: muthowifVouchers.pdfUrl,
+        createdAt: muthowifVouchers.createdAt,
+        bookingCode: muthowifBookings.number,
+        clientName: sql`'Customer'`,
+        clientEmail: sql`''`,
+        hotelName: sql`${muthowifBookings.events}::text`,
+        city: sql`'Makkah'`,
+        checkIn: muthowifBookings.dateTime,
+        checkOut: muthowifBookings.dateTime,
+      })
+      .from(muthowifVouchers)
+      .leftJoin(muthowifBookings, eq(muthowifVouchers.muthowifBookingId, muthowifBookings.id));
+
+    const combinedVouchers = [...standardVouchers, ...mBookings].sort((a, b) => {
+      const dateA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+      const dateB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+      return dateB - dateA;
+    });
 
     return c.json({
       success: true,
-      data: allVouchers,
+      data: combinedVouchers,
     });
   } catch (error) {
     console.error('Error fetching vouchers:', error);
@@ -265,7 +290,7 @@ voucherRoutes.post('/:bookingId/generate', requireAdmin, async (c) => {
 });
 
 // GET /api/vouchers/by-number/:number - Serve voucher PDF
-voucherRoutes.get('/by-number/:number', requireAdmin, async (c) => {
+voucherRoutes.get('/by-number/:number', requireFinance, async (c) => {
   try {
     const voucherNumber = c.req.param('number');
 
@@ -274,21 +299,22 @@ voucherRoutes.get('/by-number/:number', requireAdmin, async (c) => {
     }
 
     // Find voucher by number
-    const voucher = await db
-      .select()
-      .from(vouchers)
-      .where(eq(vouchers.number, voucherNumber))
-      .limit(1);
+    let pdfUrl = null;
 
-    if (voucher.length === 0) {
-      return c.json({ error: 'Voucher not found' }, 404);
+    if (voucherNumber.startsWith('MBV-')) {
+      const v = await db.select({ pdfUrl: muthowifVouchers.pdfUrl }).from(muthowifVouchers).where(eq(muthowifVouchers.number, voucherNumber)).limit(1);
+      if (v.length > 0) pdfUrl = v[0].pdfUrl;
+    } else {
+      const v = await db.select({ pdfUrl: vouchers.pdfUrl }).from(vouchers).where(eq(vouchers.number, voucherNumber)).limit(1);
+      if (v.length > 0) pdfUrl = v[0].pdfUrl;
     }
 
-    const voucherData = voucher[0]!;
-
-    if (!voucherData.pdfUrl) {
-      return c.json({ error: 'PDF not available for this voucher' }, 404);
+    if (!pdfUrl) {
+      return c.json({ error: 'Voucher not found or PDF not available' }, 404);
     }
+    
+    // Create mock voucherData for the rest of the function
+    const voucherData = { pdfUrl };
 
     const urlParts = voucherData.pdfUrl.split('/');
     const fileName = urlParts.slice(-2).join('/');
@@ -297,7 +323,7 @@ voucherRoutes.get('/by-number/:number', requireAdmin, async (c) => {
     const fileStream = await getFileStreamFromMinio(fileName);
 
     c.header('Content-Type', 'application/pdf');
-    c.header('Content-Disposition', `attachment; filename="${voucherData.number}.pdf"`);
+    c.header('Content-Disposition', `attachment; filename="${voucherNumber}.pdf"`);
 
     const webStream = new ReadableStream({
       start(controller) {

@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html class="no-js" lang="id">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Voucher {{voucherNo}}</title>
+  <style>
+    body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;line-height:1.3;color:#374151;background:#f9fafb;font-size:12px}
+    .cs-container{max-width:800px;margin:20px auto;padding:20px;background:#fff;box-shadow:0 10px 15px -3px rgba(0,0,0,.1);border-radius:8px}
+    .cs-flex{display:flex}.cs-justify-between{justify-content:space-between}.cs-align-start{align-items:flex-start}.cs-align-center{align-items:center}
+    .cs-text-right{text-align:right}.cs-text-center{text-align:center}
+    .cs-mb-1{margin-bottom:3px}.cs-mb-2{margin-bottom:6px}.cs-mb-4{margin-bottom:12px}.cs-mb-6{margin-bottom:16px}.cs-mb-8{margin-bottom:20px}.cs-mt-8{margin-top:20px}
+    .cs-font-bold{font-weight:700}.cs-font-semibold{font-weight:600}
+    .cs-text-sm{font-size:11px}.cs-text-lg{font-size:16px}.cs-text-xl{font-size:18px}.cs-text-2xl{font-size:20px}.cs-text-3xl{font-size:24px}
+    .cs-text-gray-500{color:#6b7280}.cs-text-gray-600{color:#4b5563}.cs-text-gray-800{color:#1f2937}
+    .cs-badge{display:inline-block;padding:2px 6px;border-radius:999px;background:#eef2ff;color:#3730a3;font-weight:600;font-size:11px}
+    .cs-divider{height:1px;background:#e5e7eb;margin:16px 0}
+    .cs-card{background:#f9fafb;border:1px solid #e5e7eb;border-radius:6px;padding:12px}
+    .cs-info-card{background:#f9fafb;border:1px solid #e5e7eb;border-radius:6px;padding:16px;margin-top:16px}
+    .cs-table{width:100%;border-collapse:collapse}
+    .cs-table th,.cs-table td{padding:8px 0;text-align:left;vertical-align:top}
+    .cs-table th{font-weight:700;color:#111827;border-bottom:1px solid #e5e7eb}
+    .cs-table td{border-bottom:1px solid #f1f5f9}
+    .cs-num{text-align:right;white-space:nowrap}
+    .cs-total-table{width:100%;margin-top:8px;border-collapse:collapse}
+    .cs-total-table td{padding:4px 0}
+    .cs-total-table .cs-label{text-align:right;color:#374151}
+    .cs-total-table .cs-value{text-align:right;font-weight:600}
+    .cs-card-compact { padding: 0 16px; }
+    .cs-mb-0 { margin-bottom: 0; }
+    .cs-stack-tight > * + * { margin-top: 2px; }
+    @media print{
+      body{background:#fff;font-size:11px}
+      .cs-container{box-shadow:none;margin:0;padding:16px}
+      .cs-no-print{display:none !important}
+    }
+  </style>
+</head>
+<body>
+  <div class="cs-container">
+    <!-- Header -->
+    <div class="cs-flex cs-justify-between cs-align-start cs-mb-6">
+      <div>
+        <img src="data:image/png;base64,{{logoBase64}}" alt="Logo" class="cs-logo-img" style="height: 60px; width: auto; margin-bottom: 8px;">
+        <p class="cs-font-semibold cs-text-gray-800 cs-mb-0">Pemesanan Muthowif</p>
+      </div>
+      <div class="cs-text-right">
+        <div class="cs-badge" style="background:#fef3c7;color:#92400e;">Voucher</div>
+        <p class="cs-font-semibold cs-text-lg">#{{voucherNo}}</p>
+        <p class="cs-text-gray-500">{{issueDate}}</p>
+        
+      </div>
+    </div>
+
+    <!-- Client & Order Info -->
+    <div class="cs-flex cs-justify-between cs-align-start cs-mb-4">
+      <div style="width:48%">
+        <p class="cs-font-semibold cs-text-gray-800 cs-mb-1">Kepada / Client</p>
+        <div class="cs-card cs-card-compact cs-stack-tight">
+          <p class="cs-font-semibold cs-mb-0">{{client.name}}</p>
+          <p class="cs-text-sm cs-text-gray-600">{{client.email}} <span class="cs-text-gray-500"> | </span> {{client.phone}}</p>
+        </div>
+      </div>
+
+      <div style="width:48%" class="cs-text-right">
+        <p class="cs-font-semibold cs-text-gray-800 cs-mb-1">Informasi Pemesanan</p>
+        <div class="cs-card cs-card-compact cs-stack-tight">
+          <p class="cs-font-semibold cs-mb-0">{{guestName}}</p>
+          <p class="cs-text-sm cs-text-gray-600">Total Jamaah: {{totalPax}} Pax</p>
+          <p class="cs-text-sm cs-text-gray-600">Tanggal & Waktu: {{dateTime}}</p>
+          <p class="cs-text-sm cs-text-gray-600">Mata Uang: {{currency}}</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Rincian -->
+    <div class="cs-mb-4">
+      <h2 class="cs-text-lg cs-font-bold cs-text-gray-800 cs-mb-2">Rincian Pemesanan</h2>
+      <table class="cs-table">
+        <thead>
+          <tr>
+            <th style="width:50%">Layanan (Events)</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>
+              <ul style="margin: 0; padding-left: 16px; margin-bottom: 8px;">
+                {{#each events}}
+                <li>{{this}}</li>
+                {{/each}}
+              </ul>
+              <div class="cs-text-sm cs-text-gray-600 cs-mt-1" style="margin-bottom: 4px;">
+                <strong>Meeting Point:</strong> {{meetingPoint}}
+              </div>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+
+    </div>
+

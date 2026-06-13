@@ -1265,3 +1265,225 @@ export async function generateCustomLaReceiptPDF(
     await page.close();
   }
 }
+
+export async function generateMuthowifInvoicePDF(
+  invoiceData: any
+): Promise<string> {
+  const browser = await launchBrowser();
+  const page = await browser.newPage();
+  try {
+    const templatePath = path.join(__dirname, '../templates/muthowif-invoice.html');
+    const templateSource = fs.readFileSync(templatePath, 'utf8');
+    const template = Handlebars.compile(templateSource);
+
+    const logoPath = path.join(__dirname, '../templates/logomusafirin.png');
+    const logoBase64 = fs.readFileSync(logoPath, 'base64');
+
+    const defaultBank = {
+      bankName: 'Bank Syariah Indonesia',
+      bankCountry: 'Indonesia',
+      accountName: 'PT Musafirin Internasional',
+      accountNumberOrIBAN: '7254459741'
+    };
+
+    const data = {
+      ...invoiceData,
+      logoBase64,
+      bank: invoiceData.bank || defaultBank,
+      brandName: 'Musafirin'
+    };
+
+    const html = template(data);
+    await page.setContent(html, { waitUntil: 'networkidle0' });
+
+    const fileName = `${invoiceData.invoiceNo}.pdf`;
+    const tempFilePath = path.join(__dirname, '../../temp', fileName);
+
+    if (!fs.existsSync(path.join(__dirname, '../../temp'))) {
+      fs.mkdirSync(path.join(__dirname, '../../temp'), { recursive: true });
+    }
+
+    await page.pdf({
+      path: tempFilePath,
+      format: 'A4',
+      printBackground: true,
+      margin: { top: '20px', right: '20px', bottom: '20px', left: '20px' }
+    });
+
+    const fileStream = fs.createReadStream(tempFilePath);
+    await minioClient.putObject(
+      (process.env.MINIO_BUCKET || 'musafirin-assets'),
+      `invoices/${fileName}`,
+      fileStream,
+      fs.statSync(tempFilePath).size,
+      { 'Content-Type': 'application/pdf' }
+    );
+
+    fs.unlinkSync(tempFilePath);
+
+    const isLocal = (process.env.MINIO_ENDPOINT || 'localhost').includes('localhost') || (process.env.MINIO_ENDPOINT || 'localhost').includes('127.0.0.1');
+    const endpoint = isLocal ? 'localhost:9000' : (process.env.MINIO_ENDPOINT || 'localhost');
+    return `http://${endpoint}/${(process.env.MINIO_BUCKET || 'musafirin-assets')}/invoices/${fileName}`;
+  } finally {
+    await page.close();
+  }
+}
+
+export async function generateMuthowifReceiptPDF(
+  receiptData: any
+): Promise<string> {
+  const browser = await launchBrowser();
+  const page = await browser.newPage();
+  try {
+    const templatePath = path.join(__dirname, '../templates/muthowif-receipt.html');
+    const templateSource = fs.readFileSync(templatePath, 'utf8');
+    const template = Handlebars.compile(templateSource);
+
+    const logoBase64 = TemplateHelpers.getLogoBase64();
+    const saudiRiyalSVGBase64 = TemplateHelpers.getSaudiRiyalSVGBase64();
+    let signatureBase64 = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=';
+    try {
+      const signaturePath = path.join(__dirname, '../../../client/public/ttd.png');
+      if (fs.existsSync(signaturePath)) signatureBase64 = fs.readFileSync(signaturePath).toString('base64');
+    } catch (e) { }
+
+    // Provide the structure expected by kwitansi.html
+    const data = {
+      receiptNo: receiptData.receiptNo,
+      receiptDate: receiptData.receiptDate,
+      payer: {
+        name: receiptData.client?.name || receiptData.guestName,
+        email: receiptData.client?.email || '-',
+        phone: receiptData.client?.phone || '-',
+        address: receiptData.client?.address || '-'
+      },
+      invoice: {
+        invoiceNo: receiptData.invoice?.number || '-',
+        invoiceDate: receiptData.invoice?.issueDate ? new Date(receiptData.invoice.issueDate).toLocaleDateString('id-ID') : '-'
+      },
+      hotelName: 'Muthowif Order',
+      hotelAddress: receiptData.meetingPoint || '-',
+      payments: [
+        {
+          label: 'Layanan Muthowif',
+          date: receiptData.receiptDate,
+          hotelDetails: {
+            name: receiptData.events ? receiptData.events.join(', ') : 'Pemesanan Muthowif',
+            checkIn: receiptData.dateTime,
+            checkOut: '-',
+            roomSummary: receiptData.guestName + ' (' + receiptData.totalPax + ' Pax)'
+          },
+          method: 'Transfer Bank',
+          transactionId: '-',
+          amount: receiptData.totalAmount
+        }
+      ],
+      saudiRiyalSVGBase64,
+      totals: {
+        invoiceAmount: receiptData.invoice?.amount || receiptData.totalAmount,
+        paidAmount: receiptData.totalAmount,
+        balanceDue: receiptData.balanceDue || '0'
+      },
+      amountInWords: '',
+      bank: {
+        bankName: "Bank Syariah Indonesia",
+        bankCountry: "Indonesia",
+        accountName: "PT Thalhah Insan Rabbani",
+        accountNumberOrIBAN: "7290382041"
+      },
+      notes: '',
+      signatureBase64,
+      brandName: 'Musafirin',
+      logoBase64
+    };
+
+    const html = template(data);
+    await page.setContent(html, { waitUntil: 'networkidle0' });
+
+    const fileName = `${receiptData.receiptNo}.pdf`;
+    const tempFilePath = path.join(__dirname, '../../temp', fileName);
+
+    if (!fs.existsSync(path.join(__dirname, '../../temp'))) {
+      fs.mkdirSync(path.join(__dirname, '../../temp'), { recursive: true });
+    }
+
+    await page.pdf({
+      path: tempFilePath,
+      format: 'A4',
+      printBackground: true,
+      margin: { top: '20px', right: '20px', bottom: '20px', left: '20px' }
+    });
+
+    const fileStream = fs.createReadStream(tempFilePath);
+    await minioClient.putObject(
+      (process.env.MINIO_BUCKET || 'musafirin-assets'),
+      `receipts/${fileName}`,
+      fileStream,
+      fs.statSync(tempFilePath).size,
+      { 'Content-Type': 'application/pdf' }
+    );
+
+    fs.unlinkSync(tempFilePath);
+
+    const isLocal = (process.env.MINIO_ENDPOINT || 'localhost').includes('localhost') || (process.env.MINIO_ENDPOINT || 'localhost').includes('127.0.0.1');
+    const endpoint = isLocal ? 'localhost:9000' : (process.env.MINIO_ENDPOINT || 'localhost');
+    return `http://${endpoint}/${(process.env.MINIO_BUCKET || 'musafirin-assets')}/receipts/${fileName}`;
+  } finally {
+    await page.close();
+  }
+}
+
+export async function generateMuthowifVoucherPDF(
+  voucherData: any
+): Promise<string> {
+  const browser = await launchBrowser();
+  const page = await browser.newPage();
+  try {
+    const templatePath = path.join(__dirname, '../templates/muthowif-voucher.html');
+    const templateSource = fs.readFileSync(templatePath, 'utf8');
+    const template = Handlebars.compile(templateSource);
+
+    const logoPath = path.join(__dirname, '../templates/logomusafirin.png');
+    const logoBase64 = fs.readFileSync(logoPath, 'base64');
+
+    const data = {
+      ...voucherData,
+      logoBase64,
+      brandName: 'Musafirin'
+    };
+
+    const html = template(data);
+    await page.setContent(html, { waitUntil: 'networkidle0' });
+
+    const fileName = `${voucherData.voucherNo}.pdf`;
+    const tempFilePath = path.join(__dirname, '../../temp', fileName);
+
+    if (!fs.existsSync(path.join(__dirname, '../../temp'))) {
+      fs.mkdirSync(path.join(__dirname, '../../temp'), { recursive: true });
+    }
+
+    await page.pdf({
+      path: tempFilePath,
+      format: 'A4',
+      printBackground: true,
+      margin: { top: '20px', right: '20px', bottom: '20px', left: '20px' }
+    });
+
+    const fileStream = fs.createReadStream(tempFilePath);
+    await minioClient.putObject(
+      (process.env.MINIO_BUCKET || 'musafirin-assets'),
+      `vouchers/${fileName}`,
+      fileStream,
+      fs.statSync(tempFilePath).size,
+      { 'Content-Type': 'application/pdf' }
+    );
+
+    fs.unlinkSync(tempFilePath);
+
+    const isLocal = (process.env.MINIO_ENDPOINT || 'localhost').includes('localhost') || (process.env.MINIO_ENDPOINT || 'localhost').includes('127.0.0.1');
+    const endpoint = isLocal ? 'localhost:9000' : (process.env.MINIO_ENDPOINT || 'localhost');
+    return `http://${endpoint}/${(process.env.MINIO_BUCKET || 'musafirin-assets')}/vouchers/${fileName}`;
+  } finally {
+    await page.close();
+  }
+}

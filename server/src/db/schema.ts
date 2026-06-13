@@ -1035,7 +1035,7 @@ export const muthowifBookings = pgTable('muthowif_bookings', {
   clientId: integer('client_id').notNull().references(() => clients.id, { onDelete: 'cascade' }),
   guestName: varchar('guest_name', { length: 255 }).notNull(),
   dateTime: timestamp('date_time').notNull(),
-  event: muthowifBookingEventEnum('event').notNull(),
+  events: jsonb('events').$type<string[]>().notNull(),
   totalPax: integer('total_pax').notNull(),
   meetingPoint: varchar('meeting_point', { length: 255 }).notNull(),
   status: muthowifBookingStatusEnum('status').default('pending').notNull(),

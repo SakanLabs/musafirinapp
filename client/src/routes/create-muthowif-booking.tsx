@@ -40,7 +40,7 @@ function CreateMuthowifBookingPage() {
     clientId: "",
     guestName: "",
     dateTime: "",
-    event: "Umrah",
+    events: ["Umrah"],
     totalPax: 1,
     meetingPoint: "",
     totalAmount: 0,
@@ -69,6 +69,7 @@ function CreateMuthowifBookingPage() {
     if (!formData.meetingPoint) newErrors.meetingPoint = "Meeting point is required"
     if (formData.totalPax < 1) newErrors.totalPax = "Total pax must be at least 1"
     if (formData.totalAmount < 0) newErrors.totalAmount = "Amount cannot be negative"
+    if (formData.events.length === 0) newErrors.events = "At least one event is required"
     
     setErrors(newErrors)
     return Object.keys(newErrors).length === 0
@@ -87,7 +88,7 @@ function CreateMuthowifBookingPage() {
         clientId: parseInt(formData.clientId),
         guestName: formData.guestName,
         dateTime: formData.dateTime,
-        event: formData.event,
+        events: formData.events,
         totalPax: formData.totalPax,
         meetingPoint: formData.meetingPoint,
         totalAmount: formData.totalAmount,
@@ -152,18 +153,26 @@ function CreateMuthowifBookingPage() {
 
               <div className="space-y-2">
                 <label className="text-sm font-semibold text-slate-700">Event Type <span className="text-red-500">*</span></label>
-                <div className="relative">
-                  <Tag className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
-                  <select
-                    className="flex h-10 w-full rounded-md border border-slate-300 bg-transparent pl-9 pr-3 py-2 text-sm placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-                    value={formData.event}
-                    onChange={(e) => setFormData(prev => ({ ...prev, event: e.target.value }))}
-                  >
-                    <option value="Umrah">Umrah</option>
-                    <option value="Makkah City Tour">Makkah City Tour</option>
-                    <option value="Madinah City Tour">Madinah City Tour</option>
-                  </select>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-2">
+                  {['Umrah', 'Makkah City Tour', 'Madinah City Tour'].map(evt => (
+                    <label key={evt} className="flex items-center space-x-2 border border-slate-200 p-2 rounded-md hover:bg-slate-50 cursor-pointer">
+                      <input 
+                        type="checkbox"
+                        checked={formData.events.includes(evt)}
+                        onChange={(e) => {
+                          if (e.target.checked) {
+                            setFormData(prev => ({ ...prev, events: [...prev.events, evt] }))
+                          } else {
+                            setFormData(prev => ({ ...prev, events: prev.events.filter(e => e !== evt) }))
+                          }
+                        }}
+                        className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 w-4 h-4"
+                      />
+                      <span className="text-sm text-slate-700">{evt}</span>
+                    </label>
+                  ))}
                 </div>
+                {errors.events && <p className="text-red-500 text-xs mt-1">{errors.events}</p>}
               </div>
             </div>
           </Card>

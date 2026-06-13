@@ -35,7 +35,7 @@ function MuthowifBookingsPage() {
   const filteredBookings = bookings.filter((b: any) => 
     b.number.toLowerCase().includes(search.toLowerCase()) || 
     b.guestName.toLowerCase().includes(search.toLowerCase()) ||
-    b.event.toLowerCase().includes(search.toLowerCase())
+    (b.events || []).join(", ").toLowerCase().includes(search.toLowerCase())
   )
 
   const getStatusColor = (status: string) => {
@@ -124,7 +124,7 @@ function MuthowifBookingsPage() {
                         </div>
                       </td>
                       <td className="px-6 py-4">
-                        <span className="font-medium text-slate-700">{booking.event}</span>
+                        <span className="font-medium text-slate-700">{(booking.events || []).join(", ")}</span>
                       </td>
                       <td className="px-6 py-4">
                         <div className="text-slate-700 flex items-center gap-1.5">

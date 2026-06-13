@@ -1,7 +1,7 @@
 import { Hono } from 'hono';
 import { eq, desc, sql } from 'drizzle-orm';
 import { db } from '../db';
-import { receipts, bookings, clients, invoices, transportationReceipts, transportationInvoices, transportationBookings, serviceOrderReceipts, serviceOrderInvoices, serviceOrders, customLaReceipts, customLaInvoices, customLaRequests } from '../db/schema';
+import { receipts, bookings, clients, invoices, transportationReceipts, transportationInvoices, transportationBookings, serviceOrderReceipts, serviceOrderInvoices, serviceOrders, customLaReceipts, customLaInvoices, customLaRequests, muthowifReceipts, muthowifInvoices, muthowifBookings } from '../db/schema';
 import { requireFinance } from '../middleware/auth';
 import { ReceiptService } from '../services/ReceiptService';
 
@@ -111,12 +111,36 @@ receiptRoutes.get('/', requireFinance, async (c) => {
       .leftJoin(customLaInvoices, eq(customLaReceipts.invoiceId, customLaInvoices.id))
       .leftJoin(customLaRequests, eq(customLaReceipts.customLaRequestId, customLaRequests.id));
 
+    const allMuthowifReceipts = await db
+      .select({
+        id: muthowifReceipts.id,
+        number: muthowifReceipts.number,
+        invoiceId: muthowifReceipts.muthowifInvoiceId,
+        totalAmount: muthowifReceipts.totalAmount,
+        paidAmount: muthowifReceipts.paidAmount,
+        balanceDue: muthowifReceipts.balanceDue,
+        currency: muthowifReceipts.currency,
+        issueDate: muthowifReceipts.issueDate,
+        payerName: muthowifReceipts.payerName,
+        payerEmail: sql`''`,
+        hotelName: sql`${muthowifBookings.events}::text`,
+        pdfUrl: muthowifReceipts.pdfUrl,
+        createdAt: muthowifReceipts.createdAt,
+        bookingCode: muthowifBookings.number,
+        invoiceNumber: muthowifInvoices.number,
+        clientName: muthowifReceipts.payerName,
+      })
+      .from(muthowifReceipts)
+      .leftJoin(muthowifInvoices, eq(muthowifReceipts.muthowifInvoiceId, muthowifInvoices.id))
+      .leftJoin(muthowifBookings, eq(muthowifReceipts.muthowifBookingId, muthowifBookings.id));
+
     // Combine all receipts and sort by createdAt descending
     const combinedReceipts = [
       ...allReceipts,
       ...allTransReceipts,
       ...allSOReceipts,
-      ...allLAReceipts
+      ...allLAReceipts,
+      ...allMuthowifReceipts
     ].sort((a, b) => {
       const dateA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
       const dateB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
@@ -475,6 +499,11 @@ receiptRoutes.get('/number/:number/download', requireFinance, async (c) => {
     // Search in customLaReceipts
     if (!pdfUrl) {
       const r = await db.select({ pdfUrl: customLaReceipts.pdfUrl }).from(customLaReceipts).where(eq(customLaReceipts.number, receiptNumber)).limit(1);
+      if (r.length > 0) pdfUrl = r[0]!.pdfUrl;
+    }
+    // Search in muthowifReceipts
+    if (!pdfUrl && receiptNumber.startsWith('MBR-')) {
+      const r = await db.select({ pdfUrl: muthowifReceipts.pdfUrl }).from(muthowifReceipts).where(eq(muthowifReceipts.number, receiptNumber)).limit(1);
       if (r.length > 0) pdfUrl = r[0]!.pdfUrl;
     }
 
