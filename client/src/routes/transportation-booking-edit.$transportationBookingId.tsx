@@ -8,6 +8,7 @@ import { Card } from "@/components/ui/card";
 import { PageLayout } from "@/components/layout/PageLayout";
 import { authService } from "@/lib/auth";
 import { useTransportationBooking, useUpdateTransportationBooking } from "@/lib/queries/transportationBookings";
+import { TRANSPORT_LOCATIONS } from "@/lib/constants";
 
 export const Route = createFileRoute("/transportation-booking-edit/$transportationBookingId")({
   beforeLoad: async () => {
@@ -322,27 +323,37 @@ function TransportationBookingEditPage() {
                     <label className="block text-[10px] font-bold text-zinc-400 uppercase tracking-wider mb-1.5">
                       From Location (Origin) *
                     </label>
-                    <Input
-                      type="text"
+                    <select
                       value={route.originLocation}
                       onChange={(e) => updateRoute(route.id, 'originLocation', e.target.value)}
-                      placeholder="Origin location"
                       required
-                      className="h-10 px-3 border border-[#e5e7eb] rounded-lg bg-white text-sm font-medium text-zinc-950 focus:border-[#111111] focus:ring-1 focus:ring-[#111111] shadow-none"
-                    />
+                      className="w-full h-10 px-3 border border-[#e5e7eb] rounded-lg bg-white text-sm font-medium text-zinc-950 focus:border-[#111111] focus:ring-1 focus:ring-[#111111] shadow-none"
+                    >
+                      <option value="">Pilih Lokasi Asal</option>
+                      {TRANSPORT_LOCATIONS.map((loc) => (
+                        <option key={`origin-${loc}`} value={loc}>
+                          {loc}
+                        </option>
+                      ))}
+                    </select>
                   </div>
                   <div>
                     <label className="block text-[10px] font-bold text-zinc-400 uppercase tracking-wider mb-1.5">
                       To Location (Destination) *
                     </label>
-                    <Input
-                      type="text"
+                    <select
                       value={route.destinationLocation}
                       onChange={(e) => updateRoute(route.id, 'destinationLocation', e.target.value)}
-                      placeholder="Destination location"
                       required
-                      className="h-10 px-3 border border-[#e5e7eb] rounded-lg bg-white text-sm font-medium text-zinc-950 focus:border-[#111111] focus:ring-1 focus:ring-[#111111] shadow-none"
-                    />
+                      className="w-full h-10 px-3 border border-[#e5e7eb] rounded-lg bg-white text-sm font-medium text-zinc-950 focus:border-[#111111] focus:ring-1 focus:ring-[#111111] shadow-none"
+                    >
+                      <option value="">Pilih Lokasi Tujuan</option>
+                      {TRANSPORT_LOCATIONS.map((loc) => (
+                        <option key={`dest-${loc}`} value={loc}>
+                          {loc}
+                        </option>
+                      ))}
+                    </select>
                   </div>
                   <div>
                     <label className="block text-[10px] font-bold text-zinc-400 uppercase tracking-wider mb-1.5">

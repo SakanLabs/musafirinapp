@@ -226,26 +226,26 @@ function BookingDetailPage() {
   const nights = Math.max(1, Math.ceil(diffTime / (1000 * 60 * 60 * 24)));
 
   // Calculate dynamic grand total to ensure synchronization with UI items
-  const calculatedGrandTotal = booking.items && booking.items.length > 0 
+  const calculatedGrandTotal = booking.items && booking.items.length > 0
     ? booking.items.reduce((sum, item) => {
-        if (item.hasPricingPeriods && item.pricingPeriods && item.pricingPeriods.length > 0) {
-          const itemTotal = item.pricingPeriods.reduce((pSum, p) => pSum + p.subtotal, 0) * item.roomCount;
-          return sum + itemTotal;
-        } else {
-          return sum + (Number(item.unitPrice) * Number(item.roomCount) * nights);
-        }
-      }, 0)
+      if (item.hasPricingPeriods && item.pricingPeriods && item.pricingPeriods.length > 0) {
+        const itemTotal = item.pricingPeriods.reduce((pSum, p) => pSum + p.subtotal, 0) * item.roomCount;
+        return sum + itemTotal;
+      } else {
+        return sum + (Number(item.unitPrice) * Number(item.roomCount) * nights);
+      }
+    }, 0)
     : Number(booking.totalAmount);
 
   return (
     <PageLayout title="Booking Details" subtitle={`System Registry Code: ${booking.code}`}>
       <div className="space-y-6 max-w-[1400px] mx-auto pb-16 text-xs font-semibold text-[#374151]">
-        
+
         {/* Navigation Toolbar */}
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pb-6 border-b border-[#e5e7eb]">
           <Link to="/bookings">
-            <Button 
-              variant="outline" 
+            <Button
+              variant="outline"
               size="sm"
               className="text-xs h-8 border-[#e5e7eb] hover:bg-gray-50 text-gray-600 font-semibold"
             >
@@ -253,7 +253,7 @@ function BookingDetailPage() {
               Registry Overview
             </Button>
           </Link>
-          
+
           <div className="flex items-center space-x-2 w-full sm:w-auto">
             <Button
               variant="outline"
@@ -293,7 +293,7 @@ function BookingDetailPage() {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
           {/* Main specifications container (2 cols) */}
           <div className="lg:col-span-2 space-y-6">
-            
+
             {/* Guest Information card */}
             <Card className="border border-[#e5e7eb] rounded-xl shadow-[0_1px_2px_rgba(0,0,0,0.04)] bg-white overflow-hidden">
               <CardHeader className="border-b border-[#e5e7eb] px-6 py-4 bg-gray-50/20">
@@ -331,7 +331,7 @@ function BookingDetailPage() {
               <CardHeader className="border-b border-[#e5e7eb] px-6 py-4 bg-gray-50/20">
                 <CardTitle className="text-sm font-bold text-[#111111] flex items-center gap-2">
                   <Calendar className="h-4 w-4 text-gray-400" />
-                  Lodging Specifications & Slices
+                  Hotel Detail
                 </CardTitle>
               </CardHeader>
               <CardContent className="p-4 md:p-6 space-y-6">
@@ -385,7 +385,7 @@ function BookingDetailPage() {
                               <label className="text-[9px] font-bold text-gray-400 uppercase">Room Inventory</label>
                               <p className="text-sm font-bold text-[#111111]">{item.roomCount} room(s)</p>
                             </div>
-                            
+
                             {!item.hasPricingPeriods && (
                               <div className="space-y-0.5">
                                 <label className="text-[9px] font-bold text-gray-400 uppercase">Unit Price</label>
@@ -452,7 +452,7 @@ function BookingDetailPage() {
                                     </div>
                                   </div>
                                 ))}
-                                
+
                                 {/* Monochromatic sum tag */}
                                 <div className="bg-[#f8f9fa] p-3 rounded-lg border border-[#e5e7eb] flex items-center justify-between text-xs font-bold">
                                   <span className="text-gray-500 font-sans">Accrued Seasonal Total ({item.roomType})</span>
@@ -548,7 +548,7 @@ function BookingDetailPage() {
                       existingInvoice ? "Regenerate Invoice" : "Generate Invoice"
                     )}
                   </Button>
-                  
+
                   <Button
                     variant="outline"
                     className="w-full text-xs h-9 border-[#e5e7eb] hover:bg-gray-50 text-gray-600 font-semibold flex items-center justify-center gap-1"
@@ -566,7 +566,7 @@ function BookingDetailPage() {
                       existingVoucher ? "Regenerate Voucher" : "Generate Voucher"
                     )}
                   </Button>
-                  
+
                   <Button
                     variant="outline"
                     className="w-full text-xs h-9 border-[#e5e7eb] hover:bg-gray-50 text-gray-600 font-semibold flex items-center justify-center gap-1"
@@ -670,7 +670,7 @@ function BookingDetailPage() {
         onClose={handleSuccessModalClose}
         title="Record Successfully Deleted"
         footer={
-          <Button 
+          <Button
             onClick={handleSuccessModalClose}
             className="bg-[#111111] hover:bg-[#242424] text-white text-xs font-semibold h-8 rounded-md"
           >

@@ -6,7 +6,8 @@
   "scripts": {
     "build": "tsc",
     "dev": "bun --watch run src/index.ts && tsc --watch",
-    "seed:store": "bun run src/scripts/seed-store.ts"
+    "seed:store": "bun run src/scripts/seed-store.ts",
+    "seed": "bun run src/scripts/seed.ts"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.108.1",

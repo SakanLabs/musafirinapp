@@ -1,6 +1,5 @@
 import { Hono } from "hono";
 import { cors } from "hono/cors";
-import { logger } from "hono/logger";
 import type { ApiResponse } from "shared/dist";
 import { betterAuth } from "better-auth";
 import { admin } from "better-auth/plugins";
@@ -37,7 +36,6 @@ import muthowifBookingsRoutes from "./routes/muthowifBookings";
 // Auth instance is now imported from ./lib/auth.ts
 
 export const app = new Hono()
-  .use(logger())
   .use(cors({
     origin: (origin, c) => {
       const allowedOrigins = process.env.CORS_ORIGINS ? process.env.CORS_ORIGINS.split(",") : ["http://localhost:5173", "https://musafirin.co"];

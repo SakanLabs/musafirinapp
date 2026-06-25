@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Save, ArrowLeft, Loader2, ArrowRight, Briefcase } from "lucide-react"
 import { useTransportRoutes, useUpdateTransportRoute } from "@/lib/queries/master"
+import { TRANSPORT_LOCATIONS } from "@/lib/constants"
 
 export const Route = createFileRoute("/master-transport-edit/$routeId")({
   component: MasterTransportEditPage
@@ -124,26 +125,34 @@ function MasterTransportEditPage() {
 
             <div>
               <label htmlFor="originLocation" className={labelCls}>Origin Location *</label>
-              <Input
+              <select
                 id="originLocation"
                 value={formData.originLocation}
                 onChange={(e) => handleInputChange('originLocation', e.target.value)}
-                placeholder="e.g. Makkah Hotel, Jeddah Airport"
                 required
-                className={inputCls}
-              />
+                className="w-full h-10 px-3 border border-[#e5e7eb] rounded-lg bg-white text-sm focus:border-[#111111] focus:ring-1 focus:ring-[#111111] shadow-none transition-colors"
+              >
+                <option value="">Pilih Lokasi Asal</option>
+                {TRANSPORT_LOCATIONS.map(loc => (
+                  <option key={`origin-${loc}`} value={loc}>{loc}</option>
+                ))}
+              </select>
             </div>
 
             <div>
               <label htmlFor="destinationLocation" className={labelCls}>Destination Location *</label>
-              <Input
+              <select
                 id="destinationLocation"
                 value={formData.destinationLocation}
                 onChange={(e) => handleInputChange('destinationLocation', e.target.value)}
-                placeholder="e.g. Madinah Hotel, Haram"
                 required
-                className={inputCls}
-              />
+                className="w-full h-10 px-3 border border-[#e5e7eb] rounded-lg bg-white text-sm focus:border-[#111111] focus:ring-1 focus:ring-[#111111] shadow-none transition-colors"
+              >
+                <option value="">Pilih Lokasi Tujuan</option>
+                {TRANSPORT_LOCATIONS.map(loc => (
+                  <option key={`dest-${loc}`} value={loc}>{loc}</option>
+                ))}
+              </select>
             </div>
           </div>
         </div>

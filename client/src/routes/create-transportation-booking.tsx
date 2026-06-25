@@ -13,6 +13,7 @@ import { useClients } from "@/lib/queries/clients";
 import { useCreateTransportationBooking } from "@/lib/queries/transportationBookings";
 import { useTransportRoutes } from "@/lib/queries/master";
 import { apiClient } from "@/lib/api";
+import { TRANSPORT_LOCATIONS } from "@/lib/constants";
 
 export const Route = createFileRoute("/create-transportation-booking")({
   beforeLoad: async () => {
@@ -162,10 +163,10 @@ function CreateTransportationBookingPage() {
       setRoutes(prev => prev.map(route =>
         route.id === routeId
           ? {
-              ...route,
-              origin: selectedMaster.originLocation,
-              destination: selectedMaster.destinationLocation,
-            }
+            ...route,
+            origin: selectedMaster.originLocation,
+            destination: selectedMaster.destinationLocation,
+          }
           : route
       ));
       toast.info('Origin & Destination diisi. Silakan pilih Tanggal dan Jenis Kendaraan, lalu klik tombol ⚡ untuk Auto-Fill harga.', { id: `master-${routeId}` });
@@ -175,15 +176,15 @@ function CreateTransportationBookingPage() {
   const autoFillTransportPricing = async (routeId: string) => {
     const routeIndex = routes.findIndex(r => r.id === routeId);
     if (routeIndex === -1) return;
-    
+
     const route = routes[routeIndex];
     if (!route.origin || !route.destination || !route.pickupDate || !route.vehicleType) {
       toast.error('Silakan lengkapi Lokasi Asal, Tujuan, Tanggal, dan Jenis Kendaraan terlebih dahulu.');
       return;
     }
 
-    const matchedMaster = masterRoutes.find(r => 
-      r.originLocation.toLowerCase() === route.origin.toLowerCase() && 
+    const matchedMaster = masterRoutes.find(r =>
+      r.originLocation.toLowerCase() === route.origin.toLowerCase() &&
       r.destinationLocation.toLowerCase() === route.destination.toLowerCase()
     );
 
@@ -193,20 +194,20 @@ function CreateTransportationBookingPage() {
     }
 
     const toastId = toast.loading('Mengambil harga dari Master Data...');
-    
+
     try {
       const response = await apiClient.get<any>(`/api/master/transport-routes/${matchedMaster.id}/pricing`);
       const periods = Array.isArray(response) ? response : (response as any).data || [];
-      
+
       const pickupTime = new Date(route.pickupDate);
-      
+
       const activePeriod = periods.find((p: any) => {
         const start = new Date(p.startDate);
         const end = new Date(p.endDate);
-        return p.vehicleType.toLowerCase() === route.vehicleType.toLowerCase() && 
-               p.isActive &&
-               start <= pickupTime && 
-               end >= pickupTime;
+        return p.vehicleType.toLowerCase() === route.vehicleType.toLowerCase() &&
+          p.isActive &&
+          start <= pickupTime &&
+          end >= pickupTime;
       });
 
       if (!activePeriod) {
@@ -214,12 +215,12 @@ function CreateTransportationBookingPage() {
         return;
       }
 
-      setRoutes(prev => prev.map(r => 
-        r.id === routeId 
-          ? { ...r, price: String(activePeriod.sellingPrice) } 
+      setRoutes(prev => prev.map(r =>
+        r.id === routeId
+          ? { ...r, price: String(activePeriod.sellingPrice) }
           : r
       ));
-      
+
       toast.success('Harga otomatis diisi dari Master Data!', { id: toastId });
 
     } catch (e) {
@@ -552,23 +553,6 @@ function CreateTransportationBookingPage() {
                       )}
                     </div>
 
-                    <div className="bg-zinc-50/50 border border-zinc-200/60 p-4 rounded-xl space-y-1">
-                      <Label htmlFor={`masterRoute-${route.id}`} className="block text-xs font-semibold text-zinc-700 uppercase tracking-wider mb-2">Pilih dari Master Data (Opsional)</Label>
-                      <select
-                        id={`masterRoute-${route.id}`}
-                        onChange={(e) => handleMasterRouteSelection(route.id, e.target.value)}
-                        className="w-full h-10 px-3 border border-[#e5e7eb] rounded-md focus:border-[#111111] focus:ring-1 focus:ring-[#111111] bg-white text-sm text-zinc-800"
-                        disabled={isMasterRoutesLoading}
-                      >
-                        <option value="">-- Isi Manual --</option>
-                        {masterRoutes.map((mr) => (
-                          <option key={mr.id} value={mr.id.toString()}>
-                            {mr.originLocation} → {mr.destinationLocation}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 pt-2">
                       <div>
                         <Label htmlFor={`pickupDate-${route.id}`} className="block text-xs font-semibold text-zinc-700 uppercase tracking-wider mb-2">Tanggal Penjemputan *</Label>
@@ -611,25 +595,37 @@ function CreateTransportationBookingPage() {
                       </div>
                       <div>
                         <Label htmlFor={`origin-${route.id}`} className="block text-xs font-semibold text-zinc-700 uppercase tracking-wider mb-2">Lokasi Asal *</Label>
-                        <Input
+                        <select
                           id={`origin-${route.id}`}
                           value={route.origin}
                           onChange={(e) => handleRouteChange(route.id, "origin", e.target.value)}
-                          placeholder="Contoh: Hotel Madinah"
-                          className="h-10 border-[#e5e7eb] rounded-md focus-visible:ring-[#111111] focus-visible:border-[#111111]"
+                          className="w-full h-10 px-3 border border-[#e5e7eb] rounded-md focus:border-[#111111] focus:ring-1 focus:ring-[#111111] bg-white text-sm text-zinc-800"
                           required
-                        />
+                        >
+                          <option value="">Pilih Lokasi Asal</option>
+                          {TRANSPORT_LOCATIONS.map((loc) => (
+                            <option key={`origin-${loc}`} value={loc}>
+                              {loc}
+                            </option>
+                          ))}
+                        </select>
                       </div>
                       <div>
                         <Label htmlFor={`destination-${route.id}`} className="block text-xs font-semibold text-zinc-700 uppercase tracking-wider mb-2">Lokasi Tujuan *</Label>
-                        <Input
+                        <select
                           id={`destination-${route.id}`}
                           value={route.destination}
                           onChange={(e) => handleRouteChange(route.id, "destination", e.target.value)}
-                          placeholder="Contoh: Bandara Jeddah"
-                          className="h-10 border-[#e5e7eb] rounded-md focus-visible:ring-[#111111] focus-visible:border-[#111111]"
+                          className="w-full h-10 px-3 border border-[#e5e7eb] rounded-md focus:border-[#111111] focus:ring-1 focus:ring-[#111111] bg-white text-sm text-zinc-800"
                           required
-                        />
+                        >
+                          <option value="">Pilih Lokasi Tujuan</option>
+                          {TRANSPORT_LOCATIONS.map((loc) => (
+                            <option key={`dest-${loc}`} value={loc}>
+                              {loc}
+                            </option>
+                          ))}
+                        </select>
                       </div>
                       <div>
                         <Label htmlFor={`price-${route.id}`} className="block text-xs font-semibold text-zinc-700 uppercase tracking-wider mb-2">Harga (SAR) *</Label>
@@ -645,9 +641,9 @@ function CreateTransportationBookingPage() {
                             className="flex-1 h-10 border-[#e5e7eb] rounded-md focus-visible:ring-[#111111] focus-visible:border-[#111111]"
                             required
                           />
-                          <Button 
-                            type="button" 
-                            variant="secondary" 
+                          <Button
+                            type="button"
+                            variant="secondary"
                             onClick={() => autoFillTransportPricing(route.id)}
                             title="Auto-Fill dari Master Data"
                             className="h-10 px-3 border border-zinc-200 bg-white hover:bg-zinc-50 text-zinc-800 shadow-none rounded-md"
