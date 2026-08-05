@@ -1163,7 +1163,7 @@ export async function generateCustomLaInvoicePDF(
     const defaultBank = {
       bankName: 'Bank Syariah Indonesia',
       bankCountry: 'Indonesia',
-      accountName: 'PT Musafirin Internasional',
+      accountName: 'PT Thalhah Insan Rabbani',
       accountNumberOrIBAN: '7254459741'
     };
 
@@ -1282,7 +1282,7 @@ export async function generateMuthowifInvoicePDF(
     const defaultBank = {
       bankName: 'Bank Syariah Indonesia',
       bankCountry: 'Indonesia',
-      accountName: 'PT Musafirin Internasional',
+      accountName: 'PT Thalhah Insan Rabbani',
       accountNumberOrIBAN: '7254459741'
     };
 
@@ -1502,7 +1502,7 @@ export async function generateAgentRequestInvoicePDF(
     const template = Handlebars.compile(templateHtml);
     const logoPath = getTemplatePath('logomusafirin.png');
     const logoBase64 = fs.readFileSync(logoPath).toString('base64');
-    
+
     const currency = agentRequestData.currency || "SAR";
     const formattedAmount = Number(agentRequestData.totalAmount || invoiceData.amount || 0).toLocaleString("id-ID");
 
@@ -1510,7 +1510,7 @@ export async function generateAgentRequestInvoicePDF(
       invoiceNo: invoiceData.number,
       date: invoiceData.issueDate ? new Date(invoiceData.issueDate).toLocaleDateString("id-ID") : new Date().toLocaleDateString("id-ID"),
       dueDate: invoiceData.dueDate ? new Date(invoiceData.dueDate).toLocaleDateString("id-ID") : new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toLocaleDateString("id-ID"),
-      agentName: "Agent Request", 
+      agentName: "Agent Request",
       totalAmount: invoiceData.amount || 0,
       description: agentRequestData.title || "Agent Service Request",
       currency,
@@ -1526,7 +1526,7 @@ export async function generateAgentRequestInvoicePDF(
     if (!fs.existsSync(tempDir)) {
       fs.mkdirSync(tempDir, { recursive: true });
     }
-    
+
     const tempFilePath = path.join(tempDir, fileName);
 
     await page.pdf({
