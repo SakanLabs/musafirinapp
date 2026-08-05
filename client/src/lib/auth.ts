@@ -2,12 +2,14 @@
 import { authClient, getSession } from './auth-client'
 
 export type UserRole = 'user' | 'admin' | 'owner' | 'finance'
+export type UserType = 'direct' | 'agent'
 
 export interface User {
   id: string
   name: string
   email: string
   role: UserRole
+  userType: UserType
   isAuthenticated: boolean
 }
 
@@ -81,6 +83,7 @@ const sessionToUser = (session: BetterAuthSession | null): User | null => {
     name: user.name || user.email,
     email: user.email,
     role: role,
+    userType: (user as any).userType === 'agent' ? 'agent' : 'direct',
     isAuthenticated: true
   }
 }
@@ -189,6 +192,12 @@ export const authService = {
     return await authService.hasRole('user')
   },
 
+  // Check if user is agent
+  isAgent: async (): Promise<boolean> => {
+    const user = await authService.getCurrentUser()
+    return user?.userType === 'agent'
+  },
+
   // Logout
   logout: async (): Promise<void> => {
     await authClient.signOut()
@@ -200,6 +209,9 @@ export const authService = {
   getDefaultDashboard: async (): Promise<string> => {
     const user = await authService.getCurrentUser()
     if (!user) return '/login'
+    
+    // Agent users go to agent portal
+    if (user.userType === 'agent') return '/agent/dashboard'
     
     return '/dashboard/admin'
   },

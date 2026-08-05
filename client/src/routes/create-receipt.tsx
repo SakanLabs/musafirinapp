@@ -116,6 +116,19 @@ function CreateReceiptPage() {
                     description: values.description,
                 });
                 queryClient.invalidateQueries({ queryKey: ['receipts'] });
+            } else if (invoice.number.startsWith('LA-INV-')) {
+                const paymentResp = await apiClient.post<{success: boolean, data: {id: number}}>(`/api/custom-la-billing/${invoice.bookingId}/payment`, {
+                    invoiceId: invoice.id,
+                    amount: values.amount,
+                    paymentMethod: values.method,
+                    notes: values.description,
+                });
+                
+                if (paymentResp.data?.id) {
+                    await apiClient.post(`/api/custom-la-billing/${invoice.bookingId}/receipt/${paymentResp.data.id}`, {});
+                }
+                queryClient.invalidateQueries({ queryKey: ['receipts'] });
+                queryClient.invalidateQueries({ queryKey: ['custom-la-billing', invoice.bookingId] });
             } else {
                 throw new Error("Unknown invoice type selected");
             }

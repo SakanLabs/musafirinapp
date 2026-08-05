@@ -45,6 +45,15 @@ export const auth = betterAuth({
       domain: undefined,
     },
   },
+  user: {
+    additionalFields: {
+      userType: {
+        type: "string",
+        required: false,
+        defaultValue: "direct",
+      },
+    },
+  },
   emailAndPassword: {
     enabled: true,
     requireEmailVerification: false,

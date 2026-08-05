@@ -739,6 +739,26 @@ export const customLaReceipts = pgTable("custom_la_receipts", {
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
 
+// Custom LA Expenses — Tracking money out to suppliers per Custom LA request
+export const customLaExpenseStatusEnum = pgEnum('custom_la_expense_status', ['pending', 'paid', 'cancelled']);
+
+export const customLaExpenses = pgTable('custom_la_expenses', {
+  id: serial('id').primaryKey(),
+  customLaRequestId: integer('custom_la_request_id').notNull().references(() => customLaRequests.id, { onDelete: 'cascade' }),
+  category: varchar('category', { length: 100 }).notNull(), // hotel, visa, transportasi, muthowif, handling, lainnya
+  supplierName: varchar('supplier_name', { length: 255 }).notNull(),
+  description: text('description'),
+  amount: decimal('amount', { precision: 10, scale: 2 }).notNull(),
+  currency: varchar('currency', { length: 3 }).default('SAR').notNull(),
+  paymentDate: timestamp('payment_date'),
+  paymentMethod: varchar('payment_method', { length: 50 }), // transfer, cash, etc.
+  referenceNumber: varchar('reference_number', { length: 100 }),
+  notes: text('notes'),
+  status: customLaExpenseStatusEnum('status').default('pending').notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+});
+
 // Store-specific Enums
 export const storePaymentStatusEnum = pgEnum('store_payment_status', ['unpaid', 'partial', 'paid', 'verified', 'failed']);
 export const storeOrderStatusEnum = pgEnum('store_order_status', ['pending', 'processing', 'completed', 'cancelled']);
@@ -909,6 +929,8 @@ export type TransportationInvoicePayment = typeof transportationInvoicePayments.
 export type NewTransportationInvoicePayment = typeof transportationInvoicePayments.$inferInsert;
 export type CustomLaReceipt = typeof customLaReceipts.$inferSelect;
 export type NewCustomLaReceipt = typeof customLaReceipts.$inferInsert;
+export type CustomLaExpense = typeof customLaExpenses.$inferSelect;
+export type NewCustomLaExpense = typeof customLaExpenses.$inferInsert;
 
 export type StoreCategory = typeof storeCategories.$inferSelect;
 export type NewStoreCategory = typeof storeCategories.$inferInsert;
@@ -1123,3 +1145,152 @@ export type MuthowifReceipt = typeof muthowifReceipts.$inferSelect;
 export type NewMuthowifReceipt = typeof muthowifReceipts.$inferInsert;
 export type MuthowifVoucher = typeof muthowifVouchers.$inferSelect;
 export type NewMuthowifVoucher = typeof muthowifVouchers.$inferInsert;
+
+// ============================================================
+// AGENT PORTAL — Tables for agent/reseller request management
+// ============================================================
+
+// Agent Request Enums
+export const agentRequestServiceTypeEnum = pgEnum('agent_request_service_type', [
+  'hotel', 'transportation', 'muthowif', 'visa', 'siskopatuh', 'custom_la'
+]);
+
+export const agentRequestStatusEnum = pgEnum('agent_request_status', [
+  'draft', 'submitted', 'need_more_info', 'in_review', 'quoted',
+  'quote_revision_requested', 'quote_accepted', 'invoiced',
+  'payment_uploaded', 'paid', 'voucher_issued', 'completed',
+  'cancelled', 'rejected'
+]);
+
+// Agent Company Profiles — Travel/company info for agents
+export const agentCompanyProfiles = pgTable('agent_company_profiles', {
+  id: serial('id').primaryKey(),
+  userId: text('user_id').notNull().references(() => user.id, { onDelete: 'cascade' }).unique(),
+  companyName: varchar('company_name', { length: 255 }).notNull(),
+  companyPhone: varchar('company_phone', { length: 50 }),
+  companyEmail: varchar('company_email', { length: 255 }),
+  companyAddress: text('company_address'),
+  city: varchar('city', { length: 100 }),
+  province: varchar('province', { length: 100 }),
+  country: varchar('country', { length: 100 }).default('Indonesia'),
+  logoUrl: text('logo_url'),
+  licenseNumber: varchar('license_number', { length: 100 }), // Nomor izin travel
+  notes: text('notes'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+});
+
+// Agent Requests — Unified request table for all service types
+export const agentRequests = pgTable('agent_requests', {
+  id: serial('id').primaryKey(),
+  requestNumber: varchar('request_number', { length: 50 }).notNull().unique(), // Format: AR-YYYY-XXXX
+  agentId: text('agent_id').notNull().references(() => user.id, { onDelete: 'cascade' }), // KEY for data isolation
+  serviceType: agentRequestServiceTypeEnum('service_type').notNull(),
+  status: agentRequestStatusEnum('status').default('draft').notNull(),
+  title: varchar('title', { length: 255 }).notNull(),
+  description: text('description'),
+  meta: jsonb('meta'), // Service-specific details (hotel rooms, transport routes, etc.)
+  quotationData: jsonb('quotation_data'), // Quotation from admin (price options, deadline, etc.)
+  quotationNotes: text('quotation_notes'), // Admin notes for quotation
+  agentQuotationResponse: text('agent_quotation_response'), // Agent's response/revision notes
+  totalAmount: decimal('total_amount', { precision: 10, scale: 2 }),
+  currency: varchar('currency', { length: 3 }).default('SAR').notNull(),
+  // Links to existing system records (created by admin after processing)
+  linkedBookingId: integer('linked_booking_id').references(() => bookings.id, { onDelete: 'set null' }),
+  linkedTransportId: integer('linked_transport_id').references(() => transportationBookings.id, { onDelete: 'set null' }),
+  linkedServiceOrderId: integer('linked_service_order_id').references(() => serviceOrders.id, { onDelete: 'set null' }),
+  linkedMuthowifBookingId: integer('linked_muthowif_booking_id').references(() => muthowifBookings.id, { onDelete: 'set null' }),
+  linkedCustomLaId: integer('linked_custom_la_id').references(() => customLaRequests.id, { onDelete: 'set null' }),
+  assignedAdminId: text('assigned_admin_id').references(() => user.id, { onDelete: 'set null' }),
+  paymentProofUrl: text('payment_proof_url'),
+  paymentProofUploadedAt: timestamp('payment_proof_uploaded_at'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+});
+
+// Agent Request Timeline — Activity log per request
+export const agentRequestTimeline = pgTable('agent_request_timeline', {
+  id: serial('id').primaryKey(),
+  requestId: integer('request_id').notNull().references(() => agentRequests.id, { onDelete: 'cascade' }),
+  eventType: varchar('event_type', { length: 50 }).notNull(), // e.g. 'status_change', 'note', 'quotation_sent', 'payment_uploaded'
+  title: varchar('title', { length: 255 }).notNull(),
+  description: text('description'),
+  actorId: text('actor_id').references(() => user.id, { onDelete: 'set null' }),
+  actorRole: varchar('actor_role', { length: 20 }).notNull(), // 'agent' or 'admin'
+  meta: jsonb('meta'), // Extra data (file URLs, old/new status, etc.)
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+});
+
+// Agent Notifications — In-app notifications for agents
+export const agentNotifications = pgTable('agent_notifications', {
+  id: serial('id').primaryKey(),
+  userId: text('user_id').notNull().references(() => user.id, { onDelete: 'cascade' }),
+  requestId: integer('request_id').references(() => agentRequests.id, { onDelete: 'cascade' }),
+  title: varchar('title', { length: 255 }).notNull(),
+  message: text('message').notNull(),
+  type: varchar('type', { length: 50 }).notNull(), // 'status_change', 'quotation', 'payment', 'document', 'info'
+  isRead: boolean('is_read').default(false).notNull(),
+  meta: jsonb('meta'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+});
+
+// Agent Request Invoices
+export const agentRequestInvoices = pgTable('agent_request_invoices', {
+  id: serial('id').primaryKey(),
+  number: varchar('number', { length: 50 }).notNull().unique(), // Format: ARI-YYYY-XXXX
+  agentRequestId: integer('agent_request_id').notNull().references(() => agentRequests.id, { onDelete: 'cascade' }),
+  amount: decimal('amount', { precision: 10, scale: 2 }).notNull(),
+  paidAmount: decimal('paid_amount', { precision: 10, scale: 2 }).default('0').notNull(),
+  currency: varchar('currency', { length: 3 }).default('SAR').notNull(),
+  issueDate: timestamp('issue_date').notNull(),
+  dueDate: timestamp('due_date').notNull(),
+  status: invoiceStatusEnum('status').default('draft').notNull(),
+  pdfUrl: text('pdf_url'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+});
+
+// Agent Portal Relations
+export const agentCompanyProfilesRelations = relations(agentCompanyProfiles, ({ one }) => ({
+  user: one(user, {
+    fields: [agentCompanyProfiles.userId],
+    references: [user.id],
+  }),
+}));
+
+export const agentRequestsRelations = relations(agentRequests, ({ one, many }) => ({
+  agent: one(user, {
+    fields: [agentRequests.agentId],
+    references: [user.id],
+  }),
+  timeline: many(agentRequestTimeline),
+  notifications: many(agentNotifications),
+}));
+
+export const agentRequestTimelineRelations = relations(agentRequestTimeline, ({ one }) => ({
+  request: one(agentRequests, {
+    fields: [agentRequestTimeline.requestId],
+    references: [agentRequests.id],
+  }),
+}));
+
+export const agentNotificationsRelations = relations(agentNotifications, ({ one }) => ({
+  user: one(user, {
+    fields: [agentNotifications.userId],
+    references: [user.id],
+  }),
+  request: one(agentRequests, {
+    fields: [agentNotifications.requestId],
+    references: [agentRequests.id],
+  }),
+}));
+
+// Agent Portal Type Exports
+export type AgentCompanyProfile = typeof agentCompanyProfiles.$inferSelect;
+export type NewAgentCompanyProfile = typeof agentCompanyProfiles.$inferInsert;
+export type AgentRequest = typeof agentRequests.$inferSelect;
+export type NewAgentRequest = typeof agentRequests.$inferInsert;
+export type AgentRequestTimelineEntry = typeof agentRequestTimeline.$inferSelect;
+export type NewAgentRequestTimelineEntry = typeof agentRequestTimeline.$inferInsert;
+export type AgentNotification = typeof agentNotifications.$inferSelect;
+export type NewAgentNotification = typeof agentNotifications.$inferInsert;

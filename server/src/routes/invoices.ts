@@ -430,13 +430,37 @@ invoiceRoutes.get('/', requireAdminOrFinance, async (c) => {
       .leftJoin(muthowifBookings, eq(muthowifInvoices.muthowifBookingId, muthowifBookings.id))
       .leftJoin(clients, eq(muthowifBookings.clientId, clients.id));
 
+    // Agent Request Invoices
+    const { agentRequestInvoices, agentRequests, user } = await import('../db/schema');
+    const allAgentRequestInvoices = await db
+      .select({
+        id: agentRequestInvoices.id,
+        number: agentRequestInvoices.number,
+        bookingId: agentRequestInvoices.agentRequestId,
+        amount: agentRequestInvoices.amount,
+        currency: agentRequestInvoices.currency,
+        issueDate: agentRequestInvoices.issueDate,
+        dueDate: agentRequestInvoices.dueDate,
+        status: agentRequestInvoices.status,
+        pdfUrl: agentRequestInvoices.pdfUrl,
+        bookingCode: agentRequests.requestNumber,
+        clientName: user.name,
+        clientEmail: user.email,
+        hotelName: agentRequests.title,
+        city: agentRequests.serviceType,
+      })
+      .from(agentRequestInvoices)
+      .leftJoin(agentRequests, eq(agentRequestInvoices.agentRequestId, agentRequests.id))
+      .leftJoin(user, eq(agentRequests.agentId, user.id));
+
     // Combine and sort by issueDate descending
     const combinedInvoices = [
       ...allInvoices,
       ...allTransportationInvoices.map(inv => ({ ...inv, hotelName: 'Transportation' })),
       ...allServiceOrderInvoices.map(inv => ({ ...inv, hotelName: 'Service Order' })),
       ...allCustomLaInvoices.map(inv => ({ ...inv, hotelName: inv.hotelName ? `Custom LA (${inv.hotelName})` : 'Custom LA' })),
-      ...allMuthowifInvoices.map(inv => ({ ...inv, hotelName: 'Muthowif (' + (inv.hotelName || 'Order') + ')' }))
+      ...allMuthowifInvoices.map(inv => ({ ...inv, hotelName: 'Muthowif (' + (inv.hotelName || 'Order') + ')' })),
+      ...allAgentRequestInvoices.map(inv => ({ ...inv, hotelName: 'Agent Request (' + (inv.hotelName || 'Service') + ')' }))
     ].sort((a, b) => {
       const dateA = a.issueDate ? new Date(a.issueDate).getTime() : 0;
       const dateB = b.issueDate ? new Date(b.issueDate).getTime() : 0;
@@ -676,8 +700,8 @@ invoiceRoutes.post('/:bookingId/generate', requireAdminOrFinance, async (c) => {
   }
 });
 
-// GET /api/invoices/by-number/:number - Serve invoice PDF
-invoiceRoutes.get('/by-number/:number', requireAdminOrFinance, async (c) => {
+// GET /api/invoices/by-number/:number - Serve invoice PDF (Public for client downloads)
+invoiceRoutes.get('/by-number/:number', async (c) => {
   try {
     const invoiceNumber = c.req.param('number');
 

@@ -63,3 +63,34 @@ export const requireOwner = requireRole(['owner']);
 export const requireAdmin = requireRole(['admin']);
 export const requireFinance = requireRole(['finance']);
 export const requireAdminOrFinance = requireRole(['admin', 'finance']);
+
+// Agent middleware: checks userType === 'agent'
+export async function requireAgent(c: Context, next: Next) {
+  try {
+    const session = await auth.api.getSession({
+      headers: c.req.raw.headers,
+    });
+
+    if (!session) {
+      return c.json({ error: 'Unauthorized' }, 401);
+    }
+
+    // Check userType from database
+    const dbUser = await db.select().from(schema.user).where(eq(schema.user.id, session.user.id)).limit(1);
+    const userType = dbUser[0]?.userType || 'direct';
+
+    if (userType !== 'agent') {
+      return c.json({ error: 'Agent access required' }, 403);
+    }
+
+    c.set('user', session.user);
+    c.set('session', session.session);
+    c.set('userRole', dbUser[0]?.role || 'user');
+    c.set('userType', userType);
+    
+    await next();
+  } catch (error) {
+    console.error('Agent middleware error:', error);
+    return c.json({ error: 'Authentication failed' }, 401);
+  }
+}

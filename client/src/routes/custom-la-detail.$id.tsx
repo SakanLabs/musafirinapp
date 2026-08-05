@@ -5,7 +5,8 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { AssignMuthowifModal } from "@/components/modals/AssignMuthowifModal"
-import { ArrowLeft, Share, Users, Phone, Loader2, RefreshCw, FileText, Building, Plane, Package, Map, UserCheck } from "lucide-react"
+import { EditCustomLaModal } from "@/components/modals/EditCustomLaModal"
+import { ArrowLeft, Share, Users, Phone, Loader2, RefreshCw, FileText, Building, Plane, Package, Map, UserCheck, Pencil } from "lucide-react"
 import { authService } from "@/lib/auth"
 import { formatCurrency, formatDate } from "@/lib/utils"
 import { useCustomLaRequest, useUpdateCustomLaStatus } from "@/lib/queries"
@@ -15,6 +16,7 @@ import { useState } from "react"
 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { BillingTab } from "@/components/custom-la/BillingTab"
+import { FinanceTab } from "@/components/custom-la/FinanceTab"
 
 export const Route = createFileRoute("/custom-la-detail/$id")({
   beforeLoad: async () => {
@@ -36,6 +38,8 @@ function CustomLaDetailPage() {
   const [displayCurrency, setDisplayCurrency] = useState('SAR')
   const [exchangeRate, setExchangeRate] = useState('4400')
   const [isAssignMuthowifOpen, setIsAssignMuthowifOpen] = useState(false)
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false)
+
 
   const queryClient = useQueryClient()
 
@@ -174,6 +178,14 @@ Silakan hubungi kami jika ada penyesuaian yang ingin dilakukan.`
             </div>
             <Button 
               variant="outline" 
+              onClick={() => setIsEditModalOpen(true)}
+              className="h-9 px-3.5 border-zinc-200 text-zinc-700 hover:bg-zinc-50 hover:text-black flex items-center rounded-md text-xs font-semibold transition-colors"
+            >
+              <Pencil className="h-4 w-4 mr-2 text-zinc-500" />
+              Edit Content
+            </Button>
+            <Button 
+              variant="outline" 
               onClick={() => navigate({ to: `/custom-la-quotation/${id}?currency=${displayCurrency}&rate=${exchangeRate}` })}
               className="h-9 px-3.5 border-zinc-200 text-zinc-700 hover:bg-zinc-50 hover:text-black flex items-center rounded-md text-xs font-semibold transition-colors"
             >
@@ -225,6 +237,12 @@ Silakan hubungi kami jika ada penyesuaian yang ingin dilakukan.`
             >
               Billing & Pembayaran
             </TabsTrigger>
+            <TabsTrigger 
+              value="finance"
+              className="px-4 py-1.5 rounded-full text-xs font-semibold text-zinc-500 data-[state=active]:bg-white data-[state=active]:text-zinc-950 data-[state=active]:shadow-sm transition-all"
+            >
+              Keuangan
+            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="overview">
@@ -234,10 +252,18 @@ Silakan hubungi kami jika ada penyesuaian yang ingin dilakukan.`
               <div className="md:col-span-2 space-y-6">
 
                 <Card className="border border-[#e5e7eb] rounded-xl bg-white shadow-none overflow-hidden">
-                  <CardHeader className="bg-zinc-50/50 border-b border-[#e5e7eb] px-6 py-4">
+                  <CardHeader className="bg-zinc-50/50 border-b border-[#e5e7eb] px-6 py-4 flex flex-row items-center justify-between">
                     <CardTitle className="text-sm font-bold text-zinc-900 flex items-center tracking-tight">
                       <Users className="w-4 h-4 mr-2 text-zinc-500" /> Info Pemesan
                     </CardTitle>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setIsEditModalOpen(true)}
+                      className="h-7 text-xs text-zinc-500 hover:text-zinc-900 flex items-center"
+                    >
+                      <Pencil className="w-3.5 h-3.5 mr-1" /> Edit
+                    </Button>
                   </CardHeader>
                   <CardContent className="p-6 grid grid-cols-1 sm:grid-cols-2 gap-6">
                     <div>
@@ -268,10 +294,18 @@ Silakan hubungi kami jika ada penyesuaian yang ingin dilakukan.`
                 </Card>
 
                 <Card className="border border-[#e5e7eb] rounded-xl bg-white shadow-none overflow-hidden">
-                  <CardHeader className="bg-zinc-50/50 border-b border-[#e5e7eb] px-6 py-4">
+                  <CardHeader className="bg-zinc-50/50 border-b border-[#e5e7eb] px-6 py-4 flex flex-row items-center justify-between">
                     <CardTitle className="text-sm font-bold text-zinc-900 flex items-center tracking-tight">
                       <Building className="w-4 h-4 mr-2 text-zinc-500" /> Jadwal & Hotel
                     </CardTitle>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setIsEditModalOpen(true)}
+                      className="h-7 text-xs text-zinc-500 hover:text-zinc-900 flex items-center"
+                    >
+                      <Pencil className="w-3.5 h-3.5 mr-1" /> Edit
+                    </Button>
                   </CardHeader>
                   <CardContent className="p-6 space-y-6">
                     <div className="grid grid-cols-2 gap-6">
@@ -348,10 +382,18 @@ Silakan hubungi kami jika ada penyesuaian yang ingin dilakukan.`
                 </Card>
 
                 <Card className="border border-[#e5e7eb] rounded-xl bg-white shadow-none overflow-hidden">
-                  <CardHeader className="bg-zinc-50/50 border-b border-[#e5e7eb] px-6 py-4">
+                  <CardHeader className="bg-zinc-50/50 border-b border-[#e5e7eb] px-6 py-4 flex flex-row items-center justify-between">
                     <CardTitle className="text-sm font-bold text-zinc-900 flex items-center tracking-tight">
                       <Plane className="w-4 h-4 mr-2 text-zinc-500" /> Transportasi
                     </CardTitle>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setIsEditModalOpen(true)}
+                      className="h-7 text-xs text-zinc-500 hover:text-zinc-900 flex items-center"
+                    >
+                      <Pencil className="w-3.5 h-3.5 mr-1" /> Edit
+                    </Button>
                   </CardHeader>
                   <CardContent className="p-6 space-y-4">
                     <div className="flex justify-between items-center">
@@ -378,10 +420,18 @@ Silakan hubungi kami jika ada penyesuaian yang ingin dilakukan.`
                 </Card>
 
                 <Card className="border border-[#e5e7eb] rounded-xl bg-white shadow-none overflow-hidden">
-                  <CardHeader className="bg-zinc-50/50 border-b border-[#e5e7eb] px-6 py-4">
+                  <CardHeader className="bg-zinc-50/50 border-b border-[#e5e7eb] px-6 py-4 flex flex-row items-center justify-between">
                     <CardTitle className="text-sm font-bold text-zinc-900 flex items-center tracking-tight">
                       <Package className="w-4 h-4 mr-2 text-zinc-500" /> Layanan Tambahan (Handling)
                     </CardTitle>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setIsEditModalOpen(true)}
+                      className="h-7 text-xs text-zinc-500 hover:text-zinc-900 flex items-center"
+                    >
+                      <Pencil className="w-3.5 h-3.5 mr-1" /> Edit
+                    </Button>
                   </CardHeader>
                   <CardContent className="p-6 space-y-3">
                     {Object.entries(meta.handlingDetails || {}).map(([key, value]) => {
@@ -557,8 +607,16 @@ Silakan hubungi kami jika ada penyesuaian yang ingin dilakukan.`
                 </Card>
 
                 <Card className="border border-[#e5e7eb] rounded-xl bg-white shadow-none overflow-hidden">
-                  <CardHeader className="bg-zinc-50/50 border-b border-[#e5e7eb] px-6 py-4">
+                  <CardHeader className="bg-zinc-50/50 border-b border-[#e5e7eb] px-6 py-4 flex flex-row items-center justify-between">
                     <CardTitle className="text-sm font-bold text-zinc-900 tracking-tight">Ringkasan Harga</CardTitle>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setIsEditModalOpen(true)}
+                      className="h-7 text-xs text-zinc-500 hover:text-zinc-900 flex items-center"
+                    >
+                      <Pencil className="w-3.5 h-3.5 mr-1" /> Edit
+                    </Button>
                   </CardHeader>
                   <CardContent className="p-6 space-y-4">
 
@@ -637,19 +695,31 @@ Silakan hubungi kami jika ada penyesuaian yang ingin dilakukan.`
           <TabsContent value="billing">
             <BillingTab laId={parseInt(id)} />
           </TabsContent>
+
+          <TabsContent value="finance">
+            <FinanceTab laId={parseInt(id)} />
+          </TabsContent>
         </Tabs>
       </div>
 
       {request && (
-        <AssignMuthowifModal
-          isOpen={isAssignMuthowifOpen}
-          onClose={() => setIsAssignMuthowifOpen(false)}
-          referenceType="custom_la"
-          referenceId={parseInt(id.toString())}
-          startDate={meta.tanggalKedatangan || new Date().toISOString()}
-          endDate={meta.tanggalKeberangkatan || new Date().toISOString()}
-        />
+        <>
+          <AssignMuthowifModal
+            isOpen={isAssignMuthowifOpen}
+            onClose={() => setIsAssignMuthowifOpen(false)}
+            referenceType="custom_la"
+            referenceId={parseInt(id.toString())}
+            startDate={meta.tanggalKedatangan || new Date().toISOString()}
+            endDate={meta.tanggalKeberangkatan || new Date().toISOString()}
+          />
+          <EditCustomLaModal
+            isOpen={isEditModalOpen}
+            onClose={() => setIsEditModalOpen(false)}
+            request={request}
+          />
+        </>
       )}
     </PageLayout>
   )
 }
+

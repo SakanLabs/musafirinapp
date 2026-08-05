@@ -14,11 +14,12 @@ import {
   Plane,
   Car,
   Building,
-  Map,
   Shield,
   Package,
   UserCheck,
-  ShoppingBag
+  ShoppingBag,
+  ClipboardList,
+  Map
 } from 'lucide-react'
 import { useState, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
@@ -79,6 +80,12 @@ const navigationSections = [
         href: '/transportation-bookings',
         icon: Car,
         roles: ['admin', 'owner']
+      },
+      {
+        name: 'Agent Requests',
+        href: '/agent-requests-admin',
+        icon: ClipboardList,
+        roles: ['admin', 'owner', 'finance']
       },
       {
         name: 'Muthowif Orders',

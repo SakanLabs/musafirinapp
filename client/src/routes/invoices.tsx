@@ -85,6 +85,8 @@ function InvoicesPage() {
           bookingLink = `/service-order-detail/${invoice.bookingId}`;
         } else if (invoice.number.startsWith('LA-INV-')) {
           bookingLink = `/custom-la-detail/${invoice.bookingId}`;
+        } else if (invoice.number.startsWith('INV-AR-')) {
+          bookingLink = `/agent-requests-admin-detail/${invoice.bookingId}`;
         }
 
         return (
@@ -152,6 +154,8 @@ function InvoicesPage() {
           detailLink = `/custom-la-detail/${invoice.bookingId}`;
         } else if (invoice.number.startsWith('MBI-')) {
           detailLink = `/muthowif-booking-detail/${invoice.bookingId}`;
+        } else if (invoice.number.startsWith('INV-AR-')) {
+          detailLink = `/agent-requests-admin-detail/${invoice.bookingId}`;
         }
 
         return (

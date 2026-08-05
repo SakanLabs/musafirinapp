@@ -96,7 +96,7 @@ function ReceiptsPage() {
             title="View Receipt Detail"
             className="h-8 w-8 text-zinc-500 hover:text-[#111111] hover:bg-zinc-100 rounded-full"
           >
-            <Link to="/receipt-detail" search={{ number: receipt.number }}>
+            <Link to="/receipt-detail" search={{ number: receipt.number, id: String(receipt.id || '') }}>
               <Eye className="h-4 w-4" />
             </Link>
           </Button>

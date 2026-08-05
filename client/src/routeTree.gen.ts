@@ -45,6 +45,8 @@ import { Route as BookingsRouteImport } from './routes/bookings'
 import { Route as BookingEditRouteImport } from './routes/booking-edit'
 import { Route as BookingDetailRouteImport } from './routes/booking-detail'
 import { Route as AnalyticsRouteImport } from './routes/analytics'
+import { Route as AgentRequestsAdminRouteImport } from './routes/agent-requests-admin'
+import { Route as AgentRouteImport } from './routes/agent'
 import { Route as AdminRouteImport } from './routes/admin'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as VouchersIndexRouteImport } from './routes/vouchers/index'
@@ -75,6 +77,12 @@ import { Route as ClientsCreateRouteImport } from './routes/clients/create'
 import { Route as ClientDetailClientIdRouteImport } from './routes/client-detail.$clientId'
 import { Route as BookingViewBookingIdRouteImport } from './routes/booking-view.$bookingId'
 import { Route as AuthCallbackRouteImport } from './routes/auth/callback'
+import { Route as AgentRequestsRouteImport } from './routes/agent/requests'
+import { Route as AgentProfileRouteImport } from './routes/agent/profile'
+import { Route as AgentNotificationsRouteImport } from './routes/agent/notifications'
+import { Route as AgentDashboardRouteImport } from './routes/agent/dashboard'
+import { Route as AgentCreateRequestRouteImport } from './routes/agent/create-request'
+import { Route as AgentRequestAdminDetailIdRouteImport } from './routes/agent-request-admin-detail.$id'
 import { Route as CustomLaQuotationRouteImport } from './routes/custom-la-quotation.'
 import { Route as StoreProductProductIdRouteImport } from './routes/store/product.$productId'
 import { Route as StoreOrderOrderIdRouteImport } from './routes/store/order.$orderId'
@@ -82,6 +90,7 @@ import { Route as EditTransportPricingRouteIdPricingIdRouteImport } from './rout
 import { Route as EditHotelPricingHotelIdPricingIdRouteImport } from './routes/edit-hotel-pricing.$hotelId.$pricingId'
 import { Route as DashboardMuthowifsIdRouteImport } from './routes/dashboard/muthowifs/$id'
 import { Route as BookingsBookingIdEditRouteImport } from './routes/bookings/$bookingId/edit'
+import { Route as AgentRequestRequestIdRouteImport } from './routes/agent/request.$requestId'
 
 const VouchersRoute = VouchersRouteImport.update({
   id: '/vouchers',
@@ -264,6 +273,16 @@ const AnalyticsRoute = AnalyticsRouteImport.update({
   path: '/analytics',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AgentRequestsAdminRoute = AgentRequestsAdminRouteImport.update({
+  id: '/agent-requests-admin',
+  path: '/agent-requests-admin',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AgentRoute = AgentRouteImport.update({
+  id: '/agent',
+  path: '/agent',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AdminRoute = AdminRouteImport.update({
   id: '/admin',
   path: '/admin',
@@ -423,6 +442,37 @@ const AuthCallbackRoute = AuthCallbackRouteImport.update({
   path: '/auth/callback',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AgentRequestsRoute = AgentRequestsRouteImport.update({
+  id: '/requests',
+  path: '/requests',
+  getParentRoute: () => AgentRoute,
+} as any)
+const AgentProfileRoute = AgentProfileRouteImport.update({
+  id: '/profile',
+  path: '/profile',
+  getParentRoute: () => AgentRoute,
+} as any)
+const AgentNotificationsRoute = AgentNotificationsRouteImport.update({
+  id: '/notifications',
+  path: '/notifications',
+  getParentRoute: () => AgentRoute,
+} as any)
+const AgentDashboardRoute = AgentDashboardRouteImport.update({
+  id: '/dashboard',
+  path: '/dashboard',
+  getParentRoute: () => AgentRoute,
+} as any)
+const AgentCreateRequestRoute = AgentCreateRequestRouteImport.update({
+  id: '/create-request',
+  path: '/create-request',
+  getParentRoute: () => AgentRoute,
+} as any)
+const AgentRequestAdminDetailIdRoute =
+  AgentRequestAdminDetailIdRouteImport.update({
+    id: '/agent-request-admin-detail/$id',
+    path: '/agent-request-admin-detail/$id',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const CustomLaQuotationRoute = CustomLaQuotationRouteImport.update({
   id: '/custom-la-quotation/',
   path: '/custom-la-quotation/',
@@ -460,10 +510,17 @@ const BookingsBookingIdEditRoute = BookingsBookingIdEditRouteImport.update({
   path: '/$bookingId/edit',
   getParentRoute: () => BookingsRoute,
 } as any)
+const AgentRequestRequestIdRoute = AgentRequestRequestIdRouteImport.update({
+  id: '/request/$requestId',
+  path: '/request/$requestId',
+  getParentRoute: () => AgentRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/admin': typeof AdminRoute
+  '/agent': typeof AgentRouteWithChildren
+  '/agent-requests-admin': typeof AgentRequestsAdminRoute
   '/analytics': typeof AnalyticsRoute
   '/booking-detail': typeof BookingDetailRoute
   '/booking-edit': typeof BookingEditRoute
@@ -501,6 +558,12 @@ export interface FileRoutesByFullPath {
   '/transportation-bookings': typeof TransportationBookingsRoute
   '/vouchers': typeof VouchersRouteWithChildren
   '/custom-la-quotation': typeof CustomLaQuotationRoute
+  '/agent-request-admin-detail/$id': typeof AgentRequestAdminDetailIdRoute
+  '/agent/create-request': typeof AgentCreateRequestRoute
+  '/agent/dashboard': typeof AgentDashboardRoute
+  '/agent/notifications': typeof AgentNotificationsRoute
+  '/agent/profile': typeof AgentProfileRoute
+  '/agent/requests': typeof AgentRequestsRoute
   '/auth/callback': typeof AuthCallbackRoute
   '/booking-view/$bookingId': typeof BookingViewBookingIdRoute
   '/client-detail/$clientId': typeof ClientDetailClientIdRoute
@@ -529,6 +592,7 @@ export interface FileRoutesByFullPath {
   '/clients/': typeof ClientsIndexRoute
   '/store/': typeof StoreIndexRoute
   '/vouchers/': typeof VouchersIndexRoute
+  '/agent/request/$requestId': typeof AgentRequestRequestIdRoute
   '/bookings/$bookingId/edit': typeof BookingsBookingIdEditRoute
   '/dashboard/muthowifs/$id': typeof DashboardMuthowifsIdRoute
   '/edit-hotel-pricing/$hotelId/$pricingId': typeof EditHotelPricingHotelIdPricingIdRoute
@@ -539,6 +603,8 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/admin': typeof AdminRoute
+  '/agent': typeof AgentRouteWithChildren
+  '/agent-requests-admin': typeof AgentRequestsAdminRoute
   '/analytics': typeof AnalyticsRoute
   '/booking-detail': typeof BookingDetailRoute
   '/booking-edit': typeof BookingEditRoute
@@ -573,6 +639,12 @@ export interface FileRoutesByTo {
   '/service-orders': typeof ServiceOrdersRouteWithChildren
   '/transportation-bookings': typeof TransportationBookingsRoute
   '/custom-la-quotation': typeof CustomLaQuotationRoute
+  '/agent-request-admin-detail/$id': typeof AgentRequestAdminDetailIdRoute
+  '/agent/create-request': typeof AgentCreateRequestRoute
+  '/agent/dashboard': typeof AgentDashboardRoute
+  '/agent/notifications': typeof AgentNotificationsRoute
+  '/agent/profile': typeof AgentProfileRoute
+  '/agent/requests': typeof AgentRequestsRoute
   '/auth/callback': typeof AuthCallbackRoute
   '/booking-view/$bookingId': typeof BookingViewBookingIdRoute
   '/client-detail/$clientId': typeof ClientDetailClientIdRoute
@@ -601,6 +673,7 @@ export interface FileRoutesByTo {
   '/clients': typeof ClientsIndexRoute
   '/store': typeof StoreIndexRoute
   '/vouchers': typeof VouchersIndexRoute
+  '/agent/request/$requestId': typeof AgentRequestRequestIdRoute
   '/bookings/$bookingId/edit': typeof BookingsBookingIdEditRoute
   '/dashboard/muthowifs/$id': typeof DashboardMuthowifsIdRoute
   '/edit-hotel-pricing/$hotelId/$pricingId': typeof EditHotelPricingHotelIdPricingIdRoute
@@ -612,6 +685,8 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/admin': typeof AdminRoute
+  '/agent': typeof AgentRouteWithChildren
+  '/agent-requests-admin': typeof AgentRequestsAdminRoute
   '/analytics': typeof AnalyticsRoute
   '/booking-detail': typeof BookingDetailRoute
   '/booking-edit': typeof BookingEditRoute
@@ -649,6 +724,12 @@ export interface FileRoutesById {
   '/transportation-bookings': typeof TransportationBookingsRoute
   '/vouchers': typeof VouchersRouteWithChildren
   '/custom-la-quotation/': typeof CustomLaQuotationRoute
+  '/agent-request-admin-detail/$id': typeof AgentRequestAdminDetailIdRoute
+  '/agent/create-request': typeof AgentCreateRequestRoute
+  '/agent/dashboard': typeof AgentDashboardRoute
+  '/agent/notifications': typeof AgentNotificationsRoute
+  '/agent/profile': typeof AgentProfileRoute
+  '/agent/requests': typeof AgentRequestsRoute
   '/auth/callback': typeof AuthCallbackRoute
   '/booking-view/$bookingId': typeof BookingViewBookingIdRoute
   '/client-detail/$clientId': typeof ClientDetailClientIdRoute
@@ -677,6 +758,7 @@ export interface FileRoutesById {
   '/clients/': typeof ClientsIndexRoute
   '/store/': typeof StoreIndexRoute
   '/vouchers/': typeof VouchersIndexRoute
+  '/agent/request/$requestId': typeof AgentRequestRequestIdRoute
   '/bookings/$bookingId/edit': typeof BookingsBookingIdEditRoute
   '/dashboard/muthowifs/$id': typeof DashboardMuthowifsIdRoute
   '/edit-hotel-pricing/$hotelId/$pricingId': typeof EditHotelPricingHotelIdPricingIdRoute
@@ -689,6 +771,8 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/admin'
+    | '/agent'
+    | '/agent-requests-admin'
     | '/analytics'
     | '/booking-detail'
     | '/booking-edit'
@@ -726,6 +810,12 @@ export interface FileRouteTypes {
     | '/transportation-bookings'
     | '/vouchers'
     | '/custom-la-quotation'
+    | '/agent-request-admin-detail/$id'
+    | '/agent/create-request'
+    | '/agent/dashboard'
+    | '/agent/notifications'
+    | '/agent/profile'
+    | '/agent/requests'
     | '/auth/callback'
     | '/booking-view/$bookingId'
     | '/client-detail/$clientId'
@@ -754,6 +844,7 @@ export interface FileRouteTypes {
     | '/clients/'
     | '/store/'
     | '/vouchers/'
+    | '/agent/request/$requestId'
     | '/bookings/$bookingId/edit'
     | '/dashboard/muthowifs/$id'
     | '/edit-hotel-pricing/$hotelId/$pricingId'
@@ -764,6 +855,8 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/admin'
+    | '/agent'
+    | '/agent-requests-admin'
     | '/analytics'
     | '/booking-detail'
     | '/booking-edit'
@@ -798,6 +891,12 @@ export interface FileRouteTypes {
     | '/service-orders'
     | '/transportation-bookings'
     | '/custom-la-quotation'
+    | '/agent-request-admin-detail/$id'
+    | '/agent/create-request'
+    | '/agent/dashboard'
+    | '/agent/notifications'
+    | '/agent/profile'
+    | '/agent/requests'
     | '/auth/callback'
     | '/booking-view/$bookingId'
     | '/client-detail/$clientId'
@@ -826,6 +925,7 @@ export interface FileRouteTypes {
     | '/clients'
     | '/store'
     | '/vouchers'
+    | '/agent/request/$requestId'
     | '/bookings/$bookingId/edit'
     | '/dashboard/muthowifs/$id'
     | '/edit-hotel-pricing/$hotelId/$pricingId'
@@ -836,6 +936,8 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/admin'
+    | '/agent'
+    | '/agent-requests-admin'
     | '/analytics'
     | '/booking-detail'
     | '/booking-edit'
@@ -873,6 +975,12 @@ export interface FileRouteTypes {
     | '/transportation-bookings'
     | '/vouchers'
     | '/custom-la-quotation/'
+    | '/agent-request-admin-detail/$id'
+    | '/agent/create-request'
+    | '/agent/dashboard'
+    | '/agent/notifications'
+    | '/agent/profile'
+    | '/agent/requests'
     | '/auth/callback'
     | '/booking-view/$bookingId'
     | '/client-detail/$clientId'
@@ -901,6 +1009,7 @@ export interface FileRouteTypes {
     | '/clients/'
     | '/store/'
     | '/vouchers/'
+    | '/agent/request/$requestId'
     | '/bookings/$bookingId/edit'
     | '/dashboard/muthowifs/$id'
     | '/edit-hotel-pricing/$hotelId/$pricingId'
@@ -912,6 +1021,8 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AdminRoute: typeof AdminRoute
+  AgentRoute: typeof AgentRouteWithChildren
+  AgentRequestsAdminRoute: typeof AgentRequestsAdminRoute
   AnalyticsRoute: typeof AnalyticsRoute
   BookingDetailRoute: typeof BookingDetailRoute
   BookingEditRoute: typeof BookingEditRoute
@@ -949,6 +1060,7 @@ export interface RootRouteChildren {
   TransportationBookingsRoute: typeof TransportationBookingsRoute
   VouchersRoute: typeof VouchersRouteWithChildren
   CustomLaQuotationRoute: typeof CustomLaQuotationRoute
+  AgentRequestAdminDetailIdRoute: typeof AgentRequestAdminDetailIdRoute
   AuthCallbackRoute: typeof AuthCallbackRoute
   BookingViewBookingIdRoute: typeof BookingViewBookingIdRoute
   ClientDetailClientIdRoute: typeof ClientDetailClientIdRoute
@@ -1223,6 +1335,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AnalyticsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/agent-requests-admin': {
+      id: '/agent-requests-admin'
+      path: '/agent-requests-admin'
+      fullPath: '/agent-requests-admin'
+      preLoaderRoute: typeof AgentRequestsAdminRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/agent': {
+      id: '/agent'
+      path: '/agent'
+      fullPath: '/agent'
+      preLoaderRoute: typeof AgentRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/admin': {
       id: '/admin'
       path: '/admin'
@@ -1433,6 +1559,48 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthCallbackRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/agent/requests': {
+      id: '/agent/requests'
+      path: '/requests'
+      fullPath: '/agent/requests'
+      preLoaderRoute: typeof AgentRequestsRouteImport
+      parentRoute: typeof AgentRoute
+    }
+    '/agent/profile': {
+      id: '/agent/profile'
+      path: '/profile'
+      fullPath: '/agent/profile'
+      preLoaderRoute: typeof AgentProfileRouteImport
+      parentRoute: typeof AgentRoute
+    }
+    '/agent/notifications': {
+      id: '/agent/notifications'
+      path: '/notifications'
+      fullPath: '/agent/notifications'
+      preLoaderRoute: typeof AgentNotificationsRouteImport
+      parentRoute: typeof AgentRoute
+    }
+    '/agent/dashboard': {
+      id: '/agent/dashboard'
+      path: '/dashboard'
+      fullPath: '/agent/dashboard'
+      preLoaderRoute: typeof AgentDashboardRouteImport
+      parentRoute: typeof AgentRoute
+    }
+    '/agent/create-request': {
+      id: '/agent/create-request'
+      path: '/create-request'
+      fullPath: '/agent/create-request'
+      preLoaderRoute: typeof AgentCreateRequestRouteImport
+      parentRoute: typeof AgentRoute
+    }
+    '/agent-request-admin-detail/$id': {
+      id: '/agent-request-admin-detail/$id'
+      path: '/agent-request-admin-detail/$id'
+      fullPath: '/agent-request-admin-detail/$id'
+      preLoaderRoute: typeof AgentRequestAdminDetailIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/custom-la-quotation/': {
       id: '/custom-la-quotation/'
       path: '/custom-la-quotation'
@@ -1482,8 +1650,35 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof BookingsBookingIdEditRouteImport
       parentRoute: typeof BookingsRoute
     }
+    '/agent/request/$requestId': {
+      id: '/agent/request/$requestId'
+      path: '/request/$requestId'
+      fullPath: '/agent/request/$requestId'
+      preLoaderRoute: typeof AgentRequestRequestIdRouteImport
+      parentRoute: typeof AgentRoute
+    }
   }
 }
+
+interface AgentRouteChildren {
+  AgentCreateRequestRoute: typeof AgentCreateRequestRoute
+  AgentDashboardRoute: typeof AgentDashboardRoute
+  AgentNotificationsRoute: typeof AgentNotificationsRoute
+  AgentProfileRoute: typeof AgentProfileRoute
+  AgentRequestsRoute: typeof AgentRequestsRoute
+  AgentRequestRequestIdRoute: typeof AgentRequestRequestIdRoute
+}
+
+const AgentRouteChildren: AgentRouteChildren = {
+  AgentCreateRequestRoute: AgentCreateRequestRoute,
+  AgentDashboardRoute: AgentDashboardRoute,
+  AgentNotificationsRoute: AgentNotificationsRoute,
+  AgentProfileRoute: AgentProfileRoute,
+  AgentRequestsRoute: AgentRequestsRoute,
+  AgentRequestRequestIdRoute: AgentRequestRequestIdRoute,
+}
+
+const AgentRouteWithChildren = AgentRoute._addFileChildren(AgentRouteChildren)
 
 interface BookingsRouteChildren {
   BookingsBookingIdEditRoute: typeof BookingsBookingIdEditRoute
@@ -1586,6 +1781,8 @@ const VouchersRouteWithChildren = VouchersRoute._addFileChildren(
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AdminRoute: AdminRoute,
+  AgentRoute: AgentRouteWithChildren,
+  AgentRequestsAdminRoute: AgentRequestsAdminRoute,
   AnalyticsRoute: AnalyticsRoute,
   BookingDetailRoute: BookingDetailRoute,
   BookingEditRoute: BookingEditRoute,
@@ -1623,6 +1820,7 @@ const rootRouteChildren: RootRouteChildren = {
   TransportationBookingsRoute: TransportationBookingsRoute,
   VouchersRoute: VouchersRouteWithChildren,
   CustomLaQuotationRoute: CustomLaQuotationRoute,
+  AgentRequestAdminDetailIdRoute: AgentRequestAdminDetailIdRoute,
   AuthCallbackRoute: AuthCallbackRoute,
   BookingViewBookingIdRoute: BookingViewBookingIdRoute,
   ClientDetailClientIdRoute: ClientDetailClientIdRoute,

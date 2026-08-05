@@ -9,6 +9,7 @@ import { Download, FileText, Loader2, MessageCircle, Building2, User, Banknote }
 export const Route = createFileRoute("/receipt-detail")({
   validateSearch: (search: Record<string, unknown>) => {
     let id = typeof search.id === "string" ? search.id : search.id !== undefined ? String(search.id) : "";
+    let number = typeof search.number === "string" ? search.number : "";
     if (id.startsWith('"') && id.endsWith('"')) {
       id = id.slice(1, -1);
     }
@@ -19,14 +20,27 @@ export const Route = createFileRoute("/receipt-detail")({
       // ignore
     }
     id = id.replace(/^"+|"+$/g, "");
-    return { id };
+
+    if (number.startsWith('"') && number.endsWith('"')) {
+      number = number.slice(1, -1);
+    }
+    try {
+      const decoded = decodeURIComponent(number);
+      if (decoded !== number) number = decoded;
+    } catch {
+      // ignore
+    }
+    number = number.replace(/^"+|"+$/g, "");
+
+    return { id, number };
   },
   component: ReceiptDetailPage,
 });
 
 function ReceiptDetailPage() {
-  const { id } = Route.useSearch();
-  const { data: receipt, isLoading, error } = useReceipt(id);
+  const { id, number } = Route.useSearch();
+  const queryParam = number || id;
+  const { data: receipt, isLoading, error } = useReceipt(queryParam);
 
   const handleDownload = () => {
     if (!receipt) return;
@@ -54,10 +68,10 @@ function ReceiptDetailPage() {
     window.open(`https://wa.me/?text=${encodeURIComponent(message)}`, '_blank');
   };
 
-  if (!id) {
+  if (!queryParam) {
     return (
-      <PageLayout title="Receipt Detail" subtitle="Missing receipt ID">
-        <div className="text-center text-red-600 p-8">Receipt ID is required</div>
+      <PageLayout title="Receipt Detail" subtitle="Missing receipt identifier">
+        <div className="text-center text-red-600 p-8">Receipt ID or Number is required</div>
       </PageLayout>
     );
   }

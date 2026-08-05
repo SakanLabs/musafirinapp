@@ -28,10 +28,12 @@ import publicBookingsRoutes from "./routes/publicBookings";
 import userRoutes from "./routes/users";
 import customLaRoutes from "./routes/customLa";
 import customLaBillingRoutes from "./routes/customLaBilling";
+import customLaFinanceRoutes from "./routes/customLaFinance";
 import leadsRoutes from "./routes/leads";
 import profileRoutes from "./routes/profile";
 import storeRoutes from "./routes/store";
 import muthowifBookingsRoutes from "./routes/muthowifBookings";
+import agentRequestRoutes from "./routes/agentRequests";
 
 // Auth instance is now imported from ./lib/auth.ts
 
@@ -88,10 +90,12 @@ export const app = new Hono()
   .route("/api/users", userRoutes)
   .route("/api/custom-la", customLaRoutes)
   .route("/api/custom-la-billing", customLaBillingRoutes)
+  .route("/api/custom-la-finance", customLaFinanceRoutes)
   .route("/api/leads", leadsRoutes)
   .route("/api/profile", profileRoutes)
   .route("/api/store", storeRoutes)
   .route("/api/muthowif-bookings", muthowifBookingsRoutes)
+  .route("/api/agent-requests", agentRequestRoutes)
   .get("/", (c) => {
     return c.text("Hello Hono!");
   })

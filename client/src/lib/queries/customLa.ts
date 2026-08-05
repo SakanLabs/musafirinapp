@@ -56,6 +56,22 @@ export function useUpdateCustomLaStatus() {
   });
 }
 
+export function useUpdateCustomLaRequest() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ id, data }: { id: number; data: Partial<CustomLaRequest> }) => {
+      const response = await apiClient.put<{ data: CustomLaRequest }>(`/api/custom-la/${id}`, data);
+      return response.data;
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ["custom-la-requests"] });
+      queryClient.invalidateQueries({ queryKey: ["custom-la-request", data.id] });
+    },
+  });
+}
+
+
 export function useCreateCustomLaRequest() {
   const queryClient = useQueryClient();
 
@@ -89,3 +105,108 @@ export const generateLaReceipt = async (id: number, paymentId: number) => {
   const res = await apiClient.post(`/api/custom-la-billing/${id}/receipt/${paymentId}`, {});
   return res.data;
 };
+
+// ===== FINANCE TRACKING =====
+
+export interface CustomLaExpense {
+  id: number;
+  customLaRequestId: number;
+  category: string;
+  supplierName: string;
+  description?: string | null;
+  amount: string;
+  currency: string;
+  paymentDate?: string | null;
+  paymentMethod?: string | null;
+  referenceNumber?: string | null;
+  notes?: string | null;
+  status: 'pending' | 'paid' | 'cancelled';
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface FinanceSummary {
+  customLaId: number;
+  customLaNumber: string;
+  totalAmountSAR: number;
+  totalIncome: number;
+  totalExpensesPaid: number;
+  totalExpensesPending: number;
+  totalExpensesAll: number;
+  netProfit: number;
+  projectedProfit: number;
+  profitMarginPercent: string;
+  categoryBreakdown: Record<string, {
+    total: number;
+    paid: number;
+    pending: number;
+    count: number;
+  }>;
+}
+
+export function useCustomLaFinanceSummary(laId: number) {
+  return useQuery({
+    queryKey: ['custom-la-finance-summary', laId],
+    queryFn: async () => {
+      const response = await apiClient.get<{ data: FinanceSummary }>(`/api/custom-la-finance/${laId}/summary`);
+      return response.data;
+    },
+    enabled: !!laId,
+  });
+}
+
+export function useCustomLaExpenses(laId: number) {
+  return useQuery({
+    queryKey: ['custom-la-expenses', laId],
+    queryFn: async () => {
+      const response = await apiClient.get<{ data: CustomLaExpense[] }>(`/api/custom-la-finance/${laId}/expenses`);
+      return response.data;
+    },
+    enabled: !!laId,
+  });
+}
+
+export function useCreateCustomLaExpense() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ laId, data }: { laId: number; data: any }) => {
+      const response = await apiClient.post(`/api/custom-la-finance/${laId}/expense`, data);
+      return response.data;
+    },
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['custom-la-expenses', variables.laId] });
+      queryClient.invalidateQueries({ queryKey: ['custom-la-finance-summary', variables.laId] });
+    },
+  });
+}
+
+export function useUpdateCustomLaExpense() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ laId, expenseId, data }: { laId: number; expenseId: number; data: any }) => {
+      const response = await apiClient.put(`/api/custom-la-finance/${laId}/expense/${expenseId}`, data);
+      return response.data;
+    },
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['custom-la-expenses', variables.laId] });
+      queryClient.invalidateQueries({ queryKey: ['custom-la-finance-summary', variables.laId] });
+    },
+  });
+}
+
+export function useDeleteCustomLaExpense() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ laId, expenseId }: { laId: number; expenseId: number }) => {
+      const response = await apiClient.delete(`/api/custom-la-finance/${laId}/expense/${expenseId}`);
+      return response;
+    },
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['custom-la-expenses', variables.laId] });
+      queryClient.invalidateQueries({ queryKey: ['custom-la-finance-summary', variables.laId] });
+    },
+  });
+}

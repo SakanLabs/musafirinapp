@@ -1487,3 +1487,60 @@ export async function generateMuthowifVoucherPDF(
     await page.close();
   }
 }
+
+export async function generateAgentRequestInvoicePDF(
+  invoiceData: any,
+  agentRequestData: any
+): Promise<string> {
+  const browser = await launchBrowser();
+  const page = await browser.newPage();
+  try {
+    const templateName = 'agent-request-invoice.html';
+    const templatePath = getTemplatePath(templateName);
+    const templateHtml = fs.readFileSync(templatePath, 'utf8');
+
+    const template = Handlebars.compile(templateHtml);
+    const logoPath = getTemplatePath('logomusafirin.png');
+    const logoBase64 = fs.readFileSync(logoPath).toString('base64');
+    
+    const currency = agentRequestData.currency || "SAR";
+    const formattedAmount = Number(agentRequestData.totalAmount || invoiceData.amount || 0).toLocaleString("id-ID");
+
+    const invoiceDataForTemplate = {
+      invoiceNo: invoiceData.number,
+      date: invoiceData.issueDate ? new Date(invoiceData.issueDate).toLocaleDateString("id-ID") : new Date().toLocaleDateString("id-ID"),
+      dueDate: invoiceData.dueDate ? new Date(invoiceData.dueDate).toLocaleDateString("id-ID") : new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toLocaleDateString("id-ID"),
+      agentName: "Agent Request", 
+      totalAmount: invoiceData.amount || 0,
+      description: agentRequestData.title || "Agent Service Request",
+      currency,
+      formattedAmount,
+      logoBase64
+    };
+
+    const html = template(invoiceDataForTemplate);
+    await page.setContent(html, { waitUntil: 'networkidle0' });
+
+    const fileName = `${invoiceData.number}.pdf`;
+    const tempDir = path.join(process.cwd(), 'temp');
+    if (!fs.existsSync(tempDir)) {
+      fs.mkdirSync(tempDir, { recursive: true });
+    }
+    
+    const tempFilePath = path.join(tempDir, fileName);
+
+    await page.pdf({
+      path: tempFilePath,
+      format: 'A4',
+      printBackground: true,
+      margin: { top: '0px', right: '0px', bottom: '0px', left: '0px' }
+    });
+
+    return tempFilePath;
+  } catch (error) {
+    console.error('Failed to generate agent request invoice PDF:', error);
+    throw error;
+  } finally {
+    await page.close();
+  }
+}

@@ -232,6 +232,40 @@ app.get("/:id", async (c) => {
   }
 });
 
+// PUT /api/custom-la/:id
+app.put("/:id", async (c) => {
+  try {
+    const id = parseInt(c.req.param("id"));
+    const body = await c.req.json();
+    
+    const updateData: Record<string, any> = {
+      updatedAt: new Date(),
+    };
+    if (body.customerName !== undefined) updateData.customerName = body.customerName;
+    if (body.customerPhone !== undefined) updateData.customerPhone = body.customerPhone;
+    if (body.customerEmail !== undefined) updateData.customerEmail = body.customerEmail;
+    if (body.travelName !== undefined) updateData.travelName = body.travelName;
+    if (body.totalPax !== undefined) updateData.totalPax = body.totalPax;
+    if (body.totalAmountSAR !== undefined) updateData.totalAmountSAR = body.totalAmountSAR;
+    if (body.meta !== undefined) updateData.meta = body.meta;
+    if (body.status !== undefined) updateData.status = body.status;
+
+    const updated = await db.update(customLaRequests)
+      .set(updateData)
+      .where(eq(customLaRequests.id, id))
+      .returning();
+      
+    if (updated.length === 0) {
+      return c.json({ success: false, error: "Request not found" }, 404);
+    }
+    
+    return c.json({ success: true, data: updated[0] });
+  } catch (error) {
+    console.error("Failed to update custom LA request:", error);
+    return c.json({ success: false, error: "Failed to update custom LA request" }, 500);
+  }
+});
+
 // PUT /api/custom-la/:id/status
 app.put("/:id/status", async (c) => {
   try {
@@ -255,3 +289,4 @@ app.put("/:id/status", async (c) => {
 });
 
 export default app;
+
