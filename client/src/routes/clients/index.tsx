@@ -21,11 +21,13 @@ import {
   Phone,
   MapPin,
   Wallet,
-  AlertTriangle
+  AlertTriangle,
+  Search,
+  X
 } from "lucide-react"
 import { formatDate } from "@/lib/utils"
 import {
-  useClients,
+  useClientsPaginated,
   useUpdateClient,
   useDeleteClient,
   type Client,
@@ -38,6 +40,10 @@ export const Route = createFileRoute("/clients/")({
 
 function ClientsIndexPage() {
   const navigate = useNavigate()
+  const [searchQuery, setSearchQuery] = useState("")
+  const [currentPage, setCurrentPage] = useState(1)
+  const [pageSize, setPageSize] = useState(10)
+
   const [isEditDrawerOpen, setIsEditDrawerOpen] = useState(false)
   const [editingClient, setEditingClient] = useState<Client | null>(null)
   const [formData, setFormData] = useState({
@@ -53,7 +59,16 @@ function ClientsIndexPage() {
     type: 'error' as 'error' | 'warning'
   })
 
-  const { data: clients = [], isLoading, error } = useClients()
+  const { data: clientsResponse, isLoading, error } = useClientsPaginated({
+    page: currentPage,
+    limit: pageSize,
+    search: searchQuery
+  })
+
+  const clients = clientsResponse?.clients || []
+  const paginationInfo = clientsResponse?.pagination
+  const totalCount = Number(paginationInfo?.totalCount || 0)
+
   const updateClientMutation = useUpdateClient()
   const deleteClientMutation = useDeleteClient()
 
@@ -256,31 +271,81 @@ function ClientsIndexPage() {
             <Users className="h-4 w-4 text-gray-400" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold tracking-tight text-[#111111]">{clients.length}</div>
+            <div className="text-2xl font-bold tracking-tight text-[#111111]">{totalCount}</div>
+            <p className="text-xs text-gray-400 mt-1">Total client terdaftar</p>
           </CardContent>
         </Card>
 
         <Card className="border border-[#e5e7eb] rounded-xl shadow-none bg-white">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1">
-            <CardTitle className="text-xs font-semibold uppercase tracking-wider text-gray-500">Active Clients</CardTitle>
+            <CardTitle className="text-xs font-semibold uppercase tracking-wider text-gray-500">Hasil Pencarian</CardTitle>
+            <Search className="h-4 w-4 text-gray-400" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold tracking-tight text-[#111111]">{clients.length}</div>
+            <p className="text-xs text-gray-400 mt-1">
+              {searchQuery ? `Ditemukan untuk "${searchQuery}"` : "Halaman ini"}
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card className="border border-[#e5e7eb] rounded-xl shadow-none bg-white">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1">
+            <CardTitle className="text-xs font-semibold uppercase tracking-wider text-gray-500">Halaman</CardTitle>
             <Users className="h-4 w-4 text-gray-400" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold tracking-tight text-[#111111]">{clients.length}</div>
-            <p className="text-xs text-gray-400 mt-1">All registered clients are active</p>
+            <div className="text-2xl font-bold tracking-tight text-[#111111]">
+              {paginationInfo?.page || 1} / {paginationInfo?.totalPages || 1}
+            </div>
+            <p className="text-xs text-gray-400 mt-1">Halaman saat ini</p>
           </CardContent>
         </Card>
+      </div>
 
-        <Card className="border border-[#e5e7eb] rounded-xl shadow-none bg-white">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1">
-            <CardTitle className="text-xs font-semibold uppercase tracking-wider text-gray-500">With Deposits</CardTitle>
-            <Wallet className="h-4 w-4 text-gray-400" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold tracking-tight text-[#111111]">-</div>
-            <p className="text-xs text-gray-400 mt-1">Unavailable in list view</p>
-          </CardContent>
-        </Card>
+      {/* Search and Filter Controls */}
+      <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mb-4">
+        <div className="relative flex-1 w-full sm:w-auto">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+          <Input
+            placeholder="Cari berdasarkan nama, email, atau nomor telepon..."
+            value={searchQuery}
+            onChange={(e) => {
+              setSearchQuery(e.target.value)
+              setCurrentPage(1)
+            }}
+            className="pl-9 pr-9 h-10 border-[#e5e7eb] rounded-lg focus:border-[#111111] focus:ring-1 focus:ring-[#111111] bg-white text-sm"
+          />
+          {searchQuery && (
+            <button
+              onClick={() => {
+                setSearchQuery("")
+                setCurrentPage(1)
+              }}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 p-0.5 rounded-full hover:bg-gray-100 transition-colors"
+              title="Bersihkan pencarian"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          )}
+        </div>
+
+        <div className="flex items-center space-x-3 w-full sm:w-auto justify-end">
+          <span className="text-xs font-medium text-gray-500 whitespace-nowrap">Tampilkan:</span>
+          <select
+            value={pageSize}
+            onChange={(e) => {
+              setPageSize(Number(e.target.value))
+              setCurrentPage(1)
+            }}
+            className="h-10 px-3 py-1 bg-white border border-[#e5e7eb] rounded-lg text-xs font-medium text-gray-700 focus:outline-none focus:border-[#111111] focus:ring-1 focus:ring-[#111111]"
+          >
+            <option value={10}>10 per halaman</option>
+            <option value={25}>25 per halaman</option>
+            <option value={50}>50 per halaman</option>
+            <option value={100}>100 per halaman</option>
+          </select>
+        </div>
       </div>
 
       <div className="overflow-hidden border border-[#e5e7eb] rounded-xl bg-white shadow-none">
@@ -288,8 +353,22 @@ function ClientsIndexPage() {
           data={clients}
           columns={clientColumns}
           loading={isLoading}
-          emptyMessage="No clients found"
+          emptyMessage={
+            searchQuery
+              ? `Tidak ada data klien yang cocok dengan "${searchQuery}"`
+              : "Tidak ada data klien"
+          }
           noCard={true}
+          pagination={
+            paginationInfo
+              ? {
+                  page: paginationInfo.page,
+                  pageSize: paginationInfo.limit,
+                  total: Number(paginationInfo.totalCount),
+                  onPageChange: (newPage) => setCurrentPage(newPage)
+                }
+              : undefined
+          }
         />
       </div>
 

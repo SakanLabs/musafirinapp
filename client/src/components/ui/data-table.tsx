@@ -207,7 +207,7 @@ export function DataTable<T extends object>({
                 <p className="text-sm text-gray-700">
                   Showing{' '}
                   <span className="font-medium">
-                    {(pagination.page - 1) * pagination.pageSize + 1}
+                    {pagination.total > 0 ? (pagination.page - 1) * pagination.pageSize + 1 : 0}
                   </span>{' '}
                   to{' '}
                   <span className="font-medium">

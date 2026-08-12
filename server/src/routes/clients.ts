@@ -14,8 +14,8 @@ app.get('/', requireAdmin, async (c) => {
     const limit = parseInt(c.req.query('limit') || '10');
     const search = c.req.query('search');
     const activeParam = c.req.query('active');
+    const allParam = c.req.query('all');
     const active = activeParam === 'true' ? true : activeParam === 'false' ? false : undefined;
-    const offset = (page - 1) * limit;
 
     // Build where conditions
     const whereConditions = [];
@@ -35,6 +35,47 @@ app.get('/', requireAdmin, async (c) => {
     }
 
     const whereClause = whereConditions.length > 0 ? and(...whereConditions) : undefined;
+
+    // If 'all=true' is requested, return all records without pagination limit
+    if (allParam === 'true') {
+      const clientsWithDeposits = await db
+        .select({
+          id: clients.id,
+          name: clients.name,
+          email: clients.email,
+          phone: clients.phone,
+          address: clients.address,
+          notes: clients.notes,
+          isActive: clients.isActive,
+          createdAt: clients.createdAt,
+          updatedAt: clients.updatedAt,
+          currentBalance: clientDeposits.currentBalance,
+          totalDeposited: clientDeposits.totalDeposited,
+          totalUsed: clientDeposits.totalUsed,
+          currency: clientDeposits.currency,
+          lastTransactionAt: clientDeposits.lastTransactionAt,
+        })
+        .from(clients)
+        .leftJoin(clientDeposits, eq(clients.id, clientDeposits.clientId))
+        .where(whereClause)
+        .orderBy(desc(clients.createdAt));
+
+      const totalCount = clientsWithDeposits.length;
+
+      return c.json({
+        clients: clientsWithDeposits,
+        pagination: {
+          page: 1,
+          limit: totalCount,
+          totalCount,
+          totalPages: 1,
+          hasNext: false,
+          hasPrev: false,
+        },
+      });
+    }
+
+    const offset = (page - 1) * limit;
 
     // Get clients with their deposit information
     const clientsWithDeposits = await db
@@ -67,7 +108,7 @@ app.get('/', requireAdmin, async (c) => {
       .from(clients)
       .where(whereClause);
     
-    const totalCount = totalCountResult[0]?.count || 0;
+    const totalCount = Number(totalCountResult[0]?.count || 0);
     const totalPages = Math.ceil(totalCount / limit);
 
     return c.json({

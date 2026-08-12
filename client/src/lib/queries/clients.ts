@@ -46,25 +46,25 @@ export const clientKeys = {
 };
 
 // API Response interface for clients
-interface ClientsResponse {
+export interface ClientsResponse {
   clients: Client[];
   pagination: {
     page: number;
     limit: number;
-    totalCount: string;
+    totalCount: number | string;
     totalPages: number;
     hasNext: boolean;
     hasPrev: boolean;
   };
 }
 
-// Get all clients
+// Get all active clients (for select dropdowns)
 export function useClients() {
   return useQuery({
-    queryKey: clientKeys.lists(),
+    queryKey: clientKeys.list({ all: true, active: true }),
     queryFn: async () => {
       try {
-        const response = await apiClient.get<ClientsResponse>(`${API_ENDPOINTS.CLIENTS}?active=true`);
+        const response = await apiClient.get<ClientsResponse>(`${API_ENDPOINTS.CLIENTS}?active=true&all=true`);
         return response.clients; // Use 'clients' property instead of 'data'
       } catch (error) {
         // If unauthorized or any error, return empty array to prevent undefined error
@@ -73,6 +73,38 @@ export function useClients() {
       }
     },
     staleTime: 5 * 60 * 1000, // 5 minutes
+  });
+}
+
+export interface UseClientsPaginatedParams {
+  page?: number;
+  limit?: number;
+  search?: string;
+  active?: boolean;
+}
+
+// Get paginated clients with search query
+export function useClientsPaginated({
+  page = 1,
+  limit = 10,
+  search = '',
+  active
+}: UseClientsPaginatedParams = {}) {
+  return useQuery({
+    queryKey: clientKeys.list({ page, limit, search, active }),
+    queryFn: async () => {
+      const params = new URLSearchParams();
+      params.append('page', page.toString());
+      params.append('limit', limit.toString());
+      if (search) params.append('search', search);
+      if (active !== undefined) params.append('active', active.toString());
+
+      const response = await apiClient.get<ClientsResponse>(
+        `${API_ENDPOINTS.CLIENTS}?${params.toString()}`
+      );
+      return response;
+    },
+    staleTime: 30 * 1000, // 30 seconds
   });
 }
 
