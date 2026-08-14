@@ -45,7 +45,9 @@ async function launchBrowser() {
         '--no-sandbox',
         '--disable-setuid-sandbox',
         '--disable-dev-shm-usage',
-        '--disable-gpu'
+        '--disable-gpu',
+        '--no-zygote',
+        '--single-process'
       ]
     });
   }
@@ -111,26 +113,29 @@ export async function generateInvoicePDF(
   const browser = await launchBrowser();
   const page = await browser.newPage();
 
-  // Prepare data for template
-  const templateData = TemplateHelpers.prepareInvoiceData(invoice, booking, client, bookingItems, customDueDate, customInvoiceDate, extraServiceItems);
+  try {
+    // Prepare data for template
+    const templateData = TemplateHelpers.prepareInvoiceData(invoice, booking, client, bookingItems, customDueDate, customInvoiceDate, extraServiceItems);
 
-  // Render HTML using template engine
-  const html = templateEngine.renderInvoice(templateData);
+    // Render HTML using template engine
+    const html = templateEngine.renderInvoice(templateData);
 
-  await page.setContent(html);
-  const pdf = await page.pdf({
-    format: 'A4',
-    printBackground: true,
-    margin: {
-      top: '20px',
-      right: '20px',
-      bottom: '20px',
-      left: '20px'
-    }
-  });
+    await page.setContent(html);
+    const pdf = await page.pdf({
+      format: 'A4',
+      printBackground: true,
+      margin: {
+        top: '20px',
+        right: '20px',
+        bottom: '20px',
+        left: '20px'
+      }
+    });
 
-  await page.close();
-  return Buffer.from(pdf);
+    return Buffer.from(pdf);
+  } finally {
+    await page.close();
+  }
 }
 
 // Generate Voucher PDF
@@ -144,6 +149,7 @@ export async function generateVoucherPDF(
   const browser = await launchBrowser();
   const page = await browser.newPage();
 
+  try {
   // Import required modules for Handlebars template
   const { readFileSync } = await import('fs');
   const { join } = await import('path');
@@ -265,8 +271,10 @@ export async function generateVoucherPDF(
     }
   });
 
-  await page.close();
   return Buffer.from(pdf);
+  } finally {
+    await page.close();
+  }
 }
 
 // Upload file to MinIO
