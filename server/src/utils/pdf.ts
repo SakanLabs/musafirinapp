@@ -200,21 +200,7 @@ export async function generateVoucherPDF(
     brandName: "Musafirin",
     brandTagline: "Atur Sendiri Perjalanan Ibadahmu",
     brandWebsite: "https://hotel.musafirin.co",
-    logoBase64: (() => {
-      try {
-        const logoBuffer = readFileSync(
-          getClientPublicPath("Logo Musafirin with PT.png")
-        );
-        return logoBuffer.toString("base64");
-      } catch (e) {
-        console.warn("Voucher logo not found, using fallback");
-
-        const fallbackBuffer = readFileSync(
-          getTemplatePath("logomusafirin.png")
-        );
-        return fallbackBuffer.toString("base64");
-      }
-    })(),
+    logoBase64: TemplateHelpers.getLogoBase64(),
     voucherNo: voucher.number,
     issueDate: formatDate(new Date()),
     paymentType: "Prepaid",

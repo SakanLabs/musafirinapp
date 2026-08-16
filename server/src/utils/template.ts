@@ -359,28 +359,22 @@ export class TemplateHelpers {
    */
   static getLogoBase64(): string {
     try {
-      // 1. Try relative path from import.meta.dir (which is server/src/utils)
-      const logoPath = join(import.meta.dir, '..', '..', '..', 'client', 'public', 'Logo Musafirin with PT.png');
+      // 1. First try in templates folder (where it should be deployed)
+      const logoPath = join(import.meta.dir, '..', 'templates', 'Logo Musafirin with PT.png');
       return readFileSync(logoPath).toString('base64');
-    } catch (error) {
+    } catch (e1) {
       try {
-        // 2. Try process.cwd() fallback
-        const logoPath = join(process.cwd(), 'client', 'public', 'Logo Musafirin with PT.png');
+        // 2. Try the old client public path (fallback for dev)
+        const logoPath = join(import.meta.dir, '..', '..', '..', 'client', 'public', 'Logo Musafirin with PT.png');
         return readFileSync(logoPath).toString('base64');
-      } catch (error2) {
+      } catch (e2) {
         try {
-          // 3. Fallback to templates directory
+          // 3. Fallback to old logomusafirin.png
           const fallbackLogoPath = join(import.meta.dir, '..', 'templates', 'logomusafirin.png');
           return readFileSync(fallbackLogoPath).toString('base64');
-        } catch (err) {
-          try {
-            // 4. Fallback to process.cwd() for templates
-            const fallbackLogoPath = join(process.cwd(), 'server', 'src', 'templates', 'logomusafirin.png');
-            return readFileSync(fallbackLogoPath).toString('base64');
-          } catch (err2) {
-            console.warn('Logo file not found, using empty string');
-            return '';
-          }
+        } catch (e3) {
+          console.warn('All logo fallbacks failed, returning empty string.');
+          return '';
         }
       }
     }
