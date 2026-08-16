@@ -110,8 +110,19 @@ export async function generateInvoicePDF(
   customInvoiceDate?: Date | string,
   extraServiceItems: any[] = []
 ): Promise<Buffer> {
-  const browser = await launchBrowser();
-  const page = await browser.newPage();
+  let page;
+  try {
+    const browser = await launchBrowser();
+    page = await browser.newPage();
+  } catch (err) {
+    console.warn("Browser crashed, restarting for invoice PDF...");
+    if (browserInstance) {
+      try { await browserInstance.close(); } catch (e) {}
+      browserInstance = null;
+    }
+    const browser = await launchBrowser();
+    page = await browser.newPage();
+  }
 
   try {
     // Prepare data for template
@@ -146,8 +157,19 @@ export async function generateVoucherPDF(
   bookingItems: any[],
   qrCodeDataURL: string
 ): Promise<Buffer> {
-  const browser = await launchBrowser();
-  const page = await browser.newPage();
+  let page;
+  try {
+    const browser = await launchBrowser();
+    page = await browser.newPage();
+  } catch (err) {
+    console.warn("Browser crashed, restarting for voucher PDF...");
+    if (browserInstance) {
+      try { await browserInstance.close(); } catch (e) {}
+      browserInstance = null;
+    }
+    const browser = await launchBrowser();
+    page = await browser.newPage();
+  }
 
   try {
   // Import required modules for Handlebars template
