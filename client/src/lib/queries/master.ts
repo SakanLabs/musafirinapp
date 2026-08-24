@@ -157,6 +157,32 @@ export const useDeleteHotelPricing = () => {
   });
 };
 
+// hotel pricing import
+export interface ImportPricingResult {
+  message: string;
+  totalRowsProcessed: number;
+  hotelsCreated: number;
+  pricingCreated: number;
+  pricingOverwritten: number;
+  errors: string[];
+  sheets: { name: string; city: string; rows: number }[];
+}
+
+export const useImportHotelPricing = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (file: File) => {
+      const formData = new FormData();
+      formData.append('file', file);
+      const response = await apiClient.uploadFile<ImportPricingResult>('/api/master/hotels/import-pricing', formData);
+      return response;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['hotels'] });
+    },
+  });
+};
+
 // transport routes
 export const useTransportRoutes = () => {
   return useQuery({

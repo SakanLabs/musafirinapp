@@ -22,7 +22,8 @@
     "postgres": "^3.4.7",
     "puppeteer": "^24.22.0",
     "qrcode": "^1.5.4",
-    "shared": "workspace:*"
+    "shared": "workspace:*",
+    "xlsx": "^0.18.5"
   },
   "devDependencies": {
     "@types/bun": "latest",

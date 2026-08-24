@@ -1,8 +1,9 @@
 import { Hono } from 'hono';
 import { db } from '../db/index.js';
 import { hotels, hotelPricingPeriods, transportationRoutesMaster, transportationRoutePricingPeriods } from '../db/schema.js';
-import { eq, and } from 'drizzle-orm';
+import { eq, and, inArray } from 'drizzle-orm';
 import { requireAdmin } from '../middleware/auth.js';
+import * as XLSX from 'xlsx';
 
 const app = new Hono();
 
@@ -92,6 +93,286 @@ app.delete('/hotels/:id', requireAdmin, async (c) => {
     return c.json({ error: 'Failed to delete hotel' }, 500);
   }
 });
+
+// POST /hotels/import-pricing - Bulk import hotel pricing from Excel
+app.post('/hotels/import-pricing', requireAdmin, async (c) => {
+  try {
+    const formData = await c.req.formData();
+    const file = formData.get('file') as File | null;
+
+    if (!file) {
+      return c.json({ error: 'No file uploaded' }, 400);
+    }
+
+    // Read file buffer
+    const arrayBuffer = await file.arrayBuffer();
+    const workbook = XLSX.read(arrayBuffer, { type: 'array', cellDates: true });
+
+    const results = {
+      totalRowsProcessed: 0,
+      hotelsCreated: 0,
+      pricingCreated: 0,
+      pricingOverwritten: 0,
+      errors: [] as string[],
+      sheets: [] as { name: string; city: string; rows: number }[],
+    };
+
+    // Fetch all existing hotels upfront for matching
+    const existingHotels = await db.select().from(hotels);
+    const hotelMap = new Map<string, typeof existingHotels[0]>();
+    existingHotels.forEach(h => hotelMap.set(h.name.toLowerCase().trim(), h));
+
+    for (const sheetName of workbook.SheetNames) {
+      const sheet = workbook.Sheets[sheetName];
+      if (!sheet) continue;
+
+      // Only process sheets whose name contains "Makkah" or "Madinah", silently skip others
+      const sheetNameLower = sheetName.toLowerCase().trim();
+      let city: 'Makkah' | 'Madinah';
+      if (sheetNameLower.includes('makkah') || sheetNameLower.includes('mekah') || sheetNameLower.includes('mekkah')) {
+        city = 'Makkah';
+      } else if (sheetNameLower.includes('madinah') || sheetNameLower.includes('medina') || sheetNameLower.includes('medinah')) {
+        city = 'Madinah';
+      } else {
+        // Skip sheets that are not Makkah/Madinah (e.g. Dashboard, Syarat dan Ketentuan)
+        continue;
+      }
+
+      // Convert sheet to JSON - read all rows as arrays
+      const rows = XLSX.utils.sheet_to_json<any[]>(sheet, { header: 1, defval: '', raw: false, dateNF: 'dd mmm yyyy' });
+      
+      if (rows.length < 5) {
+        results.errors.push(`Sheet "${sheetName}": Not enough rows (need at least 5, got ${rows.length})`);
+        continue;
+      }
+
+      // Find header row (row 4, index 3) to detect column positions
+      // Look for the sub-header row that contains "From", "To", "Double", "Triple", "Quad" etc.
+      let headerRowIndex = -1;
+      for (let i = 0; i < Math.min(rows.length, 10); i++) {
+        const row = rows[i];
+        if (!row) continue;
+        const rowStr = row.map((c: any) => String(c || '').toLowerCase()).join('|');
+        if (rowStr.includes('from') && rowStr.includes('to') && (rowStr.includes('double') || rowStr.includes('triple') || rowStr.includes('quad'))) {
+          headerRowIndex = i;
+          break;
+        }
+      }
+
+      if (headerRowIndex === -1) {
+        results.errors.push(`Sheet "${sheetName}": Cannot find header row with columns "From", "To", "Double/Triple/Quad".`);
+        continue;
+      }
+
+      const headerRow = rows[headerRowIndex]!;
+      const headerMap: Record<string, number> = {};
+      for (let colIdx = 0; colIdx < headerRow.length; colIdx++) {
+        const val = String(headerRow[colIdx] || '').toLowerCase().trim();
+        if (val) headerMap[val] = colIdx;
+      }
+
+      // Map column indices
+      const colNamaHotel = headerMap['nama hotel'] ?? headerMap['hotel name'] ?? headerMap['hotel'] ?? 1; // Default column B
+      const colBintang = headerMap['bintang'] ?? headerMap['star'] ?? headerMap['stars'] ?? 2; // Default column C
+      const colFrom = headerMap['from'] ?? 3; // Default column D
+      const colTo = headerMap['to'] ?? 4; // Default column E
+      // Days column is skipped (computed)
+      const colDouble = headerMap['double'] ?? 6; // Default column G
+      const colTriple = headerMap['triple'] ?? 7; // Default column H
+      const colQuad = headerMap['quad'] ?? 8; // Default column I
+      // Future columns
+      const colCostPrice = headerMap['cost price'] ?? headerMap['costprice'] ?? headerMap['cost'] ?? -1;
+      const colAgentPrice = headerMap['agent price'] ?? headerMap['agentprice'] ?? headerMap['agent'] ?? -1;
+
+      let sheetRowCount = 0;
+
+      // Process data rows (start after header row)
+      for (let rowIdx = headerRowIndex + 1; rowIdx < rows.length; rowIdx++) {
+        const row = rows[rowIdx];
+        if (!row) continue;
+
+        const hotelName = String(row[colNamaHotel] || '').trim();
+        if (!hotelName) continue; // Skip empty rows
+
+        const fromRaw = row[colFrom];
+        const toRaw = row[colTo];
+
+        if (!fromRaw || !toRaw) {
+          results.errors.push(`Sheet "${sheetName}", Row ${rowIdx + 1}: Missing dates for hotel "${hotelName}"`);
+          continue;
+        }
+
+        // Parse dates
+        let startDate: Date;
+        let endDate: Date;
+        try {
+          startDate = parseExcelDate(fromRaw);
+          endDate = parseExcelDate(toRaw);
+        } catch (e: any) {
+          results.errors.push(`Sheet "${sheetName}", Row ${rowIdx + 1}: Invalid date format - ${e.message}`);
+          continue;
+        }
+
+        if (isNaN(startDate.getTime()) || isNaN(endDate.getTime())) {
+          results.errors.push(`Sheet "${sheetName}", Row ${rowIdx + 1}: Invalid date for hotel "${hotelName}"`);
+          continue;
+        }
+
+        // Parse star rating
+        const starRaw = row[colBintang];
+        const starRating = starRaw ? parseInt(String(starRaw)) : null;
+
+        // Parse prices for each room type
+        const priceDouble = parsePrice(row[colDouble]);
+        const priceTriple = parsePrice(row[colTriple]);
+        const priceQuad = parsePrice(row[colQuad]);
+
+        // Parse optional cost/agent prices
+        const costPrice = colCostPrice >= 0 ? parsePrice(row[colCostPrice]) : null;
+        const agentPrice = colAgentPrice >= 0 ? parsePrice(row[colAgentPrice]) : null;
+
+        if (priceDouble === null && priceTriple === null && priceQuad === null) {
+          results.errors.push(`Sheet "${sheetName}", Row ${rowIdx + 1}: No valid prices for hotel "${hotelName}"`);
+          continue;
+        }
+
+        // Find or create hotel
+        let hotel = hotelMap.get(hotelName.toLowerCase().trim());
+        if (!hotel) {
+          // Create new hotel
+          const insertResult = await db.insert(hotels).values({
+            name: hotelName,
+            city: city,
+            starRating: starRating || undefined,
+            isActive: true,
+            createdAt: new Date(),
+            updatedAt: new Date(),
+          }).returning();
+          const newHotel = insertResult[0]!;
+          hotel = newHotel;
+          hotelMap.set(hotelName.toLowerCase().trim(), newHotel);
+          results.hotelsCreated++;
+        } else if (starRating && !hotel.starRating) {
+          // Update star rating if it was empty and Excel provides it
+          await db.update(hotels).set({ starRating, updatedAt: new Date() }).where(eq(hotels.id, hotel.id));
+          hotel.starRating = starRating;
+        }
+
+        // Insert pricing for each room type
+        const roomTypes: { type: string; price: number | null }[] = [
+          { type: 'Double', price: priceDouble },
+          { type: 'Triple', price: priceTriple },
+          { type: 'Quad', price: priceQuad },
+        ];
+
+        for (const rt of roomTypes) {
+          if (rt.price === null || rt.price <= 0) continue;
+
+          // Check for existing pricing to overwrite
+          const existing = await db.select().from(hotelPricingPeriods).where(
+            and(
+              eq(hotelPricingPeriods.hotelId, hotel!.id),
+              eq(hotelPricingPeriods.roomType, rt.type),
+              eq(hotelPricingPeriods.startDate, startDate),
+              eq(hotelPricingPeriods.endDate, endDate),
+            )
+          );
+
+          if (existing.length > 0) {
+            // Overwrite existing
+            const existingRecord = existing[0]!;
+            await db.update(hotelPricingPeriods).set({
+              sellingPrice: rt.price.toString(),
+              costPrice: costPrice !== null ? costPrice.toString() : existingRecord.costPrice,
+              agentPrice: agentPrice !== null ? agentPrice.toString() : existingRecord.agentPrice,
+              isActive: true,
+              updatedAt: new Date(),
+            }).where(eq(hotelPricingPeriods.id, existingRecord.id));
+            results.pricingOverwritten++;
+          } else {
+            // Create new
+            await db.insert(hotelPricingPeriods).values({
+              hotelId: hotel!.id,
+              roomType: rt.type,
+              mealPlan: 'Room Only',
+              startDate: startDate,
+              endDate: endDate,
+              sellingPrice: rt.price.toString(),
+              costPrice: costPrice !== null ? costPrice.toString() : '0',
+              agentPrice: agentPrice !== null ? agentPrice.toString() : '0',
+              currency: 'SAR',
+              isActive: true,
+              createdAt: new Date(),
+              updatedAt: new Date(),
+            });
+            results.pricingCreated++;
+          }
+        }
+
+        sheetRowCount++;
+        results.totalRowsProcessed++;
+      }
+
+      results.sheets.push({ name: sheetName, city, rows: sheetRowCount });
+    }
+
+    return c.json({
+      message: 'Import completed',
+      ...results,
+    });
+  } catch (error: any) {
+    console.error('Error importing hotel pricing:', error);
+    return c.json({ error: `Failed to import: ${error.message}` }, 500);
+  }
+});
+
+// Indonesian month abbreviation mapping
+const INDONESIAN_MONTHS: Record<string, string> = {
+  'jan': 'Jan', 'feb': 'Feb', 'mar': 'Mar', 'apr': 'Apr',
+  'mei': 'May', 'jun': 'Jun', 'jul': 'Jul',
+  'ags': 'Aug', 'agu': 'Aug', 'agust': 'Aug', 'agustus': 'Aug',
+  'sep': 'Sep', 'sept': 'Sep',
+  'okt': 'Oct',
+  'nov': 'Nov', 'nop': 'Nov',
+  'des': 'Dec',
+  // Also map full Indonesian month names
+  'januari': 'Jan', 'februari': 'Feb', 'maret': 'Mar', 'april': 'Apr',
+  'juni': 'Jun', 'juli': 'Jul',
+  'september': 'Sep', 'oktober': 'Oct', 'november': 'Nov', 'desember': 'Dec',
+};
+
+// Helper: parse Excel date value (could be Date object, serial number, or string)
+function parseExcelDate(value: any): Date {
+  if (value instanceof Date) return value;
+  if (typeof value === 'number') {
+    // Excel serial date number
+    return XLSX.SSF.parse_date_code(value) as unknown as Date;
+  }
+  if (typeof value === 'string') {
+    const trimmed = value.trim();
+    // Try direct Date parse
+    const parsed = new Date(trimmed);
+    if (!isNaN(parsed.getTime())) return parsed;
+    // Try "13 Aug 2026" or "15 Ags 2026" format (with Indonesian month support)
+    const match = trimmed.match(/^(\d{1,2})\s+(\w+)\s+(\d{4})$/);
+    if (match) {
+      const monthStr = match[2]!;
+      // Convert Indonesian month to English if needed
+      const englishMonth = INDONESIAN_MONTHS[monthStr.toLowerCase()] || monthStr;
+      const d = new Date(`${englishMonth} ${match[1]}, ${match[3]}`);
+      if (!isNaN(d.getTime())) return d;
+    }
+    throw new Error(`Cannot parse date: "${trimmed}"`);
+  }
+  throw new Error(`Unsupported date type: ${typeof value}`);
+}
+
+// Helper: parse price value, returns null if invalid
+function parsePrice(value: any): number | null {
+  if (value === undefined || value === null || value === '') return null;
+  const num = typeof value === 'number' ? value : parseFloat(String(value).replace(/[^0-9.-]/g, ''));
+  return isNaN(num) ? null : num;
+}
 
 // ==========================================
 // HOTEL PRICING PERIODS

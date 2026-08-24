@@ -1,10 +1,18 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router"
-import { useState, useMemo } from "react"
+import { useState, useMemo, useRef, useCallback } from "react"
 import { toast } from "sonner"
 import { PageLayout } from "@/components/layout/PageLayout"
 import { DataTable, type Column } from "@/components/ui/data-table"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "@/components/ui/dialog"
 import {
   Plus,
   Eye,
@@ -17,12 +25,17 @@ import {
   X,
   Loader2,
   CheckCircle2,
-  XCircle
+  XCircle,
+  Upload,
+  FileSpreadsheet,
+  AlertCircle,
 } from "lucide-react"
 import {
   useHotels,
   useDeleteHotel,
-  type Hotel
+  useImportHotelPricing,
+  type Hotel,
+  type ImportPricingResult,
 } from "@/lib/queries/master"
 
 export const Route = createFileRoute("/master-hotels")({
@@ -33,10 +46,18 @@ function MasterHotelsPage() {
   const navigate = useNavigate()
   const { data: hotels = [], isLoading, error } = useHotels()
   const deleteHotelMutation = useDeleteHotel()
+  const importMutation = useImportHotelPricing()
 
   const [searchQuery, setSearchQuery] = useState("")
   const [cityFilter, setCityFilter] = useState("All")
   const [statusFilter, setStatusFilter] = useState("All")
+
+  // Import modal state
+  const [importOpen, setImportOpen] = useState(false)
+  const [selectedFile, setSelectedFile] = useState<File | null>(null)
+  const [importResult, setImportResult] = useState<ImportPricingResult | null>(null)
+  const [isDragOver, setIsDragOver] = useState(false)
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
   const filteredHotels = useMemo(() => {
     return hotels.filter(h => {
@@ -64,6 +85,62 @@ function MasterHotelsPage() {
     } catch {
       toast.error('Failed to delete hotel')
     }
+  }
+
+  // Import handlers
+  const handleFileSelect = useCallback((file: File) => {
+    const validTypes = [
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      'application/vnd.ms-excel',
+    ]
+    const validExtensions = ['.xlsx', '.xls']
+    const ext = file.name.substring(file.name.lastIndexOf('.')).toLowerCase()
+
+    if (!validTypes.includes(file.type) && !validExtensions.includes(ext)) {
+      toast.error('Please upload an Excel file (.xlsx or .xls)')
+      return
+    }
+    setSelectedFile(file)
+    setImportResult(null)
+  }, [])
+
+  const handleDrop = useCallback((e: React.DragEvent) => {
+    e.preventDefault()
+    setIsDragOver(false)
+    const file = e.dataTransfer.files[0]
+    if (file) handleFileSelect(file)
+  }, [handleFileSelect])
+
+  const handleDragOver = useCallback((e: React.DragEvent) => {
+    e.preventDefault()
+    setIsDragOver(true)
+  }, [])
+
+  const handleDragLeave = useCallback((e: React.DragEvent) => {
+    e.preventDefault()
+    setIsDragOver(false)
+  }, [])
+
+  const handleImport = async () => {
+    if (!selectedFile) return
+    try {
+      const result = await importMutation.mutateAsync(selectedFile)
+      setImportResult(result)
+      if (result.errors.length === 0) {
+        toast.success(`Import berhasil! ${result.pricingCreated} harga ditambahkan, ${result.pricingOverwritten} di-overwrite.`)
+      } else {
+        toast.warning(`Import selesai dengan ${result.errors.length} warning.`)
+      }
+    } catch (err: any) {
+      toast.error(err.message || 'Import gagal')
+    }
+  }
+
+  const handleCloseImport = () => {
+    setImportOpen(false)
+    setSelectedFile(null)
+    setImportResult(null)
+    setIsDragOver(false)
   }
 
   const totalHotels = hotels.length
@@ -189,13 +266,23 @@ function MasterHotelsPage() {
       title="Master Hotels"
       subtitle="Manage your hotel master database"
       actions={
-        <Button
-          onClick={() => navigate({ to: '/create-master-hotel' })}
-          className="bg-[#111111] hover:bg-[#242424] text-white h-9 px-4 rounded-md text-xs font-semibold transition-colors border border-transparent shadow-none"
-        >
-          <Plus className="h-4 w-4 mr-2" />
-          Add Hotel
-        </Button>
+        <div className="flex items-center space-x-2.5">
+          <Button
+            variant="outline"
+            onClick={() => setImportOpen(true)}
+            className="h-9 px-4 border-[#e5e7eb] text-zinc-700 hover:bg-gray-50 hover:text-black rounded-md text-xs font-semibold shadow-none"
+          >
+            <Upload className="h-4 w-4 mr-2" />
+            Import Excel
+          </Button>
+          <Button
+            onClick={() => navigate({ to: '/create-master-hotel' })}
+            className="bg-[#111111] hover:bg-[#242424] text-white h-9 px-4 rounded-md text-xs font-semibold transition-colors border border-transparent shadow-none"
+          >
+            <Plus className="h-4 w-4 mr-2" />
+            Add Hotel
+          </Button>
+        </div>
       }
     >
       {/* Stats */}
@@ -317,6 +404,191 @@ function MasterHotelsPage() {
           noCard={true}
         />
       </div>
+
+      {/* Import Excel Dialog */}
+      <Dialog open={importOpen} onOpenChange={(open) => { if (!open) handleCloseImport() }}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="flex items-center space-x-2">
+              <FileSpreadsheet className="h-5 w-5 text-emerald-600" />
+              <span>Import Harga Hotel dari Excel</span>
+            </DialogTitle>
+            <DialogDescription>
+              Upload file Excel dengan sheet "Makkah" dan/atau "Madinah". Format: Nama Hotel, Bintang, From, To, Days, Double, Triple, Quad.
+            </DialogDescription>
+          </DialogHeader>
+
+          {/* File Upload Zone */}
+          {!importResult && (
+            <div className="space-y-4">
+              <div
+                className={`
+                  relative border-2 border-dashed rounded-xl p-8 text-center transition-all cursor-pointer
+                  ${isDragOver
+                    ? 'border-emerald-400 bg-emerald-50'
+                    : selectedFile
+                      ? 'border-emerald-300 bg-emerald-50/50'
+                      : 'border-zinc-200 hover:border-zinc-300 bg-zinc-50/50'
+                  }
+                `}
+                onDrop={handleDrop}
+                onDragOver={handleDragOver}
+                onDragLeave={handleDragLeave}
+                onClick={() => fileInputRef.current?.click()}
+              >
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept=".xlsx,.xls"
+                  className="hidden"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0]
+                    if (file) handleFileSelect(file)
+                    e.target.value = '' // Reset so same file can be re-selected
+                  }}
+                />
+
+                {selectedFile ? (
+                  <div className="space-y-2">
+                    <FileSpreadsheet className="h-10 w-10 text-emerald-500 mx-auto" />
+                    <p className="text-sm font-semibold text-[#111111]">{selectedFile.name}</p>
+                    <p className="text-xs text-zinc-400">
+                      {(selectedFile.size / 1024).toFixed(1)} KB
+                    </p>
+                    <button
+                      type="button"
+                      className="text-xs text-zinc-500 hover:text-red-500 underline transition-colors"
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        setSelectedFile(null)
+                      }}
+                    >
+                      Ganti file
+                    </button>
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    <Upload className="h-10 w-10 text-zinc-300 mx-auto" />
+                    <p className="text-sm font-medium text-zinc-600">
+                      Drag & drop file Excel di sini
+                    </p>
+                    <p className="text-xs text-zinc-400">
+                      atau klik untuk pilih file (.xlsx, .xls)
+                    </p>
+                  </div>
+                )}
+              </div>
+
+              {/* Format hints */}
+              <div className="bg-zinc-50 border border-zinc-100 rounded-lg p-3">
+                <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider mb-1.5">Format yang didukung</p>
+                <ul className="text-xs text-zinc-500 space-y-1">
+                  <li>• Sheet bernama <span className="font-semibold text-zinc-700">"Makkah"</span> dan/atau <span className="font-semibold text-zinc-700">"Madinah"</span></li>
+                  <li>• Kolom: Nama Hotel, Bintang, From, To, Days, Double, Triple, Quad</li>
+                  <li>• Harga yang sama akan <span className="font-semibold text-amber-600">di-overwrite</span></li>
+                  <li>• Hotel baru akan <span className="font-semibold text-emerald-600">otomatis dibuat</span></li>
+                </ul>
+              </div>
+            </div>
+          )}
+
+          {/* Import Results */}
+          {importResult && (
+            <div className="space-y-4">
+              {/* Summary Stats */}
+              <div className="grid grid-cols-2 gap-3">
+                <div className="bg-emerald-50 border border-emerald-100 rounded-lg p-3 text-center">
+                  <p className="text-2xl font-bold text-emerald-700">{importResult.pricingCreated}</p>
+                  <p className="text-[10px] font-bold text-emerald-500 uppercase tracking-wider">Harga Ditambahkan</p>
+                </div>
+                <div className="bg-amber-50 border border-amber-100 rounded-lg p-3 text-center">
+                  <p className="text-2xl font-bold text-amber-700">{importResult.pricingOverwritten}</p>
+                  <p className="text-[10px] font-bold text-amber-500 uppercase tracking-wider">Di-overwrite</p>
+                </div>
+                <div className="bg-blue-50 border border-blue-100 rounded-lg p-3 text-center">
+                  <p className="text-2xl font-bold text-blue-700">{importResult.totalRowsProcessed}</p>
+                  <p className="text-[10px] font-bold text-blue-500 uppercase tracking-wider">Row Diproses</p>
+                </div>
+                <div className="bg-violet-50 border border-violet-100 rounded-lg p-3 text-center">
+                  <p className="text-2xl font-bold text-violet-700">{importResult.hotelsCreated}</p>
+                  <p className="text-[10px] font-bold text-violet-500 uppercase tracking-wider">Hotel Baru</p>
+                </div>
+              </div>
+
+              {/* Sheets processed */}
+              {importResult.sheets.length > 0 && (
+                <div className="bg-zinc-50 border border-zinc-100 rounded-lg p-3">
+                  <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider mb-1.5">Sheet Diproses</p>
+                  <div className="space-y-1">
+                    {importResult.sheets.map((s, i) => (
+                      <div key={i} className="flex items-center justify-between text-xs">
+                        <span className="text-zinc-700 font-medium">{s.name}</span>
+                        <span className="text-zinc-400">{s.city} · {s.rows} row</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Errors */}
+              {importResult.errors.length > 0 && (
+                <div className="bg-red-50 border border-red-100 rounded-lg p-3">
+                  <div className="flex items-center space-x-1.5 mb-1.5">
+                    <AlertCircle className="h-3.5 w-3.5 text-red-500" />
+                    <p className="text-[10px] font-bold text-red-500 uppercase tracking-wider">
+                      {importResult.errors.length} Warning{importResult.errors.length !== 1 ? 's' : ''}
+                    </p>
+                  </div>
+                  <div className="max-h-32 overflow-y-auto space-y-0.5">
+                    {importResult.errors.map((err, i) => (
+                      <p key={i} className="text-xs text-red-600">{err}</p>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          <DialogFooter>
+            {!importResult ? (
+              <>
+                <Button
+                  variant="outline"
+                  onClick={handleCloseImport}
+                  className="h-9 px-4 border-[#e5e7eb] text-zinc-700 rounded-md text-xs font-semibold shadow-none"
+                >
+                  Batal
+                </Button>
+                <Button
+                  onClick={handleImport}
+                  disabled={!selectedFile || importMutation.isPending}
+                  className="bg-[#111111] hover:bg-[#242424] text-white h-9 px-4 rounded-md text-xs font-semibold transition-colors border border-transparent shadow-none disabled:opacity-50"
+                >
+                  {importMutation.isPending ? (
+                    <>
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      Importing...
+                    </>
+                  ) : (
+                    <>
+                      <Upload className="h-4 w-4 mr-2" />
+                      Import
+                    </>
+                  )}
+                </Button>
+              </>
+            ) : (
+              <Button
+                onClick={handleCloseImport}
+                className="bg-[#111111] hover:bg-[#242424] text-white h-9 px-4 rounded-md text-xs font-semibold transition-colors border border-transparent shadow-none"
+              >
+                Selesai
+              </Button>
+            )}
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </PageLayout>
   )
 }
+

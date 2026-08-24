@@ -179,6 +179,33 @@ export const apiClient = {
       throw error;
     }
   },
+
+  // Upload file (multipart/form-data) - no Content-Type header so browser sets boundary
+  async uploadFile<T>(endpoint: string, formData: FormData): Promise<T> {
+    const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+      method: 'POST',
+      credentials: 'include',
+      body: formData,
+    });
+
+    if (!response.ok) {
+      let errorMessage = `API Error: ${response.status} ${response.statusText}`;
+      try {
+        const responseText = await response.text();
+        try {
+          const errorData = JSON.parse(responseText);
+          errorMessage = errorData.error || errorData.message || errorMessage;
+        } catch (jsonError) {
+          // Keep default if JSON parse fails
+        }
+      } catch (readError) {
+        // Keep default if reading body fails
+      }
+      throw new Error(errorMessage);
+    }
+
+    return response.json();
+  },
 };
 
 // API endpoints
