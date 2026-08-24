@@ -47,32 +47,76 @@ function formatPricing(pricing: any, userType: string) {
   };
 }
 
+// Helper to map number of guests (tamu) to expected room types
+function getTargetRoomTypes(guestsParam?: string, roomTypeParam?: string): string[] | null {
+  if (roomTypeParam && roomTypeParam.trim()) {
+    return [roomTypeParam.trim().toLowerCase()];
+  }
+  if (!guestsParam) return null;
+  const count = parseInt(String(guestsParam), 10);
+  if (isNaN(count) || count <= 0) return null;
+
+  if (count === 1) return ['single', 'double'];
+  if (count === 2) return ['double'];
+  if (count === 3) return ['triple'];
+  if (count === 4) return ['quad'];
+  if (count >= 5) return ['quint', 'quad'];
+  return null;
+}
+
 // GET /api/public/products/hotels
 app.get("/hotels", async (c) => {
   try {
-    const { city, name, checkIn, checkOut } = c.req.query();
+    const { 
+      city, 
+      name, 
+      hotelName, 
+      q, 
+      checkIn, 
+      checkInDate: checkInDateParam, 
+      checkOut, 
+      checkOutDate: checkOutDateParam, 
+      guests, 
+      pax, 
+      numberOfGuests, 
+      roomType, 
+      mealPlan,
+      meals
+    } = c.req.query();
+
+    const searchName = name || hotelName || q;
+    const checkInStr = checkIn || checkInDateParam;
+    const checkOutStr = checkOut || checkOutDateParam;
+    const guestsCount = guests || pax || numberOfGuests;
+    const selectedMealPlan = mealPlan || meals;
     
-    if (!checkIn || !checkOut) {
+    if (!checkInStr || !checkOutStr) {
       return c.json({ success: false, error: "Parameter wajib: checkIn dan checkOut harus disertakan." }, 400);
     }
 
-    const checkInDate = new Date(checkIn);
-    const checkOutDate = new Date(checkOut);
+    const checkInDate = new Date(checkInStr);
+    const checkOutDate = new Date(checkOutStr);
 
     if (isNaN(checkInDate.getTime()) || isNaN(checkOutDate.getTime())) {
       return c.json({ success: false, error: "Format tanggal checkIn atau checkOut tidak valid." }, 400);
     }
+
+    const diffTime = checkOutDate.getTime() - checkInDate.getTime();
+    const nights = Math.max(1, Math.ceil(diffTime / (1000 * 60 * 60 * 24)));
 
     const { userType, email } = await getUserTypeFromRequest(c);
     
     const hotelConditions = [eq(hotels.isActive, true)];
     
     if (city) {
-      hotelConditions.push(eq(hotels.city, city as any));
+      const cityFormatted = city.charAt(0).toUpperCase() + city.slice(1).toLowerCase();
+      if (cityFormatted === 'Makkah' || cityFormatted === 'Madinah') {
+        hotelConditions.push(eq(hotels.city, cityFormatted as any));
+      }
     }
     
-    if (name) {
-      hotelConditions.push(ilike(hotels.name, `%${name}%`));
+    if (searchName) {
+      hotelConditions.push(ilike(hotels.name, `%${searchName.trim()}%`));
     }
 
     // Fetch active hotels matching conditions
@@ -98,21 +142,63 @@ app.get("/hotels", async (c) => {
       )
       .where(and(...hotelConditions));
 
-    // Group pricing by hotel with user-based pricing
-    const formattedHotels = allHotels.map(h => {
-      const pricingOptions = hotelsWithPricing
-        .filter(hp => hp.hotel.id === h.id && hp.pricing !== null)
-        .map(hp => formatPricing(hp.pricing, userType));
-      
-      return {
-        ...h,
-        pricing: pricingOptions,
-        userType,
-        userEmail: email
-      };
-    });
+    const targetRoomTypes = getTargetRoomTypes(guestsCount, roomType);
 
-    return c.json({ success: true, data: formattedHotels, userType });
+    // Group pricing by hotel with user-based pricing & filter by specifications
+    const formattedHotels = allHotels
+      .map(h => {
+        let pricingOptions = hotelsWithPricing
+          .filter(hp => hp.hotel.id === h.id && hp.pricing !== null)
+          .map(hp => {
+            const formatted = formatPricing(hp.pricing, userType);
+            const unitPrice = parseFloat(formatted.price || "0");
+            return {
+              ...formatted,
+              nights,
+              totalPrice: (unitPrice * nights).toFixed(2)
+            };
+          });
+        
+        // Filter by room type / number of guests if specified
+        if (targetRoomTypes && targetRoomTypes.length > 0) {
+          pricingOptions = pricingOptions.filter(p => 
+            targetRoomTypes.some(target => p.roomType.toLowerCase().includes(target) || target.includes(p.roomType.toLowerCase()))
+          );
+        }
+
+        // Filter by meal plan if specified
+        if (selectedMealPlan && selectedMealPlan.trim()) {
+          const mpLower = selectedMealPlan.trim().toLowerCase();
+          pricingOptions = pricingOptions.filter(p => 
+            p.mealPlan && p.mealPlan.toLowerCase().includes(mpLower)
+          );
+        }
+        
+        return {
+          ...h,
+          pricing: pricingOptions,
+          userType,
+          userEmail: email
+        };
+      })
+      .filter(h => h.pricing.length > 0); // Only return hotels that have matching pricing for the filtered criteria
+
+    return c.json({ 
+      success: true, 
+      data: formattedHotels, 
+      meta: {
+        totalHotels: formattedHotels.length,
+        city: city || null,
+        name: searchName || null,
+        checkIn: checkInStr,
+        checkOut: checkOutStr,
+        nights,
+        guests: guestsCount ? parseInt(String(guestsCount), 10) : null,
+        targetRoomTypes: targetRoomTypes || 'all',
+        mealPlan: selectedMealPlan || null
+      },
+      userType 
+    });
   } catch (error) {
     console.error("Failed to fetch public hotels:", error);
     return c.json({ success: false, error: "Failed to fetch hotels" }, 500);

@@ -414,7 +414,7 @@ function MasterHotelsPage() {
               <span>Import Harga Hotel dari Excel</span>
             </DialogTitle>
             <DialogDescription>
-              Upload file Excel dengan sheet "Makkah" dan/atau "Madinah". Format: Nama Hotel, Bintang, From, To, Days, Double, Triple, Quad.
+              Upload file Excel dengan sheet "Makkah" dan/atau "Madinah". Format: Nama Hotel, Bintang, From, To, Days, Double, Triple, Quad, Meals.
             </DialogDescription>
           </DialogHeader>
 
@@ -484,7 +484,8 @@ function MasterHotelsPage() {
                 <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider mb-1.5">Format yang didukung</p>
                 <ul className="text-xs text-zinc-500 space-y-1">
                   <li>• Sheet bernama <span className="font-semibold text-zinc-700">"Makkah"</span> dan/atau <span className="font-semibold text-zinc-700">"Madinah"</span></li>
-                  <li>• Kolom: Nama Hotel, Bintang, From, To, Days, Double, Triple, Quad</li>
+                  <li>• Kolom: Nama Hotel, Bintang, From, To, Days, Double, Triple, Quad, Meals</li>
+                  <li>• Tipe Meals: <span className="font-semibold text-zinc-700">Room Only, Breakfast, Full Board</span> (default: Room Only)</li>
                   <li>• Harga yang sama akan <span className="font-semibold text-amber-600">di-overwrite</span></li>
                   <li>• Hotel baru akan <span className="font-semibold text-emerald-600">otomatis dibuat</span></li>
                 </ul>

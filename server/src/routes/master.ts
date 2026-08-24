@@ -180,6 +180,7 @@ app.post('/hotels/import-pricing', requireAdmin, async (c) => {
       const colDouble = headerMap['double'] ?? 6; // Default column G
       const colTriple = headerMap['triple'] ?? 7; // Default column H
       const colQuad = headerMap['quad'] ?? 8; // Default column I
+      const colMeals = headerMap['meals'] ?? headerMap['meal'] ?? headerMap['meal plan'] ?? headerMap['mealplan'] ?? (headerRow.length > 9 ? 9 : -1);
       // Future columns
       const colCostPrice = headerMap['cost price'] ?? headerMap['costprice'] ?? headerMap['cost'] ?? -1;
       const colAgentPrice = headerMap['agent price'] ?? headerMap['agentprice'] ?? headerMap['agent'] ?? -1;
@@ -221,6 +222,9 @@ app.post('/hotels/import-pricing', requireAdmin, async (c) => {
         // Parse star rating
         const starRaw = row[colBintang];
         const starRating = starRaw ? parseInt(String(starRaw)) : null;
+
+        // Parse meal plan (Room Only, Breakfast, Full Board, etc.)
+        const mealPlan = colMeals >= 0 ? parseMealPlan(row[colMeals]) : 'Room Only';
 
         // Parse prices for each room type
         const priceDouble = parsePrice(row[colDouble]);
@@ -268,11 +272,12 @@ app.post('/hotels/import-pricing', requireAdmin, async (c) => {
         for (const rt of roomTypes) {
           if (rt.price === null || rt.price <= 0) continue;
 
-          // Check for existing pricing to overwrite
+          // Check for existing pricing to overwrite (matched by hotel + roomType + mealPlan + startDate + endDate)
           const existing = await db.select().from(hotelPricingPeriods).where(
             and(
               eq(hotelPricingPeriods.hotelId, hotel!.id),
               eq(hotelPricingPeriods.roomType, rt.type),
+              eq(hotelPricingPeriods.mealPlan, mealPlan),
               eq(hotelPricingPeriods.startDate, startDate),
               eq(hotelPricingPeriods.endDate, endDate),
             )
@@ -294,7 +299,7 @@ app.post('/hotels/import-pricing', requireAdmin, async (c) => {
             await db.insert(hotelPricingPeriods).values({
               hotelId: hotel!.id,
               roomType: rt.type,
-              mealPlan: 'Room Only',
+              mealPlan: mealPlan,
               startDate: startDate,
               endDate: endDate,
               sellingPrice: rt.price.toString(),
@@ -372,6 +377,25 @@ function parsePrice(value: any): number | null {
   if (value === undefined || value === null || value === '') return null;
   const num = typeof value === 'number' ? value : parseFloat(String(value).replace(/[^0-9.-]/g, ''));
   return isNaN(num) ? null : num;
+}
+
+// Helper: parse meal plan string (Room Only, Breakfast, Full Board, Half Board)
+function parseMealPlan(value: any): string {
+  if (!value) return 'Room Only';
+  const str = String(value).trim().toLowerCase();
+  if (str === 'full board' || str === 'fullboard' || str === 'fb' || str.includes('full')) {
+    return 'Full Board';
+  }
+  if (str === 'breakfast' || str === 'bf' || str === 'bb' || str.includes('sarapan') || str.includes('breakfast')) {
+    return 'Breakfast';
+  }
+  if (str === 'half board' || str === 'halfboard' || str === 'hb' || str.includes('half')) {
+    return 'Half Board';
+  }
+  if (str === 'room only' || str === 'roomonly' || str === 'ro' || str.includes('only') || str === 'room') {
+    return 'Room Only';
+  }
+  return String(value).trim() || 'Room Only';
 }
 
 // ==========================================
