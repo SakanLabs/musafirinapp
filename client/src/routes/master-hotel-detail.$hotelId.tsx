@@ -4,6 +4,14 @@ import { toast } from "sonner"
 import { PageLayout } from "@/components/layout/PageLayout"
 import { Button } from "@/components/ui/button"
 import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "@/components/ui/dialog"
+import {
   Plus,
   Edit,
   Trash2,
@@ -20,13 +28,17 @@ import {
   Briefcase,
   CheckCircle2,
   XCircle,
-  DollarSign
+  DollarSign,
+  RotateCcw,
+  AlertTriangle,
+  AlertCircle,
 } from "lucide-react"
 import { formatDate } from "@/lib/utils"
 import {
   useHotels,
   useHotelPricing,
   useDeleteHotelPricing,
+  useResetSingleHotelPricing,
   type HotelPricingPeriod
 } from "@/lib/queries/master"
 
@@ -50,6 +62,8 @@ function MasterHotelDetailPage() {
 
   const { data: pricingPeriods = [], isLoading, error } = useHotelPricing(hotelId)
   const deletePricingMutation = useDeleteHotelPricing()
+  const resetSingleHotelMutation = useResetSingleHotelPricing()
+  const [resetOpen, setResetOpen] = useState(false)
 
   const groupedPeriods = useMemo(() => {
     const groups: Record<string, HotelPricingPeriod[]> = {}
@@ -68,6 +82,16 @@ function MasterHotelDetailPage() {
       toast.success('Deleted pricing period')
     } catch {
       toast.error('Failed to delete')
+    }
+  }
+
+  const handleResetPricing = async () => {
+    try {
+      const result = await resetSingleHotelMutation.mutateAsync(hotelId)
+      toast.success(result.message || 'Harga hotel berhasil direset')
+      setResetOpen(false)
+    } catch (err: any) {
+      toast.error(err.message || 'Gagal mereset harga hotel')
     }
   }
 
@@ -97,6 +121,16 @@ function MasterHotelDetailPage() {
             <ArrowLeft className="h-4 w-4 mr-2" />
             Back
           </Button>
+          {pricingPeriods.length > 0 && (
+            <Button
+              variant="outline"
+              onClick={() => setResetOpen(true)}
+              className="h-9 px-3.5 border-red-200 text-red-600 hover:bg-red-50 hover:text-red-700 hover:border-red-300 rounded-md text-xs font-semibold shadow-none transition-colors"
+            >
+              <RotateCcw className="h-3.5 w-3.5 mr-1.5" />
+              Reset Harga
+            </Button>
+          )}
           <Button
             variant="outline"
             onClick={() => navigate({ to: "/master-hotel-edit/$hotelId", params: { hotelId: hotelId.toString() } })}
@@ -409,6 +443,66 @@ function MasterHotelDetailPage() {
           </div>
         )}
       </div>
+
+      {/* Reset Pricing Dialog */}
+      <Dialog open={resetOpen} onOpenChange={setResetOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center space-x-2 text-red-600">
+              <AlertTriangle className="h-5 w-5 text-red-600" />
+              <span>Reset Harga Hotel Ini</span>
+            </DialogTitle>
+            <DialogDescription>
+              Apakah Anda yakin ingin menghapus seluruh {pricingPeriods.length} periode harga untuk hotel <span className="font-semibold text-zinc-900">{hotel?.name}</span>?
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-3 py-2">
+            <div className="bg-red-50 border border-red-200 rounded-lg p-3">
+              <div className="flex items-start space-x-2">
+                <AlertCircle className="h-4 w-4 text-red-600 shrink-0 mt-0.5" />
+                <div className="text-xs text-red-800 space-y-1">
+                  <p className="font-semibold">Perhatian:</p>
+                  <p>
+                    Semua periode harga kamar untuk hotel ini akan dihapus permanen dari database.
+                  </p>
+                  <p className="text-[11px] text-red-600">
+                    * Data profil hotel dan data booking yang sudah dibuat sebelumnya tidak akan terpengaruh.
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button
+              variant="outline"
+              onClick={() => setResetOpen(false)}
+              disabled={resetSingleHotelMutation.isPending}
+              className="h-9 px-4 border-[#e5e7eb] text-zinc-700 rounded-md text-xs font-semibold shadow-none"
+            >
+              Batal
+            </Button>
+            <Button
+              onClick={handleResetPricing}
+              disabled={resetSingleHotelMutation.isPending}
+              className="bg-red-600 hover:bg-red-700 text-white h-9 px-4 rounded-md text-xs font-semibold transition-colors border border-transparent shadow-none"
+            >
+              {resetSingleHotelMutation.isPending ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Mereset Harga...
+                </>
+              ) : (
+                <>
+                  <Trash2 className="h-4 w-4 mr-2" />
+                  Hapus Semua Harga Hotel Ini
+                </>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </PageLayout>
   )
 }

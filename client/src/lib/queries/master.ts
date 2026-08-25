@@ -157,13 +157,14 @@ export const useDeleteHotelPricing = () => {
   });
 };
 
-// hotel pricing import
+// hotel pricing import & reset
 export interface ImportPricingResult {
   message: string;
   totalRowsProcessed: number;
   hotelsCreated: number;
   pricingCreated: number;
   pricingOverwritten: number;
+  pricingResetCount?: number;
   errors: string[];
   sheets: { name: string; city: string; rows: number }[];
 }
@@ -171,14 +172,61 @@ export interface ImportPricingResult {
 export const useImportHotelPricing = () => {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async (file: File) => {
+    mutationFn: async ({ file, resetBeforeImport }: { file: File; resetBeforeImport?: boolean }) => {
       const formData = new FormData();
       formData.append('file', file);
+      if (resetBeforeImport) {
+        formData.append('resetBeforeImport', 'true');
+      }
       const response = await apiClient.uploadFile<ImportPricingResult>('/api/master/hotels/import-pricing', formData);
       return response;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['hotels'] });
+      queryClient.invalidateQueries({ queryKey: ['public-hotels'] });
+    },
+  });
+};
+
+export interface ResetPricingParams {
+  scope?: 'all' | 'city' | 'hotel';
+  city?: 'Makkah' | 'Madinah';
+  hotelId?: number;
+}
+
+export interface ResetPricingResult {
+  message: string;
+  deletedCount: number;
+  scope?: string;
+  city?: string;
+  hotelId?: number;
+}
+
+export const useResetHotelPricing = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (params?: ResetPricingParams) => {
+      const response = await apiClient.post<ResetPricingResult>('/api/master/hotels/pricing/reset', params || { scope: 'all' });
+      return response;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['hotels'] });
+      queryClient.invalidateQueries({ queryKey: ['public-hotels'] });
+    },
+  });
+};
+
+export const useResetSingleHotelPricing = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (hotelId: number) => {
+      const response = await apiClient.post<ResetPricingResult>(`/api/master/hotels/${hotelId}/pricing/reset`, {});
+      return response;
+    },
+    onSuccess: (_, hotelId) => {
+      queryClient.invalidateQueries({ queryKey: ['hotels'] });
+      queryClient.invalidateQueries({ queryKey: ['hotels', hotelId, 'pricing'] });
+      queryClient.invalidateQueries({ queryKey: ['public-hotels'] });
     },
   });
 };

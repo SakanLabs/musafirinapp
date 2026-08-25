@@ -29,11 +29,15 @@ import {
   Upload,
   FileSpreadsheet,
   AlertCircle,
+  RotateCcw,
+  AlertTriangle,
+  RefreshCw,
 } from "lucide-react"
 import {
   useHotels,
   useDeleteHotel,
   useImportHotelPricing,
+  useResetHotelPricing,
   type Hotel,
   type ImportPricingResult,
 } from "@/lib/queries/master"
@@ -47,14 +51,22 @@ function MasterHotelsPage() {
   const { data: hotels = [], isLoading, error } = useHotels()
   const deleteHotelMutation = useDeleteHotel()
   const importMutation = useImportHotelPricing()
+  const resetPricingMutation = useResetHotelPricing()
 
   const [searchQuery, setSearchQuery] = useState("")
   const [cityFilter, setCityFilter] = useState("All")
   const [statusFilter, setStatusFilter] = useState("All")
 
+  // Reset modal state
+  const [resetOpen, setResetOpen] = useState(false)
+  const [resetScope, setResetScope] = useState<'all' | 'city'>('all')
+  const [resetCity, setResetCity] = useState<'Makkah' | 'Madinah'>('Makkah')
+  const [resetConfirmText, setResetConfirmText] = useState('')
+
   // Import modal state
   const [importOpen, setImportOpen] = useState(false)
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
+  const [resetBeforeImport, setResetBeforeImport] = useState(true)
   const [importResult, setImportResult] = useState<ImportPricingResult | null>(null)
   const [isDragOver, setIsDragOver] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -121,13 +133,28 @@ function MasterHotelsPage() {
     setIsDragOver(false)
   }, [])
 
+  const handleResetPricing = async () => {
+    try {
+      const params = resetScope === 'city'
+        ? { scope: 'city' as const, city: resetCity }
+        : { scope: 'all' as const }
+
+      const result = await resetPricingMutation.mutateAsync(params)
+      toast.success(result.message || 'Harga hotel berhasil direset')
+      setResetOpen(false)
+      setResetConfirmText('')
+    } catch (err: any) {
+      toast.error(err.message || 'Gagal mereset harga hotel')
+    }
+  }
+
   const handleImport = async () => {
     if (!selectedFile) return
     try {
-      const result = await importMutation.mutateAsync(selectedFile)
+      const result = await importMutation.mutateAsync({ file: selectedFile, resetBeforeImport })
       setImportResult(result)
       if (result.errors.length === 0) {
-        toast.success(`Import berhasil! ${result.pricingCreated} harga ditambahkan, ${result.pricingOverwritten} di-overwrite.`)
+        toast.success(`Import berhasil! ${result.pricingCreated} harga ditambahkan${result.pricingResetCount ? ` (${result.pricingResetCount} harga lama direset)` : ''}.`)
       } else {
         toast.warning(`Import selesai dengan ${result.errors.length} warning.`)
       }
@@ -140,6 +167,7 @@ function MasterHotelsPage() {
     setImportOpen(false)
     setSelectedFile(null)
     setImportResult(null)
+    setResetBeforeImport(true)
     setIsDragOver(false)
   }
 
@@ -267,6 +295,18 @@ function MasterHotelsPage() {
       subtitle="Manage your hotel master database"
       actions={
         <div className="flex items-center space-x-2.5">
+          <Button
+            variant="outline"
+            onClick={() => {
+              setResetConfirmText('')
+              setResetScope('all')
+              setResetOpen(true)
+            }}
+            className="h-9 px-3.5 border-red-200 text-red-600 hover:bg-red-50 hover:text-red-700 hover:border-red-300 rounded-md text-xs font-semibold shadow-none transition-colors"
+          >
+            <RotateCcw className="h-3.5 w-3.5 mr-1.5" />
+            Reset Harga
+          </Button>
           <Button
             variant="outline"
             onClick={() => setImportOpen(true)}
@@ -479,6 +519,34 @@ function MasterHotelsPage() {
                 )}
               </div>
 
+              {/* Reset Before Import Option */}
+              <div
+                onClick={() => setResetBeforeImport(!resetBeforeImport)}
+                className={`flex items-start space-x-3 p-3 rounded-lg border cursor-pointer transition-all ${
+                  resetBeforeImport
+                    ? 'bg-amber-50/60 border-amber-200'
+                    : 'bg-zinc-50 border-zinc-200 hover:bg-zinc-100/60'
+                }`}
+              >
+                <input
+                  type="checkbox"
+                  id="resetBeforeImport"
+                  checked={resetBeforeImport}
+                  onChange={(e) => setResetBeforeImport(e.target.checked)}
+                  onClick={(e) => e.stopPropagation()}
+                  className="mt-0.5 h-4 w-4 rounded border-gray-300 text-[#111111] focus:ring-black accent-[#111111]"
+                />
+                <div className="text-left flex-1">
+                  <label htmlFor="resetBeforeImport" className="text-xs font-semibold text-zinc-900 cursor-pointer flex items-center gap-1.5">
+                    Kosongkan seluruh harga lama sebelum import
+                    <span className="text-[10px] font-normal px-1.5 py-0.2 bg-amber-100 text-amber-800 rounded">Disarankan</span>
+                  </label>
+                  <p className="text-[11px] text-zinc-500 mt-0.5">
+                    Mencegah duplikasi atau periode tanggal yang bentrok jika ada perubahan jadwal/harga pada Excel terbaru.
+                  </p>
+                </div>
+              </div>
+
               {/* Format hints */}
               <div className="bg-zinc-50 border border-zinc-100 rounded-lg p-3">
                 <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider mb-1.5">Format yang didukung</p>
@@ -486,8 +554,7 @@ function MasterHotelsPage() {
                   <li>• Sheet bernama <span className="font-semibold text-zinc-700">"Makkah"</span> dan/atau <span className="font-semibold text-zinc-700">"Madinah"</span></li>
                   <li>• Kolom: Nama Hotel, Bintang, From, To, Days, Double, Triple, Quad, Meals</li>
                   <li>• Tipe Meals: <span className="font-semibold text-zinc-700">Room Only, Breakfast, Full Board</span> (default: Room Only)</li>
-                  <li>• Harga yang sama akan <span className="font-semibold text-amber-600">di-overwrite</span></li>
-                  <li>• Hotel baru akan <span className="font-semibold text-emerald-600">otomatis dibuat</span></li>
+                  <li>• Hotel baru yang belum ada di master akan <span className="font-semibold text-emerald-600">otomatis dibuat</span></li>
                 </ul>
               </div>
             </div>
@@ -502,10 +569,17 @@ function MasterHotelsPage() {
                   <p className="text-2xl font-bold text-emerald-700">{importResult.pricingCreated}</p>
                   <p className="text-[10px] font-bold text-emerald-500 uppercase tracking-wider">Harga Ditambahkan</p>
                 </div>
-                <div className="bg-amber-50 border border-amber-100 rounded-lg p-3 text-center">
-                  <p className="text-2xl font-bold text-amber-700">{importResult.pricingOverwritten}</p>
-                  <p className="text-[10px] font-bold text-amber-500 uppercase tracking-wider">Di-overwrite</p>
-                </div>
+                {importResult.pricingResetCount !== undefined && importResult.pricingResetCount > 0 ? (
+                  <div className="bg-rose-50 border border-rose-100 rounded-lg p-3 text-center">
+                    <p className="text-2xl font-bold text-rose-700">{importResult.pricingResetCount}</p>
+                    <p className="text-[10px] font-bold text-rose-500 uppercase tracking-wider">Harga Lama Direset</p>
+                  </div>
+                ) : (
+                  <div className="bg-amber-50 border border-amber-100 rounded-lg p-3 text-center">
+                    <p className="text-2xl font-bold text-amber-700">{importResult.pricingOverwritten}</p>
+                    <p className="text-[10px] font-bold text-amber-500 uppercase tracking-wider">Di-overwrite</p>
+                  </div>
+                )}
                 <div className="bg-blue-50 border border-blue-100 rounded-lg p-3 text-center">
                   <p className="text-2xl font-bold text-blue-700">{importResult.totalRowsProcessed}</p>
                   <p className="text-[10px] font-bold text-blue-500 uppercase tracking-wider">Row Diproses</p>
@@ -586,6 +660,131 @@ function MasterHotelsPage() {
                 Selesai
               </Button>
             )}
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Reset Pricing Dialog */}
+      <Dialog open={resetOpen} onOpenChange={setResetOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center space-x-2 text-red-600">
+              <AlertTriangle className="h-5 w-5 text-red-600" />
+              <span>Reset Harga Hotel</span>
+            </DialogTitle>
+            <DialogDescription>
+              Fitur ini akan menghapus seluruh data periode harga hotel yang ada di database. Berguna untuk membersihkan data harga double sebelum upload file Excel baru.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 py-2">
+            {/* Scope Selection */}
+            <div className="space-y-2">
+              <label className="text-xs font-semibold text-zinc-700">Pilih Cakupan Reset:</label>
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() => setResetScope('all')}
+                  className={`p-3 rounded-lg border text-left transition-all ${
+                    resetScope === 'all'
+                      ? 'border-red-500 bg-red-50/60 ring-1 ring-red-500'
+                      : 'border-zinc-200 hover:border-zinc-300 bg-white'
+                  }`}
+                >
+                  <p className="text-xs font-bold text-zinc-900">Semua Hotel</p>
+                  <p className="text-[11px] text-zinc-500 mt-0.5">Makkah & Madinah ({totalHotels} hotel)</p>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setResetScope('city')}
+                  className={`p-3 rounded-lg border text-left transition-all ${
+                    resetScope === 'city'
+                      ? 'border-red-500 bg-red-50/60 ring-1 ring-red-500'
+                      : 'border-zinc-200 hover:border-zinc-300 bg-white'
+                  }`}
+                >
+                  <p className="text-xs font-bold text-zinc-900">Per Kota</p>
+                  <p className="text-[11px] text-zinc-500 mt-0.5">Khusus 1 kota saja</p>
+                </button>
+              </div>
+            </div>
+
+            {/* City Selection if Scope is 'city' */}
+            {resetScope === 'city' && (
+              <div className="space-y-1.5 bg-zinc-50 p-3 rounded-lg border border-zinc-200">
+                <label className="text-xs font-semibold text-zinc-700">Pilih Kota:</label>
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setResetCity('Makkah')}
+                    className={`py-2 px-3 rounded-md text-xs font-semibold transition-all ${
+                      resetCity === 'Makkah'
+                        ? 'bg-[#111111] text-white'
+                        : 'bg-white border border-zinc-200 text-zinc-700 hover:bg-zinc-100'
+                    }`}
+                  >
+                    Makkah ({makkahHotels} Hotel)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setResetCity('Madinah')}
+                    className={`py-2 px-3 rounded-md text-xs font-semibold transition-all ${
+                      resetCity === 'Madinah'
+                        ? 'bg-[#111111] text-white'
+                        : 'bg-white border border-zinc-200 text-zinc-700 hover:bg-zinc-100'
+                    }`}
+                  >
+                    Madinah ({madinahHotels} Hotel)
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* Warning Box */}
+            <div className="bg-red-50 border border-red-200 rounded-lg p-3">
+              <div className="flex items-start space-x-2">
+                <AlertCircle className="h-4 w-4 text-red-600 shrink-0 mt-0.5" />
+                <div className="text-xs text-red-800 space-y-1">
+                  <p className="font-semibold">Perhatian:</p>
+                  <p>
+                    {resetScope === 'all'
+                      ? 'Seluruh data harga kamar untuk SEMUA hotel di database akan dihapus permanen.'
+                      : `Seluruh data harga kamar untuk hotel di kota ${resetCity} akan dihapus permanen.`}
+                  </p>
+                  <p className="text-[11px] text-red-600">
+                    * Data profil hotel dan data transaksi booking yang sudah ada tidak akan hilang.
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button
+              variant="outline"
+              onClick={() => setResetOpen(false)}
+              disabled={resetPricingMutation.isPending}
+              className="h-9 px-4 border-[#e5e7eb] text-zinc-700 rounded-md text-xs font-semibold shadow-none"
+            >
+              Batal
+            </Button>
+            <Button
+              onClick={handleResetPricing}
+              disabled={resetPricingMutation.isPending}
+              className="bg-red-600 hover:bg-red-700 text-white h-9 px-4 rounded-md text-xs font-semibold transition-colors border border-transparent shadow-none"
+            >
+              {resetPricingMutation.isPending ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Mereset Harga...
+                </>
+              ) : (
+                <>
+                  <Trash2 className="h-4 w-4 mr-2" />
+                  Konfirmasi Reset Harga
+                </>
+              )}
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

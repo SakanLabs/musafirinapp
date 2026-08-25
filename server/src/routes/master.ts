@@ -99,6 +99,7 @@ app.post('/hotels/import-pricing', requireAdmin, async (c) => {
   try {
     const formData = await c.req.formData();
     const file = formData.get('file') as File | null;
+    const resetBeforeImport = formData.get('resetBeforeImport') === 'true' || formData.get('reset_before_import') === 'true';
 
     if (!file) {
       return c.json({ error: 'No file uploaded' }, 400);
@@ -113,9 +114,16 @@ app.post('/hotels/import-pricing', requireAdmin, async (c) => {
       hotelsCreated: 0,
       pricingCreated: 0,
       pricingOverwritten: 0,
+      pricingResetCount: 0,
       errors: [] as string[],
       sheets: [] as { name: string; city: string; rows: number }[],
     };
+
+    // If reset before import is requested, wipe existing hotel pricing periods first
+    if (resetBeforeImport) {
+      const deleted = await db.delete(hotelPricingPeriods).returning();
+      results.pricingResetCount = deleted.length;
+    }
 
     // Fetch all existing hotels upfront for matching
     const existingHotels = await db.select().from(hotels);
@@ -500,6 +508,76 @@ app.delete('/hotels/:hotelId/pricing/:id', requireAdmin, async (c) => {
   } catch (error) {
     console.error('Error deleting pricing:', error);
     return c.json({ error: 'Failed to delete pricing period' }, 500);
+  }
+});
+
+// POST /hotels/pricing/reset - Reset hotel pricing periods (all, by city, or by hotel)
+app.post('/hotels/pricing/reset', requireAdmin, async (c) => {
+  try {
+    const body = await c.req.json().catch(() => ({ scope: 'all' }));
+    const scope = body?.scope || 'all'; // 'all' | 'city' | 'hotel'
+    const city = body?.city; // 'Makkah' | 'Madinah'
+    const hotelId = body?.hotelId ? parseInt(String(body.hotelId)) : undefined;
+
+    let deletedRows: any[] = [];
+
+    if (scope === 'city' && city) {
+      const cityHotels = await db.select({ id: hotels.id }).from(hotels).where(eq(hotels.city, city));
+      const hotelIds = cityHotels.map(h => h.id);
+      if (hotelIds.length > 0) {
+        deletedRows = await db.delete(hotelPricingPeriods)
+          .where(inArray(hotelPricingPeriods.hotelId, hotelIds))
+          .returning();
+      }
+      return c.json({
+        message: `Berhasil mereset semua harga hotel di ${city} (${deletedRows.length} periode harga dihapus)`,
+        deletedCount: deletedRows.length,
+        scope,
+        city,
+      });
+    } else if (scope === 'hotel' && hotelId && !isNaN(hotelId)) {
+      deletedRows = await db.delete(hotelPricingPeriods)
+        .where(eq(hotelPricingPeriods.hotelId, hotelId))
+        .returning();
+      return c.json({
+        message: `Berhasil mereset harga untuk hotel ini (${deletedRows.length} periode harga dihapus)`,
+        deletedCount: deletedRows.length,
+        scope,
+        hotelId,
+      });
+    } else {
+      // Default: Reset all
+      deletedRows = await db.delete(hotelPricingPeriods).returning();
+      return c.json({
+        message: `Berhasil mereset seluruh harga hotel (${deletedRows.length} periode harga dihapus)`,
+        deletedCount: deletedRows.length,
+        scope: 'all',
+      });
+    }
+  } catch (error: any) {
+    console.error('Error resetting hotel pricing:', error);
+    return c.json({ error: `Failed to reset hotel pricing: ${error.message}` }, 500);
+  }
+});
+
+// POST /hotels/:id/pricing/reset - Reset pricing for a specific hotel
+app.post('/hotels/:id/pricing/reset', requireAdmin, async (c) => {
+  try {
+    const hotelId = parseInt(c.req.param('id'));
+    if (isNaN(hotelId)) return c.json({ error: 'Invalid hotel ID' }, 400);
+
+    const deleted = await db.delete(hotelPricingPeriods)
+      .where(eq(hotelPricingPeriods.hotelId, hotelId))
+      .returning();
+
+    return c.json({
+      message: `Berhasil mereset harga untuk hotel ini (${deleted.length} periode harga dihapus)`,
+      deletedCount: deleted.length,
+      hotelId,
+    });
+  } catch (error: any) {
+    console.error('Error resetting hotel pricing for hotel:', error);
+    return c.json({ error: `Failed to reset hotel pricing: ${error.message}` }, 500);
   }
 });
 
