@@ -441,7 +441,7 @@ transportationApp.post('/:id/invoice', requireAdminOrFinance, async (c) => {
 });
 
 // POST /api/transportation/:id/receipt - Generate receipt and handle payment
-transportationApp.post('/:id/receipt', requireFinance, async (c) => {
+transportationApp.post('/:id/receipt', requireAdminOrFinance, async (c) => {
   try {
     const id = parseInt(c.req.param('id'));
     const body = await c.req.json().catch(() => ({}));
@@ -590,7 +590,7 @@ transportationApp.post('/:id/receipt', requireFinance, async (c) => {
 });
 
 // GET /api/transportation/receipt/:number - Serve receipt PDF
-transportationApp.get('/receipt/:number', requireFinance, async (c) => {
+transportationApp.get('/receipt/:number', requireAdminOrFinance, async (c) => {
   try {
     const receiptNumber = c.req.param('number');
 

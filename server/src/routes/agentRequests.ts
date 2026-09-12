@@ -5,6 +5,7 @@ import { eq, desc, and, sql, count } from "drizzle-orm";
 import { requireAuth, requireAgent, requireAdmin } from "../middleware/auth";
 import { generateAgentRequestInvoicePDF, uploadToMinio } from "../utils/pdf";
 import fs from "fs";
+import { notifyAdminNewBooking } from "../lib/notification";
 
 const app = new Hono<{ Variables: { user: any; session: any; userRole?: string; userType?: string } }>();
 
@@ -238,6 +239,23 @@ app.post("/", requireAgent, async (c) => {
         "agent",
         { oldStatus: "draft", newStatus: "submitted" }
       );
+
+      notifyAdminNewBooking({
+        type: 'agent_request',
+        bookingCode: requestNumber,
+        customerName: user.name || user.email,
+        customerEmail: user.email,
+        title: `Permintaan Agen - ${body.title || body.serviceType}`,
+        details: {
+          'Layanan': body.serviceType,
+          'Judul': body.title,
+          'Agen': user.name || user.email,
+          'Keterangan': body.description || '-',
+        },
+        currency: body.currency || 'SAR',
+        source: 'Portal Agen B2B',
+        dashboardPath: `/agent-requests`,
+      }).catch((err) => console.error('Notification error in agentRequests POST /:', err));
     }
 
     return c.json({ success: true, data: newRequest });
@@ -358,6 +376,23 @@ app.post("/:id/submit", requireAgent, async (c) => {
         "status_change"
       );
     }
+
+    // Notify admin via WhatsApp & Email
+    notifyAdminNewBooking({
+      type: 'agent_request',
+      bookingCode: updated!.requestNumber,
+      customerName: user.name || user.email,
+      customerEmail: user.email,
+      title: `Permintaan Agen Disubmit - ${updated!.title || updated!.serviceType}`,
+      details: {
+        'Layanan': updated!.serviceType,
+        'Judul': updated!.title,
+        'Agen': user.name || user.email,
+      },
+      currency: updated!.currency || 'SAR',
+      source: 'Portal Agen B2B',
+      dashboardPath: `/agent-requests`,
+    }).catch((err) => console.error('Notification error in agentRequests POST /:id/submit:', err));
 
     return c.json({ success: true, data: updated });
   } catch (error) {

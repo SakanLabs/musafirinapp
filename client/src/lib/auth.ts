@@ -187,6 +187,12 @@ export const authService = {
     return role === 'finance' || role === 'owner'
   },
 
+  // Check if user is admin, finance, or owner
+  isAdminOrFinance: async (): Promise<boolean> => {
+    const role = (await authService.getCurrentUser())?.role
+    return role === 'admin' || role === 'finance' || role === 'owner'
+  },
+
   // Check if user is regular user
   isUser: async (): Promise<boolean> => {
     return await authService.hasRole('user')

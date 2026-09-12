@@ -5,6 +5,7 @@ import { clients, serviceOrders, serviceOrderChecklists, serviceOrderInvoices, s
 import type { NewServiceOrder, NewServiceOrderInvoice, NewServiceOrderReceipt } from '../db/schema';
 import { requireAdmin, requireAdminOrFinance, requireFinance } from '../middleware/auth';
 import { generateServiceOrderNumber, generateServiceOrderInvoicePDF, generateServiceOrderInvoiceNumber, uploadToMinio, generateServiceOrderReceiptPDF } from '../utils/pdf';
+import { notifyAdminNewBooking } from '../lib/notification';
 
 const serviceOrderRoutes = new Hono();
 
@@ -107,6 +108,26 @@ serviceOrderRoutes.post('/', requireAdmin, async (c) => {
     };
 
     const [inserted] = await db.insert(serviceOrders).values(payload).returning();
+
+    // Notify admin
+    notifyAdminNewBooking({
+      type: 'service_order',
+      bookingCode: number,
+      customerName: body.groupLeaderName,
+      customerPhone: body.groupLeaderPhone || null,
+      title: `Service Order - ${body.productType}`,
+      details: {
+        'Tipe Layanan': body.productType,
+        'Group Leader': body.groupLeaderName,
+        'Total Jamaah': `${totalPeople} Orang`,
+        'Keberangkatan': new Date(body.departureDate).toLocaleDateString('id-ID'),
+        'Kepulangan': new Date(body.returnDate).toLocaleDateString('id-ID'),
+      },
+      totalAmount: totalPriceSAR,
+      currency: 'SAR',
+      source: 'Admin Service Order',
+      dashboardPath: `/service-orders/${inserted!.id}`,
+    }).catch((err) => console.error('Notification error in serviceOrders:', err));
 
     return c.json({ success: true, data: inserted });
   } catch (error) {
@@ -629,9 +650,8 @@ serviceOrderRoutes.patch('/:id/status', requireAdmin, async (c) => {
   }
 });
 
-// POST /api/service-orders/:id/receipt - Generate receipt
 // POST /api/service-orders/:id/receipt - Generate receipt and handle payment
-serviceOrderRoutes.post('/:id/receipt', requireFinance, async (c) => {
+serviceOrderRoutes.post('/:id/receipt', requireAdminOrFinance, async (c) => {
   try {
     const id = parseInt(c.req.param('id'));
     const body = await c.req.json().catch(() => ({}));

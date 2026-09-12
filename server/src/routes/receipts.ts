@@ -2,14 +2,14 @@ import { Hono } from 'hono';
 import { eq, desc, sql } from 'drizzle-orm';
 import { db } from '../db';
 import { receipts, bookings, clients, invoices, transportationReceipts, transportationInvoices, transportationBookings, serviceOrderReceipts, serviceOrderInvoices, serviceOrders, customLaReceipts, customLaInvoices, customLaRequests, muthowifReceipts, muthowifInvoices, muthowifBookings } from '../db/schema';
-import { requireFinance } from '../middleware/auth';
+import { requireAdminOrFinance } from '../middleware/auth';
 import { ReceiptService } from '../services/ReceiptService';
 
 const receiptRoutes = new Hono();
 const receiptService = new ReceiptService();
 
 // GET /api/receipts - Get all receipts with pagination
-receiptRoutes.get('/', requireFinance, async (c) => {
+receiptRoutes.get('/', requireAdminOrFinance, async (c) => {
   try {
     const page = parseInt(c.req.query('page') || '1');
     const limit = parseInt(c.req.query('limit') || '10');
@@ -167,7 +167,7 @@ receiptRoutes.get('/', requireFinance, async (c) => {
 });
 
 // GET /api/receipts/booking/:bookingId - Get receipts for a specific booking
-receiptRoutes.get('/booking/:bookingId', requireFinance, async (c) => {
+receiptRoutes.get('/booking/:bookingId', requireAdminOrFinance, async (c) => {
   try {
     const bookingId = parseInt(c.req.param('bookingId'));
 
@@ -188,7 +188,7 @@ receiptRoutes.get('/booking/:bookingId', requireFinance, async (c) => {
 });
 
 // POST /api/receipts/generate/:bookingId - Generate receipt for a booking
-receiptRoutes.post('/generate/:bookingId', requireFinance, async (c) => {
+receiptRoutes.post('/generate/:bookingId', requireAdminOrFinance, async (c) => {
   try {
     const bookingId = parseInt(c.req.param('bookingId'));
 
@@ -252,7 +252,7 @@ receiptRoutes.post('/generate/:bookingId', requireFinance, async (c) => {
 });
 
 // GET /api/receipts/:id - Get receipt by ID
-receiptRoutes.get('/:id', requireFinance, async (c) => {
+receiptRoutes.get('/:id', requireAdminOrFinance, async (c) => {
   try {
     const receiptId = parseInt(c.req.param('id'));
 
@@ -277,7 +277,7 @@ receiptRoutes.get('/:id', requireFinance, async (c) => {
 });
 
 // GET /api/receipts/number/:number - Get receipt by number
-receiptRoutes.get('/number/:number', requireFinance, async (c) => {
+receiptRoutes.get('/number/:number', requireAdminOrFinance, async (c) => {
   try {
     const receiptNumber = c.req.param('number');
 
@@ -413,7 +413,7 @@ receiptRoutes.get('/number/:number', requireFinance, async (c) => {
 });
 
 // GET /api/receipts/:id/download - Download receipt PDF
-receiptRoutes.get('/:id/download', requireFinance, async (c) => {
+receiptRoutes.get('/:id/download', requireAdminOrFinance, async (c) => {
   try {
     const receiptId = parseInt(c.req.param('id'));
 
@@ -471,7 +471,7 @@ receiptRoutes.get('/:id/download', requireFinance, async (c) => {
 });
 
 // GET /api/receipts/number/:number/download - Download receipt PDF by number
-receiptRoutes.get('/number/:number/download', requireFinance, async (c) => {
+receiptRoutes.get('/number/:number/download', requireAdminOrFinance, async (c) => {
   try {
     const receiptNumber = c.req.param('number');
 
