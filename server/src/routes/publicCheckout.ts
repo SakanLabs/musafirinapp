@@ -3,6 +3,7 @@ import { db } from "../db";
 import { clients, bookings, invoices, bookingItems, transportationBookings, transportationRoutes, transportationInvoices, user, customLaRequests, serviceOrders, hotels, serviceMaster } from "../db/schema";
 import { eq, inArray } from "drizzle-orm";
 import { supabaseAuth } from "../middleware/supabaseAuth";
+import { notifyAdminNewBooking } from "../lib/notification";
 
 const app = new Hono();
 
@@ -108,10 +109,34 @@ async function handleHotelCheckout(c: any, user: any, body: any) {
     status: "draft"
   });
 
+  const bookingCode = `BKG-WEB-${new Date().getFullYear()}-${bookingId}`;
+
+  // Notify admin
+  notifyAdminNewBooking({
+    type: 'public_hotel_checkout',
+    bookingCode,
+    customerName: body.customerName || user.email,
+    customerPhone: body.customerPhone || null,
+    customerEmail: user.email,
+    title: `Checkout Hotel Web - ${body.hotel.hotelName || 'TBD'}`,
+    details: {
+      'Hotel': body.hotel.hotelName || 'TBD',
+      'Kota': body.hotel.city || 'Makkah',
+      'Check-in': checkInDate.toLocaleDateString('id-ID'),
+      'Check-out': checkOutDate.toLocaleDateString('id-ID'),
+      'Malam': `${nights} Malam`,
+      'Meal Plan': body.hotel.mealPlan || 'Room Only',
+    },
+    totalAmount: calculatedTotalAmount.toFixed(2),
+    currency: 'SAR',
+    source: 'Web Public Checkout',
+    dashboardPath: '/bookings',
+  }).catch((err) => console.error('Notification error in handleHotelCheckout:', err));
+
   return c.json({ 
     success: true, 
     bookingId: bookingId, 
-    code: `BKG-WEB-${new Date().getFullYear()}-${bookingId}`,
+    code: bookingCode,
     message: "Hotel booking created successfully!" 
   });
 }
@@ -175,9 +200,28 @@ async function handleTransportationCheckout(c: any, supabaseUser: any, body: any
     status: "draft"
   });
 
+  // Notify admin
+  notifyAdminNewBooking({
+    type: 'public_transportation_checkout',
+    bookingCode: bookingNumber,
+    customerName: body.customerName || supabaseUser.email,
+    customerPhone: body.customerPhone || null,
+    customerEmail: supabaseUser.email,
+    title: `Checkout Transportasi Web - ${bookingNumber}`,
+    details: {
+      'Jumlah Rute': `${routes.length} Rute`,
+      'Rute Pertama': routes[0] ? `${routes[0].originLocation} -> ${routes[0].destinationLocation}` : '-',
+      'Tipe Kendaraan': routes[0]?.vehicleType || '-',
+    },
+    totalAmount: totalAmount.toFixed(2),
+    currency: body.currency || 'SAR',
+    source: 'Web Public Checkout',
+    dashboardPath: '/dashboard/admin',
+  }).catch((err) => console.error('Notification error in handleTransportationCheckout:', err));
+
   return c.json({ 
     success: true, 
-    bookingId: bookingId,
+    bookingId: bookingId, 
     bookingNumber: bookingNumber,
     message: "Transportation booking created successfully!",
     userType: userType
@@ -191,6 +235,7 @@ async function handleCustomLaCheckout(c: any, supabaseUser: any, body: any) {
 
   const totalAmountSAR = parseFloat(body.totals?.grandTotal || 0).toFixed(2);
   const totalPax = parseInt(body.totals?.totalPax || body.jumlahJamaah || 1);
+  const checkInDate = new Date(body.tanggalKedatangan || new Date());
 
   let makkahHotelName = "Makkah Hotel";
   let madinahHotelName = "Madinah Hotel";
@@ -393,6 +438,26 @@ async function handleCustomLaCheckout(c: any, supabaseUser: any, body: any) {
 
     return laReq;
   });
+
+  // Notify admin
+  notifyAdminNewBooking({
+    type: 'public_custom_la_checkout',
+    bookingCode: newRequest!.number,
+    customerName: customerName,
+    customerPhone: customerPhone,
+    customerEmail: supabaseUser.email,
+    title: `Checkout Custom LA - ${newRequest!.number}`,
+    details: {
+      'Total Jamaah': `${totalPax} Pax`,
+      'Hotel Makkah': makkahHotelName,
+      'Hotel Madinah': madinahHotelName,
+      'Kedatangan': checkInDate.toLocaleDateString('id-ID'),
+    },
+    totalAmount: totalAmountSAR,
+    currency: 'SAR',
+    source: 'Web Store Custom LA',
+    dashboardPath: '/dashboard/admin',
+  }).catch((err) => console.error('Notification error in handleCustomLaCheckout:', err));
 
   return c.json({ 
     success: true, 

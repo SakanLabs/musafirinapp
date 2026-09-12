@@ -115,7 +115,7 @@ const navigationSections = [
         name: 'Receipts',
         href: '/receipts',
         icon: Receipt,
-        roles: ['owner', 'finance']
+        roles: ['admin', 'owner', 'finance']
       },
       {
         name: 'Vouchers',

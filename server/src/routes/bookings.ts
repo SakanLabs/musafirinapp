@@ -6,6 +6,7 @@ import { requireAdmin } from '../middleware/auth';
 import { generateBookingCode } from '../utils/pdf';
 import type { NewBooking, NewBookingItem, NewBookingItemPricingPeriod, NewClient, NewDepositTransaction } from '../db/schema';
 import { ReceiptService } from '../services/ReceiptService';
+import { notifyAdminNewBooking } from '../lib/notification';
 
 const bookingRoutes = new Hono();
 const receiptService = new ReceiptService();
@@ -554,6 +555,31 @@ bookingRoutes.post('/', requireAdmin, async (c) => {
         surplusCredit,
       };
     });
+
+    // Trigger asynchronous notification to Admin (WhatsApp & Email)
+    const resData = result as any;
+    if (resData && resData.booking) {
+      notifyAdminNewBooking({
+        type: 'hotel_booking',
+        bookingCode: resData.booking.code,
+        customerName: resData.client?.name || client.name,
+        customerPhone: resData.client?.phone || client.phone,
+        customerEmail: resData.client?.email || client.email,
+        title: `Booking Hotel ${resData.booking.hotelName}`,
+        details: {
+          'Hotel': resData.booking.hotelName,
+          'Kota': resData.booking.city,
+          'Check-in': new Date(resData.booking.checkIn).toLocaleDateString('id-ID'),
+          'Check-out': new Date(resData.booking.checkOut).toLocaleDateString('id-ID'),
+          'Jumlah Kamar': resData.items?.length ? `${resData.items.length} Kamar` : '1 Kamar',
+          'Status Pembayaran': resData.booking.paymentStatus,
+        },
+        totalAmount: resData.booking.totalAmount,
+        currency: 'SAR',
+        source: 'Admin Direct Booking',
+        dashboardPath: `/bookings`,
+      }).catch((err) => console.error('Notification error in bookings.ts:', err));
+    }
 
     return c.json({
       success: true,

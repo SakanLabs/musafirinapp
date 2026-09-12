@@ -11,6 +11,7 @@ import {
   muthowifs,
 } from '../db/schema';
 import { requireAdmin } from '../middleware/auth';
+import { notifyAdminNewBooking } from '../lib/notification';
 
 const formatIndoDateTime = (date: Date) => {
   const months = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
@@ -113,6 +114,24 @@ muthowifBookingsApp.post('/', requireAdmin, async (c) => {
       currency: currency || 'SAR',
       notes,
     }).returning();
+
+    // Notify admin
+    notifyAdminNewBooking({
+      type: 'muthowif_booking',
+      bookingCode: bookingNumber,
+      customerName: guestName,
+      title: `Booking Muthowif - ${guestName}`,
+      details: {
+        'Jadwal': new Date(dateTime).toLocaleString('id-ID'),
+        'Agenda/Event': events || '-',
+        'Jumlah Pax': `${totalPax} Orang`,
+        'Meeting Point': meetingPoint || '-',
+      },
+      totalAmount: totalAmount,
+      currency: currency || 'SAR',
+      source: 'Admin Muthowif Booking',
+      dashboardPath: `/dashboard/muthowifs`,
+    }).catch((err) => console.error('Notification error in muthowifBookings:', err));
 
     return c.json(newBooking, 201);
   } catch (error) {
