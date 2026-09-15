@@ -200,10 +200,15 @@ export function useGenerateServiceOrderInvoice() {
         customInvoiceDate
       });
       
-      // Auto-download the PDF if downloadUrl is provided
-      if (response.downloadUrl) {
-        const filename = `service-order-invoice-${response.data.number || serviceOrderId}.pdf`;
-        await apiClient.downloadFile(response.downloadUrl, filename);
+      // Auto-download the PDF if invoice number is available
+      const invoiceNumber = response.data?.number;
+      if (invoiceNumber) {
+        try {
+          const filename = `service-order-invoice-${invoiceNumber}.pdf`;
+          await apiClient.downloadFile(`/api/invoices/by-number/${invoiceNumber}`, filename);
+        } catch (downloadErr) {
+          console.warn('Auto-download service order invoice failed:', downloadErr);
+        }
       }
       
       return response;
@@ -260,10 +265,15 @@ export function useRegenerateServiceOrderInvoice() {
         customInvoiceDate
       });
       
-      // Auto-download the PDF if downloadUrl is provided
-      if (response.downloadUrl) {
-        const filename = `service-order-invoice-${response.data.number || serviceOrderId}.pdf`;
-        await apiClient.downloadFile(response.downloadUrl, filename);
+      // Auto-download the PDF if invoice number is available
+      const invoiceNumber = response.data?.number;
+      if (invoiceNumber) {
+        try {
+          const filename = `service-order-invoice-${invoiceNumber}.pdf`;
+          await apiClient.downloadFile(`/api/invoices/by-number/${invoiceNumber}`, filename);
+        } catch (downloadErr) {
+          console.warn('Auto-download service order invoice failed:', downloadErr);
+        }
       }
       
       return response;

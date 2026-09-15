@@ -2,7 +2,7 @@ import { Hono } from 'hono';
 import { eq, desc, sql } from 'drizzle-orm';
 import { db } from '../db';
 import { vouchers, bookings, clients, bookingItems, muthowifVouchers, muthowifBookings } from '../db/schema';
-import { requireAdmin, requireFinance } from '../middleware/auth';
+import { requireAdmin } from '../middleware/auth';
 import { generateVoucherNumber, generateVoucherPDF, generateQRCode, uploadToMinio } from '../utils/pdf';
 import type { NewVoucher } from '../db/schema';
 
@@ -282,6 +282,7 @@ voucherRoutes.post('/:bookingId/generate', requireAdmin, async (c) => {
       success: true,
       data: insertedVoucher,
       message: 'Voucher generated successfully',
+      downloadUrl: `/api/vouchers/by-number/${voucherNumber}`
     }, 201);
   } catch (error) {
     console.error('Error generating voucher:', error);
@@ -289,8 +290,8 @@ voucherRoutes.post('/:bookingId/generate', requireAdmin, async (c) => {
   }
 });
 
-// GET /api/vouchers/by-number/:number - Serve voucher PDF
-voucherRoutes.get('/by-number/:number', requireFinance, async (c) => {
+// GET /api/vouchers/by-number/:number - Serve voucher PDF (Public for client downloads)
+voucherRoutes.get('/by-number/:number', async (c) => {
   try {
     const voucherNumber = c.req.param('number');
 

@@ -415,7 +415,7 @@ serviceOrderRoutes.post('/:id/generate-invoice', requireAdminOrFinance, async (c
       success: true,
       data: insertedInvoice,
       message: 'Service order invoice generated successfully',
-      downloadUrl: insertedInvoice!.pdfUrl
+      downloadUrl: `/api/invoices/by-number/${insertedInvoice!.number}`
     }, 201);
   } catch (error) {
     console.error('Error generating service order invoice:', error);
@@ -589,7 +589,7 @@ serviceOrderRoutes.post('/:id/regenerate-invoice', requireAdminOrFinance, async 
       success: true,
       data: insertedInvoice,
       message: 'Service order invoice regenerated successfully',
-      downloadUrl: insertedInvoice!.pdfUrl
+      downloadUrl: `/api/invoices/by-number/${insertedInvoice!.number}`
     }, 201);
   } catch (error) {
     console.error('Error regenerating service order invoice:', error);

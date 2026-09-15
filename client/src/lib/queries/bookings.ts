@@ -281,10 +281,15 @@ export function useGenerateInvoice() {
         dueDate
       });
       
-      // Auto-download the PDF if downloadUrl is provided
-      if (response.downloadUrl) {
-        const filename = `invoice-${response.data.number || bookingId}.pdf`;
-        await apiClient.downloadFile(response.downloadUrl, filename);
+      // Auto-download the PDF if invoice number is available
+      const invoiceNumber = response.data?.number;
+      if (invoiceNumber) {
+        try {
+          const filename = `invoice-${invoiceNumber}.pdf`;
+          await apiClient.downloadFile(`/api/invoices/by-number/${invoiceNumber}`, filename);
+        } catch (downloadErr) {
+          console.warn('Auto-download invoice failed:', downloadErr);
+        }
       }
       
       return response;
@@ -317,10 +322,15 @@ export function useGenerateVoucher() {
         guestName
       });
       
-      // Auto-download the PDF if pdfUrl is provided
-      if (response.data.pdfUrl) {
-        const filename = `voucher-${response.data.number}.pdf`;
-        await apiClient.downloadFile(response.data.pdfUrl, filename);
+      // Auto-download the PDF if voucher number is available
+      const voucherNumber = response.data?.number;
+      if (voucherNumber) {
+        try {
+          const filename = `voucher-${voucherNumber}.pdf`;
+          await apiClient.downloadFile(`/api/vouchers/by-number/${voucherNumber}`, filename);
+        } catch (downloadErr) {
+          console.warn('Auto-download voucher failed:', downloadErr);
+        }
       }
       
       return response;

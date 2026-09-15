@@ -692,7 +692,7 @@ invoiceRoutes.post('/:bookingId/generate', requireAdminOrFinance, async (c) => {
       success: true,
       data: insertedInvoice,
       message: 'Invoice generated successfully',
-      downloadUrl: insertedInvoice!.pdfUrl
+      downloadUrl: `/api/invoices/by-number/${invoiceNumber}`
     }, 201);
   } catch (error) {
     console.error('Error generating invoice:', error);
