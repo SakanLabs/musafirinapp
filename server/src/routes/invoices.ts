@@ -1,9 +1,9 @@
 import { Hono } from 'hono';
 import { eq, desc, sql } from 'drizzle-orm';
 import { db } from '../db';
-import { invoices, bookings, clients, bookingItems, bookingItemPricingPeriods, clientDeposits, depositTransactions, bookingServiceItems, invoicePayments, transportationInvoices, transportationBookings, serviceOrderInvoices, serviceOrders, customLaInvoices, customLaRequests, muthowifInvoices, muthowifBookings } from '../db/schema';
+import { invoices, bookings, clients, bookingItems, bookingItemPricingPeriods, clientDeposits, depositTransactions, bookingServiceItems, invoicePayments, transportationInvoices, transportationBookings, serviceOrderInvoices, serviceOrders, customLaInvoices, customLaRequests, muthowifInvoices, muthowifBookings, manualInvoices } from '../db/schema';
 import { requireAdminOrFinance } from '../middleware/auth';
-import { generateInvoiceNumber, generateInvoicePDF, uploadToMinio, checkFileExistsInMinio, deleteFromMinio } from '../utils/pdf';
+import { generateInvoiceNumber, generateInvoicePDF, generateManualInvoicePDF, uploadToMinio, checkFileExistsInMinio, deleteFromMinio } from '../utils/pdf';
 import { TemplateHelpers } from '../utils/template';
 import type { NewInvoice, NewDepositTransaction, NewInvoicePayment } from '../db/schema';
 import { ReceiptService } from '../services/ReceiptService';
@@ -292,6 +292,29 @@ invoiceRoutes.delete('/:invoiceId', requireAdminOrFinance, async (c) => {
       .limit(1);
 
     if (existing.length === 0) {
+      const existingManual = await db
+        .select()
+        .from(manualInvoices)
+        .where(eq(manualInvoices.id, invoiceId))
+        .limit(1);
+
+      if (existingManual.length > 0) {
+        const inv = existingManual[0]!;
+        if (inv.pdfUrl) {
+          const urlParts = inv.pdfUrl.split('/');
+          const fileName = urlParts.slice(-2).join('/');
+          try {
+            await deleteFromMinio(fileName);
+          } catch (err) {
+            console.warn(`Failed to delete manual invoice PDF ${fileName}:`, err);
+          }
+        }
+        await db.delete(manualInvoices).where(eq(manualInvoices.id, invoiceId));
+        return c.json({
+          success: true,
+          message: 'Invoice deleted successfully',
+        });
+      }
       return c.json({ error: 'Invoice not found' }, 404);
     }
 
@@ -453,6 +476,26 @@ invoiceRoutes.get('/', requireAdminOrFinance, async (c) => {
       .leftJoin(agentRequests, eq(agentRequestInvoices.agentRequestId, agentRequests.id))
       .leftJoin(user, eq(agentRequests.agentId, user.id));
 
+    // Manual Invoices (Invoices created without a booking)
+    const allManualInvoices = await db
+      .select({
+        id: manualInvoices.id,
+        number: manualInvoices.number,
+        bookingId: manualInvoices.id,
+        amount: manualInvoices.amount,
+        currency: manualInvoices.currency,
+        issueDate: manualInvoices.issueDate,
+        dueDate: manualInvoices.dueDate,
+        status: manualInvoices.status,
+        pdfUrl: manualInvoices.pdfUrl,
+        bookingCode: sql`'MANUAL'`.as('bookingCode'),
+        clientName: manualInvoices.clientName,
+        clientEmail: manualInvoices.clientEmail,
+        hotelName: sql`COALESCE(${manualInvoices.title}, 'Invoice Manual')`.as('hotelName'),
+        city: sql`'Manual'`.as('city'),
+      })
+      .from(manualInvoices);
+
     // Combine and sort by issueDate descending
     const combinedInvoices = [
       ...allInvoices,
@@ -460,7 +503,8 @@ invoiceRoutes.get('/', requireAdminOrFinance, async (c) => {
       ...allServiceOrderInvoices.map(inv => ({ ...inv, hotelName: 'Service Order' })),
       ...allCustomLaInvoices.map(inv => ({ ...inv, hotelName: inv.hotelName ? `Custom LA (${inv.hotelName})` : 'Custom LA' })),
       ...allMuthowifInvoices.map(inv => ({ ...inv, hotelName: 'Muthowif (' + (inv.hotelName || 'Order') + ')' })),
-      ...allAgentRequestInvoices.map(inv => ({ ...inv, hotelName: 'Agent Request (' + (inv.hotelName || 'Service') + ')' }))
+      ...allAgentRequestInvoices.map(inv => ({ ...inv, hotelName: 'Agent Request (' + (inv.hotelName || 'Service') + ')' })),
+      ...allManualInvoices
     ].sort((a, b) => {
       const dateA = a.issueDate ? new Date(a.issueDate).getTime() : 0;
       const dateB = b.issueDate ? new Date(b.issueDate).getTime() : 0;
@@ -474,6 +518,105 @@ invoiceRoutes.get('/', requireAdminOrFinance, async (c) => {
   } catch (error) {
     console.error('Error fetching invoices:', error);
     return c.json({ error: 'Failed to fetch invoices' }, 500);
+  }
+});
+
+// POST /api/invoices/manual - Create manual invoice without booking
+invoiceRoutes.post('/manual', requireAdminOrFinance, async (c) => {
+  try {
+    const body = await c.req.json().catch(() => ({}));
+    const {
+      clientId,
+      clientName,
+      clientEmail,
+      clientPhone,
+      clientAddress,
+      title,
+      dueDate,
+      issueDate,
+      currency = 'SAR',
+      items,
+      notes
+    } = body;
+
+    if (!clientName || !clientName.trim()) {
+      return c.json({ error: 'Nama client wajib diisi' }, 400);
+    }
+
+    if (!dueDate) {
+      return c.json({ error: 'Tanggal jatuh tempo wajib diisi' }, 400);
+    }
+
+    if (!items || !Array.isArray(items) || items.length === 0) {
+      return c.json({ error: 'Minimal harus ada 1 item layanan' }, 400);
+    }
+
+    // Calculate item subtotals and total amount
+    let totalAmount = 0;
+    const validatedItems = items.map((item: any) => {
+      const quantity = Math.max(1, parseInt(item.quantity) || 1);
+      const unitPrice = Math.max(0, parseFloat(item.unitPrice) || 0);
+      const subtotal = quantity * unitPrice;
+      totalAmount += subtotal;
+      return {
+        description: (item.description || '').trim() || 'Item Layanan',
+        quantity,
+        unitPrice,
+        subtotal,
+        notes: (item.notes || '').trim() || ''
+      };
+    });
+
+    // Generate unique invoice number: INV-MAN-YYYY-XXXXXX
+    const year = new Date().getFullYear();
+    const randomSuffix = Math.floor(100000 + Math.random() * 900000);
+    const invoiceNumber = `INV-MAN-${year}-${randomSuffix}`;
+
+    const newInvoiceData = {
+      number: invoiceNumber,
+      clientId: clientId ? parseInt(clientId) : null,
+      clientName: clientName.trim(),
+      clientEmail: clientEmail?.trim() || null,
+      clientPhone: clientPhone?.trim() || null,
+      clientAddress: clientAddress?.trim() || null,
+      title: title?.trim() || null,
+      amount: totalAmount.toFixed(2),
+      paidAmount: '0.00',
+      currency: (currency || 'SAR').toUpperCase(),
+      issueDate: issueDate ? new Date(issueDate) : new Date(),
+      dueDate: new Date(dueDate),
+      status: 'draft' as const,
+      items: validatedItems,
+      notes: notes?.trim() || null,
+      pdfUrl: null as string | null
+    };
+
+    const [inserted] = await db.insert(manualInvoices).values(newInvoiceData as any).returning();
+    if (!inserted) {
+      throw new Error('Gagal menyimpan data manual invoice');
+    }
+
+    // Generate PDF and upload to MinIO
+    try {
+      const pdfUrl = await generateManualInvoicePDF({
+        ...inserted,
+        items: validatedItems
+      });
+      await db.update(manualInvoices).set({ pdfUrl }).where(eq(manualInvoices.id, inserted.id));
+      inserted.pdfUrl = pdfUrl;
+    } catch (pdfErr) {
+      console.error('Failed to generate PDF for manual invoice:', pdfErr);
+    }
+
+    return c.json({
+      success: true,
+      message: 'Invoice manual berhasil diterbitkan',
+      data: inserted,
+      downloadUrl: `/api/invoices/by-number/${invoiceNumber}`
+    }, 201);
+  } catch (error) {
+    console.error('Error creating manual invoice:', error);
+    return c.json({ error: 'Gagal membuat invoice manual' }, 500);
   }
 });
 
@@ -725,6 +868,10 @@ invoiceRoutes.get('/by-number/:number', async (c) => {
       pdfUrl = invoice[0]!.pdfUrl;
     } else if (invoiceNumber.startsWith('MBI-')) {
       const invoice = await db.select().from(muthowifInvoices).where(eq(muthowifInvoices.number, invoiceNumber)).limit(1);
+      if (invoice.length === 0) return c.json({ error: 'Invoice not found' }, 404);
+      pdfUrl = invoice[0]!.pdfUrl;
+    } else if (invoiceNumber.startsWith('INV-MAN-')) {
+      const invoice = await db.select().from(manualInvoices).where(eq(manualInvoices.number, invoiceNumber)).limit(1);
       if (invoice.length === 0) return c.json({ error: 'Invoice not found' }, 404);
       pdfUrl = invoice[0]!.pdfUrl;
     } else {

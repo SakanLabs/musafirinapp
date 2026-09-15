@@ -1,4 +1,4 @@
-import { createFileRoute, redirect, useNavigate } from "@tanstack/react-router"
+import { createFileRoute, redirect, useNavigate, Link } from "@tanstack/react-router"
 import { useEffect, useMemo, useState } from "react"
 import { PageLayout } from "@/components/layout/PageLayout"
 import { Button } from "@/components/ui/button"
@@ -340,6 +340,28 @@ function CreateInvoicePage() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 md:p-6">
         {/* Form Container */}
         <div className="lg:col-span-2 space-y-6">
+          {/* Banner to Create Manual Invoice */}
+          <div className="border border-blue-200/70 bg-gradient-to-r from-blue-50/70 to-indigo-50/40 rounded-xl p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-none">
+            <div className="flex items-center space-x-3">
+              <div className="p-2 rounded-lg bg-white border border-blue-200/60 shadow-none">
+                <FileText className="h-5 w-5 text-blue-700" />
+              </div>
+              <div>
+                <p className="text-xs font-bold text-zinc-900">Perlu terbitkan invoice tanpa booking?</p>
+                <p className="text-[11px] text-zinc-600">Buat invoice kustom bebas untuk berbagai layanan tanpa terikat reservasi sistem.</p>
+              </div>
+            </div>
+            <Link to="/create-manual-invoice" className="w-full sm:w-auto">
+              <Button
+                variant="outline"
+                size="sm"
+                className="w-full sm:w-auto h-8 px-3.5 border-blue-300 text-blue-900 bg-white hover:bg-blue-50 font-semibold text-xs shadow-none"
+              >
+                Buat Manual Invoice &rarr;
+              </Button>
+            </Link>
+          </div>
+
           {/* Client & Booking Selection */}
           <div className="border border-[#e5e7eb] rounded-xl bg-white shadow-none p-4 md:p-6">
             <div className="flex items-center space-x-2 mb-6 pb-2 border-b border-gray-100">

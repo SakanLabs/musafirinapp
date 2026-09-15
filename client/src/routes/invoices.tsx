@@ -78,6 +78,14 @@ function InvoicesPage() {
       key: 'bookingId',
       header: 'Booking ID',
       render: (invoice) => {
+        if (invoice.bookingCode === 'MANUAL' || invoice.number.startsWith('INV-MAN-')) {
+          return (
+            <span className="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-medium bg-zinc-100 text-zinc-600 border border-zinc-200">
+              Manual
+            </span>
+          );
+        }
+
         let bookingLink = `/booking-view/${invoice.bookingId}`;
         if (invoice.number.startsWith('TI-')) {
           bookingLink = `/transportation-booking-detail/${invoice.bookingId}`;
@@ -160,13 +168,25 @@ function InvoicesPage() {
 
         return (
           <div className="flex items-center gap-1.5">
-            <Link
-              to={detailLink as any}
-              className="h-8 w-8 rounded-md border border-[#e5e7eb] text-zinc-700 hover:bg-zinc-50 hover:text-black flex items-center justify-center transition-colors bg-white shadow-none"
-              title="Lihat Detail"
-            >
-              <Eye className="h-3.5 w-3.5" />
-            </Link>
+            {invoice.number.startsWith('INV-MAN-') ? (
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => window.open(`${API_BASE_URL}/api/invoices/by-number/${invoice.number}`, '_blank')}
+                className="h-8 w-8 p-0 border-[#e5e7eb] text-zinc-700 hover:bg-zinc-50 hover:text-black flex items-center justify-center transition-colors bg-white shadow-none"
+                title="Lihat Invoice PDF"
+              >
+                <Eye className="h-3.5 w-3.5" />
+              </Button>
+            ) : (
+              <Link
+                to={detailLink as any}
+                className="h-8 w-8 rounded-md border border-[#e5e7eb] text-zinc-700 hover:bg-zinc-50 hover:text-black flex items-center justify-center transition-colors bg-white shadow-none"
+                title="Lihat Detail"
+              >
+                <Eye className="h-3.5 w-3.5" />
+              </Link>
+            )}
             <Button
               size="sm"
               variant="outline"
@@ -186,14 +206,14 @@ function InvoicesPage() {
                   `Assalamu'alaikum *${invoice.clientName}* 🙏`,
                   ``,
                   `Berikut invoice untuk pemesanan Anda:`,
-                  `🏨 ${invoice.hotelName}`,
+                  invoice.hotelName && invoice.hotelName !== '-' ? `🏨 ${invoice.hotelName}` : null,
                   `📝 *${invoice.number}*`,
                   `💰 Total: *${formatCurrency(invoice.amount, invoice.currency)}*`,
                   ``,
                   `Download PDF: ${pdfUrl}`,
                   ``,
                   `Ada pertanyaan? Hubungi kami ya ❤️`,
-                ].join('\n');
+                ].filter(Boolean).join('\n');
                 window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`, '_blank');
               }}
               title="Kirim via WhatsApp"
@@ -264,6 +284,15 @@ function InvoicesPage() {
             <Filter className="h-4 w-4 mr-2" />
             Filter
           </Button>
+          <Link to="/create-manual-invoice">
+            <Button
+              variant="outline"
+              className="h-9 px-4 border-[#e5e7eb] text-zinc-700 hover:bg-gray-50 hover:text-black flex items-center rounded-md font-semibold text-xs bg-white shadow-none"
+            >
+              <Plus className="h-4 w-4 mr-2 text-zinc-500" />
+              Manual Invoice
+            </Button>
+          </Link>
           <Link to="/create-invoice">
             <Button
               className="bg-[#111111] hover:bg-[#242424] text-white h-9 px-4 rounded-md text-xs font-semibold transition-colors border border-transparent shadow-none"

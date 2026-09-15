@@ -232,6 +232,7 @@ export const API_ENDPOINTS = {
 
   // Invoice endpoints
   INVOICES: '/api/invoices',
+  INVOICE_MANUAL: '/api/invoices/manual',
   INVOICE_BY_ID: (id: string) => `/api/invoices/${id}`,
   GENERATE_INVOICE: (id: string) => `/api/invoices/${id}/generate`,
   REGENERATE_INVOICE: (id: string) => `/api/invoices/${id}/generate`,

@@ -173,3 +173,66 @@ export function useDeleteInvoice() {
     },
   });
 }
+
+// Manual invoice types
+export interface CreateManualInvoiceItem {
+  description: string;
+  quantity: number;
+  unitPrice: number;
+  total?: number;
+  notes?: string;
+}
+
+export interface CreateManualInvoiceData {
+  clientId?: number | null;
+  clientName: string;
+  clientEmail?: string;
+  clientPhone?: string;
+  clientAddress?: string;
+  title?: string;
+  currency: string;
+  issueDate?: string;
+  dueDate: string;
+  notes?: string;
+  items: CreateManualInvoiceItem[];
+}
+
+export interface CreateManualInvoiceResponse {
+  success: boolean;
+  data: {
+    id: number;
+    number: string;
+    amount: string;
+    currency: string;
+    pdfUrl: string;
+    downloadUrl: string;
+  };
+  message?: string;
+}
+
+// Buat manual invoice
+export function useCreateManualInvoice() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (data: CreateManualInvoiceData) => {
+      const response = await apiClient.post<CreateManualInvoiceResponse>(
+        API_ENDPOINTS.INVOICE_MANUAL,
+        data
+      );
+      return response;
+    },
+    onSuccess: (res) => {
+      queryClient.invalidateQueries({ queryKey: invoiceKeys.lists() });
+      if (res?.data?.downloadUrl) {
+        try {
+          apiClient.downloadFile(res.data.downloadUrl, `${res.data.number}.pdf`).catch(err => {
+            console.warn('Auto download failed:', err);
+          });
+        } catch (e) {
+          console.warn('Auto download trigger error:', e);
+        }
+      }
+    },
+  });
+}

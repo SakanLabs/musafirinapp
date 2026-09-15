@@ -739,6 +739,32 @@ export const customLaReceipts = pgTable("custom_la_receipts", {
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
 
+// Manual Invoices — Invoices created manually without requiring any bookings
+export const manualInvoices = pgTable('manual_invoices', {
+  id: serial('id').primaryKey(),
+  number: varchar('number', { length: 50 }).notNull().unique(), // Format: INV-MAN-YYYY-XXXX
+  clientId: integer('client_id').references(() => clients.id, { onDelete: 'set null' }),
+  clientName: varchar('client_name', { length: 255 }).notNull(),
+  clientEmail: varchar('client_email', { length: 255 }),
+  clientPhone: varchar('client_phone', { length: 50 }),
+  clientAddress: text('client_address'),
+  title: varchar('title', { length: 255 }),
+  amount: decimal('amount', { precision: 10, scale: 2 }).notNull(),
+  paidAmount: decimal('paid_amount', { precision: 10, scale: 2 }).default('0').notNull(),
+  currency: varchar('currency', { length: 3 }).default('SAR').notNull(),
+  issueDate: timestamp('issue_date').defaultNow().notNull(),
+  dueDate: timestamp('due_date').notNull(),
+  status: invoiceStatusEnum('status').default('draft').notNull(),
+  items: jsonb('items').notNull(), // Array of { description: string, quantity: number, unitPrice: number, subtotal: number, notes?: string }
+  notes: text('notes'),
+  pdfUrl: text('pdf_url'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+});
+
+export type ManualInvoice = typeof manualInvoices.$inferSelect;
+export type NewManualInvoice = typeof manualInvoices.$inferInsert;
+
 // Custom LA Expenses — Tracking money out to suppliers per Custom LA request
 export const customLaExpenseStatusEnum = pgEnum('custom_la_expense_status', ['pending', 'paid', 'cancelled']);
 

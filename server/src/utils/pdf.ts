@@ -1560,3 +1560,95 @@ export async function generateAgentRequestInvoicePDF(
     await page.close();
   }
 }
+
+// Generate Manual Invoice PDF
+export async function generateManualInvoicePDF(
+  manualInvoice: any
+): Promise<string> {
+  const browser = await launchBrowser();
+  const page = await browser.newPage();
+  try {
+    const templatePath = path.join(import.meta.dir, '../templates/manual-invoice.html');
+    const templateSource = fs.readFileSync(templatePath, 'utf8');
+    const template = Handlebars.compile(templateSource);
+
+    let logoBase64 = '';
+    try {
+      logoBase64 = TemplateHelpers.getLogoBase64();
+    } catch {
+      const logoPath = path.join(import.meta.dir, '../templates/logomusafirin.png');
+      if (fs.existsSync(logoPath)) {
+        logoBase64 = fs.readFileSync(logoPath, 'base64');
+      }
+    }
+
+    const defaultBank = {
+      bankName: 'Bank Syariah Indonesia',
+      bankCountry: 'Indonesia',
+      accountName: 'PT Thalhah Insan Rabbani',
+      accountNumberOrIBAN: '7254459741'
+    };
+
+    const currency = manualInvoice.currency || 'SAR';
+
+    const items = (manualInvoice.items || []).map((item: any, idx: number) => ({
+      no: idx + 1,
+      description: item.description,
+      quantity: item.quantity,
+      unitPriceFormatted: TemplateHelpers.formatCurrency(item.unitPrice),
+      subtotalFormatted: TemplateHelpers.formatCurrency(item.subtotal),
+      notes: item.notes || ''
+    }));
+
+    const data = {
+      brandName: 'Musafirin',
+      brandTagline: 'Atur Sendiri Perjalanan Ibadahmu',
+      logoBase64,
+      invoiceNo: manualInvoice.number,
+      invoiceDate: TemplateHelpers.formatDate(manualInvoice.issueDate),
+      dueDate: TemplateHelpers.formatDate(manualInvoice.dueDate),
+      status: (manualInvoice.status || 'DRAFT').toUpperCase(),
+      title: manualInvoice.title || '',
+      client: {
+        name: manualInvoice.clientName,
+        email: manualInvoice.clientEmail || '',
+        phone: manualInvoice.clientPhone || '',
+        address: manualInvoice.clientAddress || ''
+      },
+      currency,
+      items,
+      subtotalFormatted: TemplateHelpers.formatCurrency(manualInvoice.amount),
+      grandTotalFormatted: TemplateHelpers.formatCurrency(manualInvoice.amount),
+      notes: manualInvoice.notes || '',
+      bank: defaultBank
+    };
+
+    const html = template(data);
+    await page.setContent(html);
+
+    const pdfBuffer = await page.pdf({
+      format: 'A4',
+      printBackground: true,
+      margin: {
+        top: '20px',
+        right: '20px',
+        bottom: '20px',
+        left: '20px'
+      }
+    });
+
+    const pdfUrl = await uploadToMinio(
+      `invoices/${manualInvoice.number}.pdf`,
+      Buffer.from(pdfBuffer),
+      'application/pdf'
+    );
+
+    return pdfUrl;
+  } catch (error) {
+    console.error('Error generating manual invoice PDF:', error);
+    throw error;
+  } finally {
+    await page.close();
+  }
+}
+

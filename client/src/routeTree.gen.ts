@@ -35,6 +35,7 @@ import { Route as CreateReceiptRouteImport } from './routes/create-receipt'
 import { Route as CreateMuthowifBookingRouteImport } from './routes/create-muthowif-booking'
 import { Route as CreateMasterTransportRouteImport } from './routes/create-master-transport'
 import { Route as CreateMasterHotelRouteImport } from './routes/create-master-hotel'
+import { Route as CreateManualInvoiceRouteImport } from './routes/create-manual-invoice'
 import { Route as CreateInvoiceRouteImport } from './routes/create-invoice'
 import { Route as CreateCustomLaRouteImport } from './routes/create-custom-la'
 import { Route as CreateBookingRouteImport } from './routes/create-booking'
@@ -221,6 +222,11 @@ const CreateMasterTransportRoute = CreateMasterTransportRouteImport.update({
 const CreateMasterHotelRoute = CreateMasterHotelRouteImport.update({
   id: '/create-master-hotel',
   path: '/create-master-hotel',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CreateManualInvoiceRoute = CreateManualInvoiceRouteImport.update({
+  id: '/create-manual-invoice',
+  path: '/create-manual-invoice',
   getParentRoute: () => rootRouteImport,
 } as any)
 const CreateInvoiceRoute = CreateInvoiceRouteImport.update({
@@ -531,6 +537,7 @@ export interface FileRoutesByFullPath {
   '/create-booking': typeof CreateBookingRoute
   '/create-custom-la': typeof CreateCustomLaRoute
   '/create-invoice': typeof CreateInvoiceRoute
+  '/create-manual-invoice': typeof CreateManualInvoiceRoute
   '/create-master-hotel': typeof CreateMasterHotelRoute
   '/create-master-transport': typeof CreateMasterTransportRoute
   '/create-muthowif-booking': typeof CreateMuthowifBookingRoute
@@ -614,6 +621,7 @@ export interface FileRoutesByTo {
   '/create-booking': typeof CreateBookingRoute
   '/create-custom-la': typeof CreateCustomLaRoute
   '/create-invoice': typeof CreateInvoiceRoute
+  '/create-manual-invoice': typeof CreateManualInvoiceRoute
   '/create-master-hotel': typeof CreateMasterHotelRoute
   '/create-master-transport': typeof CreateMasterTransportRoute
   '/create-muthowif-booking': typeof CreateMuthowifBookingRoute
@@ -697,6 +705,7 @@ export interface FileRoutesById {
   '/create-booking': typeof CreateBookingRoute
   '/create-custom-la': typeof CreateCustomLaRoute
   '/create-invoice': typeof CreateInvoiceRoute
+  '/create-manual-invoice': typeof CreateManualInvoiceRoute
   '/create-master-hotel': typeof CreateMasterHotelRoute
   '/create-master-transport': typeof CreateMasterTransportRoute
   '/create-muthowif-booking': typeof CreateMuthowifBookingRoute
@@ -783,6 +792,7 @@ export interface FileRouteTypes {
     | '/create-booking'
     | '/create-custom-la'
     | '/create-invoice'
+    | '/create-manual-invoice'
     | '/create-master-hotel'
     | '/create-master-transport'
     | '/create-muthowif-booking'
@@ -866,6 +876,7 @@ export interface FileRouteTypes {
     | '/create-booking'
     | '/create-custom-la'
     | '/create-invoice'
+    | '/create-manual-invoice'
     | '/create-master-hotel'
     | '/create-master-transport'
     | '/create-muthowif-booking'
@@ -948,6 +959,7 @@ export interface FileRouteTypes {
     | '/create-booking'
     | '/create-custom-la'
     | '/create-invoice'
+    | '/create-manual-invoice'
     | '/create-master-hotel'
     | '/create-master-transport'
     | '/create-muthowif-booking'
@@ -1033,6 +1045,7 @@ export interface RootRouteChildren {
   CreateBookingRoute: typeof CreateBookingRoute
   CreateCustomLaRoute: typeof CreateCustomLaRoute
   CreateInvoiceRoute: typeof CreateInvoiceRoute
+  CreateManualInvoiceRoute: typeof CreateManualInvoiceRoute
   CreateMasterHotelRoute: typeof CreateMasterHotelRoute
   CreateMasterTransportRoute: typeof CreateMasterTransportRoute
   CreateMuthowifBookingRoute: typeof CreateMuthowifBookingRoute
@@ -1263,6 +1276,13 @@ declare module '@tanstack/react-router' {
       path: '/create-master-hotel'
       fullPath: '/create-master-hotel'
       preLoaderRoute: typeof CreateMasterHotelRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/create-manual-invoice': {
+      id: '/create-manual-invoice'
+      path: '/create-manual-invoice'
+      fullPath: '/create-manual-invoice'
+      preLoaderRoute: typeof CreateManualInvoiceRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/create-invoice': {
@@ -1793,6 +1813,7 @@ const rootRouteChildren: RootRouteChildren = {
   CreateBookingRoute: CreateBookingRoute,
   CreateCustomLaRoute: CreateCustomLaRoute,
   CreateInvoiceRoute: CreateInvoiceRoute,
+  CreateManualInvoiceRoute: CreateManualInvoiceRoute,
   CreateMasterHotelRoute: CreateMasterHotelRoute,
   CreateMasterTransportRoute: CreateMasterTransportRoute,
   CreateMuthowifBookingRoute: CreateMuthowifBookingRoute,
