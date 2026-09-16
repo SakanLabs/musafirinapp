@@ -65,9 +65,9 @@ export class AnalyticsService {
   async getRevenueData(filters: AnalyticsFilters = {}): Promise<RevenueData> {
     const whereConditions = this.buildWhereConditions(filters);
 
-    // Total revenue query (paid bookings only)
+    // Total revenue query (confirmed bookings only)
     const totalRevenueWhere = (() => {
-      const conds = [eq(bookings.paymentStatus, 'paid')];
+      const conds = [eq(bookings.bookingStatus, 'confirmed')];
       if (whereConditions) conds.unshift(whereConditions);
       return and(...conds);
     })();
@@ -164,9 +164,9 @@ export class AnalyticsService {
   async getProfitData(filters: AnalyticsFilters = {}): Promise<ProfitData> {
     const whereConditions = this.buildWhereConditions(filters);
 
-    // Revenue from paid bookings only
+    // Revenue from confirmed bookings only
     const revenueWhere = (() => {
-      const conds = [eq(bookings.paymentStatus, 'paid')];
+      const conds = [eq(bookings.bookingStatus, 'confirmed')];
       if (whereConditions) conds.unshift(whereConditions);
       return and(...conds);
     })();
@@ -178,9 +178,9 @@ export class AnalyticsService {
 
     const totalRevenue = Number(revenueResult[0]?.totalRevenue || 0);
 
-    // Hotel costs: non-period items (nights * roomCount * hotelCostPrice) - only for paid bookings
+    // Hotel costs: non-period items (nights * roomCount * hotelCostPrice) - only for confirmed bookings
     const nonPeriodWhere = (() => {
-      const conds = [eq(bookingItems.hasPricingPeriods, false), eq(bookings.paymentStatus, 'paid')];
+      const conds = [eq(bookingItems.hasPricingPeriods, false), eq(bookings.bookingStatus, 'confirmed')];
       if (whereConditions) conds.unshift(whereConditions);
       return and(...conds);
     })();
@@ -203,9 +203,9 @@ export class AnalyticsService {
 
     const totalHotelCostsNonPeriod = Number(hotelCostNonPeriodResult[0]?.totalHotelCostsNonPeriod || 0);
 
-    // Hotel costs: period-based items (nights * roomCount * hotelCostPrice) - only for paid bookings
+    // Hotel costs: period-based items (nights * roomCount * hotelCostPrice) - only for confirmed bookings
     const periodWhere = (() => {
-      const conds = [eq(bookingItems.hasPricingPeriods, true), eq(bookings.paymentStatus, 'paid')];
+      const conds = [eq(bookingItems.hasPricingPeriods, true), eq(bookings.bookingStatus, 'confirmed')];
       if (whereConditions) conds.unshift(whereConditions);
       return and(...conds);
     })();
@@ -397,9 +397,9 @@ export class AnalyticsService {
       this.getProfitData(filters),
     ]);
 
-    // Total paid bookings (consistent with revenue calculation)
+    // Total confirmed bookings (consistent with revenue calculation)
     const totalBookingsWhere = (() => {
-      const conds = [eq(bookings.paymentStatus, 'paid')];
+      const conds = [eq(bookings.bookingStatus, 'confirmed')];
       if (whereConditions) conds.unshift(whereConditions);
       return and(...conds);
     })();
@@ -444,6 +444,8 @@ export class AnalyticsService {
 
     if (filters.status) {
       conditions.push(sql`${bookings.bookingStatus} = ${filters.status}`);
+    } else {
+      conditions.push(eq(bookings.bookingStatus, 'confirmed'));
     }
 
     return conditions.length > 0 ? and(...conditions) : undefined;

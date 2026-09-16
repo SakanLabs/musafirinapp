@@ -43,6 +43,7 @@ import { Route as CostsRouteImport } from './routes/costs'
 import { Route as ClientsRouteImport } from './routes/clients'
 import { Route as ClearAuthCacheRouteImport } from './routes/clear-auth-cache'
 import { Route as BookingsRouteImport } from './routes/bookings'
+import { Route as BookingFinanceRouteImport } from './routes/booking-finance'
 import { Route as BookingEditRouteImport } from './routes/booking-edit'
 import { Route as BookingDetailRouteImport } from './routes/booking-detail'
 import { Route as AnalyticsRouteImport } from './routes/analytics'
@@ -262,6 +263,11 @@ const ClearAuthCacheRoute = ClearAuthCacheRouteImport.update({
 const BookingsRoute = BookingsRouteImport.update({
   id: '/bookings',
   path: '/bookings',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const BookingFinanceRoute = BookingFinanceRouteImport.update({
+  id: '/booking-finance',
+  path: '/booking-finance',
   getParentRoute: () => rootRouteImport,
 } as any)
 const BookingEditRoute = BookingEditRouteImport.update({
@@ -530,6 +536,7 @@ export interface FileRoutesByFullPath {
   '/analytics': typeof AnalyticsRoute
   '/booking-detail': typeof BookingDetailRoute
   '/booking-edit': typeof BookingEditRoute
+  '/booking-finance': typeof BookingFinanceRoute
   '/bookings': typeof BookingsRouteWithChildren
   '/clear-auth-cache': typeof ClearAuthCacheRoute
   '/clients': typeof ClientsRouteWithChildren
@@ -615,6 +622,7 @@ export interface FileRoutesByTo {
   '/analytics': typeof AnalyticsRoute
   '/booking-detail': typeof BookingDetailRoute
   '/booking-edit': typeof BookingEditRoute
+  '/booking-finance': typeof BookingFinanceRoute
   '/bookings': typeof BookingsRouteWithChildren
   '/clear-auth-cache': typeof ClearAuthCacheRoute
   '/costs': typeof CostsRoute
@@ -698,6 +706,7 @@ export interface FileRoutesById {
   '/analytics': typeof AnalyticsRoute
   '/booking-detail': typeof BookingDetailRoute
   '/booking-edit': typeof BookingEditRoute
+  '/booking-finance': typeof BookingFinanceRoute
   '/bookings': typeof BookingsRouteWithChildren
   '/clear-auth-cache': typeof ClearAuthCacheRoute
   '/clients': typeof ClientsRouteWithChildren
@@ -785,6 +794,7 @@ export interface FileRouteTypes {
     | '/analytics'
     | '/booking-detail'
     | '/booking-edit'
+    | '/booking-finance'
     | '/bookings'
     | '/clear-auth-cache'
     | '/clients'
@@ -870,6 +880,7 @@ export interface FileRouteTypes {
     | '/analytics'
     | '/booking-detail'
     | '/booking-edit'
+    | '/booking-finance'
     | '/bookings'
     | '/clear-auth-cache'
     | '/costs'
@@ -952,6 +963,7 @@ export interface FileRouteTypes {
     | '/analytics'
     | '/booking-detail'
     | '/booking-edit'
+    | '/booking-finance'
     | '/bookings'
     | '/clear-auth-cache'
     | '/clients'
@@ -1038,6 +1050,7 @@ export interface RootRouteChildren {
   AnalyticsRoute: typeof AnalyticsRoute
   BookingDetailRoute: typeof BookingDetailRoute
   BookingEditRoute: typeof BookingEditRoute
+  BookingFinanceRoute: typeof BookingFinanceRoute
   BookingsRoute: typeof BookingsRouteWithChildren
   ClearAuthCacheRoute: typeof ClearAuthCacheRoute
   ClientsRoute: typeof ClientsRouteWithChildren
@@ -1332,6 +1345,13 @@ declare module '@tanstack/react-router' {
       path: '/bookings'
       fullPath: '/bookings'
       preLoaderRoute: typeof BookingsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/booking-finance': {
+      id: '/booking-finance'
+      path: '/booking-finance'
+      fullPath: '/booking-finance'
+      preLoaderRoute: typeof BookingFinanceRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/booking-edit': {
@@ -1806,6 +1826,7 @@ const rootRouteChildren: RootRouteChildren = {
   AnalyticsRoute: AnalyticsRoute,
   BookingDetailRoute: BookingDetailRoute,
   BookingEditRoute: BookingEditRoute,
+  BookingFinanceRoute: BookingFinanceRoute,
   BookingsRoute: BookingsRouteWithChildren,
   ClearAuthCacheRoute: ClearAuthCacheRoute,
   ClientsRoute: ClientsRouteWithChildren,

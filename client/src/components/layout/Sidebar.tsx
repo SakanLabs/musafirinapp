@@ -19,7 +19,8 @@ import {
   UserCheck,
   ShoppingBag,
   ClipboardList,
-  Map
+  Map,
+  DollarSign
 } from 'lucide-react'
 import { useState, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
@@ -105,6 +106,12 @@ const navigationSections = [
   {
     title: 'Billing & Finance',
     items: [
+      {
+        name: 'Laporan Keuangan',
+        href: '/booking-finance',
+        icon: DollarSign,
+        roles: ['admin', 'owner', 'finance']
+      },
       {
         name: 'Invoices',
         href: '/invoices',

@@ -156,7 +156,7 @@ function BookingsPage() {
   const totalBookings = bookings.length
   const confirmedBookings = useMemo(() => bookings.filter(b => b.bookingStatus?.toLowerCase() === 'confirmed').length, [bookings])
   const pendingBookings = useMemo(() => bookings.filter(b => b.bookingStatus?.toLowerCase() === 'pending').length, [bookings])
-  const totalRevenue = useMemo(() => bookings.reduce((sum, b) => sum + (Number(b.totalAmount) || 0), 0), [bookings])
+  const totalRevenue = useMemo(() => bookings.filter(b => b.bookingStatus?.toLowerCase() === 'confirmed').reduce((sum, b) => sum + (Number(b.totalAmount) || 0), 0), [bookings])
 
   // Define columns for bookings table
   const bookingColumns: Column<Booking>[] = [

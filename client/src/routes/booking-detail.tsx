@@ -5,6 +5,7 @@ import { PageLayout } from "@/components/layout/PageLayout"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Input } from "@/components/ui/input"
 import { DueDateModal } from "@/components/modals/DueDateModal"
 import { UpdateBookingStatusModal } from "@/components/modals/UpdateBookingStatusModal"
 import { Modal } from "@/components/ui/modal"
@@ -26,7 +27,11 @@ import {
   Building,
   DollarSign,
   HelpCircle,
-  TrendingUp
+  TrendingUp,
+  CreditCard,
+  Plus,
+  Receipt,
+  AlertCircle
 } from "lucide-react"
 import { SARCurrency } from "@/components/ui/sar-currency"
 import { authService } from "@/lib/auth"
@@ -34,9 +39,29 @@ import {
   formatCurrency,
   formatDate
 } from "@/lib/utils"
-import { useBooking, useGenerateInvoice, useGenerateVoucher, useRegenerateVoucher, useUpdateBookingStatus, useDeleteBooking } from "@/lib/queries"
+import { useBooking, useGenerateInvoice, useGenerateVoucher, useRegenerateVoucher, useUpdateBookingStatus, useDeleteBooking, usePayBooking } from "@/lib/queries"
+import { useReceiptsByBooking, useGenerateReceipt } from "@/lib/queries/receipts"
 import { useCheckInvoiceExists } from "@/lib/queries/invoices"
 import { useCheckVoucherExists } from "@/lib/queries/vouchers"
+
+function parseBookingPayments(meta: unknown) {
+  if (!meta || typeof meta !== "object") return []
+  const payments = (meta as Record<string, unknown>)["payments"]
+  if (!Array.isArray(payments)) return []
+  return payments
+    .map((p): { method: string; amount: number; date: string; status: string; reference?: string; description?: string } | null => {
+      if (!p || typeof p !== "object") return null
+      const method = String(p.method || "")
+      const amount = typeof p.amount === "number" ? p.amount : parseFloat(String(p.amount)) || 0
+      const date = String(p.date || new Date().toISOString())
+      const status = String(p.status || "completed")
+      const reference = p.reference ? String(p.reference) : undefined
+      const description = p.description ? String(p.description) : undefined
+      if (!method && amount <= 0) return null
+      return { method, amount, date, status, reference, description }
+    })
+    .filter((p): p is { method: string; amount: number; date: string; status: string; reference?: string; description?: string } => !!p)
+}
 
 // Helper functions for monochromatic theme
 const getBookingStatusColor = (status: string) => {
@@ -93,10 +118,73 @@ function BookingDetailPage() {
   const regenerateVoucherMutation = useRegenerateVoucher()
   const updateBookingStatusMutation = useUpdateBookingStatus()
   const deleteBookingMutation = useDeleteBooking()
+  const payBookingMutation = usePayBooking()
+  const generateReceiptMutation = useGenerateReceipt()
+
+  // Receipts by booking
+  const { data: receiptsForBooking = [] } = useReceiptsByBooking(id)
+
+  // Payment modal state
+  const [isPayModalOpen, setIsPayModalOpen] = useState(false)
+  const [payForm, setPayForm] = useState({
+    method: "bank_transfer" as "bank_transfer" | "deposit" | "cash",
+    amount: "",
+    referenceNumber: "",
+    description: ""
+  })
 
   // Check if invoice and voucher already exist
   const { data: existingInvoice } = useCheckInvoiceExists(id)
   const { data: existingVoucher } = useCheckVoucherExists(id)
+
+  const handleOpenPayModal = () => {
+    if (!booking) return
+    const total = Number(booking.totalAmount) || 0
+    const payments = parseBookingPayments(booking.meta)
+    const paid = payments.reduce((sum, p) => sum + p.amount, 0)
+    const remaining = Math.max(total - paid, 0)
+
+    setPayForm({
+      method: "bank_transfer",
+      amount: remaining > 0 ? remaining.toString() : "",
+      referenceNumber: "",
+      description: paid === 0 ? "Pembayaran Uang Muka (DP)" : `Pembayaran Termin ke-${payments.length + 1}`
+    })
+    setIsPayModalOpen(true)
+  }
+
+  const handleRecordPayment = async () => {
+    if (!booking) return
+    const amountNum = parseFloat(payForm.amount)
+    if (!amountNum || isNaN(amountNum) || amountNum <= 0) {
+      toast.error("Nominal pembayaran harus lebih dari 0")
+      return
+    }
+
+    try {
+      await payBookingMutation.mutateAsync({
+        id: booking.id.toString(),
+        method: payForm.method,
+        amount: amountNum,
+        referenceNumber: payForm.referenceNumber.trim() || undefined,
+        description: payForm.description.trim() || undefined
+      })
+      toast.success("Pembayaran berhasil dicatat!")
+      setIsPayModalOpen(false)
+    } catch (err: any) {
+      toast.error(err.message || "Gagal mencatat pembayaran")
+    }
+  }
+
+  const handleGenerateReceipt = async () => {
+    if (!booking) return
+    try {
+      const receipt = await generateReceiptMutation.mutateAsync(booking.id)
+      toast.success(`Kwitansi ${receipt.number} berhasil diterbitkan!`)
+    } catch (err: any) {
+      toast.error(err.message || "Gagal membuat kwitansi")
+    }
+  }
 
   const handleGenerateInvoice = () => {
     setIsDueDateModalOpen(true)
@@ -475,7 +563,170 @@ function BookingDetailPage() {
                 </div>
               </CardContent>
             </Card>
-          </div>
+
+            {/* Payment History & Installments (Termin) Card */}
+                {(() => {
+                  const total = Number(booking.totalAmount) || 0
+                  const payments = parseBookingPayments(booking.meta)
+                  const paid = payments.reduce((sum, p) => sum + p.amount, 0)
+                  const remaining = Math.max(total - paid, 0)
+                  const pct = total > 0 ? Math.min(Math.round((paid / total) * 100), 100) : 0
+
+                  return (
+                    <Card className="border border-[#e5e7eb] rounded-xl shadow-[0_1px_2px_rgba(0,0,0,0.04)] bg-white overflow-hidden">
+                      <CardHeader className="border-b border-[#e5e7eb] px-6 py-4 bg-gray-50/20 flex flex-row items-center justify-between">
+                        <CardTitle className="text-sm font-bold text-[#111111] flex items-center gap-2">
+                          <CreditCard className="h-4 w-4 text-gray-400" />
+                          Riwayat Pembayaran & Tracking Termin
+                        </CardTitle>
+                        <Button
+                          size="sm"
+                          onClick={handleOpenPayModal}
+                          className="bg-[#111111] hover:bg-[#242424] text-white text-xs font-semibold h-8 px-3 rounded-md flex items-center gap-1 shadow-none"
+                        >
+                          <Plus className="h-3.5 w-3.5" />
+                          Catat Pembayaran
+                        </Button>
+                      </CardHeader>
+                      <CardContent className="p-4 md:p-6 space-y-5">
+                        {/* Financial Snapshot */}
+                        <div className="p-4 bg-zinc-50/70 rounded-xl border border-zinc-200/80 space-y-3">
+                          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-center">
+                            <div>
+                              <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider">Total Tagihan</span>
+                              <p className="text-base font-bold text-zinc-950 mt-0.5">{formatCurrency(total.toString(), "SAR")}</p>
+                            </div>
+                            <div>
+                              <span className="text-[10px] font-bold text-emerald-600 uppercase tracking-wider">Total Terbayar</span>
+                              <p className="text-base font-bold text-emerald-600 mt-0.5">{formatCurrency(paid.toString(), "SAR")}</p>
+                            </div>
+                            <div>
+                              <span className="text-[10px] font-bold text-rose-600 uppercase tracking-wider">Sisa Tagihan</span>
+                              <p className={`text-base font-bold mt-0.5 ${remaining > 0 ? "text-rose-600" : "text-emerald-700"}`}>
+                                {remaining > 0 ? formatCurrency(remaining.toString(), "SAR") : "Lunas ✓"}
+                              </p>
+                            </div>
+                          </div>
+
+                          <div className="pt-3 border-t border-zinc-200">
+                            <div className="flex justify-between text-xs font-semibold mb-1.5">
+                              <span className="text-zinc-600">Realisasi Pelunasan</span>
+                              <span className={pct === 100 ? "text-emerald-700 font-bold" : "text-amber-700 font-bold"}>
+                                {pct}% {pct === 100 ? "Lunas" : "Sebagian"}
+                              </span>
+                            </div>
+                            <div className="w-full bg-zinc-200/70 rounded-full h-2 overflow-hidden">
+                              <div
+                                className={`h-full rounded-full transition-all duration-300 ${
+                                  pct === 100 ? "bg-emerald-600" : pct > 0 ? "bg-amber-500" : "bg-zinc-300"
+                                }`}
+                                style={{ width: `${pct}%` }}
+                              />
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* List of Payments */}
+                        <div className="space-y-3">
+                          <h4 className="text-xs font-bold text-zinc-800 uppercase tracking-wider">Rincian Termin Pembayaran</h4>
+                          {payments.length === 0 ? (
+                            <div className="p-6 text-center bg-zinc-50/50 rounded-xl border border-dashed border-zinc-200 text-zinc-400">
+                              <Clock className="h-5 w-5 mx-auto mb-1.5 text-zinc-300" />
+                              <p className="text-xs font-medium">Belum ada pembayaran yang dicatat untuk pemesanan ini.</p>
+                              <p className="text-[11px] text-zinc-400 mt-0.5">Gunakan tombol "Catat Pembayaran" di atas untuk memasukkan pembayaran DP.</p>
+                            </div>
+                          ) : (
+                            payments.map((p, pIdx) => (
+                              <div
+                                key={pIdx}
+                                className="p-3.5 bg-white rounded-xl border border-zinc-200/90 shadow-none space-y-2 hover:border-zinc-300 transition-colors"
+                              >
+                                <div className="flex items-center justify-between">
+                                  <div className="flex items-center gap-2">
+                                    <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase bg-zinc-100 text-zinc-800 border border-zinc-200">
+                                      {pIdx === 0 ? "Pembayaran #1 (DP)" : `Termin ke-${pIdx + 1}`}
+                                    </span>
+                                    <span className="text-xs font-semibold text-zinc-600 capitalize">{p.method.replace("_", " ")}</span>
+                                  </div>
+                                  <span className="text-sm font-extrabold text-emerald-700">
+                                    {formatCurrency(p.amount.toString(), "SAR")}
+                                  </span>
+                                </div>
+
+                                <div className="grid grid-cols-2 gap-2 text-[11px] text-zinc-500 pt-1.5 border-t border-zinc-100">
+                                  <div>
+                                    <span className="text-zinc-400">Tanggal:</span> {formatDate(p.date)}
+                                  </div>
+                                  {p.reference && (
+                                    <div>
+                                      <span className="text-zinc-400">Referensi:</span> <span className="font-mono text-zinc-800 font-semibold">{p.reference}</span>
+                                    </div>
+                                  )}
+                                </div>
+
+                                {p.description && (
+                                  <div className="text-[11px] text-zinc-700 bg-zinc-50 px-2.5 py-1.5 rounded-md border border-zinc-150">
+                                    <span className="font-semibold text-zinc-500">Catatan:</span> {p.description}
+                                  </div>
+                                )}
+                              </div>
+                            ))
+                          )}
+                        </div>
+
+                        {/* Receipts Section */}
+                        <div className="pt-3 border-t border-zinc-100 space-y-3">
+                          <div className="flex items-center justify-between">
+                            <h4 className="text-xs font-bold text-zinc-800 uppercase tracking-wider">Kwitansi Terbit</h4>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={handleGenerateReceipt}
+                              disabled={generateReceiptMutation.isPending}
+                              className="h-8 px-2.5 text-xs font-semibold rounded-md border-zinc-300 shadow-none flex items-center gap-1.5"
+                            >
+                              {generateReceiptMutation.isPending ? (
+                                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                              ) : (
+                                <Receipt className="h-3.5 w-3.5" />
+                              )}
+                              Terbitkan Kwitansi Baru
+                            </Button>
+                          </div>
+
+                          {receiptsForBooking.length === 0 ? (
+                            <p className="text-zinc-400 text-xs italic">Belum ada kwitansi yang diterbitkan.</p>
+                          ) : (
+                            <div className="space-y-2">
+                              {receiptsForBooking.map((rcpt) => (
+                                <div
+                                  key={rcpt.id}
+                                  className="p-3 bg-zinc-50/70 rounded-lg border border-zinc-200 flex items-center justify-between"
+                                >
+                                  <div>
+                                    <div className="font-mono font-bold text-xs text-zinc-900">{rcpt.number}</div>
+                                    <div className="text-[10px] text-zinc-500">
+                                      Diterbitkan: {formatDate(rcpt.issueDate)} • Nominal: {formatCurrency(rcpt.amount, rcpt.currency)}
+                                    </div>
+                                  </div>
+                                  <Button
+                                    size="sm"
+                                    variant="ghost"
+                                    onClick={() => window.open(rcpt.pdfUrl || `/api/receipts/${rcpt.id}/download`, "_blank")}
+                                    className="h-7 px-2.5 text-xs font-semibold text-zinc-700 hover:text-black hover:bg-zinc-200"
+                                  >
+                                    Buka PDF &rarr;
+                                  </Button>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      </CardContent>
+                    </Card>
+                  )
+                })()}
+              </div>
 
           {/* Sidebar parameters (1 col) */}
           <div className="space-y-6">
@@ -684,6 +935,150 @@ function BookingDetailPage() {
             <p>
               Booking code <span className="font-bold text-[#111111] font-mono">#{booking.code}</span> has been permanently wiped from the operations registry database.
             </p>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Modal: Catat Pembayaran Baru */}
+      <Modal
+        isOpen={isPayModalOpen}
+        onClose={() => setIsPayModalOpen(false)}
+        title="Catat Pembayaran / Termin Booking"
+      >
+        <div className="space-y-4 text-xs font-medium text-zinc-700">
+          <div className="p-3 bg-zinc-50 rounded-lg border border-zinc-200 space-y-1">
+            <p className="font-bold text-zinc-950 text-sm">{booking.clientName}</p>
+            <p className="text-zinc-500">Booking: #{booking.id} ({booking.code}) • {booking.hotelName}</p>
+            {(() => {
+              const total = Number(booking.totalAmount) || 0
+              const payments = parseBookingPayments(booking.meta)
+              const paid = payments.reduce((sum, p) => sum + p.amount, 0)
+              const remaining = Math.max(total - paid, 0)
+              return (
+                <div className="flex justify-between pt-1.5 border-t border-zinc-200 text-xs font-bold">
+                  <span>Sisa Tagihan Belum Lunas:</span>
+                  <span className="text-rose-600">{formatCurrency(remaining.toString(), "SAR")}</span>
+                </div>
+              )
+            })()}
+          </div>
+
+          <div className="space-y-3">
+            <div>
+              <label className="block text-[10px] font-bold text-zinc-400 uppercase tracking-wider mb-1">
+                Metode Pembayaran *
+              </label>
+              <select
+                value={payForm.method}
+                onChange={(e) => setPayForm({ ...payForm, method: e.target.value as any })}
+                className="w-full h-9 px-3 border border-[#e5e7eb] rounded-md text-xs font-medium text-zinc-900 bg-white focus:outline-none focus:border-[#111111]"
+              >
+                <option value="bank_transfer">Transfer Bank (BSI / Mandiri / dll)</option>
+                <option value="cash">Tunai / Cash (SAR)</option>
+                <option value="deposit">Potong Saldo Deposit Client</option>
+              </select>
+            </div>
+
+            <div>
+              <div className="flex justify-between items-center mb-1">
+                <label className="block text-[10px] font-bold text-zinc-400 uppercase tracking-wider">
+                  Nominal Pembayaran (SAR) *
+                </label>
+                {(() => {
+                  const total = Number(booking.totalAmount) || 0
+                  const payments = parseBookingPayments(booking.meta)
+                  const paid = payments.reduce((sum, p) => sum + p.amount, 0)
+                  const remaining = Math.max(total - paid, 0)
+                  return (
+                    <div className="flex gap-1">
+                      <button
+                        type="button"
+                        onClick={() => setPayForm({ ...payForm, amount: (total * 0.3).toFixed(2), description: "Pembayaran DP 30%" })}
+                        className="text-[10px] font-semibold text-zinc-600 hover:text-black bg-zinc-100 hover:bg-zinc-200 px-1.5 py-0.5 rounded"
+                      >
+                        DP 30%
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setPayForm({ ...payForm, amount: (total * 0.5).toFixed(2), description: "Pembayaran 50%" })}
+                        className="text-[10px] font-semibold text-zinc-600 hover:text-black bg-zinc-100 hover:bg-zinc-200 px-1.5 py-0.5 rounded"
+                      >
+                        50%
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setPayForm({ ...payForm, amount: remaining.toFixed(2), description: "Pelunasan Sisa Pembayaran" })}
+                        className="text-[10px] font-bold text-emerald-700 hover:text-emerald-900 bg-emerald-50 hover:bg-emerald-100 px-1.5 py-0.5 rounded"
+                      >
+                        Lunasi Sisa
+                      </button>
+                    </div>
+                  )
+                })()}
+              </div>
+              <Input
+                type="number"
+                min="0"
+                step="0.01"
+                placeholder="0.00"
+                value={payForm.amount}
+                onChange={(e) => setPayForm({ ...payForm, amount: e.target.value })}
+                className="h-9 border-[#e5e7eb] rounded-md text-xs font-semibold focus-visible:ring-[#111111] shadow-none"
+              />
+            </div>
+
+            <div>
+              <label className="block text-[10px] font-bold text-zinc-400 uppercase tracking-wider mb-1">
+                Nomor Referensi / Bukti Transfer (Opsional)
+              </label>
+              <Input
+                placeholder="Contoh: TRX-BSI-9849204"
+                value={payForm.referenceNumber}
+                onChange={(e) => setPayForm({ ...payForm, referenceNumber: e.target.value })}
+                className="h-9 border-[#e5e7eb] rounded-md text-xs font-medium focus-visible:ring-[#111111] shadow-none"
+              />
+            </div>
+
+            <div>
+              <label className="block text-[10px] font-bold text-zinc-400 uppercase tracking-wider mb-1">
+                Keterangan / Catatan Termin (Opsional)
+              </label>
+              <Input
+                placeholder="Contoh: Pembayaran Uang Muka (DP) 30% via BSI"
+                value={payForm.description}
+                onChange={(e) => setPayForm({ ...payForm, description: e.target.value })}
+                className="h-9 border-[#e5e7eb] rounded-md text-xs font-medium focus-visible:ring-[#111111] shadow-none"
+              />
+            </div>
+          </div>
+
+          <div className="flex justify-end space-x-2 pt-3 border-t border-zinc-200">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setIsPayModalOpen(false)}
+              className="text-xs h-9 border-[#e5e7eb] shadow-none"
+            >
+              Batal
+            </Button>
+            <Button
+              size="sm"
+              onClick={handleRecordPayment}
+              disabled={payBookingMutation.isPending}
+              className="bg-[#111111] hover:bg-[#242424] text-white text-xs h-9 px-4 rounded-md font-semibold shadow-none flex items-center gap-1.5"
+            >
+              {payBookingMutation.isPending ? (
+                <>
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  Menyimpan...
+                </>
+              ) : (
+                <>
+                  <CheckCircle2 className="h-3.5 w-3.5" />
+                  Simpan Pembayaran
+                </>
+              )}
+            </Button>
           </div>
         </div>
       </Modal>
