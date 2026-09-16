@@ -121,14 +121,56 @@ Silakan hubungi kami jika ada penyesuaian yang ingin dilakukan.`
   const totals = meta.totals || {}
   const rooms = meta.rooms || { makkah: {}, madinah: {} }
 
+  // Hitung total dari bookingan yang ditautkan
+  const linkedBookingsTotal = request.linkedBookings?.reduce((sum, b) => sum + Number(b.totalAmount || 0), 0) || 0
+  const linkedMakkahTotal = request.linkedBookings
+    ?.filter(b => b.city?.toLowerCase().includes('makkah'))
+    .reduce((sum, b) => sum + Number(b.totalAmount || 0), 0) || 0
+  const linkedMadinahTotal = request.linkedBookings
+    ?.filter(b => b.city?.toLowerCase().includes('madinah'))
+    .reduce((sum, b) => sum + Number(b.totalAmount || 0), 0) || 0
+  const linkedOtherHotelTotal = request.linkedBookings
+    ?.filter(b => !b.city?.toLowerCase().includes('makkah') && !b.city?.toLowerCase().includes('madinah'))
+    .reduce((sum, b) => sum + Number(b.totalAmount || 0), 0) || 0
+
+  // Total Hotel Efektif: jika totals manual ada gunakan itu, jika tidak gunakan dari linked bookings
+  const effectiveMakkahHotelTotal = (totals.makkahHotelTotal && totals.makkahHotelTotal > 0)
+    ? totals.makkahHotelTotal
+    : (linkedMakkahTotal + linkedOtherHotelTotal)
+  const effectiveMadinahHotelTotal = (totals.madinahHotelTotal && totals.madinahHotelTotal > 0)
+    ? totals.madinahHotelTotal
+    : linkedMadinahTotal
+  const totalHotelCombined = effectiveMakkahHotelTotal + effectiveMadinahHotelTotal
+
+  // Transport & Layanan Lainnya
+  const linkedTransportTotal = request.linkedTransport?.reduce((sum, t) => sum + Number(t.totalAmount || 0), 0) || 0
+  const effectiveTransportTotal = (totals.totalTransport && totals.totalTransport > 0)
+    ? totals.totalTransport
+    : linkedTransportTotal
+
+  const effectiveGrandTotal = Number(request.totalAmountSAR) || totals.grandTotal || 0
+
   const makkahNights = rooms.makkah?.nights || 0
   const madinahNights = rooms.madinah?.nights || 0
-  const nonHotelTotal = Number(request.totalAmountSAR) - (totals.makkahHotelTotal || 0) - (totals.madinahHotelTotal || 0)
+  const nonHotelTotal = Math.max(0, effectiveGrandTotal - totalHotelCombined)
   const nonHotelPerPax = request.totalPax > 0 ? nonHotelTotal / request.totalPax : 0
+  const defaultPerPax = request.totalPax > 0 ? effectiveGrandTotal / request.totalPax : 0
 
-  const priceDouble = totals.priceDouble || (nonHotelPerPax + (((rooms.makkah?.doublePrice || 0) * makkahNights) / 2) + (((rooms.madinah?.doublePrice || 0) * madinahNights) / 2))
-  const priceTriple = totals.priceTriple || (nonHotelPerPax + (((rooms.makkah?.triplePrice || 0) * makkahNights) / 3) + (((rooms.madinah?.triplePrice || 0) * madinahNights) / 3))
-  const priceQuad = totals.priceQuad || (nonHotelPerPax + (((rooms.makkah?.quadPrice || 0) * makkahNights) / 4) + (((rooms.madinah?.quadPrice || 0) * madinahNights) / 4))
+  const priceDouble = totals.priceDouble || (
+    (rooms.makkah?.doublePrice || rooms.madinah?.doublePrice)
+      ? (nonHotelPerPax + (((rooms.makkah?.doublePrice || 0) * makkahNights) / 2) + (((rooms.madinah?.doublePrice || 0) * madinahNights) / 2))
+      : defaultPerPax
+  )
+  const priceTriple = totals.priceTriple || (
+    (rooms.makkah?.triplePrice || rooms.madinah?.triplePrice)
+      ? (nonHotelPerPax + (((rooms.makkah?.triplePrice || 0) * makkahNights) / 3) + (((rooms.madinah?.triplePrice || 0) * madinahNights) / 3))
+      : defaultPerPax
+  )
+  const priceQuad = totals.priceQuad || (
+    (rooms.makkah?.quadPrice || rooms.madinah?.quadPrice)
+      ? (nonHotelPerPax + (((rooms.makkah?.quadPrice || 0) * makkahNights) / 4) + (((rooms.madinah?.quadPrice || 0) * madinahNights) / 4))
+      : defaultPerPax
+  )
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -626,15 +668,15 @@ Silakan hubungi kami jika ada penyesuaian yang ingin dilakukan.`
                     </div>
                     <div className="flex justify-between items-center text-xs font-semibold text-zinc-600 uppercase tracking-wider">
                       <span>Total Hotel Makkah</span>
-                      <span className="font-semibold text-zinc-900">{formatCurrency(totals.makkahHotelTotal || 0, 'SAR')}</span>
+                      <span className="font-semibold text-zinc-900">{formatCurrency(effectiveMakkahHotelTotal, 'SAR')}</span>
                     </div>
                     <div className="flex justify-between items-center text-xs font-semibold text-zinc-600 uppercase tracking-wider">
                       <span>Total Hotel Madinah</span>
-                      <span className="font-semibold text-zinc-900">{formatCurrency(totals.madinahHotelTotal || 0, 'SAR')}</span>
+                      <span className="font-semibold text-zinc-900">{formatCurrency(effectiveMadinahHotelTotal, 'SAR')}</span>
                     </div>
                     <div className="flex justify-between items-center text-xs font-semibold text-zinc-600 uppercase tracking-wider">
                       <span>Total Transportasi</span>
-                      <span className="font-semibold text-zinc-900">{formatCurrency(totals.totalTransport || 0, 'SAR')}</span>
+                      <span className="font-semibold text-zinc-900">{formatCurrency(effectiveTransportTotal, 'SAR')}</span>
                     </div>
                     <div className="flex justify-between items-center text-xs font-semibold text-zinc-600 uppercase tracking-wider">
                       <span>Layanan Tambahan</span>
@@ -649,9 +691,9 @@ Silakan hubungi kami jika ada penyesuaian yang ingin dilakukan.`
                       <div className="flex justify-between items-start mb-4">
                         <span className="text-xs font-bold text-zinc-900 uppercase tracking-wider mt-1">GRAND TOTAL</span>
                         <div className="text-right">
-                          <span className="text-2xl font-bold text-[#111111] block tracking-tight">{formatCurrency(totals.grandTotal || 0, 'SAR')}</span>
+                          <span className="text-2xl font-bold text-[#111111] block tracking-tight">{formatCurrency(effectiveGrandTotal, 'SAR')}</span>
                           {displayCurrency === 'IDR' && (
-                            <span className="text-xs font-semibold text-zinc-400">{formatCurrency((totals.grandTotal || 0) * Number(exchangeRate), 'IDR')}</span>
+                            <span className="text-xs font-semibold text-zinc-400">{formatCurrency(effectiveGrandTotal * Number(exchangeRate), 'IDR')}</span>
                           )}
                         </div>
                       </div>

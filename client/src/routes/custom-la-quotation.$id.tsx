@@ -36,30 +36,60 @@ function CustomLaQuotationPage() {
   const rooms = meta.rooms || { makkah: {}, madinah: {} }
   const handling = meta.handlingDetails || {}
 
-  const makkahHotel = hotels?.find(h => h.id == (meta.makkahHotelId || totals.makkahHotelId))
-  const madinahHotel = hotels?.find(h => h.id == (meta.madinahHotelId || totals.madinahHotelId))
+  const linkedMakkahBooking = request.linkedBookings?.find((b: any) => b.city?.toLowerCase().includes('makkah'))
+  const linkedMadinahBooking = request.linkedBookings?.find((b: any) => b.city?.toLowerCase().includes('madinah'))
+  const linkedOtherBooking = request.linkedBookings?.find((b: any) => !b.city?.toLowerCase().includes('makkah') && !b.city?.toLowerCase().includes('madinah'))
+
+  const displayMakkahHotelName = makkahHotel?.name || rooms.makkah?.name || linkedMakkahBooking?.hotelName || linkedOtherBooking?.hotelName || '-'
+  const displayMadinahHotelName = madinahHotel?.name || rooms.madinah?.name || linkedMadinahBooking?.hotelName || '-'
+
+  const linkedMakkahTotal = request.linkedBookings
+    ?.filter((b: any) => b.city?.toLowerCase().includes('makkah'))
+    .reduce((sum: number, b: any) => sum + (Number(b.totalAmount) || 0), 0) || 0
+  const linkedMadinahTotal = request.linkedBookings
+    ?.filter((b: any) => b.city?.toLowerCase().includes('madinah'))
+    .reduce((sum: number, b: any) => sum + (Number(b.totalAmount) || 0), 0) || 0
+  const linkedOtherTotal = request.linkedBookings
+    ?.filter((b: any) => !b.city?.toLowerCase().includes('makkah') && !b.city?.toLowerCase().includes('madinah'))
+    .reduce((sum: number, b: any) => sum + (Number(b.totalAmount) || 0), 0) || 0
+
+  const makkahHotelTotal = (totals.makkahHotelTotal && totals.makkahHotelTotal > 0)
+    ? totals.makkahHotelTotal
+    : (linkedMakkahTotal + linkedOtherTotal)
+  const madinahHotelTotal = (totals.madinahHotelTotal && totals.madinahHotelTotal > 0)
+    ? totals.madinahHotelTotal
+    : linkedMadinahTotal
+  const totalHotelAmount = makkahHotelTotal + madinahHotelTotal
 
   // Calculate pricing per pax per room type
-  const makkahNights = rooms.makkah.nights || 0
-  const madinahNights = rooms.madinah.nights || 0
+  const makkahNights = rooms.makkah?.nights || 0
+  const madinahNights = rooms.madinah?.nights || 0
   const totalNights = makkahNights + madinahNights
 
-  const nonHotelTotal = request.totalAmountSAR - (totals.makkahHotelTotal || 0) - (totals.madinahHotelTotal || 0)
+  const grandTotal = Number(request.totalAmountSAR) || totals.grandTotal || 0
+  const nonHotelTotal = Math.max(0, grandTotal - totalHotelAmount)
   const nonHotelPerPax = request.totalPax > 0 ? nonHotelTotal / request.totalPax : 0
+  const defaultPerPax = request.totalPax > 0 ? (grandTotal / request.totalPax) * exchangeRate : 0
 
-  const makkahDoublePerPax = ((rooms.makkah.doublePrice || 0) * makkahNights) / 2
-  const madinahDoublePerPax = ((rooms.madinah.doublePrice || 0) * madinahNights) / 2
-  const priceDouble = (nonHotelPerPax + makkahDoublePerPax + madinahDoublePerPax) * exchangeRate
+  const hasDetailedRoomPricing = (rooms.makkah?.doublePrice || 0) > 0 || (rooms.madinah?.doublePrice || 0) > 0
 
-  const makkahTriplePerPax = ((rooms.makkah.triplePrice || 0) * makkahNights) / 3
-  const madinahTriplePerPax = ((rooms.madinah.triplePrice || 0) * madinahNights) / 3
-  const priceTriple = (nonHotelPerPax + makkahTriplePerPax + madinahTriplePerPax) * exchangeRate
+  const makkahDoublePerPax = ((rooms.makkah?.doublePrice || 0) * makkahNights) / 2
+  const madinahDoublePerPax = ((rooms.madinah?.doublePrice || 0) * madinahNights) / 2
+  const priceDouble = hasDetailedRoomPricing 
+    ? (nonHotelPerPax + makkahDoublePerPax + madinahDoublePerPax) * exchangeRate 
+    : (totals.priceDouble ? totals.priceDouble * exchangeRate : defaultPerPax)
 
-  const makkahQuadPerPax = ((rooms.makkah.quadPrice || 0) * makkahNights) / 4
-  const madinahQuadPerPax = ((rooms.madinah.quadPrice || 0) * madinahNights) / 4
-  const priceQuad = (nonHotelPerPax + makkahQuadPerPax + madinahQuadPerPax) * exchangeRate
+  const makkahTriplePerPax = ((rooms.makkah?.triplePrice || 0) * makkahNights) / 3
+  const madinahTriplePerPax = ((rooms.madinah?.triplePrice || 0) * madinahNights) / 3
+  const priceTriple = hasDetailedRoomPricing 
+    ? (nonHotelPerPax + makkahTriplePerPax + madinahTriplePerPax) * exchangeRate 
+    : (totals.priceTriple ? totals.priceTriple * exchangeRate : defaultPerPax)
 
-  const minValidPrice = nonHotelPerPax * exchangeRate
+  const makkahQuadPerPax = ((rooms.makkah?.quadPrice || 0) * makkahNights) / 4
+  const madinahQuadPerPax = ((rooms.madinah?.quadPrice || 0) * madinahNights) / 4
+  const priceQuad = hasDetailedRoomPricing 
+    ? (nonHotelPerPax + makkahQuadPerPax + madinahQuadPerPax) * exchangeRate 
+    : (totals.priceQuad ? totals.priceQuad * exchangeRate : defaultPerPax)
 
   return (
     <div className="min-h-screen bg-gray-100 py-8 font-sans print:bg-white print:py-0">
@@ -106,7 +136,7 @@ function CustomLaQuotationPage() {
                 Hotel Makkah *{makkahHotel?.starRating || 4}
               </div>
               <div className="w-1/2 bg-white text-black py-2 px-3 text-center font-bold text-base flex items-center justify-center">
-                {makkahHotel?.name || '-'}
+                {displayMakkahHotelName}
               </div>
             </div>
             <div className="flex border-b border-gray-800 last:border-b-0">
@@ -114,7 +144,7 @@ function CustomLaQuotationPage() {
                 Hotel Madinah *{madinahHotel?.starRating || 4}
               </div>
               <div className="w-1/2 bg-white text-black py-2 px-3 text-center font-bold text-base flex items-center justify-center">
-                {madinahHotel?.name || '-'}
+                {displayMadinahHotelName}
               </div>
             </div>
           </div>
@@ -128,17 +158,19 @@ function CustomLaQuotationPage() {
             </div>
             <div className="flex text-center items-center bg-white">
               <div className="w-1/4 py-3 px-3 border-r border-gray-800 font-bold">
-                Program {totalNights + 2} Hari<br />
-                <span className="text-sm font-normal">({madinahNights} Malam Madinah,<br />{makkahNights} Malam Makkah)</span>
+                Program {totalNights > 0 ? `${totalNights + 2} Hari` : 'Umroh'}<br />
+                <span className="text-sm font-normal">
+                  {totalNights > 0 ? `(${madinahNights} Malam Madinah, ${makkahNights} Malam Makkah)` : `${request.totalPax} Pax Group`}
+                </span>
               </div>
               <div className="w-1/4 py-3 px-3 border-r border-gray-800 font-bold text-base">
-                {priceDouble > minValidPrice ? formatCurrency(priceDouble, currency) : '-'}
+                {priceDouble > 0 ? formatCurrency(priceDouble, currency) : '-'}
               </div>
               <div className="w-1/4 py-3 px-3 border-r border-gray-800 font-bold text-base">
-                {priceTriple > minValidPrice ? formatCurrency(priceTriple, currency) : '-'}
+                {priceTriple > 0 ? formatCurrency(priceTriple, currency) : '-'}
               </div>
               <div className="w-1/4 py-3 px-3 font-bold text-base">
-                {priceQuad > minValidPrice ? formatCurrency(priceQuad, currency) : '-'}
+                {priceQuad > 0 ? formatCurrency(priceQuad, currency) : '-'}
               </div>
             </div>
           </div>

@@ -52,6 +52,12 @@ function CreateCustomLaWizard() {
     muthowif: 0,
     muthowifTourType: "Full Trip Paket",
     
+    // Custom Free-Text Handling Fields
+    customHandling1Title: "",
+    customHandling1Amount: 0,
+    customHandling2Title: "",
+    customHandling2Amount: 0,
+
     // Margin
     profitType: "percentage",
     profitValue: 0,
@@ -99,8 +105,12 @@ function CreateCustomLaWizard() {
     unlinkedTransports.filter((t:any) => formData.linkedTransportIds.includes(t.id)).forEach((t:any) => total += parseFloat(t.totalAmount || 0));
     unlinkedServiceOrders.filter((s:any) => formData.linkedServiceOrderIds.includes(s.id)).forEach((s:any) => total += parseFloat(s.totalAmount || 0));
     
-    // add handling
-    const handlingTotal = (formData.handlingAirport * formData.totalPax) + (formData.handlingHotel * formData.totalPax) + formData.muthowif;
+    // add handling & custom free-text items
+    const handlingTotal = (formData.handlingAirport * formData.totalPax) + 
+      (formData.handlingHotel * formData.totalPax) + 
+      formData.muthowif + 
+      (formData.customHandling1Amount || 0) + 
+      (formData.customHandling2Amount || 0);
     total += handlingTotal;
     
     return total;
@@ -112,6 +122,56 @@ function CreateCustomLaWizard() {
 
   const handleSubmit = async () => {
     try {
+      const selectedBookings = unlinkedBookings.filter((b: any) => formData.linkedBookingIds.includes(b.id));
+      const selectedTransports = unlinkedTransports.filter((t: any) => formData.linkedTransportIds.includes(t.id));
+      const selectedServiceOrders = unlinkedServiceOrders.filter((s: any) => formData.linkedServiceOrderIds.includes(s.id));
+
+      let makkahHotelTotal = 0;
+      let madinahHotelTotal = 0;
+      let makkahHotelName = "";
+      let madinahHotelName = "";
+
+      selectedBookings.forEach((b: any) => {
+        const amt = parseFloat(b.totalAmount || 0);
+        if (b.city?.toLowerCase().includes('madinah')) {
+          madinahHotelTotal += amt;
+          if (!madinahHotelName) madinahHotelName = b.hotelName;
+        } else {
+          makkahHotelTotal += amt;
+          if (!makkahHotelName) makkahHotelName = b.hotelName;
+        }
+      });
+
+      let totalTransport = 0;
+      selectedTransports.forEach((t: any) => {
+        totalTransport += parseFloat(t.totalAmount || 0);
+      });
+
+      let totalVisa = 0;
+      selectedServiceOrders.forEach((s: any) => {
+        totalVisa += parseFloat(s.totalAmount || s.totalPriceSAR || 0);
+      });
+
+      const handlingDetails: Record<string, any> = {
+        handlingAirport: formData.handlingAirport,
+        handlingHotel: formData.handlingHotel,
+        muthowif: formData.muthowif,
+        muthowifTourType: formData.muthowifTourType,
+      };
+
+      if (formData.customHandling1Title?.trim()) {
+        handlingDetails[formData.customHandling1Title.trim()] = formData.customHandling1Amount || 0;
+      }
+      if (formData.customHandling2Title?.trim()) {
+        handlingDetails[formData.customHandling2Title.trim()] = formData.customHandling2Amount || 0;
+      }
+
+      const handlingSubTotal = (formData.handlingAirport * formData.totalPax) + 
+        (formData.handlingHotel * formData.totalPax) + 
+        formData.muthowif + 
+        (formData.customHandling1Amount || 0) + 
+        (formData.customHandling2Amount || 0);
+
       await createLaMutation.mutateAsync({
         clientId: formData.clientId,
         customerName: formData.customerName,
@@ -129,15 +189,21 @@ function CreateCustomLaWizard() {
           profitType: formData.profitType,
           profitValue: formData.profitValue,
           notes: formData.notes,
-          handlingDetails: {
-            handlingAirport: formData.handlingAirport,
-            handlingHotel: formData.handlingHotel,
-            muthowif: formData.muthowif,
-            muthowifTourType: formData.muthowifTourType,
+          rooms: {
+            makkah: { name: makkahHotelName },
+            madinah: { name: madinahHotelName }
           },
+          handlingDetails,
           totals: {
+            totalPax: formData.totalPax,
+            makkahHotelTotal,
+            madinahHotelTotal,
+            totalTransport,
+            totalVisa,
+            subTotalHandling: handlingSubTotal,
             baseTotal,
             profitAmount,
+            profit: profitAmount,
             grandTotal,
             perPaxPrice: formData.totalPax > 0 ? grandTotal / formData.totalPax : 0
           }
@@ -252,30 +318,56 @@ function CreateCustomLaWizard() {
             <div className="bg-zinc-50 p-4 rounded-xl border border-zinc-200/60 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
               <div>
                 <h3 className="font-bold text-zinc-900 flex items-center text-sm tracking-tight"><Package className="mr-2 h-4 w-4 text-zinc-600" /> Keranjang Layanan Terintegrasi</h3>
-                <p className="text-xs text-zinc-500 mt-1">Pilih booking hotel, transport, atau visa yang sudah Anda buat sebelumnya. Atau buat baru di tab/jendela terpisah lalu klik Refresh.</p>
+                <p className="text-xs text-zinc-500 mt-1">Pilih booking hotel, transport, atau visa yang sudah dibuat. Atau buat baru di tab terpisah lalu klik Refresh.</p>
               </div>
-              <div className="flex space-x-2 w-full md:w-auto">
+              <div className="flex flex-wrap items-center gap-2 w-full md:w-auto">
                 <Button 
                   variant="outline" 
                   size="sm" 
                   onClick={() => window.open('/create-booking', '_blank')}
-                  className="text-xs h-8 px-3 border-zinc-200 hover:bg-zinc-50"
+                  className="text-xs h-8 px-3 border-zinc-200 hover:bg-zinc-50 bg-white"
                 >
-                  <Plus className="w-3.5 h-3.5 mr-1"/> Buat Booking Hotel
+                  <Plus className="w-3.5 h-3.5 mr-1"/> Hotel
+                </Button>
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={() => window.open('/create-transportation-booking', '_blank')}
+                  className="text-xs h-8 px-3 border-zinc-200 hover:bg-zinc-50 bg-white"
+                >
+                  <Plus className="w-3.5 h-3.5 mr-1"/> Transport
+                </Button>
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={() => window.open('/create-service-order', '_blank')}
+                  className="text-xs h-8 px-3 border-zinc-200 hover:bg-zinc-50 bg-white"
+                >
+                  <Plus className="w-3.5 h-3.5 mr-1"/> Visa / Siskopatuh
                 </Button>
                 <Button 
                   variant="outline" 
                   size="sm" 
                   onClick={() => { refetchBookings(); refetchTransports(); refetchSO(); }}
-                  className="text-xs h-8 px-3 border-zinc-200 hover:bg-zinc-50"
+                  className="text-xs h-8 px-3 border-zinc-300 hover:bg-zinc-100 bg-white font-semibold text-zinc-800"
                 >
-                  <RefreshCw className={`w-3.5 h-3.5 mr-1 ${(isRefetchingB||isRefetchingT||isRefetchingSO) ? 'animate-spin':''}`}/> Refresh Data
+                  <RefreshCw className={`w-3.5 h-3.5 mr-1 ${(isRefetchingB||isRefetchingT||isRefetchingSO) ? 'animate-spin':''}`}/> Refresh
                 </Button>
               </div>
             </div>
 
             <Card className="p-6 border border-[#e5e7eb] rounded-xl shadow-none bg-white">
-              <h4 className="font-bold text-sm text-zinc-900 mb-4 border-b pb-3 tracking-tight">Hotel Bookings (Unlinked)</h4>
+              <div className="flex justify-between items-center mb-4 border-b pb-3">
+                <h4 className="font-bold text-sm text-zinc-900 tracking-tight">Hotel Bookings (Unlinked)</h4>
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={() => window.open('/create-booking', '_blank')}
+                  className="text-xs h-7 px-2.5 border-zinc-200 hover:bg-zinc-50 text-zinc-700"
+                >
+                  <Plus className="w-3.5 h-3.5 mr-1"/> Buat Booking Hotel
+                </Button>
+              </div>
               {unlinkedBookings.length === 0 ? (
                 <p className="text-zinc-400 italic text-xs">Tidak ada booking hotel yang unlinked untuk client ini.</p>
               ) : (
@@ -307,7 +399,17 @@ function CreateCustomLaWizard() {
             </Card>
 
             <Card className="p-6 border border-[#e5e7eb] rounded-xl shadow-none bg-white">
-              <h4 className="font-bold text-sm text-zinc-900 mb-4 border-b pb-3 tracking-tight">Transportation Bookings (Unlinked)</h4>
+              <div className="flex justify-between items-center mb-4 border-b pb-3">
+                <h4 className="font-bold text-sm text-zinc-900 tracking-tight">Transportation Bookings (Unlinked)</h4>
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={() => window.open('/create-transportation-booking', '_blank')}
+                  className="text-xs h-7 px-2.5 border-zinc-200 hover:bg-zinc-50 text-zinc-700"
+                >
+                  <Plus className="w-3.5 h-3.5 mr-1"/> Buat Booking Transport
+                </Button>
+              </div>
               {unlinkedTransports.length === 0 ? (
                 <p className="text-zinc-400 italic text-xs">Tidak ada booking transport yang unlinked.</p>
               ) : (
@@ -338,7 +440,17 @@ function CreateCustomLaWizard() {
             </Card>
 
             <Card className="p-6 border border-[#e5e7eb] rounded-xl shadow-none bg-white">
-              <h4 className="font-bold text-sm text-zinc-900 mb-4 border-b pb-3 tracking-tight">Service Orders - Visa/Siskopatuh (Unlinked)</h4>
+              <div className="flex justify-between items-center mb-4 border-b pb-3">
+                <h4 className="font-bold text-sm text-zinc-900 tracking-tight">Service Orders - Visa/Siskopatuh (Unlinked)</h4>
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={() => window.open('/create-service-order', '_blank')}
+                  className="text-xs h-7 px-2.5 border-zinc-200 hover:bg-zinc-50 text-zinc-700"
+                >
+                  <Plus className="w-3.5 h-3.5 mr-1"/> Buat Visa / Siskopatuh
+                </Button>
+              </div>
               {unlinkedServiceOrders.length === 0 ? (
                 <p className="text-zinc-400 italic text-xs">Tidak ada service order yang unlinked.</p>
               ) : (
@@ -437,6 +549,69 @@ function CreateCustomLaWizard() {
                 />
               </div>
             </div>
+
+            {/* Custom Free-Text Handling Fields */}
+            <div className="mt-8 pt-6 border-t border-zinc-100">
+              <h3 className="text-sm font-semibold text-zinc-900 mb-1">Handling / Biaya Tambahan Bebas (Opsional)</h3>
+              <p className="text-xs text-zinc-500 mb-4">Tambahkan item handling atau pengeluaran lain di luar paket standar dengan judul dan nominal bebas.</p>
+              
+              <div className="space-y-4">
+                {/* Item 1 */}
+                <div className="p-4 border border-zinc-200/80 rounded-lg bg-zinc-50/50">
+                  <div className="text-xs font-semibold text-zinc-700 mb-3 uppercase tracking-wider">Item Tambahan 1</div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-xs font-medium text-zinc-600 mb-1.5">Judul / Deskripsi Item</label>
+                      <Input
+                        type="text"
+                        placeholder="Contoh: Tip Supir, Sewa Kursi Roda, dll"
+                        value={formData.customHandling1Title}
+                        onChange={e => setFormData({...formData, customHandling1Title: e.target.value})}
+                        className="h-10 border-[#e5e7eb] rounded-md focus-visible:ring-[#111111] focus-visible:border-[#111111] bg-white text-sm"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-zinc-600 mb-1.5">Nominal (SAR Fixed)</label>
+                      <Input
+                        type="number"
+                        placeholder="0"
+                        value={formData.customHandling1Amount || ""}
+                        onChange={e => setFormData({...formData, customHandling1Amount: parseFloat(e.target.value) || 0})}
+                        className="h-10 border-[#e5e7eb] rounded-md focus-visible:ring-[#111111] focus-visible:border-[#111111] bg-white text-sm"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Item 2 */}
+                <div className="p-4 border border-zinc-200/80 rounded-lg bg-zinc-50/50">
+                  <div className="text-xs font-semibold text-zinc-700 mb-3 uppercase tracking-wider">Item Tambahan 2</div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-xs font-medium text-zinc-600 mb-1.5">Judul / Deskripsi Item</label>
+                      <Input
+                        type="text"
+                        placeholder="Contoh: Air Zamzam Ekstra, Asuransi Khusus, dll"
+                        value={formData.customHandling2Title}
+                        onChange={e => setFormData({...formData, customHandling2Title: e.target.value})}
+                        className="h-10 border-[#e5e7eb] rounded-md focus-visible:ring-[#111111] focus-visible:border-[#111111] bg-white text-sm"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-zinc-600 mb-1.5">Nominal (SAR Fixed)</label>
+                      <Input
+                        type="number"
+                        placeholder="0"
+                        value={formData.customHandling2Amount || ""}
+                        onChange={e => setFormData({...formData, customHandling2Amount: parseFloat(e.target.value) || 0})}
+                        className="h-10 border-[#e5e7eb] rounded-md focus-visible:ring-[#111111] focus-visible:border-[#111111] bg-white text-sm"
+                      />
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
             <div className="mt-8 flex justify-between">
               <Button 
                 variant="outline" 
@@ -465,12 +640,24 @@ function CreateCustomLaWizard() {
             <div className="bg-zinc-50/50 p-5 rounded-xl border border-zinc-200/60 mb-6 space-y-3">
               <div className="flex justify-between text-xs text-zinc-500 font-semibold uppercase tracking-wider">
                 <span>Total Item Terpilih (Hotel, Transport, Visa)</span>
-                <span className="font-bold text-zinc-900">{formatCurrency(baseTotal - ((formData.handlingAirport + formData.handlingHotel) * formData.totalPax) - formData.muthowif, 'SAR')}</span>
+                <span className="font-bold text-zinc-900">{formatCurrency(baseTotal - ((formData.handlingAirport + formData.handlingHotel) * formData.totalPax) - formData.muthowif - (formData.customHandling1Amount || 0) - (formData.customHandling2Amount || 0), 'SAR')}</span>
               </div>
               <div className="flex justify-between text-xs text-zinc-500 font-semibold uppercase tracking-wider">
                 <span>Total Handling & Tambahan LA</span>
-                <span className="font-bold text-zinc-900">{formatCurrency(((formData.handlingAirport + formData.handlingHotel) * formData.totalPax) + formData.muthowif, 'SAR')}</span>
+                <span className="font-bold text-zinc-900">{formatCurrency(((formData.handlingAirport + formData.handlingHotel) * formData.totalPax) + formData.muthowif + (formData.customHandling1Amount || 0) + (formData.customHandling2Amount || 0), 'SAR')}</span>
               </div>
+              {Boolean(formData.customHandling1Title && (formData.customHandling1Amount || 0) > 0) && (
+                <div className="flex justify-between text-xs text-zinc-500 pl-4 border-l-2 border-zinc-300">
+                  <span>• {formData.customHandling1Title}</span>
+                  <span className="font-medium text-zinc-700">{formatCurrency(formData.customHandling1Amount, 'SAR')}</span>
+                </div>
+              )}
+              {Boolean(formData.customHandling2Title && (formData.customHandling2Amount || 0) > 0) && (
+                <div className="flex justify-between text-xs text-zinc-500 pl-4 border-l-2 border-zinc-300">
+                  <span>• {formData.customHandling2Title}</span>
+                  <span className="font-medium text-zinc-700">{formatCurrency(formData.customHandling2Amount, 'SAR')}</span>
+                </div>
+              )}
               <div className="flex justify-between font-bold text-sm border-t border-zinc-200 pt-3">
                 <span className="text-zinc-900">Base Total (HPP)</span>
                 <span className="text-zinc-950">{formatCurrency(baseTotal, 'SAR')}</span>

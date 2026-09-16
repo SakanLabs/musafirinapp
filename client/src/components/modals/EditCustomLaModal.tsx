@@ -104,7 +104,8 @@ export function EditCustomLaModal({ isOpen, onClose, request }: EditCustomLaModa
       setMadinahQuadQty(madinah.quadQty ?? (meta.kamarQuad ?? 0))
       setMadinahQuadPrice(madinah.quadPrice ?? 0)
 
-      setTotalTransport(totals.totalTransport ?? 0)
+      const linkedTrTotal = request.linkedTransport?.reduce((sum: number, t: any) => sum + (Number(t.totalAmount) || 0), 0) || 0
+      setTotalTransport(totals.totalTransport ?? (linkedTrTotal > 0 ? linkedTrTotal : 0))
       setKeretaCepat(handling.keretaCepat ?? 0)
 
       const legacyKeys = ['keretaCepat', 'muthowifTourType'];
@@ -130,19 +131,41 @@ export function EditCustomLaModal({ isOpen, onClose, request }: EditCustomLaModa
   }, [request, isOpen])
 
   const calculatePreviewTotals = () => {
-    const makkahHotelTotal = makkahNights * (
+    const manualMakkahHotelTotal = makkahNights * (
       (makkahSingleQty * makkahSinglePrice) +
       (makkahDoubleQty * makkahDoublePrice) +
       (makkahTripleQty * makkahTriplePrice) +
       (makkahQuadQty * makkahQuadPrice)
     )
 
-    const madinahHotelTotal = madinahNights * (
+    const manualMadinahHotelTotal = madinahNights * (
       (madinahSingleQty * madinahSinglePrice) +
       (madinahDoubleQty * madinahDoublePrice) +
       (madinahTripleQty * madinahTriplePrice) +
       (madinahQuadQty * madinahQuadPrice)
     )
+
+    // Perhitungkan bookingan hotel yang ditautkan ke LA ini
+    const linkedMakkahTotal = request.linkedBookings
+      ?.filter((b: any) => b.city?.toLowerCase().includes('makkah'))
+      .reduce((sum: number, b: any) => sum + (Number(b.totalAmount) || 0), 0) || 0
+
+    const linkedMadinahTotal = request.linkedBookings
+      ?.filter((b: any) => b.city?.toLowerCase().includes('madinah'))
+      .reduce((sum: number, b: any) => sum + (Number(b.totalAmount) || 0), 0) || 0
+
+    const linkedOtherHotelTotal = request.linkedBookings
+      ?.filter((b: any) => !b.city?.toLowerCase().includes('makkah') && !b.city?.toLowerCase().includes('madinah'))
+      .reduce((sum: number, b: any) => sum + (Number(b.totalAmount) || 0), 0) || 0
+
+    // Jika kamar diinput manual (> 0), gunakan manual. Jika tidak, gunakan dari linked bookings
+    const makkahHotelTotal = manualMakkahHotelTotal > 0
+      ? manualMakkahHotelTotal
+      : ((linkedMakkahTotal + linkedOtherHotelTotal) > 0 ? (linkedMakkahTotal + linkedOtherHotelTotal) : (Number(request.meta?.totals?.makkahHotelTotal) || 0))
+
+    const madinahHotelTotal = manualMadinahHotelTotal > 0
+      ? manualMadinahHotelTotal
+      : (linkedMadinahTotal > 0 ? linkedMadinahTotal : (Number(request.meta?.totals?.madinahHotelTotal) || 0))
 
     const keretaCepatTotal = keretaCepat * totalPax
     const extraHandlingTotal = extraHandlingItems.reduce((sum, item) => sum + (Number(item.amount) || 0), 0)
@@ -169,9 +192,9 @@ export function EditCustomLaModal({ isOpen, onClose, request }: EditCustomLaModa
       profitAmount,
       grandTotal,
       perPaxPrice: totalPax > 0 ? grandTotal / totalPax : 0,
-      priceDouble,
-      priceTriple,
-      priceQuad
+      priceDouble: priceDouble > 0 ? priceDouble : (totalPax > 0 ? grandTotal / totalPax : 0),
+      priceTriple: priceTriple > 0 ? priceTriple : (totalPax > 0 ? grandTotal / totalPax : 0),
+      priceQuad: priceQuad > 0 ? priceQuad : (totalPax > 0 ? grandTotal / totalPax : 0)
     }
   }
 
@@ -389,6 +412,25 @@ export function EditCustomLaModal({ isOpen, onClose, request }: EditCustomLaModa
 
           {/* TAB 2: Hotel & Kamar */}
           <TabsContent value="hotel" className="space-y-6">
+            {request.linkedBookings && request.linkedBookings.length > 0 && (
+              <div className="bg-blue-50/80 border border-blue-200/80 rounded-lg p-3 text-xs text-blue-900 space-y-1.5">
+                <p className="font-bold flex items-center text-blue-950">
+                  <Building className="w-3.5 h-3.5 mr-1.5 text-blue-600" /> Booking Hotel Tertaut ({request.linkedBookings.length}):
+                </p>
+                <div className="space-y-1 pl-5">
+                  {request.linkedBookings.map((b: any) => (
+                    <div key={b.id} className="flex justify-between items-center text-[11px]">
+                      <span>• {b.hotelName} <span className="text-zinc-500 font-medium">({b.city || 'Hotel'})</span></span>
+                      <span className="font-semibold text-zinc-900">{formatCurrency(b.totalAmount, 'SAR')}</span>
+                    </div>
+                  ))}
+                </div>
+                <p className="text-[10px] text-blue-700 italic pt-1 border-t border-blue-200/60 mt-1">
+                  * Biaya dari bookingan tertaut di atas otomatis diikutsertakan dalam kalkulasi total LA jika kamar di bawah tidak diisi manual.
+                </p>
+              </div>
+            )}
+
             {/* Makkah Hotel */}
             <div className="border border-zinc-200 rounded-lg p-4 bg-zinc-50/50 space-y-4">
               <div className="flex justify-between items-center">
