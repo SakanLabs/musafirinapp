@@ -80,27 +80,37 @@ bookingRoutes.get('/', requireAdmin, async (c) => {
     }
 
     // Transform the data to match the expected API format
-    const transformedBookings = result.map((booking) => ({
-      id: booking.id,
-      code: booking.code,
-      clientId: booking.clientId,
-      clientName: booking.clientName ?? '',
-      clientEmail: booking.clientEmail ?? '',
-      clientPhone: booking.clientPhone ?? '',
-      hotelName: booking.hotelName,
-      city: booking.city,
-      checkIn: booking.checkIn,
-      checkOut: booking.checkOut,
-      totalAmount: booking.totalAmount,
-      paymentStatus: booking.paymentStatus,
-      bookingStatus: booking.bookingStatus,
-      mealPlan: booking.mealPlan,
-      hotelConfirmationNo: booking.hotelConfirmationNo,
-      createdAt: booking.createdAt,
-      updatedAt: booking.updatedAt,
-      meta: booking.meta,
-      items: booking.id !== undefined && booking.id !== null ? itemsByBookingId[booking.id] ?? [] : [],
-    }));
+    const transformedBookings = result.map((booking) => {
+      const meta = (booking.meta as Record<string, any>) || {};
+      const guestName = (typeof meta.guestName === 'string' && meta.guestName.trim()) ? meta.guestName.trim() : (booking.clientName ?? '');
+      const guestEmail = (typeof meta.guestEmail === 'string' && meta.guestEmail.trim()) ? meta.guestEmail.trim() : (booking.clientEmail ?? '');
+      const guestPhone = (typeof meta.guestPhone === 'string' && meta.guestPhone.trim()) ? meta.guestPhone.trim() : (booking.clientPhone ?? '');
+
+      return {
+        id: booking.id,
+        code: booking.code,
+        clientId: booking.clientId,
+        clientName: booking.clientName ?? '',
+        clientEmail: booking.clientEmail ?? '',
+        clientPhone: booking.clientPhone ?? '',
+        guestName,
+        guestEmail,
+        guestPhone,
+        hotelName: booking.hotelName,
+        city: booking.city,
+        checkIn: booking.checkIn,
+        checkOut: booking.checkOut,
+        totalAmount: booking.totalAmount,
+        paymentStatus: booking.paymentStatus,
+        bookingStatus: booking.bookingStatus,
+        mealPlan: booking.mealPlan,
+        hotelConfirmationNo: booking.hotelConfirmationNo,
+        createdAt: booking.createdAt,
+        updatedAt: booking.updatedAt,
+        meta: booking.meta,
+        items: booking.id !== undefined && booking.id !== null ? itemsByBookingId[booking.id] ?? [] : [],
+      };
+    });
 
     return c.json({
       success: true,
@@ -184,6 +194,11 @@ bookingRoutes.get('/:id', requireAdmin, async (c) => {
     );
 
     // Transform the data to match expected API format
+    const meta = (bookingData.meta as Record<string, any>) || {};
+    const guestName = (typeof meta.guestName === 'string' && meta.guestName.trim()) ? meta.guestName.trim() : (bookingData.clientName ?? '');
+    const guestEmail = (typeof meta.guestEmail === 'string' && meta.guestEmail.trim()) ? meta.guestEmail.trim() : (bookingData.clientEmail ?? '');
+    const guestPhone = (typeof meta.guestPhone === 'string' && meta.guestPhone.trim()) ? meta.guestPhone.trim() : (bookingData.clientPhone ?? '');
+
     const transformedBooking = {
       id: bookingData.id,
       code: bookingData.code,
@@ -191,6 +206,9 @@ bookingRoutes.get('/:id', requireAdmin, async (c) => {
       clientName: bookingData.clientName,
       clientEmail: bookingData.clientEmail,
       clientPhone: bookingData.clientPhone,
+      guestName,
+      guestEmail,
+      guestPhone,
       hotelName: bookingData.hotelName,
       city: bookingData.city,
       checkIn: bookingData.checkIn,
@@ -242,40 +260,59 @@ bookingRoutes.post('/', requireAdmin, async (c) => {
     const result = await db.transaction(async (tx) => {
       // Create or find client
       let clientRecord;
-      const existingClient = await tx
-        .select()
-        .from(clients)
-        .where(eq(clients.email, client.email))
-        .limit(1);
+      const requestedClientId = body.clientId ? parseInt(body.clientId) : undefined;
+      const guestData = body.guest || {
+        name: client.name,
+        email: client.email || '',
+        phone: client.phone || ''
+      };
 
-      if (existingClient.length > 0) {
-        clientRecord = existingClient[0]!;
-        // Update client info if provided
-        if (client.name !== clientRecord.name || client.phone !== clientRecord.phone) {
-          await tx
-            .update(clients)
-            .set({
-              name: client.name,
-              phone: client.phone,
-              email: client.email,
-            })
-            .where(eq(clients.id, clientRecord.id));
+      if (requestedClientId) {
+        const clientById = await tx
+          .select()
+          .from(clients)
+          .where(eq(clients.id, requestedClientId))
+          .limit(1);
 
-          clientRecord = { ...clientRecord, name: client.name, phone: client.phone, email: client.email };
+        if (clientById.length > 0) {
+          clientRecord = clientById[0]!;
         }
-      } else {
-        const newClient: NewClient = {
-          name: client.name,
-          email: client.email,
-          phone: client.phone || null,
-        };
+      }
 
-        const [insertedClient] = await tx
-          .insert(clients)
-          .values(newClient)
-          .returning();
+      if (!clientRecord) {
+        const existingClient = await tx
+          .select()
+          .from(clients)
+          .where(eq(clients.email, client.email))
+          .limit(1);
 
-        clientRecord = insertedClient!;
+        if (existingClient.length > 0) {
+          clientRecord = existingClient[0]!;
+          // Only update client contact info if clientId was NOT explicitly provided (legacy behavior)
+          if (!body.clientId && (client.phone !== clientRecord.phone)) {
+            await tx
+              .update(clients)
+              .set({
+                phone: client.phone,
+              })
+              .where(eq(clients.id, clientRecord.id));
+
+            clientRecord = { ...clientRecord, phone: client.phone };
+          }
+        } else {
+          const newClient: NewClient = {
+            name: client.name,
+            email: client.email,
+            phone: client.phone || null,
+          };
+
+          const [insertedClient] = await tx
+            .insert(clients)
+            .values(newClient)
+            .returning();
+
+          clientRecord = insertedClient!;
+        }
       }
 
       // Calculate nights
@@ -298,7 +335,12 @@ bookingRoutes.post('/', requireAdmin, async (c) => {
       }, 0);
 
       let paymentStatus: 'unpaid' | 'partial' | 'paid' = booking.paymentStatus || 'unpaid';
-      let bookingMeta: Record<string, any> = booking.meta || {};
+      let bookingMeta: Record<string, any> = {
+        ...(booking.meta || {}),
+        guestName: guestData.name || booking.meta?.guestName || client.name,
+        guestEmail: guestData.email || booking.meta?.guestEmail || client.email || '',
+        guestPhone: guestData.phone || booking.meta?.guestPhone || client.phone || '',
+      };
 
       // Precompute payment effects (do not mutate deposits until booking is created)
       let depositUsed = 0;
@@ -641,6 +683,7 @@ bookingRoutes.put('/:id', requireAdmin, async (c) => {
       .select({
         id: bookings.id,
         clientId: bookings.clientId,
+        meta: bookings.meta,
       })
       .from(bookings)
       .where(eq(bookings.id, bookingId))
@@ -650,28 +693,18 @@ bookingRoutes.put('/:id', requireAdmin, async (c) => {
       return c.json({ error: 'Booking not found' }, 404);
     }
 
-    const clientId = existingBooking[0]?.clientId;
-
-    if (!clientId) {
-      return c.json({ error: 'Client not found for booking' }, 404);
-    }
-
-    // Update client information
-    await db
-      .update(clients)
-      .set({
-        name: guestName,
-        email: guestEmail,
-        phone: guestPhone,
-      })
-      .where(eq(clients.id, clientId));
-
-    // Update booking information
-    const metaData: Record<string, any> = {};
-    if (specialRequests) {
+    // Update booking information & preserve existing metadata (e.g. payments)
+    const existingMeta = (existingBooking[0]?.meta as Record<string, any>) || {};
+    const metaData: Record<string, any> = {
+      ...existingMeta,
+      guestName,
+      guestEmail: guestEmail || '',
+      guestPhone: guestPhone || '',
+    };
+    if (specialRequests !== undefined) {
       metaData.specialRequests = specialRequests;
     }
-    if (numberOfGuests) {
+    if (numberOfGuests !== undefined) {
       metaData.numberOfGuests = numberOfGuests;
     }
 
@@ -681,7 +714,7 @@ bookingRoutes.put('/:id', requireAdmin, async (c) => {
       totalAmount: totalAmount.toString(),
       bookingStatus: status || 'pending',
       mealPlan: mealPlan || 'Room Only',
-      meta: Object.keys(metaData).length > 0 ? metaData : null,
+      meta: metaData,
       updatedAt: new Date(),
     };
 

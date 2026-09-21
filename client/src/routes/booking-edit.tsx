@@ -70,9 +70,9 @@ function EditBookingPage() {
       console.log('📦 Booking items:', booking.items)
 
       setFormData({
-        guestName: booking.clientName || '',
-        guestEmail: booking.clientEmail || '',
-        guestPhone: booking.clientPhone || '',
+        guestName: (booking.meta?.guestName as string) || booking.guestName || booking.clientName || '',
+        guestEmail: (booking.meta?.guestEmail as string) || booking.guestEmail || booking.clientEmail || '',
+        guestPhone: (booking.meta?.guestPhone as string) || booking.guestPhone || booking.clientPhone || '',
         hotelName: booking.hotelName || '',
         city: booking.city || '',
         checkInDate: booking.checkIn ? booking.checkIn.split('T')[0] : '',
@@ -384,7 +384,14 @@ function EditBookingPage() {
             {/* Guest Information */}
             <Card>
               <CardHeader>
-                <CardTitle>Guest Information</CardTitle>
+                <div className="flex items-center justify-between">
+                  <CardTitle>Guest Information (Tamu Hotel)</CardTitle>
+                  {booking.clientName && (
+                    <span className="text-xs font-normal text-muted-foreground">
+                      Client CRM (Pemesan): <strong className="text-foreground">{booking.clientName}</strong>
+                    </span>
+                  )}
+                </div>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div>

@@ -19,6 +19,9 @@ export interface Booking {
   clientName: string;
   clientEmail: string;
   clientPhone: string;
+  guestName?: string;
+  guestEmail?: string;
+  guestPhone?: string;
   hotelName: string;
   city: string;
   checkIn: string;
@@ -54,8 +57,9 @@ export interface CreateBookingRoomItem {
 }
 
 export interface CreateBookingData {
+  clientId?: number;
   guestName: string;
-  guestEmail: string;
+  guestEmail?: string;
   guestPhone: string;
   hotelName: string;
   city: string;
@@ -76,6 +80,7 @@ export interface CreateBookingData {
 
 export interface UpdateBookingData {
   id: string;
+  clientId?: number;
   guestName: string;
   guestEmail: string;
   guestPhone: string;
@@ -163,9 +168,15 @@ export function useCreateBooking() {
       }
 
       const requestData = {
+        ...(data.clientId ? { clientId: data.clientId } : {}),
         client: {
           name: data.guestName,
-          email: data.guestEmail,
+          email: data.guestEmail || '',
+          phone: data.guestPhone
+        },
+        guest: {
+          name: data.guestName,
+          email: data.guestEmail || '',
           phone: data.guestPhone
         },
         booking: {
@@ -176,7 +187,10 @@ export function useCreateBooking() {
           mealPlan: data.mealPlan,
           meta: {
             ...(data.specialRequests && { specialRequests: data.specialRequests }),
-            numberOfGuests: data.numberOfGuests
+            numberOfGuests: data.numberOfGuests,
+            guestName: data.guestName,
+            guestEmail: data.guestEmail || '',
+            guestPhone: data.guestPhone,
           }
         },
         items,

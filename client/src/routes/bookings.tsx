@@ -107,6 +107,12 @@ function BookingsPage() {
         const idStr = booking.id.toString()
         const idMatch = `#${idStr}`.includes(q) || idStr.includes(q)
         const codeMatch = booking.code ? booking.code.toLowerCase().includes(q) : false
+        const guestNameVal = booking.guestName || (booking.meta as any)?.guestName || ''
+        const guestEmailVal = booking.guestEmail || (booking.meta as any)?.guestEmail || ''
+        const guestPhoneVal = booking.guestPhone || (booking.meta as any)?.guestPhone || ''
+        const guestMatch = guestNameVal.toLowerCase().includes(q)
+        const guestEmailMatch = guestEmailVal.toLowerCase().includes(q)
+        const guestPhoneMatch = guestPhoneVal.toLowerCase().includes(q)
         const clientMatch = booking.clientName ? booking.clientName.toLowerCase().includes(q) : false
         const emailMatch = booking.clientEmail ? booking.clientEmail.toLowerCase().includes(q) : false
         const phoneMatch = booking.clientPhone ? booking.clientPhone.toLowerCase().includes(q) : false
@@ -115,7 +121,7 @@ function BookingsPage() {
         const confirmMatch = booking.hotelConfirmationNo ? booking.hotelConfirmationNo.toLowerCase().includes(q) : false
         const roomTypeMatch = booking.items?.some(item => item.roomType?.toLowerCase().includes(q)) || false
 
-        if (!idMatch && !codeMatch && !clientMatch && !emailMatch && !phoneMatch && !hotelMatch && !cityMatch && !confirmMatch && !roomTypeMatch) {
+        if (!idMatch && !codeMatch && !guestMatch && !guestEmailMatch && !guestPhoneMatch && !clientMatch && !emailMatch && !phoneMatch && !hotelMatch && !cityMatch && !confirmMatch && !roomTypeMatch) {
           return false
         }
       }
@@ -182,12 +188,23 @@ function BookingsPage() {
       key: 'clientName',
       header: 'Guest / Client',
       sortable: true,
-      render: (booking) => (
-        <div>
-          <div className="font-semibold text-[#111111] text-sm">{booking.clientName || 'N/A Guest'}</div>
-          <div className="text-[10px] text-gray-400 mt-0.5">{booking.clientPhone || 'No WhatsApp'}</div>
-        </div>
-      )
+      render: (booking) => {
+        const guest = booking.guestName || (booking.meta as any)?.guestName || booking.clientName || 'N/A Guest'
+        const phone = booking.guestPhone || (booking.meta as any)?.guestPhone || booking.clientPhone || 'No WhatsApp'
+        const isClientDifferent = booking.clientName && booking.clientName !== guest
+
+        return (
+          <div>
+            <div className="font-semibold text-[#111111] text-sm">{guest}</div>
+            <div className="text-[10px] text-gray-400 mt-0.5">{phone}</div>
+            {isClientDifferent && (
+              <div className="text-[10px] text-blue-600 font-medium mt-0.5 truncate max-w-[140px]" title={`Pemesan: ${booking.clientName}`}>
+                Pemesan: {booking.clientName}
+              </div>
+            )}
+          </div>
+        )
+      }
     },
     {
       key: 'hotelName',

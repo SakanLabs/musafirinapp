@@ -218,16 +218,17 @@ function BookingDetailPage() {
     }
 
     try {
+      const guestForVoucher = booking.guestName || (booking.meta as any)?.guestName || booking.clientName || 'Guest'
       if (existingVoucher) {
         await regenerateVoucherMutation.mutateAsync({
           bookingId: id.toString(),
-          guestName: booking.clientName
+          guestName: guestForVoucher
         })
         toast.success("Voucher berhasil digenerate ulang dan diunduh!")
       } else {
         await generateVoucherMutation.mutateAsync({
           bookingId: id.toString(),
-          guestName: booking.clientName
+          guestName: guestForVoucher
         })
         toast.success("Voucher berhasil digenerate dan diunduh!")
       }
@@ -241,7 +242,8 @@ function BookingDetailPage() {
   const handleShareWhatsApp = () => {
     if (!booking) return
 
-    const message = `Booking Details:\nGuest: ${booking.clientName}\nCode: ${booking.code}\nHotel: ${booking.hotelName}\nCheck-in: ${formatDate(booking.checkIn)}\nCheck-out: ${formatDate(booking.checkOut)}\nTotal: ${formatCurrency(booking.totalAmount.toString(), 'SAR')}`
+    const guestForShare = booking.guestName || (booking.meta as any)?.guestName || booking.clientName || 'Guest'
+    const message = `Booking Details:\nGuest: ${guestForShare}\nCode: ${booking.code}\nHotel: ${booking.hotelName}\nCheck-in: ${formatDate(booking.checkIn)}\nCheck-out: ${formatDate(booking.checkOut)}\nTotal: ${formatCurrency(booking.totalAmount.toString(), 'SAR')}`
     const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(message)}`
     window.open(whatsappUrl, '_blank')
   }
@@ -383,36 +385,73 @@ function BookingDetailPage() {
           <div className="lg:col-span-2 space-y-6">
 
             {/* Guest Information card */}
-            <Card className="border border-[#e5e7eb] rounded-xl shadow-[0_1px_2px_rgba(0,0,0,0.04)] bg-white overflow-hidden">
-              <CardHeader className="border-b border-[#e5e7eb] px-6 py-4 bg-gray-50/20">
-                <CardTitle className="text-sm font-bold text-[#111111] flex items-center gap-2">
-                  <Users className="h-4 w-4 text-gray-400" />
-                  Primary Guest Contact
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="p-4 md:p-6 space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                  <div className="space-y-1">
-                    <label className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider">Full Name</label>
-                    <p className="text-sm font-bold text-[#111111]">{booking.clientName || 'N/A Guest'}</p>
-                  </div>
-                  <div className="space-y-1">
-                    <label className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider">Email Address</label>
-                    <div className="flex items-center text-sm font-semibold text-[#111111] gap-1">
-                      <Mail className="h-3.5 w-3.5 text-gray-300" />
-                      <span>{booking.clientEmail || 'N/A Email'}</span>
+            {(() => {
+              const resolvedGuestName = booking.guestName || (booking.meta as any)?.guestName || booking.clientName || 'N/A Guest'
+              const resolvedGuestEmail = booking.guestEmail || (booking.meta as any)?.guestEmail || booking.clientEmail || 'N/A Email'
+              const resolvedGuestPhone = booking.guestPhone || (booking.meta as any)?.guestPhone || booking.clientPhone || 'N/A Phone'
+
+              return (
+                <Card className="border border-[#e5e7eb] rounded-xl shadow-[0_1px_2px_rgba(0,0,0,0.04)] bg-white overflow-hidden">
+                  <CardHeader className="border-b border-[#e5e7eb] px-6 py-4 bg-gray-50/20">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <CardTitle className="text-sm font-bold text-[#111111] flex items-center gap-2">
+                        <Users className="h-4 w-4 text-gray-400" />
+                        Primary Guest Contact (Tamu Hotel)
+                      </CardTitle>
+                      {booking.clientName && (
+                        <span className="text-xs text-gray-500">
+                          Client CRM: <strong className="text-gray-900">{booking.clientName}</strong>
+                        </span>
+                      )}
                     </div>
-                  </div>
-                  <div className="space-y-1">
-                    <label className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider">WhatsApp Phone</label>
-                    <div className="flex items-center text-sm font-semibold text-[#047857] gap-1">
-                      <Phone className="h-3.5 w-3.5 text-[#047857]/40" />
-                      <span>{booking.clientPhone || 'N/A Phone'}</span>
+                  </CardHeader>
+                  <CardContent className="p-4 md:p-6 space-y-4">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                      <div className="space-y-1">
+                        <label className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider">Guest Name</label>
+                        <p className="text-sm font-bold text-[#111111]">{resolvedGuestName}</p>
+                      </div>
+                      <div className="space-y-1">
+                        <label className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider">Email Address</label>
+                        <div className="flex items-center text-sm font-semibold text-[#111111] gap-1">
+                          <Mail className="h-3.5 w-3.5 text-gray-300" />
+                          <span>{resolvedGuestEmail}</span>
+                        </div>
+                      </div>
+                      <div className="space-y-1">
+                        <label className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider">WhatsApp Phone</label>
+                        <div className="flex items-center text-sm font-semibold text-[#047857] gap-1">
+                          <Phone className="h-3.5 w-3.5 text-[#047857]/40" />
+                          <span>{resolvedGuestPhone}</span>
+                        </div>
+                      </div>
                     </div>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
+
+                    {/* Booked by Client CRM details */}
+                    {booking.clientName && (
+                      <div className="pt-4 border-t border-gray-100 flex flex-wrap items-center gap-x-6 gap-y-2 text-xs text-gray-500">
+                        <div>
+                          <span className="font-semibold text-gray-400">Pemesan (Client CRM):</span>{' '}
+                          <span className="font-bold text-gray-800">{booking.clientName}</span>
+                        </div>
+                        {booking.clientEmail && (
+                          <div>
+                            <span className="text-gray-400">Email:</span>{' '}
+                            <span className="text-gray-700">{booking.clientEmail}</span>
+                          </div>
+                        )}
+                        {booking.clientPhone && (
+                          <div>
+                            <span className="text-gray-400">Phone:</span>{' '}
+                            <span className="text-gray-700">{booking.clientPhone}</span>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              )
+            })()}
 
             {/* Lodging & Slots card */}
             <Card className="border border-[#e5e7eb] rounded-xl shadow-[0_1px_2px_rgba(0,0,0,0.04)] bg-white overflow-hidden">

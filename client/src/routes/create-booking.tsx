@@ -327,6 +327,7 @@ function CreateBookingPage() {
       }, 0);
 
       const bookingData: CreateBookingData = {
+        clientId: selectedClientId ? Number(selectedClientId) : undefined,
         guestName: formData.guestName,
         guestEmail: formData.guestEmail,
         guestPhone: formData.guestPhone,
@@ -602,12 +603,15 @@ function CreateBookingPage() {
         <Card className="p-4 md:p-6 border border-[#e5e7eb] rounded-xl shadow-[0_1px_2px_rgba(0,0,0,0.04)] bg-white">
           <div className="flex items-center space-x-2 mb-6">
             <Users className="h-4.5 w-4.5 text-[#111111]" />
-            <h3 className="text-sm font-bold text-[#111111] tracking-[-0.02em]">Guest Information</h3>
+            <h3 className="text-sm font-bold text-[#111111] tracking-[-0.02em]">Data Pemesan & Tamu Menginap</h3>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:p-6">
             <div className="md:col-span-2 space-y-1.5">
-              <label className="block text-xs font-semibold text-gray-500">Client CRM Lookup</label>
+              <div className="flex items-center justify-between">
+                <label className="block text-xs font-semibold text-gray-700">Client CRM (Pemesan / Travel Agent)</label>
+                <span className="text-[11px] text-gray-400 font-normal">Pilih pemesan terdaftar di CRM</span>
+              </div>
               <div className="flex flex-col gap-2 md:flex-row md:items-center">
                 <ClientSearchCombobox
                   clients={clients}
@@ -626,17 +630,31 @@ function CreateBookingPage() {
                   New Client
                 </Button>
               </div>
+              {selectedClientId && (
+                <div className="text-[11px] text-blue-700 bg-blue-50 border border-blue-100 rounded-lg px-3 py-2 mt-2 flex items-center justify-between">
+                  <span>
+                    💡 <strong>Client CRM Terpilih.</strong> Anda dapat mengubah data Nama Tamu di bawah jika booking ini untuk jamaah/tamu lain. Data Client CRM tidak akan tertimpa.
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => handleClientSelection("")}
+                    className="text-blue-800 underline text-[11px] ml-2 shrink-0 hover:text-blue-950 font-semibold"
+                  >
+                    Reset Pilihan
+                  </button>
+                </div>
+              )}
               {errors.client && (
                 <p className="text-red-500 text-xs mt-1">{errors.client}</p>
               )}
             </div>
 
             <div className="space-y-1.5">
-              <label className="block text-xs font-semibold text-gray-500">Guest Name *</label>
+              <label className="block text-xs font-semibold text-gray-700">Nama Tamu Menginap (Guest Name) *</label>
               <Input
                 value={formData.guestName}
                 onChange={(e) => handleInputChange('guestName', e.target.value)}
-                placeholder="Full Name"
+                placeholder="Nama Tamu / Jamaah"
                 className={`h-9 border-[#e5e7eb] rounded focus-visible:ring-[#111111] bg-white ${errors.guestName ? "border-red-500" : ""}`}
               />
               {errors.guestName && (
