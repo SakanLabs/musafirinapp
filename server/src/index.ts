@@ -34,8 +34,12 @@ import profileRoutes from "./routes/profile";
 import storeRoutes from "./routes/store";
 import muthowifBookingsRoutes from "./routes/muthowifBookings";
 import agentRequestRoutes from "./routes/agentRequests";
+import { ensureTablesExist } from "./db/bootstrap";
 
-// Auth instance is now imported from ./lib/auth.ts
+// Ensure newly required database tables and enums exist
+ensureTablesExist().catch((err) => {
+  console.error("Failed to run db bootstrap on startup:", err);
+});
 
 export const app = new Hono()
   .use(cors({

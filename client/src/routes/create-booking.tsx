@@ -26,6 +26,7 @@ import { useCreateBooking, type CreateBookingData, type CreateBookingRoomItem, t
 import { useClients } from "@/lib/queries"
 import { useHotels, useHotelPricing } from "@/lib/queries/master"
 import { formatCurrency } from "@/lib/utils"
+import { ClientSearchCombobox } from "@/components/clients/ClientSearchCombobox"
 
 export const Route = createFileRoute("/create-booking")({
   beforeLoad: async () => {
@@ -608,27 +609,18 @@ function CreateBookingPage() {
             <div className="md:col-span-2 space-y-1.5">
               <label className="block text-xs font-semibold text-gray-500">Client CRM Lookup</label>
               <div className="flex flex-col gap-2 md:flex-row md:items-center">
-                <select
-                  value={selectedClientId}
-                  onChange={(e) => handleClientSelection(e.target.value)}
-                  className="flex-1 h-9 px-3 border border-[#e5e7eb] rounded-md bg-white text-xs font-semibold focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[#111111] focus-visible:border-[#111111]"
-                  disabled={isClientsLoading && clients.length === 0}
-                >
-                  <option value="">
-                    {isClientsLoading && clients.length === 0
-                      ? "Loading clients..."
-                      : "-- Select Existing CRM Client --"}
-                  </option>
-                  {clients.map((client) => (
-                    <option key={client.id} value={client.id.toString()}>
-                      {client.name} ({client.email || 'No email'})
-                    </option>
-                  ))}
-                </select>
+                <ClientSearchCombobox
+                  clients={clients}
+                  selectedClientId={selectedClientId}
+                  onSelectClient={handleClientSelection}
+                  isLoading={isClientsLoading}
+                  error={Boolean(errors.client)}
+                  onAddNewClient={() => navigate({ to: "/clients", search: { redirectTo: "/create-booking" } })}
+                />
                 <Button
                   type="button"
                   variant="outline"
-                  className="text-xs h-9 px-4 border-[#e5e7eb] hover:bg-gray-50 text-[#374151]"
+                  className="text-xs h-9 px-4 border-[#e5e7eb] hover:bg-gray-50 text-[#374151] shrink-0"
                   onClick={() => navigate({ to: "/clients", search: { redirectTo: "/create-booking" } })}
                 >
                   New Client

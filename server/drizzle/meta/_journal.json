@@ -134,6 +134,13 @@
       "when": 1781034658985,
       "tag": "0018_daily_jack_flag",
       "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "7",
+      "when": 1789998393794,
+      "tag": "0019_zippy_nick_fury",
+      "breakpoints": true
     }
   ]
 }

@@ -1,7 +1,7 @@
 import { Hono } from 'hono';
 import { eq, desc, sql } from 'drizzle-orm';
 import { db } from '../db';
-import { invoices, bookings, clients, bookingItems, bookingItemPricingPeriods, clientDeposits, depositTransactions, bookingServiceItems, invoicePayments, transportationInvoices, transportationBookings, serviceOrderInvoices, serviceOrders, customLaInvoices, customLaRequests, muthowifInvoices, muthowifBookings, manualInvoices } from '../db/schema';
+import { invoices, bookings, clients, bookingItems, bookingItemPricingPeriods, clientDeposits, depositTransactions, bookingServiceItems, invoicePayments, transportationInvoices, transportationBookings, serviceOrderInvoices, serviceOrders, customLaInvoices, customLaRequests, muthowifInvoices, muthowifBookings, manualInvoices, agentRequestInvoices, agentRequests, user } from '../db/schema';
 import { requireAdminOrFinance } from '../middleware/auth';
 import { generateInvoiceNumber, generateInvoicePDF, generateManualInvoicePDF, uploadToMinio, checkFileExistsInMinio, deleteFromMinio } from '../utils/pdf';
 import { TemplateHelpers } from '../utils/template';
@@ -347,154 +347,202 @@ invoiceRoutes.delete('/:invoiceId', requireAdminOrFinance, async (c) => {
 // GET /api/invoices - List all invoices
 invoiceRoutes.get('/', requireAdminOrFinance, async (c) => {
   try {
-    const allInvoices = await db
-      .select({
-        id: invoices.id,
-        number: invoices.number,
-        bookingId: invoices.bookingId,
-        amount: invoices.amount,
-        currency: invoices.currency,
-        issueDate: invoices.issueDate,
-        dueDate: invoices.dueDate,
-        status: invoices.status,
-        pdfUrl: invoices.pdfUrl,
-        bookingCode: bookings.code,
-        clientName: clients.name,
-        clientEmail: clients.email,
-        hotelName: bookings.hotelName,
-        city: bookings.city,
-      })
-      .from(invoices)
-      .leftJoin(bookings, eq(invoices.bookingId, bookings.id))
-      .leftJoin(clients, eq(bookings.clientId, clients.id));
+    const [
+      allInvoicesResult,
+      allTransportationInvoicesResult,
+      allServiceOrderInvoicesResult,
+      allCustomLaInvoicesResult,
+      allMuthowifInvoicesResult,
+      allAgentRequestInvoicesResult,
+      allManualInvoicesResult,
+    ] = await Promise.allSettled([
+      // 1. Hotel Invoices
+      db
+        .select({
+          id: invoices.id,
+          number: invoices.number,
+          bookingId: invoices.bookingId,
+          amount: invoices.amount,
+          currency: invoices.currency,
+          issueDate: invoices.issueDate,
+          dueDate: invoices.dueDate,
+          status: invoices.status,
+          pdfUrl: invoices.pdfUrl,
+          bookingCode: bookings.code,
+          clientName: clients.name,
+          clientEmail: clients.email,
+          hotelName: bookings.hotelName,
+          city: bookings.city,
+        })
+        .from(invoices)
+        .leftJoin(bookings, eq(invoices.bookingId, bookings.id))
+        .leftJoin(clients, eq(bookings.clientId, clients.id)),
 
-    const allTransportationInvoices = await db
-      .select({
-        id: transportationInvoices.id,
-        number: transportationInvoices.number,
-        bookingId: transportationInvoices.transportationBookingId,
-        amount: transportationInvoices.amount,
-        currency: transportationInvoices.currency,
-        issueDate: transportationInvoices.issueDate,
-        dueDate: transportationInvoices.dueDate,
-        status: transportationInvoices.status,
-        pdfUrl: transportationInvoices.pdfUrl,
-        bookingCode: transportationBookings.number,
-        clientName: clients.name,
-        clientEmail: clients.email,
-        hotelName: transportationBookings.customerName, // Use as a placeholder or 'Transportation'
-        city: transportationBookings.status, // Use as a placeholder or 'N/A'
-      })
-      .from(transportationInvoices)
-      .leftJoin(transportationBookings, eq(transportationInvoices.transportationBookingId, transportationBookings.id))
-      .leftJoin(clients, eq(transportationBookings.clientId, clients.id));
+      // 2. Transportation Invoices
+      db
+        .select({
+          id: transportationInvoices.id,
+          number: transportationInvoices.number,
+          bookingId: transportationInvoices.transportationBookingId,
+          amount: transportationInvoices.amount,
+          currency: transportationInvoices.currency,
+          issueDate: transportationInvoices.issueDate,
+          dueDate: transportationInvoices.dueDate,
+          status: transportationInvoices.status,
+          pdfUrl: transportationInvoices.pdfUrl,
+          bookingCode: transportationBookings.number,
+          clientName: clients.name,
+          clientEmail: clients.email,
+          hotelName: transportationBookings.customerName,
+          city: transportationBookings.status,
+        })
+        .from(transportationInvoices)
+        .leftJoin(transportationBookings, eq(transportationInvoices.transportationBookingId, transportationBookings.id))
+        .leftJoin(clients, eq(transportationBookings.clientId, clients.id)),
 
-    const allServiceOrderInvoices = await db
-      .select({
-        id: serviceOrderInvoices.id,
-        number: serviceOrderInvoices.number,
-        bookingId: serviceOrderInvoices.serviceOrderId,
-        amount: serviceOrderInvoices.amount,
-        currency: serviceOrderInvoices.currency,
-        issueDate: serviceOrderInvoices.issueDate,
-        dueDate: serviceOrderInvoices.dueDate,
-        status: serviceOrderInvoices.status,
-        pdfUrl: serviceOrderInvoices.pdfUrl,
-        bookingCode: serviceOrders.number,
-        clientName: clients.name,
-        clientEmail: clients.email,
-        hotelName: serviceOrders.productType, // Use as a placeholder
-        city: serviceOrders.status, // Use as a placeholder
-      })
-      .from(serviceOrderInvoices)
-      .leftJoin(serviceOrders, eq(serviceOrderInvoices.serviceOrderId, serviceOrders.id))
-      .leftJoin(clients, eq(serviceOrders.clientId, clients.id));
+      // 3. Service Order Invoices
+      db
+        .select({
+          id: serviceOrderInvoices.id,
+          number: serviceOrderInvoices.number,
+          bookingId: serviceOrderInvoices.serviceOrderId,
+          amount: serviceOrderInvoices.amount,
+          currency: serviceOrderInvoices.currency,
+          issueDate: serviceOrderInvoices.issueDate,
+          dueDate: serviceOrderInvoices.dueDate,
+          status: serviceOrderInvoices.status,
+          pdfUrl: serviceOrderInvoices.pdfUrl,
+          bookingCode: serviceOrders.number,
+          clientName: clients.name,
+          clientEmail: clients.email,
+          hotelName: serviceOrders.productType,
+          city: serviceOrders.status,
+        })
+        .from(serviceOrderInvoices)
+        .leftJoin(serviceOrders, eq(serviceOrderInvoices.serviceOrderId, serviceOrders.id))
+        .leftJoin(clients, eq(serviceOrders.clientId, clients.id)),
 
-    const allCustomLaInvoices = await db
-      .select({
-        id: customLaInvoices.id,
-        number: customLaInvoices.number,
-        bookingId: customLaInvoices.customLaRequestId,
-        amount: customLaInvoices.amount,
-        currency: customLaInvoices.currency,
-        issueDate: customLaInvoices.issueDate,
-        dueDate: customLaInvoices.dueDate,
-        status: customLaInvoices.status,
-        pdfUrl: customLaInvoices.pdfUrl,
-        bookingCode: customLaRequests.number,
-        clientName: clients.name,
-        clientEmail: clients.email,
-        hotelName: customLaRequests.travelName,
-        city: customLaRequests.status,
-      })
-      .from(customLaInvoices)
-      .leftJoin(customLaRequests, eq(customLaInvoices.customLaRequestId, customLaRequests.id))
-      .leftJoin(clients, eq(customLaRequests.clientId, clients.id));
+      // 4. Custom LA Invoices
+      db
+        .select({
+          id: customLaInvoices.id,
+          number: customLaInvoices.number,
+          bookingId: customLaInvoices.customLaRequestId,
+          amount: customLaInvoices.amount,
+          currency: customLaInvoices.currency,
+          issueDate: customLaInvoices.issueDate,
+          dueDate: customLaInvoices.dueDate,
+          status: customLaInvoices.status,
+          pdfUrl: customLaInvoices.pdfUrl,
+          bookingCode: customLaRequests.number,
+          clientName: clients.name,
+          clientEmail: clients.email,
+          hotelName: customLaRequests.travelName,
+          city: customLaRequests.status,
+        })
+        .from(customLaInvoices)
+        .leftJoin(customLaRequests, eq(customLaInvoices.customLaRequestId, customLaRequests.id))
+        .leftJoin(clients, eq(customLaRequests.clientId, clients.id)),
 
+      // 5. Muthowif Invoices
+      db
+        .select({
+          id: muthowifInvoices.id,
+          number: muthowifInvoices.number,
+          bookingId: muthowifInvoices.muthowifBookingId,
+          amount: muthowifInvoices.amount,
+          currency: muthowifInvoices.currency,
+          issueDate: muthowifInvoices.issueDate,
+          dueDate: muthowifInvoices.dueDate,
+          status: muthowifInvoices.status,
+          pdfUrl: muthowifInvoices.pdfUrl,
+          bookingCode: muthowifBookings.number,
+          clientName: clients.name,
+          clientEmail: clients.email,
+          hotelName: sql`${muthowifBookings.events}::text`,
+          city: muthowifBookings.status,
+        })
+        .from(muthowifInvoices)
+        .leftJoin(muthowifBookings, eq(muthowifInvoices.muthowifBookingId, muthowifBookings.id))
+        .leftJoin(clients, eq(muthowifBookings.clientId, clients.id)),
 
-    const allMuthowifInvoices = await db
-      .select({
-        id: muthowifInvoices.id,
-        number: muthowifInvoices.number,
-        bookingId: muthowifInvoices.muthowifBookingId,
-        amount: muthowifInvoices.amount,
-        currency: muthowifInvoices.currency,
-        issueDate: muthowifInvoices.issueDate,
-        dueDate: muthowifInvoices.dueDate,
-        status: muthowifInvoices.status,
-        pdfUrl: muthowifInvoices.pdfUrl,
-        bookingCode: muthowifBookings.number,
-        clientName: clients.name,
-        clientEmail: clients.email,
-        hotelName: sql`${muthowifBookings.events}::text`,
-        city: muthowifBookings.status,
-      })
-      .from(muthowifInvoices)
-      .leftJoin(muthowifBookings, eq(muthowifInvoices.muthowifBookingId, muthowifBookings.id))
-      .leftJoin(clients, eq(muthowifBookings.clientId, clients.id));
+      // 6. Agent Request Invoices
+      db
+        .select({
+          id: agentRequestInvoices.id,
+          number: agentRequestInvoices.number,
+          bookingId: agentRequestInvoices.agentRequestId,
+          amount: agentRequestInvoices.amount,
+          currency: agentRequestInvoices.currency,
+          issueDate: agentRequestInvoices.issueDate,
+          dueDate: agentRequestInvoices.dueDate,
+          status: agentRequestInvoices.status,
+          pdfUrl: agentRequestInvoices.pdfUrl,
+          bookingCode: agentRequests.requestNumber,
+          clientName: user.name,
+          clientEmail: user.email,
+          hotelName: agentRequests.title,
+          city: agentRequests.serviceType,
+        })
+        .from(agentRequestInvoices)
+        .leftJoin(agentRequests, eq(agentRequestInvoices.agentRequestId, agentRequests.id))
+        .leftJoin(user, eq(agentRequests.agentId, user.id)),
 
-    // Agent Request Invoices
-    const { agentRequestInvoices, agentRequests, user } = await import('../db/schema');
-    const allAgentRequestInvoices = await db
-      .select({
-        id: agentRequestInvoices.id,
-        number: agentRequestInvoices.number,
-        bookingId: agentRequestInvoices.agentRequestId,
-        amount: agentRequestInvoices.amount,
-        currency: agentRequestInvoices.currency,
-        issueDate: agentRequestInvoices.issueDate,
-        dueDate: agentRequestInvoices.dueDate,
-        status: agentRequestInvoices.status,
-        pdfUrl: agentRequestInvoices.pdfUrl,
-        bookingCode: agentRequests.requestNumber,
-        clientName: user.name,
-        clientEmail: user.email,
-        hotelName: agentRequests.title,
-        city: agentRequests.serviceType,
-      })
-      .from(agentRequestInvoices)
-      .leftJoin(agentRequests, eq(agentRequestInvoices.agentRequestId, agentRequests.id))
-      .leftJoin(user, eq(agentRequests.agentId, user.id));
+      // 7. Manual Invoices
+      db
+        .select({
+          id: manualInvoices.id,
+          number: manualInvoices.number,
+          bookingId: manualInvoices.id,
+          amount: manualInvoices.amount,
+          currency: manualInvoices.currency,
+          issueDate: manualInvoices.issueDate,
+          dueDate: manualInvoices.dueDate,
+          status: manualInvoices.status,
+          pdfUrl: manualInvoices.pdfUrl,
+          bookingCode: sql`'MANUAL'`.as('bookingCode'),
+          clientName: manualInvoices.clientName,
+          clientEmail: manualInvoices.clientEmail,
+          hotelName: sql`COALESCE(${manualInvoices.title}, 'Invoice Manual')`.as('hotelName'),
+          city: sql`'Manual'`.as('city'),
+        })
+        .from(manualInvoices),
+    ]);
 
-    // Manual Invoices (Invoices created without a booking)
-    const allManualInvoices = await db
-      .select({
-        id: manualInvoices.id,
-        number: manualInvoices.number,
-        bookingId: manualInvoices.id,
-        amount: manualInvoices.amount,
-        currency: manualInvoices.currency,
-        issueDate: manualInvoices.issueDate,
-        dueDate: manualInvoices.dueDate,
-        status: manualInvoices.status,
-        pdfUrl: manualInvoices.pdfUrl,
-        bookingCode: sql`'MANUAL'`.as('bookingCode'),
-        clientName: manualInvoices.clientName,
-        clientEmail: manualInvoices.clientEmail,
-        hotelName: sql`COALESCE(${manualInvoices.title}, 'Invoice Manual')`.as('hotelName'),
-        city: sql`'Manual'`.as('city'),
-      })
-      .from(manualInvoices);
+    const allInvoices = allInvoicesResult.status === 'fulfilled' ? allInvoicesResult.value : [];
+    if (allInvoicesResult.status === 'rejected') {
+      console.error('Failed to fetch standard invoices:', allInvoicesResult.reason);
+    }
+
+    const allTransportationInvoices = allTransportationInvoicesResult.status === 'fulfilled' ? allTransportationInvoicesResult.value : [];
+    if (allTransportationInvoicesResult.status === 'rejected') {
+      console.error('Failed to fetch transportation invoices:', allTransportationInvoicesResult.reason);
+    }
+
+    const allServiceOrderInvoices = allServiceOrderInvoicesResult.status === 'fulfilled' ? allServiceOrderInvoicesResult.value : [];
+    if (allServiceOrderInvoicesResult.status === 'rejected') {
+      console.error('Failed to fetch service order invoices:', allServiceOrderInvoicesResult.reason);
+    }
+
+    const allCustomLaInvoices = allCustomLaInvoicesResult.status === 'fulfilled' ? allCustomLaInvoicesResult.value : [];
+    if (allCustomLaInvoicesResult.status === 'rejected') {
+      console.error('Failed to fetch custom LA invoices:', allCustomLaInvoicesResult.reason);
+    }
+
+    const allMuthowifInvoices = allMuthowifInvoicesResult.status === 'fulfilled' ? allMuthowifInvoicesResult.value : [];
+    if (allMuthowifInvoicesResult.status === 'rejected') {
+      console.error('Failed to fetch muthowif invoices:', allMuthowifInvoicesResult.reason);
+    }
+
+    const allAgentRequestInvoices = allAgentRequestInvoicesResult.status === 'fulfilled' ? allAgentRequestInvoicesResult.value : [];
+    if (allAgentRequestInvoicesResult.status === 'rejected') {
+      console.error('Failed to fetch agent request invoices:', allAgentRequestInvoicesResult.reason);
+    }
+
+    const allManualInvoices = allManualInvoicesResult.status === 'fulfilled' ? allManualInvoicesResult.value : [];
+    if (allManualInvoicesResult.status === 'rejected') {
+      console.error('Failed to fetch manual invoices:', allManualInvoicesResult.reason);
+    }
 
     // Combine and sort by issueDate descending
     const combinedInvoices = [

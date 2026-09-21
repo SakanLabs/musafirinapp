@@ -3,8 +3,10 @@ import postgres from 'postgres';
 import { config } from 'dotenv';
 import * as schema from './schema.js';
 
-// Load environment variables
-config({ path: ['../.env', '../.env.local'], override: true });
+// Load environment variables if not already provided
+if (!process.env.DATABASE_URL) {
+  config({ path: ['../.env', '../.env.local'] });
+}
 
 const DATABASE_URL = process.env.DATABASE_URL;
 
@@ -13,7 +15,7 @@ if (!DATABASE_URL) {
 }
 
 // Create the connection
-const client = postgres(DATABASE_URL);
+export const client = postgres(DATABASE_URL);
 
 // Create the drizzle instance
 export const db = drizzle(client, { schema });
