@@ -94,7 +94,7 @@ docker run -d \
   -e "MINIO_ROOT_USER=minioadmin" \
   -e "MINIO_ROOT_PASSWORD=minioadmin" \
   -v minio-data:/data \
-  quay.io/minio/minio server /data --console-address ":9001"
+  cgr.dev/chainguard/minio server /data --console-address ":9001"
 ```
 
 MinIO will be available at:
