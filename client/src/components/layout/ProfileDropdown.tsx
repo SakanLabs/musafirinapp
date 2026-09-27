@@ -111,10 +111,10 @@ export function ProfileDropdown() {
         <span>Settings</span>
       </DropdownMenuItem>
       
-      {user.role === 'admin' && (
+      {(user.role === 'admin' || user.role === 'owner') && (
         <DropdownMenuItem onClick={handleAdmin}>
           <Shield className="mr-2 h-4 w-4" />
-          <span>Admin Panel</span>
+          <span>User Management</span>
         </DropdownMenuItem>
       )}
       
