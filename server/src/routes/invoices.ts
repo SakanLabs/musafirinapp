@@ -1,0 +1,1417 @@
+import { Hono } from 'hono';
+import { eq, desc, sql } from 'drizzle-orm';
+import { db } from '../db';
+import { invoices, bookings, clients, bookingItems, bookingItemPricingPeriods, clientDeposits, depositTransactions, bookingServiceItems, invoicePayments, transportationInvoices, transportationBookings, serviceOrderInvoices, serviceOrders, customLaInvoices, customLaRequests, muthowifInvoices, muthowifBookings, manualInvoices, agentRequestInvoices, agentRequests, user } from '../db/schema';
+import { requireAdminOrFinance } from '../middleware/auth';
+import { generateInvoiceNumber, generateInvoicePDF, generateManualInvoicePDF, uploadToMinio, checkFileExistsInMinio, deleteFromMinio } from '../utils/pdf';
+import { TemplateHelpers } from '../utils/template';
+import type { NewInvoice, NewDepositTransaction, NewInvoicePayment } from '../db/schema';
+import { ReceiptService } from '../services/ReceiptService';
+
+const invoiceRoutes = new Hono();
+const receiptService = new ReceiptService();
+
+
+
+// GET /api/invoices/booking/:bookingId - Get or create invoice for booking
+invoiceRoutes.get('/booking/:bookingId', requireAdminOrFinance, async (c) => {
+  try {
+    const bookingId = parseInt(c.req.param('bookingId'));
+    const dueDateParam = c.req.query('dueDate');
+    const forceRegenerate = c.req.query('force') === 'true';
+
+    if (!bookingId || isNaN(bookingId)) {
+      return c.json({ error: 'Invalid booking ID' }, 400);
+    }
+
+    // Validate required dueDate
+    if (!dueDateParam) {
+      return c.json({ error: 'dueDate query parameter is required' }, 400);
+    }
+
+    const customDueDate = new Date(dueDateParam);
+
+    // Check if invoice already exists for this booking
+    const existingInvoice = await db
+      .select()
+      .from(invoices)
+      .where(eq(invoices.bookingId, bookingId))
+      .limit(1);
+
+    if (existingInvoice.length > 0 && existingInvoice[0]) {
+      const currentInvoice = existingInvoice[0];
+
+      if (forceRegenerate) {
+        const pdfUrl = currentInvoice.pdfUrl;
+        if (pdfUrl) {
+          const urlParts = pdfUrl.split('/');
+          const fileName = urlParts.slice(-2).join('/');
+          try {
+            await deleteFromMinio(fileName);
+          } catch (error) {
+            console.warn(`Failed to delete invoice PDF ${fileName}:`, error);
+          }
+        }
+
+        await db
+          .delete(invoices)
+          .where(eq(invoices.id, currentInvoice.id));
+      } else {
+        const pdfUrl = currentInvoice.pdfUrl;
+        if (pdfUrl) {
+          // Extract filename from URL (e.g., "invoices/INV-2025-885598.pdf")
+          const urlParts = pdfUrl.split('/');
+          const fileName = urlParts.slice(-2).join('/'); // Get "invoices/filename.pdf"
+
+          const fileExists = await checkFileExistsInMinio(fileName);
+
+          if (fileExists) {
+            return c.json({
+              success: true,
+              data: currentInvoice,
+              message: 'Invoice already exists.',
+            });
+          } else {
+            // File doesn't exist, delete the database record and regenerate
+            await db
+              .delete(invoices)
+              .where(eq(invoices.id, currentInvoice.id));
+
+            console.log(`PDF file not found for invoice ${currentInvoice.number}, regenerating...`);
+          }
+        }
+      }
+    }
+
+    // If not, create a new one
+    // Check if booking exists
+    const booking = await db
+      .select({
+        id: bookings.id,
+        code: bookings.code,
+        clientId: bookings.clientId,
+        hotelName: bookings.hotelName,
+        city: bookings.city,
+        checkIn: bookings.checkIn,
+        checkOut: bookings.checkOut,
+        totalAmount: bookings.totalAmount,
+        paymentStatus: bookings.paymentStatus,
+        bookingStatus: bookings.bookingStatus,
+        mealPlan: bookings.mealPlan,
+        clientName: clients.name,
+        clientEmail: clients.email,
+        clientPhone: clients.phone,
+      })
+      .from(bookings)
+      .leftJoin(clients, eq(bookings.clientId, clients.id))
+      .where(eq(bookings.id, bookingId))
+      .limit(1);
+
+    if (booking.length === 0) {
+      return c.json({ error: 'Booking not found' }, 404);
+    }
+
+    // Get booking items with pricing periods
+    const items = await db
+      .select()
+      .from(bookingItems)
+      .where(eq(bookingItems.bookingId, bookingId));
+
+    // Fetch extra service items (e.g., visa umrah, transportation)
+    const extraServiceItems = await db
+      .select()
+      .from(bookingServiceItems)
+      .where(eq(bookingServiceItems.bookingId, bookingId));
+
+    // Calculate extra service items total
+    const extraTotal = (extraServiceItems || []).reduce((sum, s) => {
+      const sub = Number((s as any).subtotal ?? 0);
+      return sum + (isNaN(sub) ? 0 : sub);
+    }, 0);
+
+    console.log('Raw booking items from database (POST):', items.map(item => ({
+      id: item.id,
+      roomType: item.roomType,
+      roomCount: item.roomCount,
+      unitPrice: item.unitPrice,
+      hasPricingPeriods: item.hasPricingPeriods,
+      unitPriceType: typeof item.unitPrice
+    })));
+
+    // Get pricing periods for items that have them
+    const itemsWithPricingPeriods = await Promise.all(
+      items.map(async (item) => {
+        if (item.hasPricingPeriods) {
+          const pricingPeriods = await db
+            .select()
+            .from(bookingItemPricingPeriods)
+            .where(eq(bookingItemPricingPeriods.bookingItemId, item.id));
+
+          console.log(`Pricing periods for item ${item.id} (POST):`, pricingPeriods);
+
+          return {
+            ...item,
+            pricingPeriods
+          };
+        }
+        console.log(`Item ${item.id} has no pricing periods (POST), returning as-is`);
+        return item;
+      })
+    );
+
+    console.log('Final items with pricing periods (POST):', itemsWithPricingPeriods.map(item => ({
+      id: item.id,
+      roomType: item.roomType,
+      unitPrice: item.unitPrice,
+      hasPricingPeriods: item.hasPricingPeriods,
+      pricingPeriodsCount: (item as any).pricingPeriods ? (item as any).pricingPeriods.length : 0
+    })));
+
+    const bookingData = booking[0]!;
+
+    // Generate invoice number
+    const invoiceNumber = generateInvoiceNumber();
+
+    // Calculate dates
+    const issueDate = new Date();
+    const dueDate = customDueDate; // Use the provided due date
+
+    // Save invoice to database FIRST with null pdfUrl
+    const newInvoice: NewInvoice = {
+      number: invoiceNumber,
+      bookingId: bookingId,
+      amount: ((Number(bookingData.totalAmount) || 0) + extraTotal).toFixed(2),
+      currency: 'SAR',
+      issueDate: issueDate,
+      dueDate: dueDate,
+      status: 'draft',
+      pdfUrl: null,
+    };
+
+    const [insertedInvoice] = await db
+      .insert(invoices)
+      .values(newInvoice)
+      .returning();
+
+    // Now attempt to generate PDF
+    try {
+      // Create invoice object for PDF generation
+      const invoiceForPDF = {
+        id: insertedInvoice!.id,
+        number: invoiceNumber,
+        bookingId: bookingId,
+        amount: (Number(bookingData.totalAmount) || 0) + extraTotal,
+        currency: 'SAR',
+        issueDate: new Date(), // Use current date as invoice date
+        dueDate: customDueDate, // Use the provided due date
+        status: 'draft' as const,
+        pdfUrl: null,
+      };
+
+      // Create proper booking object for PDF generation
+      const bookingForPDF = {
+        id: bookingData.id,
+        code: bookingData.code,
+        clientId: bookingData.clientId!,
+        hotelName: bookingData.hotelName,
+        city: bookingData.city,
+        checkIn: bookingData.checkIn,
+        checkOut: bookingData.checkOut,
+        totalAmount: bookingData.totalAmount,
+        paymentStatus: bookingData.paymentStatus,
+        bookingStatus: bookingData.bookingStatus,
+        mealPlan: bookingData.mealPlan,
+        meta: null,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      };
+
+      // Generate PDF
+      const pdfBuffer = await generateInvoicePDF(
+        invoiceForPDF,
+        bookingForPDF,
+        {
+          id: bookingData.clientId!,
+          name: bookingData.clientName!,
+          email: bookingData.clientEmail!,
+          phone: bookingData.clientPhone,
+          createdAt: new Date(),
+        },
+        itemsWithPricingPeriods,
+        customDueDate,
+        new Date(), // Use current date as invoice date
+        extraServiceItems
+      );
+
+      // Upload to MinIO and save to database
+      const pdfUrl = await uploadToMinio(
+        `invoices/${invoiceNumber}.pdf`,
+        pdfBuffer,
+        'application/pdf'
+      );
+
+      // Update the invoice in database with PDF URL
+      await db.update(invoices).set({ pdfUrl }).where(eq(invoices.id, insertedInvoice!.id));
+      insertedInvoice!.pdfUrl = pdfUrl;
+    } catch (pdfError) {
+      console.error('Failed to generate/upload PDF, but invoice was created in DB:', pdfError);
+      // We don't fail the request, we just return the invoice with pdfUrl: null
+    }
+
+    return c.json({
+      success: true,
+      data: insertedInvoice,
+      message: 'Invoice generated successfully',
+    }, 201);
+
+  } catch (error) {
+    console.error('Error in get-or-create-invoice:', error);
+    return c.json({ error: 'Failed to get or create invoice' }, 500);
+  }
+});
+
+/**
+ * DELETE /api/invoices/:invoiceId
+ * Hapus invoice beserta file PDF di MinIO.
+ * Catatan:
+ * - Pembayaran (invoicePayments) akan terhapus otomatis (ON DELETE CASCADE).
+ * - Receipt yang terkait akan diset invoiceId = NULL (ON DELETE SET NULL).
+ */
+invoiceRoutes.delete('/:invoiceId', requireAdminOrFinance, async (c) => {
+  try {
+    const invoiceId = parseInt(c.req.param('invoiceId'));
+    if (!invoiceId || isNaN(invoiceId)) {
+      return c.json({ error: 'Invalid invoice ID' }, 400);
+    }
+
+    // Ambil invoice terlebih dahulu
+    const existing = await db
+      .select()
+      .from(invoices)
+      .where(eq(invoices.id, invoiceId))
+      .limit(1);
+
+    if (existing.length === 0) {
+      const existingManual = await db
+        .select()
+        .from(manualInvoices)
+        .where(eq(manualInvoices.id, invoiceId))
+        .limit(1);
+
+      if (existingManual.length > 0) {
+        const inv = existingManual[0]!;
+        if (inv.pdfUrl) {
+          const urlParts = inv.pdfUrl.split('/');
+          const fileName = urlParts.slice(-2).join('/');
+          try {
+            await deleteFromMinio(fileName);
+          } catch (err) {
+            console.warn(`Failed to delete manual invoice PDF ${fileName}:`, err);
+          }
+        }
+        await db.delete(manualInvoices).where(eq(manualInvoices.id, invoiceId));
+        return c.json({
+          success: true,
+          message: 'Invoice deleted successfully',
+        });
+      }
+      return c.json({ error: 'Invoice not found' }, 404);
+    }
+
+    const invoice = existing[0]!;
+
+    // Hapus file PDF dari MinIO jika ada
+    if (invoice.pdfUrl) {
+      const urlParts = invoice.pdfUrl.split('/');
+      const fileName = urlParts.slice(-2).join('/'); // e.g. "invoices/INV-XXXX.pdf"
+      try {
+        await deleteFromMinio(fileName);
+      } catch (err) {
+        console.warn(`Failed to delete invoice PDF ${fileName}:`, err);
+      }
+    }
+
+    // Hapus invoice dari database (payments akan cascade, receipts set null)
+    await db.delete(invoices).where(eq(invoices.id, invoiceId));
+
+    return c.json({
+      success: true,
+      message: 'Invoice deleted successfully',
+    });
+  } catch (error) {
+    console.error('Error deleting invoice:', error);
+    return c.json({ error: 'Failed to delete invoice' }, 500);
+  }
+});
+
+// GET /api/invoices - List all invoices
+invoiceRoutes.get('/', requireAdminOrFinance, async (c) => {
+  try {
+    const [
+      allInvoicesResult,
+      allTransportationInvoicesResult,
+      allServiceOrderInvoicesResult,
+      allCustomLaInvoicesResult,
+      allMuthowifInvoicesResult,
+      allAgentRequestInvoicesResult,
+      allManualInvoicesResult,
+    ] = await Promise.allSettled([
+      // 1. Hotel Invoices
+      db
+        .select({
+          id: invoices.id,
+          number: invoices.number,
+          bookingId: invoices.bookingId,
+          amount: invoices.amount,
+          currency: invoices.currency,
+          issueDate: invoices.issueDate,
+          dueDate: invoices.dueDate,
+          status: invoices.status,
+          pdfUrl: invoices.pdfUrl,
+          bookingCode: bookings.code,
+          clientName: clients.name,
+          clientEmail: clients.email,
+          hotelName: bookings.hotelName,
+          city: bookings.city,
+        })
+        .from(invoices)
+        .leftJoin(bookings, eq(invoices.bookingId, bookings.id))
+        .leftJoin(clients, eq(bookings.clientId, clients.id)),
+
+      // 2. Transportation Invoices
+      db
+        .select({
+          id: transportationInvoices.id,
+          number: transportationInvoices.number,
+          bookingId: transportationInvoices.transportationBookingId,
+          amount: transportationInvoices.amount,
+          currency: transportationInvoices.currency,
+          issueDate: transportationInvoices.issueDate,
+          dueDate: transportationInvoices.dueDate,
+          status: transportationInvoices.status,
+          pdfUrl: transportationInvoices.pdfUrl,
+          bookingCode: transportationBookings.number,
+          clientName: clients.name,
+          clientEmail: clients.email,
+          hotelName: transportationBookings.customerName,
+          city: transportationBookings.status,
+        })
+        .from(transportationInvoices)
+        .leftJoin(transportationBookings, eq(transportationInvoices.transportationBookingId, transportationBookings.id))
+        .leftJoin(clients, eq(transportationBookings.clientId, clients.id)),
+
+      // 3. Service Order Invoices
+      db
+        .select({
+          id: serviceOrderInvoices.id,
+          number: serviceOrderInvoices.number,
+          bookingId: serviceOrderInvoices.serviceOrderId,
+          amount: serviceOrderInvoices.amount,
+          currency: serviceOrderInvoices.currency,
+          issueDate: serviceOrderInvoices.issueDate,
+          dueDate: serviceOrderInvoices.dueDate,
+          status: serviceOrderInvoices.status,
+          pdfUrl: serviceOrderInvoices.pdfUrl,
+          bookingCode: serviceOrders.number,
+          clientName: clients.name,
+          clientEmail: clients.email,
+          hotelName: serviceOrders.productType,
+          city: serviceOrders.status,
+        })
+        .from(serviceOrderInvoices)
+        .leftJoin(serviceOrders, eq(serviceOrderInvoices.serviceOrderId, serviceOrders.id))
+        .leftJoin(clients, eq(serviceOrders.clientId, clients.id)),
+
+      // 4. Custom LA Invoices
+      db
+        .select({
+          id: customLaInvoices.id,
+          number: customLaInvoices.number,
+          bookingId: customLaInvoices.customLaRequestId,
+          amount: customLaInvoices.amount,
+          currency: customLaInvoices.currency,
+          issueDate: customLaInvoices.issueDate,
+          dueDate: customLaInvoices.dueDate,
+          status: customLaInvoices.status,
+          pdfUrl: customLaInvoices.pdfUrl,
+          bookingCode: customLaRequests.number,
+          clientName: clients.name,
+          clientEmail: clients.email,
+          hotelName: customLaRequests.travelName,
+          city: customLaRequests.status,
+        })
+        .from(customLaInvoices)
+        .leftJoin(customLaRequests, eq(customLaInvoices.customLaRequestId, customLaRequests.id))
+        .leftJoin(clients, eq(customLaRequests.clientId, clients.id)),
+
+      // 5. Muthowif Invoices
+      db
+        .select({
+          id: muthowifInvoices.id,
+          number: muthowifInvoices.number,
+          bookingId: muthowifInvoices.muthowifBookingId,
+          amount: muthowifInvoices.amount,
+          currency: muthowifInvoices.currency,
+          issueDate: muthowifInvoices.issueDate,
+          dueDate: muthowifInvoices.dueDate,
+          status: muthowifInvoices.status,
+          pdfUrl: muthowifInvoices.pdfUrl,
+          bookingCode: muthowifBookings.number,
+          clientName: clients.name,
+          clientEmail: clients.email,
+          hotelName: sql`${muthowifBookings.events}::text`,
+          city: muthowifBookings.status,
+        })
+        .from(muthowifInvoices)
+        .leftJoin(muthowifBookings, eq(muthowifInvoices.muthowifBookingId, muthowifBookings.id))
+        .leftJoin(clients, eq(muthowifBookings.clientId, clients.id)),
+
+      // 6. Agent Request Invoices
+      db
+        .select({
+          id: agentRequestInvoices.id,
+          number: agentRequestInvoices.number,
+          bookingId: agentRequestInvoices.agentRequestId,
+          amount: agentRequestInvoices.amount,
+          currency: agentRequestInvoices.currency,
+          issueDate: agentRequestInvoices.issueDate,
+          dueDate: agentRequestInvoices.dueDate,
+          status: agentRequestInvoices.status,
+          pdfUrl: agentRequestInvoices.pdfUrl,
+          bookingCode: agentRequests.requestNumber,
+          clientName: user.name,
+          clientEmail: user.email,
+          hotelName: agentRequests.title,
+          city: agentRequests.serviceType,
+        })
+        .from(agentRequestInvoices)
+        .leftJoin(agentRequests, eq(agentRequestInvoices.agentRequestId, agentRequests.id))
+        .leftJoin(user, eq(agentRequests.agentId, user.id)),
+
+      // 7. Manual Invoices
+      db
+        .select({
+          id: manualInvoices.id,
+          number: manualInvoices.number,
+          bookingId: manualInvoices.id,
+          amount: manualInvoices.amount,
+          currency: manualInvoices.currency,
+          issueDate: manualInvoices.issueDate,
+          dueDate: manualInvoices.dueDate,
+          status: manualInvoices.status,
+          pdfUrl: manualInvoices.pdfUrl,
+          bookingCode: sql`'MANUAL'`.as('bookingCode'),
+          clientName: manualInvoices.clientName,
+          clientEmail: manualInvoices.clientEmail,
+          hotelName: sql`COALESCE(${manualInvoices.title}, 'Invoice Manual')`.as('hotelName'),
+          city: sql`'Manual'`.as('city'),
+        })
+        .from(manualInvoices),
+    ]);
+
+    const allInvoices = allInvoicesResult.status === 'fulfilled' ? allInvoicesResult.value : [];
+    if (allInvoicesResult.status === 'rejected') {
+      console.error('Failed to fetch standard invoices:', allInvoicesResult.reason);
+    }
+
+    const allTransportationInvoices = allTransportationInvoicesResult.status === 'fulfilled' ? allTransportationInvoicesResult.value : [];
+    if (allTransportationInvoicesResult.status === 'rejected') {
+      console.error('Failed to fetch transportation invoices:', allTransportationInvoicesResult.reason);
+    }
+
+    const allServiceOrderInvoices = allServiceOrderInvoicesResult.status === 'fulfilled' ? allServiceOrderInvoicesResult.value : [];
+    if (allServiceOrderInvoicesResult.status === 'rejected') {
+      console.error('Failed to fetch service order invoices:', allServiceOrderInvoicesResult.reason);
+    }
+
+    const allCustomLaInvoices = allCustomLaInvoicesResult.status === 'fulfilled' ? allCustomLaInvoicesResult.value : [];
+    if (allCustomLaInvoicesResult.status === 'rejected') {
+      console.error('Failed to fetch custom LA invoices:', allCustomLaInvoicesResult.reason);
+    }
+
+    const allMuthowifInvoices = allMuthowifInvoicesResult.status === 'fulfilled' ? allMuthowifInvoicesResult.value : [];
+    if (allMuthowifInvoicesResult.status === 'rejected') {
+      console.error('Failed to fetch muthowif invoices:', allMuthowifInvoicesResult.reason);
+    }
+
+    const allAgentRequestInvoices = allAgentRequestInvoicesResult.status === 'fulfilled' ? allAgentRequestInvoicesResult.value : [];
+    if (allAgentRequestInvoicesResult.status === 'rejected') {
+      console.error('Failed to fetch agent request invoices:', allAgentRequestInvoicesResult.reason);
+    }
+
+    const allManualInvoices = allManualInvoicesResult.status === 'fulfilled' ? allManualInvoicesResult.value : [];
+    if (allManualInvoicesResult.status === 'rejected') {
+      console.error('Failed to fetch manual invoices:', allManualInvoicesResult.reason);
+    }
+
+    // Combine and sort by issueDate descending
+    const combinedInvoices = [
+      ...allInvoices,
+      ...allTransportationInvoices.map(inv => ({ ...inv, hotelName: 'Transportation' })),
+      ...allServiceOrderInvoices.map(inv => ({ ...inv, hotelName: 'Service Order' })),
+      ...allCustomLaInvoices.map(inv => ({ ...inv, hotelName: inv.hotelName ? `Custom LA (${inv.hotelName})` : 'Custom LA' })),
+      ...allMuthowifInvoices.map(inv => ({ ...inv, hotelName: 'Muthowif (' + (inv.hotelName || 'Order') + ')' })),
+      ...allAgentRequestInvoices.map(inv => ({ ...inv, hotelName: 'Agent Request (' + (inv.hotelName || 'Service') + ')' })),
+      ...allManualInvoices
+    ].sort((a, b) => {
+      const dateA = a.issueDate ? new Date(a.issueDate).getTime() : 0;
+      const dateB = b.issueDate ? new Date(b.issueDate).getTime() : 0;
+      return dateB - dateA;
+    });
+
+    return c.json({
+      success: true,
+      data: combinedInvoices,
+    });
+  } catch (error) {
+    console.error('Error fetching invoices:', error);
+    return c.json({ error: 'Failed to fetch invoices' }, 500);
+  }
+});
+
+// POST /api/invoices/manual - Create manual invoice without booking
+invoiceRoutes.post('/manual', requireAdminOrFinance, async (c) => {
+  try {
+    const body = await c.req.json().catch(() => ({}));
+    const {
+      clientId,
+      clientName,
+      clientEmail,
+      clientPhone,
+      clientAddress,
+      title,
+      dueDate,
+      issueDate,
+      currency = 'SAR',
+      items,
+      notes
+    } = body;
+
+    if (!clientName || !clientName.trim()) {
+      return c.json({ error: 'Nama client wajib diisi' }, 400);
+    }
+
+    if (!dueDate) {
+      return c.json({ error: 'Tanggal jatuh tempo wajib diisi' }, 400);
+    }
+
+    if (!items || !Array.isArray(items) || items.length === 0) {
+      return c.json({ error: 'Minimal harus ada 1 item layanan' }, 400);
+    }
+
+    // Calculate item subtotals and total amount
+    let totalAmount = 0;
+    const validatedItems = items.map((item: any) => {
+      const quantity = Math.max(1, parseInt(item.quantity) || 1);
+      const unitPrice = Math.max(0, parseFloat(item.unitPrice) || 0);
+      const subtotal = quantity * unitPrice;
+      totalAmount += subtotal;
+      return {
+        description: (item.description || '').trim() || 'Item Layanan',
+        quantity,
+        unitPrice,
+        subtotal,
+        notes: (item.notes || '').trim() || ''
+      };
+    });
+
+    // Generate unique invoice number: INV-MAN-YYYY-XXXXXX
+    const year = new Date().getFullYear();
+    const randomSuffix = Math.floor(100000 + Math.random() * 900000);
+    const invoiceNumber = `INV-MAN-${year}-${randomSuffix}`;
+
+    const newInvoiceData = {
+      number: invoiceNumber,
+      clientId: clientId ? parseInt(clientId) : null,
+      clientName: clientName.trim(),
+      clientEmail: clientEmail?.trim() || null,
+      clientPhone: clientPhone?.trim() || null,
+      clientAddress: clientAddress?.trim() || null,
+      title: title?.trim() || null,
+      amount: totalAmount.toFixed(2),
+      paidAmount: '0.00',
+      currency: (currency || 'SAR').toUpperCase(),
+      issueDate: issueDate ? new Date(issueDate) : new Date(),
+      dueDate: new Date(dueDate),
+      status: 'draft' as const,
+      items: validatedItems,
+      notes: notes?.trim() || null,
+      pdfUrl: null as string | null
+    };
+
+    const [inserted] = await db.insert(manualInvoices).values(newInvoiceData as any).returning();
+    if (!inserted) {
+      throw new Error('Gagal menyimpan data manual invoice');
+    }
+
+    // Generate PDF and upload to MinIO
+    try {
+      const pdfUrl = await generateManualInvoicePDF({
+        ...inserted,
+        items: validatedItems
+      });
+      await db.update(manualInvoices).set({ pdfUrl }).where(eq(manualInvoices.id, inserted.id));
+      inserted.pdfUrl = pdfUrl;
+    } catch (pdfErr) {
+      console.error('Failed to generate PDF for manual invoice:', pdfErr);
+    }
+
+    return c.json({
+      success: true,
+      message: 'Invoice manual berhasil diterbitkan',
+      data: inserted,
+      downloadUrl: `/api/invoices/by-number/${invoiceNumber}`
+    }, 201);
+  } catch (error) {
+    console.error('Error creating manual invoice:', error);
+    return c.json({ error: 'Gagal membuat invoice manual' }, 500);
+  }
+});
+
+// POST /api/invoices/:bookingId/generate - Generate invoice for booking
+invoiceRoutes.post('/:bookingId/generate', requireAdminOrFinance, async (c) => {
+  try {
+    const bookingId = parseInt(c.req.param('bookingId'));
+
+    if (!bookingId || isNaN(bookingId)) {
+      return c.json({ error: 'Invalid booking ID' }, 400);
+    }
+
+    // Get invoiceDate and required dueDate from request body
+    const body = await c.req.json().catch(() => ({}));
+
+    // Validate required dueDate
+    if (!body.dueDate) {
+      return c.json({ error: 'dueDate is required' }, 400);
+    }
+
+    const customInvoiceDate = body.invoiceDate ? new Date(body.invoiceDate) : new Date();
+    const customDueDate = new Date(body.dueDate);
+    const forceRegenerate = body.forceRegenerate === true;
+
+    // Check if booking exists
+    const booking = await db
+      .select({
+        id: bookings.id,
+        code: bookings.code,
+        clientId: bookings.clientId,
+        hotelName: bookings.hotelName,
+        city: bookings.city,
+        checkIn: bookings.checkIn,
+        checkOut: bookings.checkOut,
+        mealPlan: bookings.mealPlan,
+        totalAmount: bookings.totalAmount,
+        paymentStatus: bookings.paymentStatus,
+        bookingStatus: bookings.bookingStatus,
+        clientName: clients.name,
+        clientEmail: clients.email,
+        clientPhone: clients.phone,
+      })
+      .from(bookings)
+      .leftJoin(clients, eq(bookings.clientId, clients.id))
+      .where(eq(bookings.id, bookingId))
+      .limit(1);
+
+    if (booking.length === 0) {
+      return c.json({ error: 'Booking not found' }, 404);
+    }
+
+    // Check if invoice already exists for this booking
+    const existingInvoice = await db
+      .select()
+      .from(invoices)
+      .where(eq(invoices.bookingId, bookingId))
+      .limit(1);
+
+    // Always delete existing invoice if it exists (auto-replace behavior)
+    if (existingInvoice.length > 0 && existingInvoice[0]) {
+      await db
+        .delete(invoices)
+        .where(eq(invoices.id, existingInvoice[0].id));
+
+      console.log(`Replacing existing invoice for booking ${bookingId}, deleted invoice ${existingInvoice[0].number}`);
+    }
+
+    // Get booking items with pricing periods
+    const items = await db
+      .select()
+      .from(bookingItems)
+      .where(eq(bookingItems.bookingId, bookingId));
+
+    console.log('Raw booking items from database (POST):', items.map(item => ({
+      id: item.id,
+      roomType: item.roomType,
+      roomCount: item.roomCount,
+      unitPrice: item.unitPrice,
+      hasPricingPeriods: item.hasPricingPeriods,
+      unitPriceType: typeof item.unitPrice
+    })));
+
+    // Fetch extra service items (e.g., visa umrah, transportation)
+    const extraServiceItems = await db
+      .select()
+      .from(bookingServiceItems)
+      .where(eq(bookingServiceItems.bookingId, bookingId));
+
+    // Calculate extra service items total
+    const extraTotal = (extraServiceItems || []).reduce((sum, s) => {
+      const sub = Number((s as any).subtotal ?? 0);
+      return sum + (isNaN(sub) ? 0 : sub);
+    }, 0);
+
+    // Get pricing periods for items that have them
+    const itemsWithPricingPeriods = await Promise.all(
+      items.map(async (item) => {
+        if (item.hasPricingPeriods) {
+          const pricingPeriods = await db
+            .select()
+            .from(bookingItemPricingPeriods)
+            .where(eq(bookingItemPricingPeriods.bookingItemId, item.id));
+
+          console.log(`Pricing periods for item ${item.id} (POST):`, pricingPeriods);
+
+          return {
+            ...item,
+            pricingPeriods
+          };
+        }
+        console.log(`Item ${item.id} has no pricing periods (POST), returning as-is`);
+        return item;
+      })
+    );
+
+    console.log('Final items with pricing periods (POST):', itemsWithPricingPeriods.map(item => ({
+      id: item.id,
+      roomType: item.roomType,
+      unitPrice: item.unitPrice,
+      hasPricingPeriods: item.hasPricingPeriods,
+      pricingPeriodsCount: (item as any).pricingPeriods ? (item as any).pricingPeriods.length : 0
+    })));
+
+    const bookingData = booking[0]!;
+
+    // Generate invoice number
+    const invoiceNumber = generateInvoiceNumber();
+
+    // Calculate dates
+    const issueDate = customInvoiceDate;
+    const dueDate = customDueDate;
+
+    // Save invoice to database FIRST with null pdfUrl
+    const newInvoice: NewInvoice = {
+      number: invoiceNumber,
+      bookingId: bookingId,
+      amount: ((Number(bookingData.totalAmount) || 0) + extraTotal).toFixed(2),
+      currency: 'SAR',
+      issueDate: issueDate,
+      dueDate: dueDate,
+      status: 'draft',
+      pdfUrl: null,
+    };
+
+    const [insertedInvoice] = await db
+      .insert(invoices)
+      .values(newInvoice)
+      .returning();
+
+    // Now attempt to generate PDF
+    try {
+      // Create invoice object for PDF generation
+      const invoiceForPDF = {
+        id: insertedInvoice!.id,
+        number: invoiceNumber,
+        bookingId: bookingId,
+        amount: (Number(bookingData.totalAmount) || 0) + extraTotal,
+        currency: 'SAR',
+        issueDate: customInvoiceDate,
+        dueDate: customDueDate,
+        status: 'draft' as const,
+        pdfUrl: null,
+      };
+
+      // Create proper booking object for PDF generation
+      const bookingForPDF = {
+        id: bookingData.id,
+        code: bookingData.code,
+        clientId: bookingData.clientId!,
+        hotelName: bookingData.hotelName,
+        city: bookingData.city,
+        checkIn: bookingData.checkIn,
+        checkOut: bookingData.checkOut,
+        totalAmount: bookingData.totalAmount,
+        paymentStatus: bookingData.paymentStatus,
+        bookingStatus: bookingData.bookingStatus,
+        mealPlan: bookingData.mealPlan,
+        meta: null,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      };
+
+      // Generate PDF
+      const pdfBuffer = await generateInvoicePDF(
+        invoiceForPDF,
+        bookingForPDF,
+        {
+          id: bookingData.clientId!,
+          name: bookingData.clientName!,
+          email: bookingData.clientEmail!,
+          phone: bookingData.clientPhone,
+          createdAt: new Date(),
+        },
+        itemsWithPricingPeriods,
+        customDueDate,
+        customInvoiceDate,
+        extraServiceItems
+      );
+
+      // Upload to MinIO
+      const pdfUrl = await uploadToMinio(
+        `invoices/${invoiceNumber}.pdf`,
+        pdfBuffer,
+        'application/pdf'
+      );
+
+      // Update the invoice in database with PDF URL
+      await db.update(invoices).set({ pdfUrl }).where(eq(invoices.id, insertedInvoice!.id));
+      insertedInvoice!.pdfUrl = pdfUrl;
+    } catch (pdfError) {
+      console.error('Failed to generate/upload PDF, but invoice was created in DB:', pdfError);
+      // Proceed returning the insertedInvoice with null pdfUrl
+    }
+
+    return c.json({
+      success: true,
+      data: insertedInvoice,
+      message: 'Invoice generated successfully',
+      downloadUrl: `/api/invoices/by-number/${invoiceNumber}`
+    }, 201);
+  } catch (error) {
+    console.error('Error generating invoice:', error);
+    return c.json({ error: 'Failed to generate invoice' }, 500);
+  }
+});
+
+// GET /api/invoices/by-number/:number - Serve invoice PDF (Public for client downloads)
+invoiceRoutes.get('/by-number/:number', async (c) => {
+  try {
+    const invoiceNumber = c.req.param('number');
+
+    if (!invoiceNumber) {
+      return c.json({ error: 'Invoice number is required' }, 400);
+    }
+
+    let pdfUrl: string | null = null;
+
+    if (invoiceNumber.startsWith('TI-')) {
+      const invoice = await db.select().from(transportationInvoices).where(eq(transportationInvoices.number, invoiceNumber)).limit(1);
+      if (invoice.length === 0) return c.json({ error: 'Invoice not found' }, 404);
+      pdfUrl = invoice[0]!.pdfUrl;
+    } else if (invoiceNumber.startsWith('SO-INV-')) {
+      const invoice = await db.select().from(serviceOrderInvoices).where(eq(serviceOrderInvoices.number, invoiceNumber)).limit(1);
+      if (invoice.length === 0) return c.json({ error: 'Invoice not found' }, 404);
+      pdfUrl = invoice[0]!.pdfUrl;
+    } else if (invoiceNumber.startsWith('LA-INV-')) {
+      const invoice = await db.select().from(customLaInvoices).where(eq(customLaInvoices.number, invoiceNumber)).limit(1);
+      if (invoice.length === 0) return c.json({ error: 'Invoice not found' }, 404);
+      pdfUrl = invoice[0]!.pdfUrl;
+    } else if (invoiceNumber.startsWith('MBI-')) {
+      const invoice = await db.select().from(muthowifInvoices).where(eq(muthowifInvoices.number, invoiceNumber)).limit(1);
+      if (invoice.length === 0) return c.json({ error: 'Invoice not found' }, 404);
+      pdfUrl = invoice[0]!.pdfUrl;
+    } else if (invoiceNumber.startsWith('INV-MAN-')) {
+      const invoice = await db.select().from(manualInvoices).where(eq(manualInvoices.number, invoiceNumber)).limit(1);
+      if (invoice.length === 0) return c.json({ error: 'Invoice not found' }, 404);
+      pdfUrl = invoice[0]!.pdfUrl;
+    } else {
+      const invoice = await db.select().from(invoices).where(eq(invoices.number, invoiceNumber)).limit(1);
+      if (invoice.length === 0) return c.json({ error: 'Invoice not found' }, 404);
+      pdfUrl = invoice[0]!.pdfUrl;
+    }
+
+    if (!pdfUrl) {
+      return c.json({ error: 'PDF not available for this invoice' }, 404);
+    }
+
+    const urlParts = pdfUrl.split('/');
+    const fileName = urlParts.slice(-2).join('/');
+
+    const { getFileStreamFromMinio } = await import('../utils/pdf');
+    const fileStream = await getFileStreamFromMinio(fileName);
+
+    c.header('Content-Type', 'application/pdf');
+    c.header('Content-Disposition', `attachment; filename="${invoiceNumber}.pdf"`);
+
+    const webStream = new ReadableStream({
+      start(controller) {
+        fileStream.on('data', (chunk: any) => controller.enqueue(chunk));
+        fileStream.on('end', () => controller.close());
+        fileStream.on('error', (err: any) => controller.error(err));
+      }
+    });
+
+    return c.body(webStream as any);
+  } catch (error) {
+    console.error('Error serving invoice PDF:', error);
+    return c.json({ error: 'Failed to serve invoice PDF' }, 500);
+  }
+});
+
+/**
+ * GET /api/invoices/:id - Get invoice by ID with booking/client details
+ */
+invoiceRoutes.get('/:id', requireAdminOrFinance, async (c) => {
+  try {
+    const invoiceId = parseInt(c.req.param('id'));
+    if (!invoiceId || isNaN(invoiceId)) {
+      return c.json({ error: 'Invalid invoice ID' }, 400);
+    }
+
+    const result = await db
+      .select({
+        id: invoices.id,
+        number: invoices.number,
+        bookingId: invoices.bookingId,
+        amount: invoices.amount,
+        currency: invoices.currency,
+        issueDate: invoices.issueDate,
+        dueDate: invoices.dueDate,
+        status: invoices.status,
+        pdfUrl: invoices.pdfUrl,
+        bookingCode: bookings.code,
+        clientName: clients.name,
+        clientEmail: clients.email,
+        hotelName: bookings.hotelName,
+        city: bookings.city,
+        bookingPaymentStatus: bookings.paymentStatus,
+        bookingMeta: bookings.meta,
+      })
+      .from(invoices)
+      .leftJoin(bookings, eq(invoices.bookingId, bookings.id))
+      .leftJoin(clients, eq(bookings.clientId, clients.id))
+      .where(eq(invoices.id, invoiceId))
+      .limit(1);
+
+    if (result.length === 0) {
+      return c.json({ error: 'Invoice not found' }, 404);
+    }
+
+    return c.json({
+      success: true,
+      data: result[0]!,
+    });
+  } catch (error) {
+    console.error('Error fetching invoice by ID:', error);
+    return c.json({ error: 'Failed to fetch invoice' }, 500);
+  }
+});
+
+/**
+ * POST /api/invoices/:invoiceId/pay
+ * Record a payment against the invoice's booking and update invoice status.
+ * Supported methods: 'bank_transfer' | 'deposit' | 'cash'
+ * Behavior mirrors booking payment with invoice existence enforcement.
+ */
+invoiceRoutes.post('/:invoiceId/pay', requireAdminOrFinance, async (c) => {
+  try {
+    const invoiceId = parseInt(c.req.param('invoiceId'));
+    if (!invoiceId || isNaN(invoiceId)) {
+      return c.json({ error: 'Invalid invoice ID' }, 400);
+    }
+
+    const body = await c.req.json().catch(() => ({}));
+    const method = body?.method as 'bank_transfer' | 'deposit' | 'cash' | undefined;
+    const amountNum = body?.amount !== undefined ? parseFloat(body.amount) : undefined;
+    const referenceNumber: string | undefined = body?.referenceNumber;
+    const description: string | undefined = body?.description;
+
+    const allowedMethods = ['bank_transfer', 'deposit', 'cash'];
+    if (!method || !allowedMethods.includes(method)) {
+      return c.json({ error: 'Invalid or missing payment method. Allowed: bank_transfer, deposit, cash' }, 400);
+    }
+    if (amountNum === undefined || isNaN(amountNum) || amountNum <= 0) {
+      return c.json({ error: 'Payment amount must be a positive number' }, 400);
+    }
+
+    // Fetch invoice with linked booking/client details
+    const invRows = await db
+      .select({
+        id: invoices.id,
+        number: invoices.number,
+        bookingId: invoices.bookingId,
+        amount: invoices.amount,
+        currency: invoices.currency,
+        issueDate: invoices.issueDate,
+        dueDate: invoices.dueDate,
+        status: invoices.status,
+        pdfUrl: invoices.pdfUrl,
+        bookingCode: bookings.code,
+        clientId: bookings.clientId,
+        bookingPaymentStatus: bookings.paymentStatus,
+        bookingMeta: bookings.meta,
+      })
+      .from(invoices)
+      .leftJoin(bookings, eq(invoices.bookingId, bookings.id))
+      .where(eq(invoices.id, invoiceId))
+      .limit(1);
+
+    if (invRows.length === 0 || !invRows[0]?.bookingId) {
+      return c.json({ error: 'Invoice not found or not linked to a booking' }, 404);
+    }
+
+    const invoiceRow = invRows[0]!;
+    const bookingId = invoiceRow.bookingId!;
+    const clientId = invoiceRow.clientId!;
+    const totalAmountNum = parseFloat(invoiceRow.amount as any);
+    const meta: any = invoiceRow.bookingMeta || {};
+    const payments: Array<{ method: string; amount: number; date: string; status: string; reference?: string }> =
+      Array.isArray(meta.payments) ? meta.payments : [];
+
+    const paidSoFar = payments.reduce((sum, p) => {
+      const amt = typeof p.amount === 'string' ? parseFloat(p.amount as any) : (p.amount || 0);
+      return sum + (isNaN(amt) ? 0 : amt);
+    }, 0);
+
+    let remainingBalance =
+      typeof meta.remainingBalance === 'number'
+        ? meta.remainingBalance
+        : typeof meta.remainingBalance === 'string'
+          ? parseFloat(meta.remainingBalance)
+          : Math.max(totalAmountNum - paidSoFar, 0);
+
+    if (remainingBalance <= 0) {
+      return c.json({ error: 'Invoice is already fully paid. No remaining balance.' }, 400);
+    }
+
+    const nowIso = new Date().toISOString();
+
+    const updated = await db.transaction(async (tx) => {
+      let newRemaining = remainingBalance;
+      let newPaymentStatus: 'unpaid' | 'partial' | 'paid' | 'overdue' = invoiceRow.bookingPaymentStatus || 'unpaid';
+      let paidThisTxn = 0;
+
+      if (method === 'deposit') {
+        // Ensure deposit record exists
+        let depositRows = await tx
+          .select()
+          .from(clientDeposits)
+          .where(eq(clientDeposits.clientId, clientId))
+          .limit(1);
+
+        if (depositRows.length === 0) {
+          await tx.insert(clientDeposits).values({
+            clientId,
+            currentBalance: '0',
+            totalDeposited: '0',
+            totalUsed: '0',
+            currency: 'SAR',
+            createdAt: new Date(),
+            updatedAt: new Date(),
+          });
+          depositRows = await tx
+            .select()
+            .from(clientDeposits)
+            .where(eq(clientDeposits.clientId, clientId))
+            .limit(1);
+        }
+
+        const currentBalance = parseFloat(depositRows[0]!.currentBalance);
+        const depositUsed = Math.min(amountNum as number, remainingBalance);
+        paidThisTxn = depositUsed;
+
+        if (currentBalance < depositUsed) {
+          throw new Error(`INSUFFICIENT_DEPOSIT:${currentBalance}:${depositUsed}`);
+        }
+
+        const newClientBalance = currentBalance - depositUsed;
+        const newTotalUsed = parseFloat(depositRows[0]!.totalUsed) + depositUsed;
+
+        // Update client deposit aggregates
+        await tx
+          .update(clientDeposits)
+          .set({
+            currentBalance: newClientBalance.toString(),
+            totalUsed: newTotalUsed.toString(),
+            lastTransactionAt: new Date(),
+            updatedAt: new Date(),
+          })
+          .where(eq(clientDeposits.clientId, clientId));
+
+        // Record usage transaction
+        const usageTx: NewDepositTransaction = {
+          clientId,
+          type: 'usage',
+          amount: depositUsed.toString(),
+          balanceBefore: currentBalance.toString(),
+          balanceAfter: newClientBalance.toString(),
+          currency: 'SAR',
+          status: 'completed',
+          description: description || `Payment for booking ${invoiceRow.bookingCode}`,
+          bookingId: bookingId,
+          referenceNumber: referenceNumber || `DEP-USAGE-${Date.now()}`,
+          processedAt: new Date(),
+        };
+        await tx.insert(depositTransactions).values(usageTx);
+
+        // Update booking meta
+        newRemaining = Math.max(remainingBalance - depositUsed, 0);
+        payments.push({
+          method: 'deposit',
+          amount: depositUsed,
+          date: nowIso,
+          status: 'completed',
+          reference: usageTx.referenceNumber!,
+        });
+        meta.depositUsed = (typeof meta.depositUsed === 'number' ? meta.depositUsed : parseFloat(meta.depositUsed || '0') || 0) + depositUsed;
+        meta.payments = payments;
+        meta.remainingBalance = newRemaining;
+
+        newPaymentStatus = newRemaining === 0 ? 'paid' : 'partial';
+
+        await tx
+          .update(bookings)
+          .set({
+            paymentStatus: newPaymentStatus,
+            meta: meta,
+            updatedAt: new Date(),
+          })
+          .where(eq(bookings.id, bookingId));
+      } else if (method === 'bank_transfer' || method === 'cash') {
+        const payAmt = Math.min(amountNum as number, remainingBalance);
+        const surplusCredit = Math.max((amountNum as number) - remainingBalance, 0);
+        paidThisTxn = payAmt;
+
+        // Update booking meta payments for the payment part
+        newRemaining = Math.max(remainingBalance - payAmt, 0);
+        payments.push({
+          method,
+          amount: payAmt,
+          date: nowIso,
+          status: 'completed',
+          reference: referenceNumber || `PAY-${Date.now()}`,
+        });
+        meta.payments = payments;
+        meta.remainingBalance = newRemaining;
+
+        newPaymentStatus = newRemaining === 0 ? 'paid' : payAmt > 0 ? 'partial' : (invoiceRow.bookingPaymentStatus || 'unpaid');
+
+        await tx
+          .update(bookings)
+          .set({
+            paymentStatus: newPaymentStatus,
+            meta: meta,
+            updatedAt: new Date(),
+          })
+          .where(eq(bookings.id, bookingId));
+
+        // If there is surplus, credit it to client deposit
+        if (surplusCredit > 0) {
+          // Ensure deposit record exists
+          let depositRows = await tx
+            .select()
+            .from(clientDeposits)
+            .where(eq(clientDeposits.clientId, clientId))
+            .limit(1);
+
+          if (depositRows.length === 0) {
+            await tx.insert(clientDeposits).values({
+              clientId,
+              currentBalance: '0',
+              totalDeposited: '0',
+              totalUsed: '0',
+              currency: 'SAR',
+              createdAt: new Date(),
+              updatedAt: new Date(),
+            });
+            depositRows = await tx
+              .select()
+              .from(clientDeposits)
+              .where(eq(clientDeposits.clientId, clientId))
+              .limit(1);
+          }
+
+          const currentBalance = parseFloat(depositRows[0]!.currentBalance);
+          const totalDeposited = parseFloat(depositRows[0]!.totalDeposited) + surplusCredit;
+          const newClientBalance = currentBalance + surplusCredit;
+
+          await tx
+            .update(clientDeposits)
+            .set({
+              currentBalance: newClientBalance.toString(),
+              totalDeposited: totalDeposited.toString(),
+              lastTransactionAt: new Date(),
+              updatedAt: new Date(),
+            })
+            .where(eq(clientDeposits.clientId, clientId));
+
+          const depositTx: NewDepositTransaction = {
+            clientId,
+            type: 'deposit',
+            amount: surplusCredit.toString(),
+            balanceBefore: currentBalance.toString(),
+            balanceAfter: newClientBalance.toString(),
+            currency: 'SAR',
+            status: 'completed',
+            description: description || `Surplus from booking ${invoiceRow.bookingCode} via ${method}`,
+            bookingId: bookingId,
+            referenceNumber: referenceNumber || `DEP-CREDIT-${Date.now()}`,
+            processedAt: new Date(),
+          };
+          await tx.insert(depositTransactions).values(depositTx);
+        }
+      }
+
+      // Record payment in invoice_payments
+      const paymentRecord: NewInvoicePayment = {
+        invoiceId,
+        amount: paidThisTxn.toString(),
+        currency: String(invoiceRow.currency || 'SAR'),
+        method,
+        referenceNumber: referenceNumber || undefined,
+        paidAt: new Date(nowIso),
+        status: 'completed',
+        meta: { description: description || null, bookingCode: invoiceRow.bookingCode } as any,
+      };
+      await tx.insert(invoicePayments).values(paymentRecord);
+
+      // Update invoice status based on booking payment status and due date
+      const now = new Date();
+      const isOverdue = (newRemaining > 0) && (invoiceRow.dueDate ? new Date(invoiceRow.dueDate as any) < now : false);
+      const newInvoiceStatus: 'draft' | 'sent' | 'paid' | 'overdue' | 'cancelled' =
+        newPaymentStatus === 'paid' ? 'paid' : isOverdue ? 'overdue' : 'sent';
+
+      await tx
+        .update(invoices)
+        .set({ status: newInvoiceStatus })
+        .where(eq(invoices.id, invoiceId));
+
+      // Auto-generate receipt for this payment
+      try {
+        await new ReceiptService().generateReceiptForInvoicePayment(invoiceId, {
+          amount: paidThisTxn,
+          method,
+          referenceNumber,
+          paidAt: new Date(nowIso),
+          description,
+        });
+      } catch (receiptError) {
+        console.error(`Failed to generate receipt for payment of invoice ${invoiceId}:`, receiptError);
+      }
+
+      // Return updated invoice detail (same shape as GET /api/invoices/:id)
+      const detail = await tx
+        .select({
+          id: invoices.id,
+          number: invoices.number,
+          bookingId: invoices.bookingId,
+          amount: invoices.amount,
+          currency: invoices.currency,
+          issueDate: invoices.issueDate,
+          dueDate: invoices.dueDate,
+          status: invoices.status,
+          pdfUrl: invoices.pdfUrl,
+          bookingCode: bookings.code,
+          clientName: clients.name,
+          clientEmail: clients.email,
+          hotelName: bookings.hotelName,
+          city: bookings.city,
+          bookingPaymentStatus: bookings.paymentStatus,
+          bookingMeta: bookings.meta,
+        })
+        .from(invoices)
+        .leftJoin(bookings, eq(invoices.bookingId, bookings.id))
+        .leftJoin(clients, eq(bookings.clientId, clients.id))
+        .where(eq(invoices.id, invoiceId))
+        .limit(1);
+
+      return detail[0]!;
+    });
+
+    return c.json({
+      success: true,
+      data: updated,
+      message: 'Payment recorded successfully',
+    });
+  } catch (error) {
+    console.error('Error recording payment for invoice:', error);
+    if (error instanceof Error && error.message.startsWith('INSUFFICIENT_DEPOSIT:')) {
+      const parts = error.message.split(':');
+      const available = parts[1];
+      const requested = parts[2];
+      return c.json(
+        { error: `Insufficient deposit balance. Available: ${available} SAR, Requested: ${requested} SAR` },
+        400
+      );
+    }
+    return c.json({ error: 'Failed to record payment. Please try again or contact support.' }, 500);
+  }
+});
+
+// POST /api/invoices/backfill-status - Sync historical invoice.status with related booking payment status
+invoiceRoutes.post('/backfill-status', requireAdminOrFinance, async (c) => {
+  try {
+    const now = new Date();
+
+    const rows = await db
+      .select({
+        id: invoices.id,
+        status: invoices.status,
+        dueDate: invoices.dueDate,
+        bookingId: invoices.bookingId,
+        bookingPaymentStatus: bookings.paymentStatus,
+        totalAmount: bookings.totalAmount,
+        bookingMeta: bookings.meta,
+      })
+      .from(invoices)
+      .leftJoin(bookings, eq(invoices.bookingId, bookings.id));
+
+    let updatedCount = 0;
+    const changes: Array<{ id: number; from: string; to: string }> = [];
+
+    for (const row of rows) {
+      if (!row.bookingId) continue; // skip invoices not linked to bookings
+
+      // Derive remaining balance from booking meta
+      const meta: any = row.bookingMeta || {};
+      const payments: Array<{ amount: number | string }> = Array.isArray(meta.payments) ? meta.payments : [];
+      const paidSoFar = payments.reduce((sum, p) => {
+        const amt = typeof p.amount === 'string' ? parseFloat(p.amount as any) : (p.amount || 0);
+        return sum + (isNaN(amt) ? 0 : amt);
+      }, 0);
+      const totalAmountNum = typeof row.totalAmount === 'string' ? parseFloat(row.totalAmount as any) : (row.totalAmount as any);
+      let remainingBalance =
+        typeof meta.remainingBalance === 'number'
+          ? meta.remainingBalance
+          : typeof meta.remainingBalance === 'string'
+            ? parseFloat(meta.remainingBalance)
+            : Math.max((totalAmountNum || 0) - paidSoFar, 0);
+
+      const isOverdue = (remainingBalance > 0) && (row.dueDate ? new Date(row.dueDate as any) < now : false);
+      const newInvoiceStatus: 'draft' | 'sent' | 'paid' | 'overdue' | 'cancelled' =
+        row.bookingPaymentStatus === 'paid' ? 'paid' : isOverdue ? 'overdue' : 'sent';
+
+      if (newInvoiceStatus !== row.status) {
+        await db
+          .update(invoices)
+          .set({ status: newInvoiceStatus })
+          .where(eq(invoices.id, row.id));
+        updatedCount++;
+        changes.push({ id: row.id, from: String(row.status), to: newInvoiceStatus });
+      }
+    }
+
+    return c.json({
+      success: true,
+      data: {
+        totalProcessed: rows.length,
+        updatedCount,
+        changes,
+      },
+      message: 'Historical invoice statuses have been synced with booking payment statuses',
+    });
+  } catch (error) {
+    console.error('Error backfilling invoice statuses:', error);
+    return c.json({ error: 'Failed to backfill invoice statuses' }, 500);
+  }
+});
+
+export default invoiceRoutes;

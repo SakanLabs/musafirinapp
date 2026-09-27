@@ -53,7 +53,7 @@ function RegisterPage() {
         // Registration successful, redirect to login
         navigate({ to: '/login' })
       }
-    } catch (err) {
+    } catch {
       setError('An unexpected error occurred during registration')
     } finally {
       setIsLoading(false)

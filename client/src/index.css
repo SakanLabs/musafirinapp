@@ -3,6 +3,18 @@
 
 @custom-variant dark (&:is(.dark *));
 
+/* Saudi Riyal Font */
+@font-face {
+  font-family: 'SaudiRiyalSymbol';
+  src: url('/fonts/saudiriyal.woff2') format('woff2'),
+       url('/fonts/saudiriyal.woff') format('woff');
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
+
+
+
 @theme inline {
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);

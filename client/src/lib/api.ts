@@ -1,0 +1,292 @@
+// API client configuration with credentials for BetterAuth session
+const API_BASE_URL = import.meta.env.VITE_API_URL || '';
+
+// Generic API client with credentials included
+export const apiClient = {
+  async get<T>(endpoint: string): Promise<T> {
+    const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+      method: 'GET',
+      credentials: 'include', // Include cookies for BetterAuth session
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    });
+
+    if (!response.ok) {
+      let errorMessage = `API Error: ${response.status} ${response.statusText}`;
+      try {
+        const responseText = await response.text();
+        try {
+          const errorData = JSON.parse(responseText);
+          errorMessage = errorData.error || errorData.message || errorMessage;
+        } catch (jsonError) {
+          // Keep default if JSON parse fails
+        }
+      } catch (readError) {
+        // Keep default if reading body fails
+      }
+      throw new Error(errorMessage);
+    }
+
+    return response.json();
+  },
+
+  async post<T>(endpoint: string, data?: unknown): Promise<T> {
+    const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+      method: 'POST',
+      credentials: 'include', // Include cookies for BetterAuth session
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: data ? JSON.stringify(data) : undefined,
+    });
+
+    if (!response.ok) {
+      let errorMessage = `API Error: ${response.status} ${response.statusText}`;
+      try {
+        const responseText = await response.text();
+        try {
+          const errorData = JSON.parse(responseText);
+          errorMessage = errorData.error || errorData.message || errorMessage;
+        } catch (jsonError) {
+          // Keep default if JSON parse fails
+        }
+      } catch (readError) {
+        // Keep default if reading body fails
+      }
+      throw new Error(errorMessage);
+    }
+
+    return response.json();
+  },
+
+  async put<T>(endpoint: string, data?: unknown): Promise<T> {
+    const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+      method: 'PUT',
+      credentials: 'include', // Include cookies for BetterAuth session
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: data ? JSON.stringify(data) : undefined,
+    });
+
+    if (!response.ok) {
+      let errorMessage = `API Error: ${response.status} ${response.statusText}`;
+      try {
+        const responseText = await response.text();
+        try {
+          const errorData = JSON.parse(responseText);
+          errorMessage = errorData.error || errorData.message || errorMessage;
+        } catch (jsonError) {
+          // Keep default if JSON parse fails
+        }
+      } catch (readError) {
+        // Keep default if reading body fails
+      }
+      throw new Error(errorMessage);
+    }
+
+    return response.json();
+  },
+
+  async patch<T>(endpoint: string, data?: unknown): Promise<T> {
+    const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+      method: 'PATCH',
+      credentials: 'include', // Include cookies for BetterAuth session
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: data ? JSON.stringify(data) : undefined,
+    });
+
+    if (!response.ok) {
+      let errorMessage = `API Error: ${response.status} ${response.statusText}`;
+      try {
+        const responseText = await response.text();
+        try {
+          const errorData = JSON.parse(responseText);
+          errorMessage = errorData.error || errorData.message || errorMessage;
+        } catch (jsonError) {
+          // Keep default if JSON parse fails
+        }
+      } catch (readError) {
+        // Keep default if reading body fails
+      }
+      throw new Error(errorMessage);
+    }
+
+    return response.json();
+  },
+
+  async delete<T>(endpoint: string): Promise<T> {
+    const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+      method: 'DELETE',
+      credentials: 'include', // Include cookies for BetterAuth session
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    });
+
+    if (!response.ok) {
+      // Extract error message from response body without swallowing it
+      let errorMessage = `API Error: ${response.status} ${response.statusText}`;
+      try {
+        const responseText = await response.text();
+        try {
+          const errorData = JSON.parse(responseText);
+          errorMessage = errorData.error || errorData.message || errorMessage;
+        } catch (jsonError) {
+          // Keep default errorMessage if JSON parse fails
+        }
+      } catch (readError) {
+        // Keep default errorMessage if reading body fails
+      }
+      throw new Error(errorMessage);
+    }
+
+    return response.json();
+  },
+
+  // Download file from URL
+  async downloadFile(url: string, filename: string): Promise<void> {
+    try {
+      const response = await fetch(url, {
+        method: 'GET',
+        credentials: 'include',
+      });
+
+      if (!response.ok) {
+        throw new Error(`Download failed: ${response.status} ${response.statusText}`);
+      }
+
+      const blob = await response.blob();
+
+      // Create download link
+      const downloadUrl = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = downloadUrl;
+      link.download = filename;
+
+      // Trigger download
+      document.body.appendChild(link);
+      link.click();
+
+      // Cleanup
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(downloadUrl);
+    } catch (error) {
+      console.error('Download failed:', error);
+      throw error;
+    }
+  },
+
+  // Upload file (multipart/form-data) - no Content-Type header so browser sets boundary
+  async uploadFile<T>(endpoint: string, formData: FormData): Promise<T> {
+    const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+      method: 'POST',
+      credentials: 'include',
+      body: formData,
+    });
+
+    if (!response.ok) {
+      let errorMessage = `API Error: ${response.status} ${response.statusText}`;
+      try {
+        const responseText = await response.text();
+        try {
+          const errorData = JSON.parse(responseText);
+          errorMessage = errorData.error || errorData.message || errorMessage;
+        } catch (jsonError) {
+          // Keep default if JSON parse fails
+        }
+      } catch (readError) {
+        // Keep default if reading body fails
+      }
+      throw new Error(errorMessage);
+    }
+
+    return response.json();
+  },
+};
+
+// API endpoints
+export const API_ENDPOINTS = {
+  // Auth endpoints
+  BOOKINGS: '/api/bookings',
+  BOOKING_BY_ID: (id: string) => `/api/bookings/${id}`,
+  BOOKING_PAY: (id: string) => `/api/bookings/${id}/pay`,
+
+  // Client endpoints
+  CLIENTS: '/api/clients',
+  CLIENT_BY_ID: (id: string) => `/api/clients/${id}`,
+
+  // Deposit endpoints
+  DEPOSITS: '/api/deposits',
+  DEPOSIT_BALANCE: (clientId: string) => `/api/deposits/clients/${clientId}/balance`,
+  DEPOSIT_TRANSACTIONS: (clientId: string) => `/api/deposits/clients/${clientId}/transactions`,
+  DEPOSIT_UPDATE_TRANSACTION: (clientId: string, transactionId: number | string) => `/api/deposits/clients/${clientId}/transactions/${transactionId}`,
+  DEPOSIT_DELETE_TRANSACTION: (clientId: string, transactionId: number | string) => `/api/deposits/clients/${clientId}/transactions/${transactionId}`,
+  DEPOSIT_ADD: (clientId: string) => `/api/deposits/clients/${clientId}/add`,
+  DEPOSIT_REFUND: (clientId: string) => `/api/deposits/clients/${clientId}/refund`,
+  DEPOSIT_ADJUST: (clientId: string) => `/api/deposits/clients/${clientId}/adjustment`,
+  DEPOSIT_SUMMARY: '/api/deposits/summary',
+
+  // Invoice endpoints
+  INVOICES: '/api/invoices',
+  INVOICE_MANUAL: '/api/invoices/manual',
+  INVOICE_BY_ID: (id: string) => `/api/invoices/${id}`,
+  GENERATE_INVOICE: (id: string) => `/api/invoices/${id}/generate`,
+  REGENERATE_INVOICE: (id: string) => `/api/invoices/${id}/generate`,
+  INVOICE_BY_BOOKING: (bookingId: string) => `/api/invoices/booking/${bookingId}`,
+  INVOICE_BY_BOOKING_TEST: (bookingId: string) => `/api/invoices/test/booking/${bookingId}`,
+  INVOICE_PAY: (id: string) => `/api/invoices/${id}/pay`,
+  DOWNLOAD_INVOICE: (id: string) => `/api/invoices/${id}/download`,
+  BACKFILL_INVOICE_STATUS: '/api/invoices/backfill-status',
+
+  // Booking Service Items (visa, transportasi, lainnya)
+  BOOKING_SERVICE_ITEMS: '/api/booking-service-items',
+  BOOKING_SERVICE_ITEMS_BY_BOOKING: (bookingId: string | number) => `/api/booking-service-items/booking/${bookingId}`,
+
+  // Voucher endpoints
+  VOUCHERS: '/api/vouchers',
+  GENERATE_VOUCHER: (id: string) => `/api/vouchers/${id}/generate`,
+
+  // Receipt endpoints
+  RECEIPTS: '/api/receipts',
+  RECEIPT_BY_ID: (id: string) => `/api/receipts/${id}`,
+  RECEIPT_BY_BOOKING: (bookingId: string) => `/api/receipts/booking/${bookingId}`,
+  RECEIPT_BY_NUMBER: (number: string) => `/api/receipts/number/${number}`,
+  GENERATE_RECEIPT: (bookingId: string | number) => `/api/receipts/generate/${bookingId}`,
+  DOWNLOAD_RECEIPT: (id: string) => `/api/receipts/${id}/download`,
+
+  // Reports endpoints
+  REPORTS_SUMMARY: '/api/reports/summary',
+
+  // Analytics endpoints
+  ANALYTICS_REVENUE: '/api/analytics/revenue',
+  ANALYTICS_PROFIT: '/api/analytics/profit',
+  ANALYTICS_DASHBOARD: '/api/analytics/dashboard',
+  ANALYTICS_SUMMARY: '/api/analytics/summary',
+
+  // Costs endpoints
+  COSTS_HOTEL_TEMPLATES: '/api/costs/hotel-templates',
+  COSTS_HOTEL_TEMPLATE_BY_ID: (id: string) => `/api/costs/hotel-templates/${id}`,
+  COSTS_OPERATIONAL: '/api/costs/operational',
+  COSTS_OPERATIONAL_BY_ID: (id: string) => `/api/costs/operational/${id}`,
+  COSTS_OPERATIONAL_BY_BOOKING: (bookingId: string) => `/api/costs/operational/booking/${bookingId}`,
+
+  // Service Orders
+  SERVICE_ORDERS: '/api/service-orders',
+  SERVICE_ORDER_BY_ID: (id: string | number) => `/api/service-orders/${id}`,
+  SERVICE_ORDER_CHECKLIST: (id: string | number) => `/api/service-orders/${id}/checklist`,
+  SERVICE_ORDER_GENERATE_INVOICE: (id: string | number) => `/api/service-orders/${id}/generate-invoice`,
+  SERVICE_ORDER_GET_INVOICE: (id: string | number) => `/api/service-orders/${id}/invoice`,
+  SERVICE_ORDER_REGENERATE_INVOICE: (id: string | number) => `/api/service-orders/${id}/regenerate-invoice`,
+  SERVICE_ORDER_UPDATE_STATUS: (id: string | number) => `/api/service-orders/${id}/status`,
+  SERVICE_ORDER_RECEIPT: (id: string | number) => `/api/service-orders/${id}/receipt`,
+
+  // Transportation Bookings
+  TRANSPORTATION: '/api/transportation',
+  TRANSPORTATION_BY_ID: (id: string | number) => `/api/transportation/${id}`,
+  TRANSPORTATION_INVOICE: (id: string | number) => `/api/transportation/${id}/invoice`,
+  TRANSPORTATION_RECEIPT: (id: string | number) => `/api/transportation/${id}/receipt`,
+} as const;

@@ -9,14 +9,11 @@ export const Route = createFileRoute("/dashboard")({
 			await new Promise(resolve => setTimeout(resolve, 1000));
 			
 			const user = await authService.getCurrentUser();
-			console.log("Dashboard beforeLoad - user:", user);
 			if (!user) {
-				console.log("No user found, redirecting to login");
 				throw redirect({ to: "/login" });
 			}
-			// Redirect to appropriate dashboard based on role
-			const dashboardPath = user.role === 'admin' ? '/dashboard/admin' : '/dashboard/user';
-			console.log("Redirecting to:", dashboardPath);
+
+			const dashboardPath = await authService.getDefaultDashboard();
 			throw redirect({ to: dashboardPath });
 		}
 	},

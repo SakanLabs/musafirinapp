@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html class="no-js" lang="id">
+<head>
+  <meta charset="utf-8" />
+  <meta http-equiv="x-ua-compatible" content="ie=edge" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="author" content="Musafirin" />
+  <title>Transportation Invoice {{invoiceNo}}</title>
+  <style>
+    /* ====== Base ====== */
+    body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif,'Apple Color Emoji','Segoe UI Emoji','Segoe UI Symbol';line-height:1.3;color:#374151;background:#f9fafb;font-size:12px}
+    .cs-container{max-width:800px;margin:20px auto;padding:20px;background:#fff;box-shadow:0 10px 15px -3px rgba(0,0,0,.1),0 4px 6px -2px rgba(0,0,0,.05);border-radius:8px}
+    .cs-flex{display:flex}.cs-justify-between{justify-content:space-between}.cs-align-start{align-items:flex-start}.cs-align-center{align-items:center}
+    .cs-text-right{text-align:right}.cs-text-center{text-align:center}
+    .cs-mb-1{margin-bottom:3px}.cs-mb-2{margin-bottom:6px}.cs-mb-4{margin-bottom:12px}.cs-mb-6{margin-bottom:16px}.cs-mb-8{margin-bottom:20px}.cs-mt-8{margin-top:20px}
+    .cs-font-bold{font-weight:700}.cs-font-semibold{font-weight:600}
+    .cs-text-sm{font-size:11px}.cs-text-lg{font-size:16px}.cs-text-xl{font-size:18px}.cs-text-2xl{font-size:20px}.cs-text-3xl{font-size:24px}
+    .cs-text-gray-500{color:#6b7280}.cs-text-gray-600{color:#4b5563}.cs-text-gray-800{color:#1f2937}
+    .cs-logo{font-size:24px;font-weight:800;color:#0ea5e9;letter-spacing:-.5px}
+    .cs-badge{display:inline-block;padding:2px 6px;border-radius:999px;background:#eef2ff;color:#3730a3;font-weight:600;font-size:11px}
+    .cs-divider{height:1px;background:#e5e7eb;margin:16px 0}
+    .cs-list{margin:0;padding:0;list-style:none}
+    .cs-list li{margin:0 0 4px 0}
+
+    /* Cards */
+    .cs-card{background:#f9fafb;border:1px solid #e5e7eb;border-radius:6px;padding:12px}
+    .cs-info-card{background:#f9fafb;border:1px solid #e5e7eb;border-radius:6px;padding:16px;margin-top:16px}
+
+    /* Tables */
+    .cs-table{width:100%;border-collapse:collapse}
+    .cs-table th,.cs-table td{padding:8px 0;text-align:left;vertical-align:top}
+    .cs-table th{font-weight:700;color:#111827;border-bottom:1px solid #e5e7eb}
+    .cs-table td{border-bottom:1px solid #f1f5f9}
+    .cs-num{text-align:right;white-space:nowrap}
+    .cs-muted{color:#6b7280}
+
+    .cs-total-table{width:100%;margin-top:8px;border-collapse:collapse}
+    .cs-total-table td{padding:4px 0}
+    .cs-total-table .cs-label{text-align:right;color:#374151}
+    .cs-total-table .cs-value{text-align:right;font-weight:600}
+    /* ==== Compact helpers ==== */
+    .cs-card-compact { padding: 0 16px; }          /* no top/bottom padding */
+    .cs-mb-0 { margin-bottom: 0; }                 /* no bottom margin */
+    .cs-stack-tight > * + * { margin-top: 2px; }   /* rapat antar-baris */
+
+    /* Saudi Riyal SVG Icon */
+    .cs-sar-icon{display:inline-block;width:12px;height:12px;vertical-align:middle;margin-right:2px}
+    .cs-sar-icon-lg{display:inline-block;width:16px;height:16px;vertical-align:middle;margin-right:3px}
+
+    /* Transportation specific styles */
+    .cs-transport-badge{display:inline-block;padding:4px 8px;border-radius:4px;background:#dcfce7;color:#166534;font-weight:600;font-size:11px}
+
+    /* Print */
+    @media print{
+      body{background:#fff;font-size:11px}
+      .cs-container{box-shadow:none;margin:0;padding:16px}
+      .cs-no-print{display:none !important}
+    }
+  </style>
+</head>
+
+<body>
+  <div class="cs-container">
+    <!-- Header -->
+    <div class="cs-flex cs-justify-between cs-align-start cs-mb-6">
+      <div>
+        <img src="data:image/png;base64,{{logoBase64}}" alt="Musafirin Logo" class="cs-logo-img" style="height: 60px; width: auto; margin-bottom: 8px;">
+      </div>
+      <div class="cs-text-right">
+        <div class="cs-transport-badge">Transportation Invoice</div>
+        <p class="cs-font-semibold cs-text-lg">#{{invoiceNo}}</p>
+        <p class="cs-text-gray-500">{{invoiceDate}}</p>
+        <p class="cs-text-gray-600"><span class="cs-font-semibold">Jatuh Tempo:</span> {{dueDate}}</p>
+      </div>
+    </div>
+
+    <!-- Client & Transportation Info -->
+    <div class="cs-flex cs-justify-between cs-align-start cs-mb-2">
+      <!-- Client -->
+      <div style="width:52%">
+        <p class="cs-font-semibold cs-text-gray-800 cs-mb-1">Klien</p>
+        <div class="cs-card cs-card-compact cs-stack-tight">
+          <p class="cs-font-semibold cs-mb-0">{{client.name}}</p>
+          <p class="cs-text-sm cs-text-gray-600">{{client.email}}</p>
+          <p class="cs-text-sm cs-text-gray-600">{{client.phone}}</p>
+        </div>
+      </div>
+
+      <!-- Transportation Details -->
+      <div style="width:44%" class="cs-text-right">
+        <p class="cs-font-semibold cs-text-gray-800 cs-mb-1">Detail Transportasi</p>
+        <div class="cs-card cs-card-compact cs-stack-tight">
+          <p class="cs-font-semibold cs-mb-0">{{vehicleType}}</p>
+          <p class="cs-text-sm cs-text-gray-600">{{driverName}}</p>
+          <p class="cs-text-sm cs-text-gray-600">{{driverPhone}}</p>
+          <p class="cs-text-sm cs-text-gray-600">{{vehiclePlateNumber}}</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Trip Info -->
+    <div class="cs-card cs-flex cs-justify-between cs-align-start cs-mb-2" style="flex-wrap: wrap; gap: 12px;">
+      <div style="min-width: 120px;">
+        <p class="cs-text-sm cs-text-gray-500 cs-mb-1">Tanggal & Waktu Penjemputan</p>
+        <p class="cs-font-semibold">{{pickupDateTime}}</p>
+      </div>
+      <div style="min-width: 120px;">
+        <p class="cs-text-sm cs-text-gray-500 cs-mb-1">Lokasi Asal</p>
+        <p class="cs-font-semibold">{{originLocation}}</p>
+      </div>
+      <div style="min-width: 120px;">
+        <p class="cs-text-sm cs-text-gray-500 cs-mb-1">Lokasi Tujuan</p>
+        <p class="cs-font-semibold">{{destinationLocation}}</p>
+      </div>
+    </div>
+
+    <!-- Transportation Routes Table -->
+    <div class="cs-mb-4">
+      <table class="cs-table">
+        <thead>
+          <tr>
+            <th style="width:25%">Rute</th>
+            <th style="width:20%">Jenis Kendaraan</th>
+            <th style="width:15%">Waktu Penjemputan</th>
+            <th style="width:15%">Driver</th>
+            <th style="width:12%" class="cs-num">Harga</th>
+            <th style="width:13%" class="cs-num">Total</th>
+          </tr>
+        </thead>
+        <tbody>
+          {{#each routes}}
+          <tr>
+            <td>
+              <div class="cs-font-semibold">{{originLocation}} → {{destinationLocation}}</div>
+              {{#if notes}}
+              <div class="cs-text-sm cs-text-gray-600">{{notes}}</div>
+              {{/if}}
+            </td>
+            <td>{{vehicleType}}</td>
+            <td>{{pickupDateTime}}</td>
+            <td>
+              <div class="cs-font-semibold">{{driverName}}</div>
+              <div class="cs-text-sm cs-text-gray-600">{{driverPhone}}</div>
+              <div class="cs-text-sm cs-text-gray-600">{{vehiclePlateNumber}}</div>
+            </td>
+            <td class="cs-num">
+              <img src="data:image/svg+xml;base64,{{@root.saudiRiyalSVGBase64}}" alt="SAR" class="cs-sar-icon">
+              {{price}}
+            </td>
+            <td class="cs-num">
+              <img src="data:image/svg+xml;base64,{{@root.saudiRiyalSVGBase64}}" alt="SAR" class="cs-sar-icon">
+              {{price}}
+            </td>
+          </tr>
+          {{/each}}
+        </tbody>
+      </table>
+
+      <!-- Totals -->
+      <table class="cs-total-table">
+        <tr>
+          <td class="cs-label" style="width:85%">Subtotal</td>
+          <td class="cs-value" style="width:15%">
+            <img src="data:image/svg+xml;base64,{{saudiRiyalSVGBase64}}" alt="SAR" class="cs-sar-icon">
+            {{subtotal}}
+          </td>
+        </tr>
+        <tr>
+          <td class="cs-label" style="font-weight:700">Grand Total</td>
+          <td class="cs-value" style="font-weight:700">
+            <img src="data:image/svg+xml;base64,{{saudiRiyalSVGBase64}}" alt="SAR" class="cs-sar-icon">
+            {{grandTotal}}
+          </td>
+        </tr>
+        <tr>
+          <td class="cs-label">Terbayar</td>
+          <td class="cs-value">
+            <img src="data:image/svg+xml;base64,{{saudiRiyalSVGBase64}}" alt="SAR" class="cs-sar-icon">
+            {{paidAmount}}
+          </td>
+        </tr>
+        <tr>
+          <td class="cs-label">Sisa Tagihan</td>
+          <td class="cs-value">
+            <img src="data:image/svg+xml;base64,{{saudiRiyalSVGBase64}}" alt="SAR" class="cs-sar-icon">
+            {{balanceDue}}
+          </td>
+        </tr>
+      </table>
+    </div>
+
+    <!-- Payment Instruction -->
+    <div class="cs-info-card">
+      <h3 class="cs-text-lg cs-font-bold cs-text-gray-800 cs-mb-2">Tata Cara Pembayaran</h3>
+      <div class="cs-text-gray-600 cs-text-sm">
+        <p class="cs-mb-2">Silakan lakukan pembayaran melalui salah satu metode berikut:</p>
+        
+        <div class="cs-mb-4">
+          <p class="cs-font-semibold cs-mb-1">Transfer Bank:</p>
+          <ul class="cs-list">
+            <li><strong>Bank:</strong> {{bank.bankName}} ({{bank.bankCountry}})</li>
+            <li><strong>Nama Akun:</strong> {{bank.accountName}}</li>
+            <li><strong>Nomor Rekening/IBAN:</strong> {{bank.accountNumberOrIBAN}}</li>
+            <li><strong>SWIFT Code:</strong> {{bank.swift}}</li>
+          </ul>
+        </div>
+
+        <div class="cs-mb-4">
+          <p class="cs-font-semibold cs-mb-1">Kontak Billing:</p>
+          <ul class="cs-list">
+            <li><strong>Email:</strong> {{billingContact.email}}</li>
+            <li><strong>Telepon:</strong> {{billingContact.phone}}</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <!-- Terms & Conditions -->
+    <div class="cs-info-card">
+      <h3 class="cs-text-lg cs-font-bold cs-text-gray-800 cs-mb-2">Syarat & Ketentuan</h3>
+      <div class="cs-text-gray-600 cs-text-sm">
+        <ul class="cs-list">
+          <li>• Pembayaran harus dilakukan sebelum tanggal jatuh tempo</li>
+          <li>• Konfirmasi pembayaran wajib dikirim ke email billing</li>
+          <li>• Perubahan jadwal transportasi harus dikonfirmasi minimal 24 jam sebelumnya</li>
+          <li>• Pembatalan dapat dikenakan biaya sesuai kebijakan perusahaan</li>
+          <li>• Driver akan menghubungi Anda 30 menit sebelum waktu penjemputan</li>
+          <li>• Pastikan nomor telepon yang dapat dihubungi selalu aktif</li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- Footer -->
+    <div class="cs-text-center cs-text-gray-500 cs-text-sm cs-mt-8">
+      <p>Terima kasih telah menggunakan layanan transportasi Musafirin</p>
+      <p>Invoice ini dibuat secara otomatis pada {{invoiceDate}}</p>
+    </div>
+  </div>
+</body>
+</html>

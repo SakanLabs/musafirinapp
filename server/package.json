@@ -5,14 +5,30 @@
   "types": "dist/index.d.ts",
   "scripts": {
     "build": "tsc",
-    "dev": "bun --watch run src/index.ts && tsc --watch"
+    "dev": "bun --watch run src/index.ts && tsc --watch",
+    "seed:store": "bun run src/scripts/seed-store.ts",
+    "seed": "bun run src/scripts/seed.ts",
+    "seed:dummy": "bun run src/scripts/seed-dummy.ts"
   },
   "dependencies": {
+    "@supabase/supabase-js": "^2.108.1",
+    "@types/handlebars": "^4.1.0",
+    "@types/qrcode": "^1.5.5",
     "better-auth": "^1.3.11",
+    "drizzle-orm": "^0.44.5",
+    "handlebars": "^4.7.9",
     "hono": "^4.7.11",
-    "shared": "workspace:*"
+    "minio": "^8.0.6",
+    "nodemailer": "^8.0.10",
+    "postgres": "^3.4.7",
+    "puppeteer": "^24.22.0",
+    "qrcode": "^1.5.4",
+    "shared": "workspace:*",
+    "xlsx": "^0.18.5"
   },
   "devDependencies": {
-    "@types/bun": "latest"
+    "@types/bun": "latest",
+    "@types/nodemailer": "^8.0.0",
+    "drizzle-kit": "^0.31.4"
   }
 }

@@ -1,23 +1,45 @@
 // Better Auth integration
 import { authClient, getSession } from './auth-client'
 
-export type UserRole = 'user' | 'admin'
+export type UserRole = 'user' | 'admin' | 'owner' | 'finance'
+export type UserType = 'direct' | 'agent'
 
 export interface User {
   id: string
   name: string
   email: string
   role: UserRole
+  userType: UserType
   isAuthenticated: boolean
 }
 
+// Better Auth session interface - flexible to handle different formats
+interface BetterAuthSession {
+  user?: {
+    id: string;
+    name: string;
+    email: string;
+    role?: UserRole;
+  };
+  data?: {
+    user?: {
+      id: string;
+      name: string;
+      email: string;
+      role?: UserRole;
+    };
+  };
+  // Direct user properties (when session is the user object itself)
+  id?: string;
+  name?: string;
+  email?: string;
+  role?: UserRole;
+  [key: string]: unknown;
+}
+
 // Helper function to convert Better Auth session to our User interface
-const sessionToUser = (session: any): User | null => {
-  console.log('sessionToUser - input session:', session);
-  console.log('sessionToUser - session type:', typeof session);
-  
+const sessionToUser = (session: BetterAuthSession | null): User | null => {
   if (!session) {
-    console.log('sessionToUser - session is null/undefined');
     return null;
   }
   
@@ -26,38 +48,42 @@ const sessionToUser = (session: any): User | null => {
   
   // Try session.user first (Better Auth format and direct API format)
   if (session.user) {
-    console.log('sessionToUser - found session.user:', session.user);
     user = session.user;
   }
   // Try session.data.user (alternative format)
   else if (session.data?.user) {
-    console.log('sessionToUser - found session.data.user:', session.data.user);
     user = session.data.user;
   }
   // Try direct user object
   else if (session.id && session.email) {
-    console.log('sessionToUser - treating session as direct user object');
     user = session;
   }
   
   if (!user) {
-    console.log('sessionToUser - no user found in session');
     return null;
   }
-  
-  console.log('sessionToUser - extracted user:', user);
   
   // Ensure all required fields are present
   if (!user.id || !user.email) {
-    console.log('sessionToUser - user missing required fields (id or email)');
     return null;
   }
   
+  // Map database roles to our UserRole type
+  let role: UserRole = 'user'; // default
+  if (user.role) {
+    if (['admin', 'owner', 'finance'].includes(user.role)) {
+      role = user.role as UserRole;
+    } else {
+      role = 'user'; // other roles map to 'user'
+    }
+  }
+
   return {
     id: user.id,
     name: user.name || user.email,
     email: user.email,
-    role: 'user', // Always default to 'user' since role column doesn't exist in database
+    role: role,
+    userType: (user as any).userType === 'agent' ? 'agent' : 'direct',
     isAuthenticated: true
   }
 }
@@ -77,14 +103,14 @@ export const authService = {
       
       if (result.data?.user) {
         const session = await getSession()
-        const user = sessionToUser(session)
+        const user = sessionToUser(session as BetterAuthSession)
         // Update cache
         userCache = { user, timestamp: Date.now() };
         return { success: true, user: user || undefined }
       }
       
       return { success: false, error: result.error?.message || 'Login failed' }
-    } catch (error) {
+    } catch {
       return { success: false, error: 'An unexpected error occurred' }
     }
   },
@@ -93,12 +119,10 @@ export const authService = {
   getCurrentUser: async (): Promise<User | null> => {
     // Check cache first
     if (userCache && (Date.now() - userCache.timestamp) < CACHE_DURATION) {
-      console.log('getCurrentUser - returning cached user:', userCache.user);
       return userCache.user;
     }
     
     try {
-      console.log('getCurrentUser - fetching fresh session');
       const session = await getSession({
         fetchOptions: {
           onError(context) {
@@ -107,10 +131,7 @@ export const authService = {
         },
       });
       
-      console.log('getCurrentUser - raw session response:', session);
-      
-      const user = sessionToUser(session);
-      console.log('getCurrentUser - converted user:', user);
+      const user = sessionToUser(session as BetterAuthSession);
       
       // Update cache
       userCache = {
@@ -132,10 +153,8 @@ export const authService = {
   // Check if user is authenticated
   isAuthenticated: async (): Promise<boolean> => {
     try {
-      console.log('isAuthenticated - starting check');
       const user = await authService.getCurrentUser()
       const result = user?.isAuthenticated ?? false;
-      console.log('isAuthenticated - user:', user, 'result:', result);
       return result;
     } catch (error) {
       console.warn('Authentication check failed, falling back to false:', error);
@@ -153,12 +172,36 @@ export const authService = {
 
   // Check if user is admin
   isAdmin: async (): Promise<boolean> => {
-    return await authService.hasRole('admin')
+    const role = (await authService.getCurrentUser())?.role
+    return role === 'admin' || role === 'owner'
+  },
+
+  // Check if user is owner
+  isOwner: async (): Promise<boolean> => {
+    return await authService.hasRole('owner')
+  },
+
+  // Check if user is finance
+  isFinance: async (): Promise<boolean> => {
+    const role = (await authService.getCurrentUser())?.role
+    return role === 'finance' || role === 'owner'
+  },
+
+  // Check if user is admin, finance, or owner
+  isAdminOrFinance: async (): Promise<boolean> => {
+    const role = (await authService.getCurrentUser())?.role
+    return role === 'admin' || role === 'finance' || role === 'owner'
   },
 
   // Check if user is regular user
   isUser: async (): Promise<boolean> => {
     return await authService.hasRole('user')
+  },
+
+  // Check if user is agent
+  isAgent: async (): Promise<boolean> => {
+    const user = await authService.getCurrentUser()
+    return user?.userType === 'agent'
   },
 
   // Logout
@@ -173,7 +216,10 @@ export const authService = {
     const user = await authService.getCurrentUser()
     if (!user) return '/login'
     
-    return user.role === 'admin' ? '/dashboard/admin' : '/dashboard/user'
+    // Agent users go to agent portal
+    if (user.userType === 'agent') return '/agent/dashboard'
+    
+    return '/dashboard/admin'
   },
 
   // Google OAuth sign in
@@ -193,6 +239,38 @@ export const authService = {
     } catch (error) {
       return { success: false, error: error instanceof Error ? error.message : 'Authentication failed' }
     }
+  },
+
+  // Request password reset link
+  forgotPassword: async (email: string, redirectTo: string): Promise<{ success: boolean; error?: string }> => {
+    try {
+      const result = await authClient.forgetPassword({
+        email,
+        redirectTo,
+      })
+      if (result.error) {
+        return { success: false, error: result.error.message || 'Failed to send reset link' }
+      }
+      return { success: true }
+    } catch (error) {
+      return { success: false, error: error instanceof Error ? error.message : 'An unexpected error occurred' }
+    }
+  },
+
+  // Reset password using token
+  resetPassword: async (newPassword: string, token: string): Promise<{ success: boolean; error?: string }> => {
+    try {
+      const result = await authClient.resetPassword({
+        newPassword,
+        token,
+      })
+      if (result.error) {
+        return { success: false, error: result.error.message || 'Failed to reset password' }
+      }
+      return { success: true }
+    } catch (error) {
+      return { success: false, error: error instanceof Error ? error.message : 'An unexpected error occurred' }
+    }
   }
 }
 
@@ -205,8 +283,29 @@ export const requireAuth = async () => {
 
 export const requireAdmin = async () => {
   await requireAuth()
-  if (!(await authService.isAdmin())) {
+  if (!(await authService.isAdmin()) && !(await authService.isOwner())) {
     throw new Error('Admin access required')
+  }
+}
+
+export const requireOwner = async () => {
+  await requireAuth()
+  if (!(await authService.isOwner())) {
+    throw new Error('Owner access required')
+  }
+}
+
+export const requireFinance = async () => {
+  await requireAuth()
+  if (!(await authService.isFinance()) && !(await authService.isOwner())) {
+    throw new Error('Finance access required')
+  }
+}
+
+export const requireAdminOrFinance = async () => {
+  await requireAuth()
+  if (!(await authService.isAdmin()) && !(await authService.isFinance()) && !(await authService.isOwner())) {
+    throw new Error('Admin or Finance access required')
   }
 }
 

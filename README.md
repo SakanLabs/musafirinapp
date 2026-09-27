@@ -74,6 +74,33 @@ export default app
 
 If you wanted to add a database to Hono you can do so with a multitude of Typescript libraries like [Supabase](https://supabase.com), or ORMs like [Drizzle](https://orm.drizzle.team/docs/get-started) or [Prisma](https://www.prisma.io/orm)
 
+## Prerequisites
+
+This application requires MinIO for file storage (PDF invoices and vouchers). You need to run MinIO server before starting the application.
+
+### Setup MinIO
+
+**Option 1: Using Docker Compose (Recommended)**
+```bash
+docker-compose up -d
+```
+
+**Option 2: Using Docker directly**
+```bash
+docker run -d \
+  --name minio-server \
+  -p 9000:9000 \
+  -p 9001:9001 \
+  -e "MINIO_ROOT_USER=minioadmin" \
+  -e "MINIO_ROOT_PASSWORD=minioadmin" \
+  -v minio-data:/data \
+  quay.io/minio/minio server /data --console-address ":9001"
+```
+
+MinIO will be available at:
+- **API**: http://localhost:9000
+- **Console**: http://localhost:9001 (login: minioadmin/minioadmin)
+
 ### Client
 
 bhvr uses Vite + React Typescript template, which means you can build your frontend just as you would with any other React app. This makes it flexible to add UI components like [shadcn/ui](https://ui.shadcn.com) or routing using [React Router](https://reactrouter.com/start/declarative/installation).

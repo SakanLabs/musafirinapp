@@ -1,0 +1,238 @@
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { apiClient, API_ENDPOINTS } from '../api';
+
+// Types for invoices (based on API documentation)
+export interface Invoice {
+  id: number;
+  number: string;
+  bookingId: number;
+  amount: string;
+  currency: string;
+  issueDate: string;
+  dueDate: string;
+  status: 'draft' | 'sent' | 'paid' | 'pending' | 'overdue' | 'cancelled';
+  pdfUrl: string;
+  // Related booking and client data
+  bookingCode: string;
+  clientName: string;
+  clientEmail: string;
+  hotelName: string;
+  city: string;
+  // Extended fields for Invoice Detail
+  bookingPaymentStatus?: 'unpaid' | 'partial' | 'paid' | 'overdue';
+  bookingMeta?: Record<string, unknown>;
+}
+
+// Query keys
+export const invoiceKeys = {
+  all: ['invoices'] as const,
+  lists: () => [...invoiceKeys.all, 'list'] as const,
+  list: (filters: Record<string, unknown>) => [...invoiceKeys.lists(), { filters }] as const,
+  details: () => [...invoiceKeys.all, 'detail'] as const,
+  detail: (id: string) => [...invoiceKeys.details(), id] as const,
+};
+
+// Get all invoices
+export function useInvoices() {
+  return useQuery({
+    queryKey: invoiceKeys.lists(),
+    queryFn: async () => {
+      const response = await apiClient.get<{success: boolean, data: Invoice[]}>(API_ENDPOINTS.INVOICES);
+      return response.data;
+    },
+    staleTime: 5 * 60 * 1000, // 5 minutes
+  });
+}
+
+// Get invoice by ID
+export function useInvoice(id: string) {
+  return useQuery({
+    queryKey: invoiceKeys.detail(id),
+    queryFn: async () => {
+      const response = await apiClient.get<{success: boolean, data: Invoice}>(API_ENDPOINTS.INVOICE_BY_ID(id));
+      return response.data;
+    },
+    enabled: !!id,
+    staleTime: 5 * 60 * 1000, // 5 minutes
+  });
+}
+
+// Get or create invoice by booking ID
+export function useInvoiceByBooking(bookingId: string) {
+  return useQuery({
+    queryKey: [...invoiceKeys.all, 'booking', bookingId],
+    queryFn: async () => {
+      const response = await apiClient.get<{success: boolean, data: Invoice}>(
+        API_ENDPOINTS.INVOICE_BY_BOOKING(bookingId)
+      );
+      return response.data;
+    },
+    enabled: !!bookingId,
+    staleTime: 5 * 60 * 1000, // 5 minutes
+  });
+}
+
+// Check if invoice exists for booking (without creating one)
+export function useCheckInvoiceExists(bookingId: string) {
+  return useQuery({
+    queryKey: [...invoiceKeys.all, 'check-exists', bookingId],
+    queryFn: async () => {
+      try {
+        const response = await apiClient.get<{success: boolean, data: Invoice[]}>(API_ENDPOINTS.INVOICES);
+        const invoices = response.data;
+        const existingInvoice = invoices.find(invoice => invoice.bookingId.toString() === bookingId);
+        return existingInvoice || null;
+      } catch (error) {
+        console.error('Error checking invoice existence:', error);
+        return null;
+      }
+    },
+    enabled: !!bookingId,
+    staleTime: 5 * 60 * 1000, // 5 minutes
+  });
+}
+
+// Record payment for an invoice
+export interface PayInvoiceData {
+  id: string;
+  method: 'bank_transfer' | 'deposit' | 'cash';
+  amount: number;
+  referenceNumber?: string;
+  description?: string;
+}
+
+export function usePayInvoice() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (data: PayInvoiceData) => {
+      const payload: { method: PayInvoiceData['method']; amount: number; referenceNumber?: string; description?: string } = {
+        method: data.method,
+        amount: data.amount,
+      };
+      if (data.referenceNumber) payload.referenceNumber = data.referenceNumber;
+      if (data.description) payload.description = data.description;
+
+      const response = await apiClient.post<{ success: boolean; data: Invoice }>(
+        API_ENDPOINTS.INVOICE_PAY(data.id),
+        payload
+      );
+      return response.data;
+    },
+    onSuccess: (invoice) => {
+      // Update the specific invoice in cache
+      queryClient.setQueryData(invoiceKeys.detail(invoice.id.toString()), invoice);
+      // Invalidate invoices list to refresh
+      queryClient.invalidateQueries({ queryKey: invoiceKeys.lists() });
+    },
+  });
+}
+
+// Tambahkan tipe respons untuk backfill status
+export interface BackfillStatusResponse {
+  success: boolean;
+  data: {
+    totalProcessed: number;
+    updatedCount: number;
+    changes: Array<{ id: number; from: string; to: 'draft' | 'sent' | 'paid' | 'overdue' | 'cancelled' }>; 
+  };
+  message?: string;
+}
+
+// Tambahkan mutation untuk memanggil POST /api/invoices/backfill-status
+export function useBackfillInvoiceStatus() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async () => {
+      const response = await apiClient.post<{ success: boolean; data: BackfillStatusResponse['data']; message?: string }>(
+        API_ENDPOINTS.BACKFILL_INVOICE_STATUS
+      );
+      return response.data;
+    },
+    onSuccess: () => {
+      // Refresh daftar invoices agar status terbaru muncul
+      queryClient.invalidateQueries({ queryKey: invoiceKeys.lists() });
+    },
+  });
+}
+
+// Hapus invoice
+export function useDeleteInvoice() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const response = await apiClient.delete<{ success: boolean; message?: string }>(API_ENDPOINTS.INVOICE_BY_ID(id));
+      return response;
+    },
+    onSuccess: (_res, id) => {
+      // Invalidasi daftar dan detail invoice
+      queryClient.invalidateQueries({ queryKey: invoiceKeys.lists() });
+      queryClient.invalidateQueries({ queryKey: invoiceKeys.detail(id) });
+    },
+  });
+}
+
+// Manual invoice types
+export interface CreateManualInvoiceItem {
+  description: string;
+  quantity: number;
+  unitPrice: number;
+  total?: number;
+  notes?: string;
+}
+
+export interface CreateManualInvoiceData {
+  clientId?: number | null;
+  clientName: string;
+  clientEmail?: string;
+  clientPhone?: string;
+  clientAddress?: string;
+  title?: string;
+  currency: string;
+  issueDate?: string;
+  dueDate: string;
+  notes?: string;
+  items: CreateManualInvoiceItem[];
+}
+
+export interface CreateManualInvoiceResponse {
+  success: boolean;
+  data: {
+    id: number;
+    number: string;
+    amount: string;
+    currency: string;
+    pdfUrl: string;
+    downloadUrl: string;
+  };
+  message?: string;
+}
+
+// Buat manual invoice
+export function useCreateManualInvoice() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (data: CreateManualInvoiceData) => {
+      const response = await apiClient.post<CreateManualInvoiceResponse>(
+        API_ENDPOINTS.INVOICE_MANUAL,
+        data
+      );
+      return response;
+    },
+    onSuccess: (res) => {
+      queryClient.invalidateQueries({ queryKey: invoiceKeys.lists() });
+      if (res?.data?.downloadUrl) {
+        try {
+          apiClient.downloadFile(res.data.downloadUrl, `${res.data.number}.pdf`).catch(err => {
+            console.warn('Auto download failed:', err);
+          });
+        } catch (e) {
+          console.warn('Auto download trigger error:', e);
+        }
+      }
+    },
+  });
+}

@@ -9,51 +9,114 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as TestUserDashboardNoAuthRouteImport } from './routes/test-user-dashboard-no-auth'
-import { Route as TestUserDashboardRouteImport } from './routes/test-user-dashboard'
-import { Route as TestSimpleRedirectRouteImport } from './routes/test-simple-redirect'
-import { Route as TestRedirectRouteImport } from './routes/test-redirect'
-import { Route as TestLogsRouteImport } from './routes/test-logs'
-import { Route as TestAuthRouteImport } from './routes/test-auth'
+import { Route as VouchersRouteImport } from './routes/vouchers'
+import { Route as TransportationBookingsRouteImport } from './routes/transportation-bookings'
+import { Route as StoreRouteImport } from './routes/store'
+import { Route as ServiceOrdersRouteImport } from './routes/service-orders'
+import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as RegisterRouteImport } from './routes/register'
+import { Route as ReceiptsRouteImport } from './routes/receipts'
+import { Route as ReceiptDetailRouteImport } from './routes/receipt-detail'
+import { Route as ProfileRouteImport } from './routes/profile'
+import { Route as MuthowifBookingsRouteImport } from './routes/muthowif-bookings'
+import { Route as MasterTransportRouteImport } from './routes/master-transport'
+import { Route as MasterServicesRouteImport } from './routes/master-services'
+import { Route as MasterHotelsRouteImport } from './routes/master-hotels'
 import { Route as LoginRouteImport } from './routes/login'
+import { Route as LeadsRouteImport } from './routes/leads'
+import { Route as InvoicesRouteImport } from './routes/invoices'
+import { Route as InvoiceDetailRouteImport } from './routes/invoice-detail'
 import { Route as ForgotPasswordRouteImport } from './routes/forgot-password'
-import { Route as DebugRouteImport } from './routes/debug'
-import { Route as DashboardTestRouteImport } from './routes/dashboard-test'
 import { Route as DashboardRouteImport } from './routes/dashboard'
+import { Route as CustomLaRequestsRouteImport } from './routes/custom-la-requests'
+import { Route as CreateTransportationBookingRouteImport } from './routes/create-transportation-booking'
+import { Route as CreateServiceOrderRouteImport } from './routes/create-service-order'
+import { Route as CreateReceiptRouteImport } from './routes/create-receipt'
+import { Route as CreateMuthowifBookingRouteImport } from './routes/create-muthowif-booking'
+import { Route as CreateMasterTransportRouteImport } from './routes/create-master-transport'
+import { Route as CreateMasterHotelRouteImport } from './routes/create-master-hotel'
+import { Route as CreateManualInvoiceRouteImport } from './routes/create-manual-invoice'
+import { Route as CreateInvoiceRouteImport } from './routes/create-invoice'
+import { Route as CreateCustomLaRouteImport } from './routes/create-custom-la'
+import { Route as CreateBookingRouteImport } from './routes/create-booking'
+import { Route as CostsRouteImport } from './routes/costs'
+import { Route as ClientsRouteImport } from './routes/clients'
+import { Route as ClearAuthCacheRouteImport } from './routes/clear-auth-cache'
+import { Route as BookingsRouteImport } from './routes/bookings'
+import { Route as BookingFinanceRouteImport } from './routes/booking-finance'
+import { Route as BookingEditRouteImport } from './routes/booking-edit'
+import { Route as BookingDetailRouteImport } from './routes/booking-detail'
+import { Route as AnalyticsRouteImport } from './routes/analytics'
+import { Route as AgentRequestsAdminRouteImport } from './routes/agent-requests-admin'
+import { Route as AgentRouteImport } from './routes/agent'
+import { Route as AdminRouteImport } from './routes/admin'
 import { Route as IndexRouteImport } from './routes/index'
-import { Route as DashboardUserRouteImport } from './routes/dashboard/user'
+import { Route as VouchersIndexRouteImport } from './routes/vouchers/index'
+import { Route as StoreIndexRouteImport } from './routes/store/index'
+import { Route as ClientsIndexRouteImport } from './routes/clients/index'
+import { Route as VouchersCreateRouteImport } from './routes/vouchers/create'
+import { Route as TransportationBookingEditTransportationBookingIdRouteImport } from './routes/transportation-booking-edit.$transportationBookingId'
+import { Route as TransportationBookingDetailTransportationBookingIdRouteImport } from './routes/transportation-booking-detail.$transportationBookingId'
+import { Route as StoreOrdersRouteImport } from './routes/store/orders'
+import { Route as StoreCartRouteImport } from './routes/store/cart'
+import { Route as StoreAdminRouteImport } from './routes/store/admin'
+import { Route as ServiceOrdersCreateRouteImport } from './routes/service-orders/create'
+import { Route as ServiceOrdersIdRouteImport } from './routes/service-orders/$id'
+import { Route as ServiceOrderEditServiceOrderIdRouteImport } from './routes/service-order-edit.$serviceOrderId'
+import { Route as ServiceOrderDetailServiceOrderIdRouteImport } from './routes/service-order-detail.$serviceOrderId'
+import { Route as MuthowifBookingDetailIdRouteImport } from './routes/muthowif-booking-detail.$id'
+import { Route as MasterTransportEditRouteIdRouteImport } from './routes/master-transport-edit.$routeId'
+import { Route as MasterTransportDetailRouteIdRouteImport } from './routes/master-transport-detail.$routeId'
+import { Route as MasterHotelEditHotelIdRouteImport } from './routes/master-hotel-edit.$hotelId'
+import { Route as MasterHotelDetailHotelIdRouteImport } from './routes/master-hotel-detail.$hotelId'
+import { Route as DashboardMuthowifsRouteImport } from './routes/dashboard/muthowifs'
 import { Route as DashboardAdminRouteImport } from './routes/dashboard/admin'
+import { Route as CustomLaQuotationIdRouteImport } from './routes/custom-la-quotation.$id'
+import { Route as CustomLaDetailIdRouteImport } from './routes/custom-la-detail.$id'
+import { Route as CreateTransportPricingRouteIdRouteImport } from './routes/create-transport-pricing.$routeId'
+import { Route as CreateHotelPricingHotelIdRouteImport } from './routes/create-hotel-pricing.$hotelId'
+import { Route as ClientsCreateRouteImport } from './routes/clients/create'
+import { Route as ClientDetailClientIdRouteImport } from './routes/client-detail.$clientId'
+import { Route as BookingViewBookingIdRouteImport } from './routes/booking-view.$bookingId'
 import { Route as AuthCallbackRouteImport } from './routes/auth/callback'
+import { Route as AgentRequestsRouteImport } from './routes/agent/requests'
+import { Route as AgentProfileRouteImport } from './routes/agent/profile'
+import { Route as AgentNotificationsRouteImport } from './routes/agent/notifications'
+import { Route as AgentDashboardRouteImport } from './routes/agent/dashboard'
+import { Route as AgentCreateRequestRouteImport } from './routes/agent/create-request'
+import { Route as AgentRequestAdminDetailIdRouteImport } from './routes/agent-request-admin-detail.$id'
+import { Route as CustomLaQuotationRouteImport } from './routes/custom-la-quotation.'
+import { Route as StoreProductProductIdRouteImport } from './routes/store/product.$productId'
+import { Route as StoreOrderOrderIdRouteImport } from './routes/store/order.$orderId'
+import { Route as EditTransportPricingRouteIdPricingIdRouteImport } from './routes/edit-transport-pricing.$routeId.$pricingId'
+import { Route as EditHotelPricingHotelIdPricingIdRouteImport } from './routes/edit-hotel-pricing.$hotelId.$pricingId'
+import { Route as DashboardMuthowifsIdRouteImport } from './routes/dashboard/muthowifs/$id'
+import { Route as BookingsBookingIdEditRouteImport } from './routes/bookings/$bookingId/edit'
+import { Route as AgentRequestRequestIdRouteImport } from './routes/agent/request.$requestId'
 
-const TestUserDashboardNoAuthRoute = TestUserDashboardNoAuthRouteImport.update({
-  id: '/test-user-dashboard-no-auth',
-  path: '/test-user-dashboard-no-auth',
+const VouchersRoute = VouchersRouteImport.update({
+  id: '/vouchers',
+  path: '/vouchers',
   getParentRoute: () => rootRouteImport,
 } as any)
-const TestUserDashboardRoute = TestUserDashboardRouteImport.update({
-  id: '/test-user-dashboard',
-  path: '/test-user-dashboard',
+const TransportationBookingsRoute = TransportationBookingsRouteImport.update({
+  id: '/transportation-bookings',
+  path: '/transportation-bookings',
   getParentRoute: () => rootRouteImport,
 } as any)
-const TestSimpleRedirectRoute = TestSimpleRedirectRouteImport.update({
-  id: '/test-simple-redirect',
-  path: '/test-simple-redirect',
+const StoreRoute = StoreRouteImport.update({
+  id: '/store',
+  path: '/store',
   getParentRoute: () => rootRouteImport,
 } as any)
-const TestRedirectRoute = TestRedirectRouteImport.update({
-  id: '/test-redirect',
-  path: '/test-redirect',
+const ServiceOrdersRoute = ServiceOrdersRouteImport.update({
+  id: '/service-orders',
+  path: '/service-orders',
   getParentRoute: () => rootRouteImport,
 } as any)
-const TestLogsRoute = TestLogsRouteImport.update({
-  id: '/test-logs',
-  path: '/test-logs',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const TestAuthRoute = TestAuthRouteImport.update({
-  id: '/test-auth',
-  path: '/test-auth',
+const ResetPasswordRoute = ResetPasswordRouteImport.update({
+  id: '/reset-password',
+  path: '/reset-password',
   getParentRoute: () => rootRouteImport,
 } as any)
 const RegisterRoute = RegisterRouteImport.update({
@@ -61,9 +124,59 @@ const RegisterRoute = RegisterRouteImport.update({
   path: '/register',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ReceiptsRoute = ReceiptsRouteImport.update({
+  id: '/receipts',
+  path: '/receipts',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ReceiptDetailRoute = ReceiptDetailRouteImport.update({
+  id: '/receipt-detail',
+  path: '/receipt-detail',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ProfileRoute = ProfileRouteImport.update({
+  id: '/profile',
+  path: '/profile',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const MuthowifBookingsRoute = MuthowifBookingsRouteImport.update({
+  id: '/muthowif-bookings',
+  path: '/muthowif-bookings',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const MasterTransportRoute = MasterTransportRouteImport.update({
+  id: '/master-transport',
+  path: '/master-transport',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const MasterServicesRoute = MasterServicesRouteImport.update({
+  id: '/master-services',
+  path: '/master-services',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const MasterHotelsRoute = MasterHotelsRouteImport.update({
+  id: '/master-hotels',
+  path: '/master-hotels',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const LoginRoute = LoginRouteImport.update({
   id: '/login',
   path: '/login',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LeadsRoute = LeadsRouteImport.update({
+  id: '/leads',
+  path: '/leads',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const InvoicesRoute = InvoicesRouteImport.update({
+  id: '/invoices',
+  path: '/invoices',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const InvoiceDetailRoute = InvoiceDetailRouteImport.update({
+  id: '/invoice-detail',
+  path: '/invoice-detail',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ForgotPasswordRoute = ForgotPasswordRouteImport.update({
@@ -71,19 +184,120 @@ const ForgotPasswordRoute = ForgotPasswordRouteImport.update({
   path: '/forgot-password',
   getParentRoute: () => rootRouteImport,
 } as any)
-const DebugRoute = DebugRouteImport.update({
-  id: '/debug',
-  path: '/debug',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const DashboardTestRoute = DashboardTestRouteImport.update({
-  id: '/dashboard-test',
-  path: '/dashboard-test',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const DashboardRoute = DashboardRouteImport.update({
   id: '/dashboard',
   path: '/dashboard',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CustomLaRequestsRoute = CustomLaRequestsRouteImport.update({
+  id: '/custom-la-requests',
+  path: '/custom-la-requests',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CreateTransportationBookingRoute =
+  CreateTransportationBookingRouteImport.update({
+    id: '/create-transportation-booking',
+    path: '/create-transportation-booking',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const CreateServiceOrderRoute = CreateServiceOrderRouteImport.update({
+  id: '/create-service-order',
+  path: '/create-service-order',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CreateReceiptRoute = CreateReceiptRouteImport.update({
+  id: '/create-receipt',
+  path: '/create-receipt',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CreateMuthowifBookingRoute = CreateMuthowifBookingRouteImport.update({
+  id: '/create-muthowif-booking',
+  path: '/create-muthowif-booking',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CreateMasterTransportRoute = CreateMasterTransportRouteImport.update({
+  id: '/create-master-transport',
+  path: '/create-master-transport',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CreateMasterHotelRoute = CreateMasterHotelRouteImport.update({
+  id: '/create-master-hotel',
+  path: '/create-master-hotel',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CreateManualInvoiceRoute = CreateManualInvoiceRouteImport.update({
+  id: '/create-manual-invoice',
+  path: '/create-manual-invoice',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CreateInvoiceRoute = CreateInvoiceRouteImport.update({
+  id: '/create-invoice',
+  path: '/create-invoice',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CreateCustomLaRoute = CreateCustomLaRouteImport.update({
+  id: '/create-custom-la',
+  path: '/create-custom-la',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CreateBookingRoute = CreateBookingRouteImport.update({
+  id: '/create-booking',
+  path: '/create-booking',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CostsRoute = CostsRouteImport.update({
+  id: '/costs',
+  path: '/costs',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ClientsRoute = ClientsRouteImport.update({
+  id: '/clients',
+  path: '/clients',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ClearAuthCacheRoute = ClearAuthCacheRouteImport.update({
+  id: '/clear-auth-cache',
+  path: '/clear-auth-cache',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const BookingsRoute = BookingsRouteImport.update({
+  id: '/bookings',
+  path: '/bookings',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const BookingFinanceRoute = BookingFinanceRouteImport.update({
+  id: '/booking-finance',
+  path: '/booking-finance',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const BookingEditRoute = BookingEditRouteImport.update({
+  id: '/booking-edit',
+  path: '/booking-edit',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const BookingDetailRoute = BookingDetailRouteImport.update({
+  id: '/booking-detail',
+  path: '/booking-detail',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AnalyticsRoute = AnalyticsRouteImport.update({
+  id: '/analytics',
+  path: '/analytics',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AgentRequestsAdminRoute = AgentRequestsAdminRouteImport.update({
+  id: '/agent-requests-admin',
+  path: '/agent-requests-admin',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AgentRoute = AgentRouteImport.update({
+  id: '/agent',
+  path: '/agent',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AdminRoute = AdminRouteImport.update({
+  id: '/admin',
+  path: '/admin',
   getParentRoute: () => rootRouteImport,
 } as any)
 const IndexRoute = IndexRouteImport.update({
@@ -91,9 +305,106 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
-const DashboardUserRoute = DashboardUserRouteImport.update({
-  id: '/user',
-  path: '/user',
+const VouchersIndexRoute = VouchersIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => VouchersRoute,
+} as any)
+const StoreIndexRoute = StoreIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => StoreRoute,
+} as any)
+const ClientsIndexRoute = ClientsIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => ClientsRoute,
+} as any)
+const VouchersCreateRoute = VouchersCreateRouteImport.update({
+  id: '/create',
+  path: '/create',
+  getParentRoute: () => VouchersRoute,
+} as any)
+const TransportationBookingEditTransportationBookingIdRoute =
+  TransportationBookingEditTransportationBookingIdRouteImport.update({
+    id: '/transportation-booking-edit/$transportationBookingId',
+    path: '/transportation-booking-edit/$transportationBookingId',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const TransportationBookingDetailTransportationBookingIdRoute =
+  TransportationBookingDetailTransportationBookingIdRouteImport.update({
+    id: '/transportation-booking-detail/$transportationBookingId',
+    path: '/transportation-booking-detail/$transportationBookingId',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const StoreOrdersRoute = StoreOrdersRouteImport.update({
+  id: '/orders',
+  path: '/orders',
+  getParentRoute: () => StoreRoute,
+} as any)
+const StoreCartRoute = StoreCartRouteImport.update({
+  id: '/cart',
+  path: '/cart',
+  getParentRoute: () => StoreRoute,
+} as any)
+const StoreAdminRoute = StoreAdminRouteImport.update({
+  id: '/admin',
+  path: '/admin',
+  getParentRoute: () => StoreRoute,
+} as any)
+const ServiceOrdersCreateRoute = ServiceOrdersCreateRouteImport.update({
+  id: '/create',
+  path: '/create',
+  getParentRoute: () => ServiceOrdersRoute,
+} as any)
+const ServiceOrdersIdRoute = ServiceOrdersIdRouteImport.update({
+  id: '/$id',
+  path: '/$id',
+  getParentRoute: () => ServiceOrdersRoute,
+} as any)
+const ServiceOrderEditServiceOrderIdRoute =
+  ServiceOrderEditServiceOrderIdRouteImport.update({
+    id: '/service-order-edit/$serviceOrderId',
+    path: '/service-order-edit/$serviceOrderId',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ServiceOrderDetailServiceOrderIdRoute =
+  ServiceOrderDetailServiceOrderIdRouteImport.update({
+    id: '/service-order-detail/$serviceOrderId',
+    path: '/service-order-detail/$serviceOrderId',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const MuthowifBookingDetailIdRoute = MuthowifBookingDetailIdRouteImport.update({
+  id: '/muthowif-booking-detail/$id',
+  path: '/muthowif-booking-detail/$id',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const MasterTransportEditRouteIdRoute =
+  MasterTransportEditRouteIdRouteImport.update({
+    id: '/master-transport-edit/$routeId',
+    path: '/master-transport-edit/$routeId',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const MasterTransportDetailRouteIdRoute =
+  MasterTransportDetailRouteIdRouteImport.update({
+    id: '/master-transport-detail/$routeId',
+    path: '/master-transport-detail/$routeId',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const MasterHotelEditHotelIdRoute = MasterHotelEditHotelIdRouteImport.update({
+  id: '/master-hotel-edit/$hotelId',
+  path: '/master-hotel-edit/$hotelId',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const MasterHotelDetailHotelIdRoute =
+  MasterHotelDetailHotelIdRouteImport.update({
+    id: '/master-hotel-detail/$hotelId',
+    path: '/master-hotel-detail/$hotelId',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const DashboardMuthowifsRoute = DashboardMuthowifsRouteImport.update({
+  id: '/muthowifs',
+  path: '/muthowifs',
   getParentRoute: () => DashboardRoute,
 } as any)
 const DashboardAdminRoute = DashboardAdminRouteImport.update({
@@ -101,183 +412,736 @@ const DashboardAdminRoute = DashboardAdminRouteImport.update({
   path: '/admin',
   getParentRoute: () => DashboardRoute,
 } as any)
+const CustomLaQuotationIdRoute = CustomLaQuotationIdRouteImport.update({
+  id: '/custom-la-quotation/$id',
+  path: '/custom-la-quotation/$id',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CustomLaDetailIdRoute = CustomLaDetailIdRouteImport.update({
+  id: '/custom-la-detail/$id',
+  path: '/custom-la-detail/$id',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CreateTransportPricingRouteIdRoute =
+  CreateTransportPricingRouteIdRouteImport.update({
+    id: '/create-transport-pricing/$routeId',
+    path: '/create-transport-pricing/$routeId',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const CreateHotelPricingHotelIdRoute =
+  CreateHotelPricingHotelIdRouteImport.update({
+    id: '/create-hotel-pricing/$hotelId',
+    path: '/create-hotel-pricing/$hotelId',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ClientsCreateRoute = ClientsCreateRouteImport.update({
+  id: '/create',
+  path: '/create',
+  getParentRoute: () => ClientsRoute,
+} as any)
+const ClientDetailClientIdRoute = ClientDetailClientIdRouteImport.update({
+  id: '/client-detail/$clientId',
+  path: '/client-detail/$clientId',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const BookingViewBookingIdRoute = BookingViewBookingIdRouteImport.update({
+  id: '/booking-view/$bookingId',
+  path: '/booking-view/$bookingId',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AuthCallbackRoute = AuthCallbackRouteImport.update({
   id: '/auth/callback',
   path: '/auth/callback',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AgentRequestsRoute = AgentRequestsRouteImport.update({
+  id: '/requests',
+  path: '/requests',
+  getParentRoute: () => AgentRoute,
+} as any)
+const AgentProfileRoute = AgentProfileRouteImport.update({
+  id: '/profile',
+  path: '/profile',
+  getParentRoute: () => AgentRoute,
+} as any)
+const AgentNotificationsRoute = AgentNotificationsRouteImport.update({
+  id: '/notifications',
+  path: '/notifications',
+  getParentRoute: () => AgentRoute,
+} as any)
+const AgentDashboardRoute = AgentDashboardRouteImport.update({
+  id: '/dashboard',
+  path: '/dashboard',
+  getParentRoute: () => AgentRoute,
+} as any)
+const AgentCreateRequestRoute = AgentCreateRequestRouteImport.update({
+  id: '/create-request',
+  path: '/create-request',
+  getParentRoute: () => AgentRoute,
+} as any)
+const AgentRequestAdminDetailIdRoute =
+  AgentRequestAdminDetailIdRouteImport.update({
+    id: '/agent-request-admin-detail/$id',
+    path: '/agent-request-admin-detail/$id',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const CustomLaQuotationRoute = CustomLaQuotationRouteImport.update({
+  id: '/custom-la-quotation/',
+  path: '/custom-la-quotation/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const StoreProductProductIdRoute = StoreProductProductIdRouteImport.update({
+  id: '/product/$productId',
+  path: '/product/$productId',
+  getParentRoute: () => StoreRoute,
+} as any)
+const StoreOrderOrderIdRoute = StoreOrderOrderIdRouteImport.update({
+  id: '/order/$orderId',
+  path: '/order/$orderId',
+  getParentRoute: () => StoreRoute,
+} as any)
+const EditTransportPricingRouteIdPricingIdRoute =
+  EditTransportPricingRouteIdPricingIdRouteImport.update({
+    id: '/edit-transport-pricing/$routeId/$pricingId',
+    path: '/edit-transport-pricing/$routeId/$pricingId',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const EditHotelPricingHotelIdPricingIdRoute =
+  EditHotelPricingHotelIdPricingIdRouteImport.update({
+    id: '/edit-hotel-pricing/$hotelId/$pricingId',
+    path: '/edit-hotel-pricing/$hotelId/$pricingId',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const DashboardMuthowifsIdRoute = DashboardMuthowifsIdRouteImport.update({
+  id: '/$id',
+  path: '/$id',
+  getParentRoute: () => DashboardMuthowifsRoute,
+} as any)
+const BookingsBookingIdEditRoute = BookingsBookingIdEditRouteImport.update({
+  id: '/$bookingId/edit',
+  path: '/$bookingId/edit',
+  getParentRoute: () => BookingsRoute,
+} as any)
+const AgentRequestRequestIdRoute = AgentRequestRequestIdRouteImport.update({
+  id: '/request/$requestId',
+  path: '/request/$requestId',
+  getParentRoute: () => AgentRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/admin': typeof AdminRoute
+  '/agent': typeof AgentRouteWithChildren
+  '/agent-requests-admin': typeof AgentRequestsAdminRoute
+  '/analytics': typeof AnalyticsRoute
+  '/booking-detail': typeof BookingDetailRoute
+  '/booking-edit': typeof BookingEditRoute
+  '/booking-finance': typeof BookingFinanceRoute
+  '/bookings': typeof BookingsRouteWithChildren
+  '/clear-auth-cache': typeof ClearAuthCacheRoute
+  '/clients': typeof ClientsRouteWithChildren
+  '/costs': typeof CostsRoute
+  '/create-booking': typeof CreateBookingRoute
+  '/create-custom-la': typeof CreateCustomLaRoute
+  '/create-invoice': typeof CreateInvoiceRoute
+  '/create-manual-invoice': typeof CreateManualInvoiceRoute
+  '/create-master-hotel': typeof CreateMasterHotelRoute
+  '/create-master-transport': typeof CreateMasterTransportRoute
+  '/create-muthowif-booking': typeof CreateMuthowifBookingRoute
+  '/create-receipt': typeof CreateReceiptRoute
+  '/create-service-order': typeof CreateServiceOrderRoute
+  '/create-transportation-booking': typeof CreateTransportationBookingRoute
+  '/custom-la-requests': typeof CustomLaRequestsRoute
   '/dashboard': typeof DashboardRouteWithChildren
-  '/dashboard-test': typeof DashboardTestRoute
-  '/debug': typeof DebugRoute
   '/forgot-password': typeof ForgotPasswordRoute
+  '/invoice-detail': typeof InvoiceDetailRoute
+  '/invoices': typeof InvoicesRoute
+  '/leads': typeof LeadsRoute
   '/login': typeof LoginRoute
+  '/master-hotels': typeof MasterHotelsRoute
+  '/master-services': typeof MasterServicesRoute
+  '/master-transport': typeof MasterTransportRoute
+  '/muthowif-bookings': typeof MuthowifBookingsRoute
+  '/profile': typeof ProfileRoute
+  '/receipt-detail': typeof ReceiptDetailRoute
+  '/receipts': typeof ReceiptsRoute
   '/register': typeof RegisterRoute
-  '/test-auth': typeof TestAuthRoute
-  '/test-logs': typeof TestLogsRoute
-  '/test-redirect': typeof TestRedirectRoute
-  '/test-simple-redirect': typeof TestSimpleRedirectRoute
-  '/test-user-dashboard': typeof TestUserDashboardRoute
-  '/test-user-dashboard-no-auth': typeof TestUserDashboardNoAuthRoute
+  '/reset-password': typeof ResetPasswordRoute
+  '/service-orders': typeof ServiceOrdersRouteWithChildren
+  '/store': typeof StoreRouteWithChildren
+  '/transportation-bookings': typeof TransportationBookingsRoute
+  '/vouchers': typeof VouchersRouteWithChildren
+  '/custom-la-quotation': typeof CustomLaQuotationRoute
+  '/agent-request-admin-detail/$id': typeof AgentRequestAdminDetailIdRoute
+  '/agent/create-request': typeof AgentCreateRequestRoute
+  '/agent/dashboard': typeof AgentDashboardRoute
+  '/agent/notifications': typeof AgentNotificationsRoute
+  '/agent/profile': typeof AgentProfileRoute
+  '/agent/requests': typeof AgentRequestsRoute
   '/auth/callback': typeof AuthCallbackRoute
+  '/booking-view/$bookingId': typeof BookingViewBookingIdRoute
+  '/client-detail/$clientId': typeof ClientDetailClientIdRoute
+  '/clients/create': typeof ClientsCreateRoute
+  '/create-hotel-pricing/$hotelId': typeof CreateHotelPricingHotelIdRoute
+  '/create-transport-pricing/$routeId': typeof CreateTransportPricingRouteIdRoute
+  '/custom-la-detail/$id': typeof CustomLaDetailIdRoute
+  '/custom-la-quotation/$id': typeof CustomLaQuotationIdRoute
   '/dashboard/admin': typeof DashboardAdminRoute
-  '/dashboard/user': typeof DashboardUserRoute
+  '/dashboard/muthowifs': typeof DashboardMuthowifsRouteWithChildren
+  '/master-hotel-detail/$hotelId': typeof MasterHotelDetailHotelIdRoute
+  '/master-hotel-edit/$hotelId': typeof MasterHotelEditHotelIdRoute
+  '/master-transport-detail/$routeId': typeof MasterTransportDetailRouteIdRoute
+  '/master-transport-edit/$routeId': typeof MasterTransportEditRouteIdRoute
+  '/muthowif-booking-detail/$id': typeof MuthowifBookingDetailIdRoute
+  '/service-order-detail/$serviceOrderId': typeof ServiceOrderDetailServiceOrderIdRoute
+  '/service-order-edit/$serviceOrderId': typeof ServiceOrderEditServiceOrderIdRoute
+  '/service-orders/$id': typeof ServiceOrdersIdRoute
+  '/service-orders/create': typeof ServiceOrdersCreateRoute
+  '/store/admin': typeof StoreAdminRoute
+  '/store/cart': typeof StoreCartRoute
+  '/store/orders': typeof StoreOrdersRoute
+  '/transportation-booking-detail/$transportationBookingId': typeof TransportationBookingDetailTransportationBookingIdRoute
+  '/transportation-booking-edit/$transportationBookingId': typeof TransportationBookingEditTransportationBookingIdRoute
+  '/vouchers/create': typeof VouchersCreateRoute
+  '/clients/': typeof ClientsIndexRoute
+  '/store/': typeof StoreIndexRoute
+  '/vouchers/': typeof VouchersIndexRoute
+  '/agent/request/$requestId': typeof AgentRequestRequestIdRoute
+  '/bookings/$bookingId/edit': typeof BookingsBookingIdEditRoute
+  '/dashboard/muthowifs/$id': typeof DashboardMuthowifsIdRoute
+  '/edit-hotel-pricing/$hotelId/$pricingId': typeof EditHotelPricingHotelIdPricingIdRoute
+  '/edit-transport-pricing/$routeId/$pricingId': typeof EditTransportPricingRouteIdPricingIdRoute
+  '/store/order/$orderId': typeof StoreOrderOrderIdRoute
+  '/store/product/$productId': typeof StoreProductProductIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/admin': typeof AdminRoute
+  '/agent': typeof AgentRouteWithChildren
+  '/agent-requests-admin': typeof AgentRequestsAdminRoute
+  '/analytics': typeof AnalyticsRoute
+  '/booking-detail': typeof BookingDetailRoute
+  '/booking-edit': typeof BookingEditRoute
+  '/booking-finance': typeof BookingFinanceRoute
+  '/bookings': typeof BookingsRouteWithChildren
+  '/clear-auth-cache': typeof ClearAuthCacheRoute
+  '/costs': typeof CostsRoute
+  '/create-booking': typeof CreateBookingRoute
+  '/create-custom-la': typeof CreateCustomLaRoute
+  '/create-invoice': typeof CreateInvoiceRoute
+  '/create-manual-invoice': typeof CreateManualInvoiceRoute
+  '/create-master-hotel': typeof CreateMasterHotelRoute
+  '/create-master-transport': typeof CreateMasterTransportRoute
+  '/create-muthowif-booking': typeof CreateMuthowifBookingRoute
+  '/create-receipt': typeof CreateReceiptRoute
+  '/create-service-order': typeof CreateServiceOrderRoute
+  '/create-transportation-booking': typeof CreateTransportationBookingRoute
+  '/custom-la-requests': typeof CustomLaRequestsRoute
   '/dashboard': typeof DashboardRouteWithChildren
-  '/dashboard-test': typeof DashboardTestRoute
-  '/debug': typeof DebugRoute
   '/forgot-password': typeof ForgotPasswordRoute
+  '/invoice-detail': typeof InvoiceDetailRoute
+  '/invoices': typeof InvoicesRoute
+  '/leads': typeof LeadsRoute
   '/login': typeof LoginRoute
+  '/master-hotels': typeof MasterHotelsRoute
+  '/master-services': typeof MasterServicesRoute
+  '/master-transport': typeof MasterTransportRoute
+  '/muthowif-bookings': typeof MuthowifBookingsRoute
+  '/profile': typeof ProfileRoute
+  '/receipt-detail': typeof ReceiptDetailRoute
+  '/receipts': typeof ReceiptsRoute
   '/register': typeof RegisterRoute
-  '/test-auth': typeof TestAuthRoute
-  '/test-logs': typeof TestLogsRoute
-  '/test-redirect': typeof TestRedirectRoute
-  '/test-simple-redirect': typeof TestSimpleRedirectRoute
-  '/test-user-dashboard': typeof TestUserDashboardRoute
-  '/test-user-dashboard-no-auth': typeof TestUserDashboardNoAuthRoute
+  '/reset-password': typeof ResetPasswordRoute
+  '/service-orders': typeof ServiceOrdersRouteWithChildren
+  '/transportation-bookings': typeof TransportationBookingsRoute
+  '/custom-la-quotation': typeof CustomLaQuotationRoute
+  '/agent-request-admin-detail/$id': typeof AgentRequestAdminDetailIdRoute
+  '/agent/create-request': typeof AgentCreateRequestRoute
+  '/agent/dashboard': typeof AgentDashboardRoute
+  '/agent/notifications': typeof AgentNotificationsRoute
+  '/agent/profile': typeof AgentProfileRoute
+  '/agent/requests': typeof AgentRequestsRoute
   '/auth/callback': typeof AuthCallbackRoute
+  '/booking-view/$bookingId': typeof BookingViewBookingIdRoute
+  '/client-detail/$clientId': typeof ClientDetailClientIdRoute
+  '/clients/create': typeof ClientsCreateRoute
+  '/create-hotel-pricing/$hotelId': typeof CreateHotelPricingHotelIdRoute
+  '/create-transport-pricing/$routeId': typeof CreateTransportPricingRouteIdRoute
+  '/custom-la-detail/$id': typeof CustomLaDetailIdRoute
+  '/custom-la-quotation/$id': typeof CustomLaQuotationIdRoute
   '/dashboard/admin': typeof DashboardAdminRoute
-  '/dashboard/user': typeof DashboardUserRoute
+  '/dashboard/muthowifs': typeof DashboardMuthowifsRouteWithChildren
+  '/master-hotel-detail/$hotelId': typeof MasterHotelDetailHotelIdRoute
+  '/master-hotel-edit/$hotelId': typeof MasterHotelEditHotelIdRoute
+  '/master-transport-detail/$routeId': typeof MasterTransportDetailRouteIdRoute
+  '/master-transport-edit/$routeId': typeof MasterTransportEditRouteIdRoute
+  '/muthowif-booking-detail/$id': typeof MuthowifBookingDetailIdRoute
+  '/service-order-detail/$serviceOrderId': typeof ServiceOrderDetailServiceOrderIdRoute
+  '/service-order-edit/$serviceOrderId': typeof ServiceOrderEditServiceOrderIdRoute
+  '/service-orders/$id': typeof ServiceOrdersIdRoute
+  '/service-orders/create': typeof ServiceOrdersCreateRoute
+  '/store/admin': typeof StoreAdminRoute
+  '/store/cart': typeof StoreCartRoute
+  '/store/orders': typeof StoreOrdersRoute
+  '/transportation-booking-detail/$transportationBookingId': typeof TransportationBookingDetailTransportationBookingIdRoute
+  '/transportation-booking-edit/$transportationBookingId': typeof TransportationBookingEditTransportationBookingIdRoute
+  '/vouchers/create': typeof VouchersCreateRoute
+  '/clients': typeof ClientsIndexRoute
+  '/store': typeof StoreIndexRoute
+  '/vouchers': typeof VouchersIndexRoute
+  '/agent/request/$requestId': typeof AgentRequestRequestIdRoute
+  '/bookings/$bookingId/edit': typeof BookingsBookingIdEditRoute
+  '/dashboard/muthowifs/$id': typeof DashboardMuthowifsIdRoute
+  '/edit-hotel-pricing/$hotelId/$pricingId': typeof EditHotelPricingHotelIdPricingIdRoute
+  '/edit-transport-pricing/$routeId/$pricingId': typeof EditTransportPricingRouteIdPricingIdRoute
+  '/store/order/$orderId': typeof StoreOrderOrderIdRoute
+  '/store/product/$productId': typeof StoreProductProductIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/admin': typeof AdminRoute
+  '/agent': typeof AgentRouteWithChildren
+  '/agent-requests-admin': typeof AgentRequestsAdminRoute
+  '/analytics': typeof AnalyticsRoute
+  '/booking-detail': typeof BookingDetailRoute
+  '/booking-edit': typeof BookingEditRoute
+  '/booking-finance': typeof BookingFinanceRoute
+  '/bookings': typeof BookingsRouteWithChildren
+  '/clear-auth-cache': typeof ClearAuthCacheRoute
+  '/clients': typeof ClientsRouteWithChildren
+  '/costs': typeof CostsRoute
+  '/create-booking': typeof CreateBookingRoute
+  '/create-custom-la': typeof CreateCustomLaRoute
+  '/create-invoice': typeof CreateInvoiceRoute
+  '/create-manual-invoice': typeof CreateManualInvoiceRoute
+  '/create-master-hotel': typeof CreateMasterHotelRoute
+  '/create-master-transport': typeof CreateMasterTransportRoute
+  '/create-muthowif-booking': typeof CreateMuthowifBookingRoute
+  '/create-receipt': typeof CreateReceiptRoute
+  '/create-service-order': typeof CreateServiceOrderRoute
+  '/create-transportation-booking': typeof CreateTransportationBookingRoute
+  '/custom-la-requests': typeof CustomLaRequestsRoute
   '/dashboard': typeof DashboardRouteWithChildren
-  '/dashboard-test': typeof DashboardTestRoute
-  '/debug': typeof DebugRoute
   '/forgot-password': typeof ForgotPasswordRoute
+  '/invoice-detail': typeof InvoiceDetailRoute
+  '/invoices': typeof InvoicesRoute
+  '/leads': typeof LeadsRoute
   '/login': typeof LoginRoute
+  '/master-hotels': typeof MasterHotelsRoute
+  '/master-services': typeof MasterServicesRoute
+  '/master-transport': typeof MasterTransportRoute
+  '/muthowif-bookings': typeof MuthowifBookingsRoute
+  '/profile': typeof ProfileRoute
+  '/receipt-detail': typeof ReceiptDetailRoute
+  '/receipts': typeof ReceiptsRoute
   '/register': typeof RegisterRoute
-  '/test-auth': typeof TestAuthRoute
-  '/test-logs': typeof TestLogsRoute
-  '/test-redirect': typeof TestRedirectRoute
-  '/test-simple-redirect': typeof TestSimpleRedirectRoute
-  '/test-user-dashboard': typeof TestUserDashboardRoute
-  '/test-user-dashboard-no-auth': typeof TestUserDashboardNoAuthRoute
+  '/reset-password': typeof ResetPasswordRoute
+  '/service-orders': typeof ServiceOrdersRouteWithChildren
+  '/store': typeof StoreRouteWithChildren
+  '/transportation-bookings': typeof TransportationBookingsRoute
+  '/vouchers': typeof VouchersRouteWithChildren
+  '/custom-la-quotation/': typeof CustomLaQuotationRoute
+  '/agent-request-admin-detail/$id': typeof AgentRequestAdminDetailIdRoute
+  '/agent/create-request': typeof AgentCreateRequestRoute
+  '/agent/dashboard': typeof AgentDashboardRoute
+  '/agent/notifications': typeof AgentNotificationsRoute
+  '/agent/profile': typeof AgentProfileRoute
+  '/agent/requests': typeof AgentRequestsRoute
   '/auth/callback': typeof AuthCallbackRoute
+  '/booking-view/$bookingId': typeof BookingViewBookingIdRoute
+  '/client-detail/$clientId': typeof ClientDetailClientIdRoute
+  '/clients/create': typeof ClientsCreateRoute
+  '/create-hotel-pricing/$hotelId': typeof CreateHotelPricingHotelIdRoute
+  '/create-transport-pricing/$routeId': typeof CreateTransportPricingRouteIdRoute
+  '/custom-la-detail/$id': typeof CustomLaDetailIdRoute
+  '/custom-la-quotation/$id': typeof CustomLaQuotationIdRoute
   '/dashboard/admin': typeof DashboardAdminRoute
-  '/dashboard/user': typeof DashboardUserRoute
+  '/dashboard/muthowifs': typeof DashboardMuthowifsRouteWithChildren
+  '/master-hotel-detail/$hotelId': typeof MasterHotelDetailHotelIdRoute
+  '/master-hotel-edit/$hotelId': typeof MasterHotelEditHotelIdRoute
+  '/master-transport-detail/$routeId': typeof MasterTransportDetailRouteIdRoute
+  '/master-transport-edit/$routeId': typeof MasterTransportEditRouteIdRoute
+  '/muthowif-booking-detail/$id': typeof MuthowifBookingDetailIdRoute
+  '/service-order-detail/$serviceOrderId': typeof ServiceOrderDetailServiceOrderIdRoute
+  '/service-order-edit/$serviceOrderId': typeof ServiceOrderEditServiceOrderIdRoute
+  '/service-orders/$id': typeof ServiceOrdersIdRoute
+  '/service-orders/create': typeof ServiceOrdersCreateRoute
+  '/store/admin': typeof StoreAdminRoute
+  '/store/cart': typeof StoreCartRoute
+  '/store/orders': typeof StoreOrdersRoute
+  '/transportation-booking-detail/$transportationBookingId': typeof TransportationBookingDetailTransportationBookingIdRoute
+  '/transportation-booking-edit/$transportationBookingId': typeof TransportationBookingEditTransportationBookingIdRoute
+  '/vouchers/create': typeof VouchersCreateRoute
+  '/clients/': typeof ClientsIndexRoute
+  '/store/': typeof StoreIndexRoute
+  '/vouchers/': typeof VouchersIndexRoute
+  '/agent/request/$requestId': typeof AgentRequestRequestIdRoute
+  '/bookings/$bookingId/edit': typeof BookingsBookingIdEditRoute
+  '/dashboard/muthowifs/$id': typeof DashboardMuthowifsIdRoute
+  '/edit-hotel-pricing/$hotelId/$pricingId': typeof EditHotelPricingHotelIdPricingIdRoute
+  '/edit-transport-pricing/$routeId/$pricingId': typeof EditTransportPricingRouteIdPricingIdRoute
+  '/store/order/$orderId': typeof StoreOrderOrderIdRoute
+  '/store/product/$productId': typeof StoreProductProductIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/admin'
+    | '/agent'
+    | '/agent-requests-admin'
+    | '/analytics'
+    | '/booking-detail'
+    | '/booking-edit'
+    | '/booking-finance'
+    | '/bookings'
+    | '/clear-auth-cache'
+    | '/clients'
+    | '/costs'
+    | '/create-booking'
+    | '/create-custom-la'
+    | '/create-invoice'
+    | '/create-manual-invoice'
+    | '/create-master-hotel'
+    | '/create-master-transport'
+    | '/create-muthowif-booking'
+    | '/create-receipt'
+    | '/create-service-order'
+    | '/create-transportation-booking'
+    | '/custom-la-requests'
     | '/dashboard'
-    | '/dashboard-test'
-    | '/debug'
     | '/forgot-password'
+    | '/invoice-detail'
+    | '/invoices'
+    | '/leads'
     | '/login'
+    | '/master-hotels'
+    | '/master-services'
+    | '/master-transport'
+    | '/muthowif-bookings'
+    | '/profile'
+    | '/receipt-detail'
+    | '/receipts'
     | '/register'
-    | '/test-auth'
-    | '/test-logs'
-    | '/test-redirect'
-    | '/test-simple-redirect'
-    | '/test-user-dashboard'
-    | '/test-user-dashboard-no-auth'
+    | '/reset-password'
+    | '/service-orders'
+    | '/store'
+    | '/transportation-bookings'
+    | '/vouchers'
+    | '/custom-la-quotation'
+    | '/agent-request-admin-detail/$id'
+    | '/agent/create-request'
+    | '/agent/dashboard'
+    | '/agent/notifications'
+    | '/agent/profile'
+    | '/agent/requests'
     | '/auth/callback'
+    | '/booking-view/$bookingId'
+    | '/client-detail/$clientId'
+    | '/clients/create'
+    | '/create-hotel-pricing/$hotelId'
+    | '/create-transport-pricing/$routeId'
+    | '/custom-la-detail/$id'
+    | '/custom-la-quotation/$id'
     | '/dashboard/admin'
-    | '/dashboard/user'
+    | '/dashboard/muthowifs'
+    | '/master-hotel-detail/$hotelId'
+    | '/master-hotel-edit/$hotelId'
+    | '/master-transport-detail/$routeId'
+    | '/master-transport-edit/$routeId'
+    | '/muthowif-booking-detail/$id'
+    | '/service-order-detail/$serviceOrderId'
+    | '/service-order-edit/$serviceOrderId'
+    | '/service-orders/$id'
+    | '/service-orders/create'
+    | '/store/admin'
+    | '/store/cart'
+    | '/store/orders'
+    | '/transportation-booking-detail/$transportationBookingId'
+    | '/transportation-booking-edit/$transportationBookingId'
+    | '/vouchers/create'
+    | '/clients/'
+    | '/store/'
+    | '/vouchers/'
+    | '/agent/request/$requestId'
+    | '/bookings/$bookingId/edit'
+    | '/dashboard/muthowifs/$id'
+    | '/edit-hotel-pricing/$hotelId/$pricingId'
+    | '/edit-transport-pricing/$routeId/$pricingId'
+    | '/store/order/$orderId'
+    | '/store/product/$productId'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/admin'
+    | '/agent'
+    | '/agent-requests-admin'
+    | '/analytics'
+    | '/booking-detail'
+    | '/booking-edit'
+    | '/booking-finance'
+    | '/bookings'
+    | '/clear-auth-cache'
+    | '/costs'
+    | '/create-booking'
+    | '/create-custom-la'
+    | '/create-invoice'
+    | '/create-manual-invoice'
+    | '/create-master-hotel'
+    | '/create-master-transport'
+    | '/create-muthowif-booking'
+    | '/create-receipt'
+    | '/create-service-order'
+    | '/create-transportation-booking'
+    | '/custom-la-requests'
     | '/dashboard'
-    | '/dashboard-test'
-    | '/debug'
     | '/forgot-password'
+    | '/invoice-detail'
+    | '/invoices'
+    | '/leads'
     | '/login'
+    | '/master-hotels'
+    | '/master-services'
+    | '/master-transport'
+    | '/muthowif-bookings'
+    | '/profile'
+    | '/receipt-detail'
+    | '/receipts'
     | '/register'
-    | '/test-auth'
-    | '/test-logs'
-    | '/test-redirect'
-    | '/test-simple-redirect'
-    | '/test-user-dashboard'
-    | '/test-user-dashboard-no-auth'
+    | '/reset-password'
+    | '/service-orders'
+    | '/transportation-bookings'
+    | '/custom-la-quotation'
+    | '/agent-request-admin-detail/$id'
+    | '/agent/create-request'
+    | '/agent/dashboard'
+    | '/agent/notifications'
+    | '/agent/profile'
+    | '/agent/requests'
     | '/auth/callback'
+    | '/booking-view/$bookingId'
+    | '/client-detail/$clientId'
+    | '/clients/create'
+    | '/create-hotel-pricing/$hotelId'
+    | '/create-transport-pricing/$routeId'
+    | '/custom-la-detail/$id'
+    | '/custom-la-quotation/$id'
     | '/dashboard/admin'
-    | '/dashboard/user'
+    | '/dashboard/muthowifs'
+    | '/master-hotel-detail/$hotelId'
+    | '/master-hotel-edit/$hotelId'
+    | '/master-transport-detail/$routeId'
+    | '/master-transport-edit/$routeId'
+    | '/muthowif-booking-detail/$id'
+    | '/service-order-detail/$serviceOrderId'
+    | '/service-order-edit/$serviceOrderId'
+    | '/service-orders/$id'
+    | '/service-orders/create'
+    | '/store/admin'
+    | '/store/cart'
+    | '/store/orders'
+    | '/transportation-booking-detail/$transportationBookingId'
+    | '/transportation-booking-edit/$transportationBookingId'
+    | '/vouchers/create'
+    | '/clients'
+    | '/store'
+    | '/vouchers'
+    | '/agent/request/$requestId'
+    | '/bookings/$bookingId/edit'
+    | '/dashboard/muthowifs/$id'
+    | '/edit-hotel-pricing/$hotelId/$pricingId'
+    | '/edit-transport-pricing/$routeId/$pricingId'
+    | '/store/order/$orderId'
+    | '/store/product/$productId'
   id:
     | '__root__'
     | '/'
+    | '/admin'
+    | '/agent'
+    | '/agent-requests-admin'
+    | '/analytics'
+    | '/booking-detail'
+    | '/booking-edit'
+    | '/booking-finance'
+    | '/bookings'
+    | '/clear-auth-cache'
+    | '/clients'
+    | '/costs'
+    | '/create-booking'
+    | '/create-custom-la'
+    | '/create-invoice'
+    | '/create-manual-invoice'
+    | '/create-master-hotel'
+    | '/create-master-transport'
+    | '/create-muthowif-booking'
+    | '/create-receipt'
+    | '/create-service-order'
+    | '/create-transportation-booking'
+    | '/custom-la-requests'
     | '/dashboard'
-    | '/dashboard-test'
-    | '/debug'
     | '/forgot-password'
+    | '/invoice-detail'
+    | '/invoices'
+    | '/leads'
     | '/login'
+    | '/master-hotels'
+    | '/master-services'
+    | '/master-transport'
+    | '/muthowif-bookings'
+    | '/profile'
+    | '/receipt-detail'
+    | '/receipts'
     | '/register'
-    | '/test-auth'
-    | '/test-logs'
-    | '/test-redirect'
-    | '/test-simple-redirect'
-    | '/test-user-dashboard'
-    | '/test-user-dashboard-no-auth'
+    | '/reset-password'
+    | '/service-orders'
+    | '/store'
+    | '/transportation-bookings'
+    | '/vouchers'
+    | '/custom-la-quotation/'
+    | '/agent-request-admin-detail/$id'
+    | '/agent/create-request'
+    | '/agent/dashboard'
+    | '/agent/notifications'
+    | '/agent/profile'
+    | '/agent/requests'
     | '/auth/callback'
+    | '/booking-view/$bookingId'
+    | '/client-detail/$clientId'
+    | '/clients/create'
+    | '/create-hotel-pricing/$hotelId'
+    | '/create-transport-pricing/$routeId'
+    | '/custom-la-detail/$id'
+    | '/custom-la-quotation/$id'
     | '/dashboard/admin'
-    | '/dashboard/user'
+    | '/dashboard/muthowifs'
+    | '/master-hotel-detail/$hotelId'
+    | '/master-hotel-edit/$hotelId'
+    | '/master-transport-detail/$routeId'
+    | '/master-transport-edit/$routeId'
+    | '/muthowif-booking-detail/$id'
+    | '/service-order-detail/$serviceOrderId'
+    | '/service-order-edit/$serviceOrderId'
+    | '/service-orders/$id'
+    | '/service-orders/create'
+    | '/store/admin'
+    | '/store/cart'
+    | '/store/orders'
+    | '/transportation-booking-detail/$transportationBookingId'
+    | '/transportation-booking-edit/$transportationBookingId'
+    | '/vouchers/create'
+    | '/clients/'
+    | '/store/'
+    | '/vouchers/'
+    | '/agent/request/$requestId'
+    | '/bookings/$bookingId/edit'
+    | '/dashboard/muthowifs/$id'
+    | '/edit-hotel-pricing/$hotelId/$pricingId'
+    | '/edit-transport-pricing/$routeId/$pricingId'
+    | '/store/order/$orderId'
+    | '/store/product/$productId'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AdminRoute: typeof AdminRoute
+  AgentRoute: typeof AgentRouteWithChildren
+  AgentRequestsAdminRoute: typeof AgentRequestsAdminRoute
+  AnalyticsRoute: typeof AnalyticsRoute
+  BookingDetailRoute: typeof BookingDetailRoute
+  BookingEditRoute: typeof BookingEditRoute
+  BookingFinanceRoute: typeof BookingFinanceRoute
+  BookingsRoute: typeof BookingsRouteWithChildren
+  ClearAuthCacheRoute: typeof ClearAuthCacheRoute
+  ClientsRoute: typeof ClientsRouteWithChildren
+  CostsRoute: typeof CostsRoute
+  CreateBookingRoute: typeof CreateBookingRoute
+  CreateCustomLaRoute: typeof CreateCustomLaRoute
+  CreateInvoiceRoute: typeof CreateInvoiceRoute
+  CreateManualInvoiceRoute: typeof CreateManualInvoiceRoute
+  CreateMasterHotelRoute: typeof CreateMasterHotelRoute
+  CreateMasterTransportRoute: typeof CreateMasterTransportRoute
+  CreateMuthowifBookingRoute: typeof CreateMuthowifBookingRoute
+  CreateReceiptRoute: typeof CreateReceiptRoute
+  CreateServiceOrderRoute: typeof CreateServiceOrderRoute
+  CreateTransportationBookingRoute: typeof CreateTransportationBookingRoute
+  CustomLaRequestsRoute: typeof CustomLaRequestsRoute
   DashboardRoute: typeof DashboardRouteWithChildren
-  DashboardTestRoute: typeof DashboardTestRoute
-  DebugRoute: typeof DebugRoute
   ForgotPasswordRoute: typeof ForgotPasswordRoute
+  InvoiceDetailRoute: typeof InvoiceDetailRoute
+  InvoicesRoute: typeof InvoicesRoute
+  LeadsRoute: typeof LeadsRoute
   LoginRoute: typeof LoginRoute
+  MasterHotelsRoute: typeof MasterHotelsRoute
+  MasterServicesRoute: typeof MasterServicesRoute
+  MasterTransportRoute: typeof MasterTransportRoute
+  MuthowifBookingsRoute: typeof MuthowifBookingsRoute
+  ProfileRoute: typeof ProfileRoute
+  ReceiptDetailRoute: typeof ReceiptDetailRoute
+  ReceiptsRoute: typeof ReceiptsRoute
   RegisterRoute: typeof RegisterRoute
-  TestAuthRoute: typeof TestAuthRoute
-  TestLogsRoute: typeof TestLogsRoute
-  TestRedirectRoute: typeof TestRedirectRoute
-  TestSimpleRedirectRoute: typeof TestSimpleRedirectRoute
-  TestUserDashboardRoute: typeof TestUserDashboardRoute
-  TestUserDashboardNoAuthRoute: typeof TestUserDashboardNoAuthRoute
+  ResetPasswordRoute: typeof ResetPasswordRoute
+  ServiceOrdersRoute: typeof ServiceOrdersRouteWithChildren
+  StoreRoute: typeof StoreRouteWithChildren
+  TransportationBookingsRoute: typeof TransportationBookingsRoute
+  VouchersRoute: typeof VouchersRouteWithChildren
+  CustomLaQuotationRoute: typeof CustomLaQuotationRoute
+  AgentRequestAdminDetailIdRoute: typeof AgentRequestAdminDetailIdRoute
   AuthCallbackRoute: typeof AuthCallbackRoute
+  BookingViewBookingIdRoute: typeof BookingViewBookingIdRoute
+  ClientDetailClientIdRoute: typeof ClientDetailClientIdRoute
+  CreateHotelPricingHotelIdRoute: typeof CreateHotelPricingHotelIdRoute
+  CreateTransportPricingRouteIdRoute: typeof CreateTransportPricingRouteIdRoute
+  CustomLaDetailIdRoute: typeof CustomLaDetailIdRoute
+  CustomLaQuotationIdRoute: typeof CustomLaQuotationIdRoute
+  MasterHotelDetailHotelIdRoute: typeof MasterHotelDetailHotelIdRoute
+  MasterHotelEditHotelIdRoute: typeof MasterHotelEditHotelIdRoute
+  MasterTransportDetailRouteIdRoute: typeof MasterTransportDetailRouteIdRoute
+  MasterTransportEditRouteIdRoute: typeof MasterTransportEditRouteIdRoute
+  MuthowifBookingDetailIdRoute: typeof MuthowifBookingDetailIdRoute
+  ServiceOrderDetailServiceOrderIdRoute: typeof ServiceOrderDetailServiceOrderIdRoute
+  ServiceOrderEditServiceOrderIdRoute: typeof ServiceOrderEditServiceOrderIdRoute
+  TransportationBookingDetailTransportationBookingIdRoute: typeof TransportationBookingDetailTransportationBookingIdRoute
+  TransportationBookingEditTransportationBookingIdRoute: typeof TransportationBookingEditTransportationBookingIdRoute
+  EditHotelPricingHotelIdPricingIdRoute: typeof EditHotelPricingHotelIdPricingIdRoute
+  EditTransportPricingRouteIdPricingIdRoute: typeof EditTransportPricingRouteIdPricingIdRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/test-user-dashboard-no-auth': {
-      id: '/test-user-dashboard-no-auth'
-      path: '/test-user-dashboard-no-auth'
-      fullPath: '/test-user-dashboard-no-auth'
-      preLoaderRoute: typeof TestUserDashboardNoAuthRouteImport
+    '/vouchers': {
+      id: '/vouchers'
+      path: '/vouchers'
+      fullPath: '/vouchers'
+      preLoaderRoute: typeof VouchersRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/test-user-dashboard': {
-      id: '/test-user-dashboard'
-      path: '/test-user-dashboard'
-      fullPath: '/test-user-dashboard'
-      preLoaderRoute: typeof TestUserDashboardRouteImport
+    '/transportation-bookings': {
+      id: '/transportation-bookings'
+      path: '/transportation-bookings'
+      fullPath: '/transportation-bookings'
+      preLoaderRoute: typeof TransportationBookingsRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/test-simple-redirect': {
-      id: '/test-simple-redirect'
-      path: '/test-simple-redirect'
-      fullPath: '/test-simple-redirect'
-      preLoaderRoute: typeof TestSimpleRedirectRouteImport
+    '/store': {
+      id: '/store'
+      path: '/store'
+      fullPath: '/store'
+      preLoaderRoute: typeof StoreRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/test-redirect': {
-      id: '/test-redirect'
-      path: '/test-redirect'
-      fullPath: '/test-redirect'
-      preLoaderRoute: typeof TestRedirectRouteImport
+    '/service-orders': {
+      id: '/service-orders'
+      path: '/service-orders'
+      fullPath: '/service-orders'
+      preLoaderRoute: typeof ServiceOrdersRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/test-logs': {
-      id: '/test-logs'
-      path: '/test-logs'
-      fullPath: '/test-logs'
-      preLoaderRoute: typeof TestLogsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/test-auth': {
-      id: '/test-auth'
-      path: '/test-auth'
-      fullPath: '/test-auth'
-      preLoaderRoute: typeof TestAuthRouteImport
+    '/reset-password': {
+      id: '/reset-password'
+      path: '/reset-password'
+      fullPath: '/reset-password'
+      preLoaderRoute: typeof ResetPasswordRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/register': {
@@ -287,11 +1151,81 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof RegisterRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/receipts': {
+      id: '/receipts'
+      path: '/receipts'
+      fullPath: '/receipts'
+      preLoaderRoute: typeof ReceiptsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/receipt-detail': {
+      id: '/receipt-detail'
+      path: '/receipt-detail'
+      fullPath: '/receipt-detail'
+      preLoaderRoute: typeof ReceiptDetailRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/profile': {
+      id: '/profile'
+      path: '/profile'
+      fullPath: '/profile'
+      preLoaderRoute: typeof ProfileRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/muthowif-bookings': {
+      id: '/muthowif-bookings'
+      path: '/muthowif-bookings'
+      fullPath: '/muthowif-bookings'
+      preLoaderRoute: typeof MuthowifBookingsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/master-transport': {
+      id: '/master-transport'
+      path: '/master-transport'
+      fullPath: '/master-transport'
+      preLoaderRoute: typeof MasterTransportRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/master-services': {
+      id: '/master-services'
+      path: '/master-services'
+      fullPath: '/master-services'
+      preLoaderRoute: typeof MasterServicesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/master-hotels': {
+      id: '/master-hotels'
+      path: '/master-hotels'
+      fullPath: '/master-hotels'
+      preLoaderRoute: typeof MasterHotelsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/login': {
       id: '/login'
       path: '/login'
       fullPath: '/login'
       preLoaderRoute: typeof LoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/leads': {
+      id: '/leads'
+      path: '/leads'
+      fullPath: '/leads'
+      preLoaderRoute: typeof LeadsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/invoices': {
+      id: '/invoices'
+      path: '/invoices'
+      fullPath: '/invoices'
+      preLoaderRoute: typeof InvoicesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/invoice-detail': {
+      id: '/invoice-detail'
+      path: '/invoice-detail'
+      fullPath: '/invoice-detail'
+      preLoaderRoute: typeof InvoiceDetailRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/forgot-password': {
@@ -301,25 +1235,165 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ForgotPasswordRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/debug': {
-      id: '/debug'
-      path: '/debug'
-      fullPath: '/debug'
-      preLoaderRoute: typeof DebugRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/dashboard-test': {
-      id: '/dashboard-test'
-      path: '/dashboard-test'
-      fullPath: '/dashboard-test'
-      preLoaderRoute: typeof DashboardTestRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/dashboard': {
       id: '/dashboard'
       path: '/dashboard'
       fullPath: '/dashboard'
       preLoaderRoute: typeof DashboardRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/custom-la-requests': {
+      id: '/custom-la-requests'
+      path: '/custom-la-requests'
+      fullPath: '/custom-la-requests'
+      preLoaderRoute: typeof CustomLaRequestsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/create-transportation-booking': {
+      id: '/create-transportation-booking'
+      path: '/create-transportation-booking'
+      fullPath: '/create-transportation-booking'
+      preLoaderRoute: typeof CreateTransportationBookingRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/create-service-order': {
+      id: '/create-service-order'
+      path: '/create-service-order'
+      fullPath: '/create-service-order'
+      preLoaderRoute: typeof CreateServiceOrderRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/create-receipt': {
+      id: '/create-receipt'
+      path: '/create-receipt'
+      fullPath: '/create-receipt'
+      preLoaderRoute: typeof CreateReceiptRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/create-muthowif-booking': {
+      id: '/create-muthowif-booking'
+      path: '/create-muthowif-booking'
+      fullPath: '/create-muthowif-booking'
+      preLoaderRoute: typeof CreateMuthowifBookingRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/create-master-transport': {
+      id: '/create-master-transport'
+      path: '/create-master-transport'
+      fullPath: '/create-master-transport'
+      preLoaderRoute: typeof CreateMasterTransportRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/create-master-hotel': {
+      id: '/create-master-hotel'
+      path: '/create-master-hotel'
+      fullPath: '/create-master-hotel'
+      preLoaderRoute: typeof CreateMasterHotelRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/create-manual-invoice': {
+      id: '/create-manual-invoice'
+      path: '/create-manual-invoice'
+      fullPath: '/create-manual-invoice'
+      preLoaderRoute: typeof CreateManualInvoiceRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/create-invoice': {
+      id: '/create-invoice'
+      path: '/create-invoice'
+      fullPath: '/create-invoice'
+      preLoaderRoute: typeof CreateInvoiceRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/create-custom-la': {
+      id: '/create-custom-la'
+      path: '/create-custom-la'
+      fullPath: '/create-custom-la'
+      preLoaderRoute: typeof CreateCustomLaRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/create-booking': {
+      id: '/create-booking'
+      path: '/create-booking'
+      fullPath: '/create-booking'
+      preLoaderRoute: typeof CreateBookingRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/costs': {
+      id: '/costs'
+      path: '/costs'
+      fullPath: '/costs'
+      preLoaderRoute: typeof CostsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/clients': {
+      id: '/clients'
+      path: '/clients'
+      fullPath: '/clients'
+      preLoaderRoute: typeof ClientsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/clear-auth-cache': {
+      id: '/clear-auth-cache'
+      path: '/clear-auth-cache'
+      fullPath: '/clear-auth-cache'
+      preLoaderRoute: typeof ClearAuthCacheRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/bookings': {
+      id: '/bookings'
+      path: '/bookings'
+      fullPath: '/bookings'
+      preLoaderRoute: typeof BookingsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/booking-finance': {
+      id: '/booking-finance'
+      path: '/booking-finance'
+      fullPath: '/booking-finance'
+      preLoaderRoute: typeof BookingFinanceRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/booking-edit': {
+      id: '/booking-edit'
+      path: '/booking-edit'
+      fullPath: '/booking-edit'
+      preLoaderRoute: typeof BookingEditRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/booking-detail': {
+      id: '/booking-detail'
+      path: '/booking-detail'
+      fullPath: '/booking-detail'
+      preLoaderRoute: typeof BookingDetailRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/analytics': {
+      id: '/analytics'
+      path: '/analytics'
+      fullPath: '/analytics'
+      preLoaderRoute: typeof AnalyticsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/agent-requests-admin': {
+      id: '/agent-requests-admin'
+      path: '/agent-requests-admin'
+      fullPath: '/agent-requests-admin'
+      preLoaderRoute: typeof AgentRequestsAdminRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/agent': {
+      id: '/agent'
+      path: '/agent'
+      fullPath: '/agent'
+      preLoaderRoute: typeof AgentRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/admin': {
+      id: '/admin'
+      path: '/admin'
+      fullPath: '/admin'
+      preLoaderRoute: typeof AdminRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/': {
@@ -329,11 +1403,137 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/dashboard/user': {
-      id: '/dashboard/user'
-      path: '/user'
-      fullPath: '/dashboard/user'
-      preLoaderRoute: typeof DashboardUserRouteImport
+    '/vouchers/': {
+      id: '/vouchers/'
+      path: '/'
+      fullPath: '/vouchers/'
+      preLoaderRoute: typeof VouchersIndexRouteImport
+      parentRoute: typeof VouchersRoute
+    }
+    '/store/': {
+      id: '/store/'
+      path: '/'
+      fullPath: '/store/'
+      preLoaderRoute: typeof StoreIndexRouteImport
+      parentRoute: typeof StoreRoute
+    }
+    '/clients/': {
+      id: '/clients/'
+      path: '/'
+      fullPath: '/clients/'
+      preLoaderRoute: typeof ClientsIndexRouteImport
+      parentRoute: typeof ClientsRoute
+    }
+    '/vouchers/create': {
+      id: '/vouchers/create'
+      path: '/create'
+      fullPath: '/vouchers/create'
+      preLoaderRoute: typeof VouchersCreateRouteImport
+      parentRoute: typeof VouchersRoute
+    }
+    '/transportation-booking-edit/$transportationBookingId': {
+      id: '/transportation-booking-edit/$transportationBookingId'
+      path: '/transportation-booking-edit/$transportationBookingId'
+      fullPath: '/transportation-booking-edit/$transportationBookingId'
+      preLoaderRoute: typeof TransportationBookingEditTransportationBookingIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/transportation-booking-detail/$transportationBookingId': {
+      id: '/transportation-booking-detail/$transportationBookingId'
+      path: '/transportation-booking-detail/$transportationBookingId'
+      fullPath: '/transportation-booking-detail/$transportationBookingId'
+      preLoaderRoute: typeof TransportationBookingDetailTransportationBookingIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/store/orders': {
+      id: '/store/orders'
+      path: '/orders'
+      fullPath: '/store/orders'
+      preLoaderRoute: typeof StoreOrdersRouteImport
+      parentRoute: typeof StoreRoute
+    }
+    '/store/cart': {
+      id: '/store/cart'
+      path: '/cart'
+      fullPath: '/store/cart'
+      preLoaderRoute: typeof StoreCartRouteImport
+      parentRoute: typeof StoreRoute
+    }
+    '/store/admin': {
+      id: '/store/admin'
+      path: '/admin'
+      fullPath: '/store/admin'
+      preLoaderRoute: typeof StoreAdminRouteImport
+      parentRoute: typeof StoreRoute
+    }
+    '/service-orders/create': {
+      id: '/service-orders/create'
+      path: '/create'
+      fullPath: '/service-orders/create'
+      preLoaderRoute: typeof ServiceOrdersCreateRouteImport
+      parentRoute: typeof ServiceOrdersRoute
+    }
+    '/service-orders/$id': {
+      id: '/service-orders/$id'
+      path: '/$id'
+      fullPath: '/service-orders/$id'
+      preLoaderRoute: typeof ServiceOrdersIdRouteImport
+      parentRoute: typeof ServiceOrdersRoute
+    }
+    '/service-order-edit/$serviceOrderId': {
+      id: '/service-order-edit/$serviceOrderId'
+      path: '/service-order-edit/$serviceOrderId'
+      fullPath: '/service-order-edit/$serviceOrderId'
+      preLoaderRoute: typeof ServiceOrderEditServiceOrderIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/service-order-detail/$serviceOrderId': {
+      id: '/service-order-detail/$serviceOrderId'
+      path: '/service-order-detail/$serviceOrderId'
+      fullPath: '/service-order-detail/$serviceOrderId'
+      preLoaderRoute: typeof ServiceOrderDetailServiceOrderIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/muthowif-booking-detail/$id': {
+      id: '/muthowif-booking-detail/$id'
+      path: '/muthowif-booking-detail/$id'
+      fullPath: '/muthowif-booking-detail/$id'
+      preLoaderRoute: typeof MuthowifBookingDetailIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/master-transport-edit/$routeId': {
+      id: '/master-transport-edit/$routeId'
+      path: '/master-transport-edit/$routeId'
+      fullPath: '/master-transport-edit/$routeId'
+      preLoaderRoute: typeof MasterTransportEditRouteIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/master-transport-detail/$routeId': {
+      id: '/master-transport-detail/$routeId'
+      path: '/master-transport-detail/$routeId'
+      fullPath: '/master-transport-detail/$routeId'
+      preLoaderRoute: typeof MasterTransportDetailRouteIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/master-hotel-edit/$hotelId': {
+      id: '/master-hotel-edit/$hotelId'
+      path: '/master-hotel-edit/$hotelId'
+      fullPath: '/master-hotel-edit/$hotelId'
+      preLoaderRoute: typeof MasterHotelEditHotelIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/master-hotel-detail/$hotelId': {
+      id: '/master-hotel-detail/$hotelId'
+      path: '/master-hotel-detail/$hotelId'
+      fullPath: '/master-hotel-detail/$hotelId'
+      preLoaderRoute: typeof MasterHotelDetailHotelIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/dashboard/muthowifs': {
+      id: '/dashboard/muthowifs'
+      path: '/muthowifs'
+      fullPath: '/dashboard/muthowifs'
+      preLoaderRoute: typeof DashboardMuthowifsRouteImport
       parentRoute: typeof DashboardRoute
     }
     '/dashboard/admin': {
@@ -343,6 +1543,55 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DashboardAdminRouteImport
       parentRoute: typeof DashboardRoute
     }
+    '/custom-la-quotation/$id': {
+      id: '/custom-la-quotation/$id'
+      path: '/custom-la-quotation/$id'
+      fullPath: '/custom-la-quotation/$id'
+      preLoaderRoute: typeof CustomLaQuotationIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/custom-la-detail/$id': {
+      id: '/custom-la-detail/$id'
+      path: '/custom-la-detail/$id'
+      fullPath: '/custom-la-detail/$id'
+      preLoaderRoute: typeof CustomLaDetailIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/create-transport-pricing/$routeId': {
+      id: '/create-transport-pricing/$routeId'
+      path: '/create-transport-pricing/$routeId'
+      fullPath: '/create-transport-pricing/$routeId'
+      preLoaderRoute: typeof CreateTransportPricingRouteIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/create-hotel-pricing/$hotelId': {
+      id: '/create-hotel-pricing/$hotelId'
+      path: '/create-hotel-pricing/$hotelId'
+      fullPath: '/create-hotel-pricing/$hotelId'
+      preLoaderRoute: typeof CreateHotelPricingHotelIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/clients/create': {
+      id: '/clients/create'
+      path: '/create'
+      fullPath: '/clients/create'
+      preLoaderRoute: typeof ClientsCreateRouteImport
+      parentRoute: typeof ClientsRoute
+    }
+    '/client-detail/$clientId': {
+      id: '/client-detail/$clientId'
+      path: '/client-detail/$clientId'
+      fullPath: '/client-detail/$clientId'
+      preLoaderRoute: typeof ClientDetailClientIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/booking-view/$bookingId': {
+      id: '/booking-view/$bookingId'
+      path: '/booking-view/$bookingId'
+      fullPath: '/booking-view/$bookingId'
+      preLoaderRoute: typeof BookingViewBookingIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/auth/callback': {
       id: '/auth/callback'
       path: '/auth/callback'
@@ -350,38 +1599,291 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthCallbackRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/agent/requests': {
+      id: '/agent/requests'
+      path: '/requests'
+      fullPath: '/agent/requests'
+      preLoaderRoute: typeof AgentRequestsRouteImport
+      parentRoute: typeof AgentRoute
+    }
+    '/agent/profile': {
+      id: '/agent/profile'
+      path: '/profile'
+      fullPath: '/agent/profile'
+      preLoaderRoute: typeof AgentProfileRouteImport
+      parentRoute: typeof AgentRoute
+    }
+    '/agent/notifications': {
+      id: '/agent/notifications'
+      path: '/notifications'
+      fullPath: '/agent/notifications'
+      preLoaderRoute: typeof AgentNotificationsRouteImport
+      parentRoute: typeof AgentRoute
+    }
+    '/agent/dashboard': {
+      id: '/agent/dashboard'
+      path: '/dashboard'
+      fullPath: '/agent/dashboard'
+      preLoaderRoute: typeof AgentDashboardRouteImport
+      parentRoute: typeof AgentRoute
+    }
+    '/agent/create-request': {
+      id: '/agent/create-request'
+      path: '/create-request'
+      fullPath: '/agent/create-request'
+      preLoaderRoute: typeof AgentCreateRequestRouteImport
+      parentRoute: typeof AgentRoute
+    }
+    '/agent-request-admin-detail/$id': {
+      id: '/agent-request-admin-detail/$id'
+      path: '/agent-request-admin-detail/$id'
+      fullPath: '/agent-request-admin-detail/$id'
+      preLoaderRoute: typeof AgentRequestAdminDetailIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/custom-la-quotation/': {
+      id: '/custom-la-quotation/'
+      path: '/custom-la-quotation'
+      fullPath: '/custom-la-quotation'
+      preLoaderRoute: typeof CustomLaQuotationRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/store/product/$productId': {
+      id: '/store/product/$productId'
+      path: '/product/$productId'
+      fullPath: '/store/product/$productId'
+      preLoaderRoute: typeof StoreProductProductIdRouteImport
+      parentRoute: typeof StoreRoute
+    }
+    '/store/order/$orderId': {
+      id: '/store/order/$orderId'
+      path: '/order/$orderId'
+      fullPath: '/store/order/$orderId'
+      preLoaderRoute: typeof StoreOrderOrderIdRouteImport
+      parentRoute: typeof StoreRoute
+    }
+    '/edit-transport-pricing/$routeId/$pricingId': {
+      id: '/edit-transport-pricing/$routeId/$pricingId'
+      path: '/edit-transport-pricing/$routeId/$pricingId'
+      fullPath: '/edit-transport-pricing/$routeId/$pricingId'
+      preLoaderRoute: typeof EditTransportPricingRouteIdPricingIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/edit-hotel-pricing/$hotelId/$pricingId': {
+      id: '/edit-hotel-pricing/$hotelId/$pricingId'
+      path: '/edit-hotel-pricing/$hotelId/$pricingId'
+      fullPath: '/edit-hotel-pricing/$hotelId/$pricingId'
+      preLoaderRoute: typeof EditHotelPricingHotelIdPricingIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/dashboard/muthowifs/$id': {
+      id: '/dashboard/muthowifs/$id'
+      path: '/$id'
+      fullPath: '/dashboard/muthowifs/$id'
+      preLoaderRoute: typeof DashboardMuthowifsIdRouteImport
+      parentRoute: typeof DashboardMuthowifsRoute
+    }
+    '/bookings/$bookingId/edit': {
+      id: '/bookings/$bookingId/edit'
+      path: '/$bookingId/edit'
+      fullPath: '/bookings/$bookingId/edit'
+      preLoaderRoute: typeof BookingsBookingIdEditRouteImport
+      parentRoute: typeof BookingsRoute
+    }
+    '/agent/request/$requestId': {
+      id: '/agent/request/$requestId'
+      path: '/request/$requestId'
+      fullPath: '/agent/request/$requestId'
+      preLoaderRoute: typeof AgentRequestRequestIdRouteImport
+      parentRoute: typeof AgentRoute
+    }
   }
 }
 
+interface AgentRouteChildren {
+  AgentCreateRequestRoute: typeof AgentCreateRequestRoute
+  AgentDashboardRoute: typeof AgentDashboardRoute
+  AgentNotificationsRoute: typeof AgentNotificationsRoute
+  AgentProfileRoute: typeof AgentProfileRoute
+  AgentRequestsRoute: typeof AgentRequestsRoute
+  AgentRequestRequestIdRoute: typeof AgentRequestRequestIdRoute
+}
+
+const AgentRouteChildren: AgentRouteChildren = {
+  AgentCreateRequestRoute: AgentCreateRequestRoute,
+  AgentDashboardRoute: AgentDashboardRoute,
+  AgentNotificationsRoute: AgentNotificationsRoute,
+  AgentProfileRoute: AgentProfileRoute,
+  AgentRequestsRoute: AgentRequestsRoute,
+  AgentRequestRequestIdRoute: AgentRequestRequestIdRoute,
+}
+
+const AgentRouteWithChildren = AgentRoute._addFileChildren(AgentRouteChildren)
+
+interface BookingsRouteChildren {
+  BookingsBookingIdEditRoute: typeof BookingsBookingIdEditRoute
+}
+
+const BookingsRouteChildren: BookingsRouteChildren = {
+  BookingsBookingIdEditRoute: BookingsBookingIdEditRoute,
+}
+
+const BookingsRouteWithChildren = BookingsRoute._addFileChildren(
+  BookingsRouteChildren,
+)
+
+interface ClientsRouteChildren {
+  ClientsCreateRoute: typeof ClientsCreateRoute
+  ClientsIndexRoute: typeof ClientsIndexRoute
+}
+
+const ClientsRouteChildren: ClientsRouteChildren = {
+  ClientsCreateRoute: ClientsCreateRoute,
+  ClientsIndexRoute: ClientsIndexRoute,
+}
+
+const ClientsRouteWithChildren =
+  ClientsRoute._addFileChildren(ClientsRouteChildren)
+
+interface DashboardMuthowifsRouteChildren {
+  DashboardMuthowifsIdRoute: typeof DashboardMuthowifsIdRoute
+}
+
+const DashboardMuthowifsRouteChildren: DashboardMuthowifsRouteChildren = {
+  DashboardMuthowifsIdRoute: DashboardMuthowifsIdRoute,
+}
+
+const DashboardMuthowifsRouteWithChildren =
+  DashboardMuthowifsRoute._addFileChildren(DashboardMuthowifsRouteChildren)
+
 interface DashboardRouteChildren {
   DashboardAdminRoute: typeof DashboardAdminRoute
-  DashboardUserRoute: typeof DashboardUserRoute
+  DashboardMuthowifsRoute: typeof DashboardMuthowifsRouteWithChildren
 }
 
 const DashboardRouteChildren: DashboardRouteChildren = {
   DashboardAdminRoute: DashboardAdminRoute,
-  DashboardUserRoute: DashboardUserRoute,
+  DashboardMuthowifsRoute: DashboardMuthowifsRouteWithChildren,
 }
 
 const DashboardRouteWithChildren = DashboardRoute._addFileChildren(
   DashboardRouteChildren,
 )
 
+interface ServiceOrdersRouteChildren {
+  ServiceOrdersIdRoute: typeof ServiceOrdersIdRoute
+  ServiceOrdersCreateRoute: typeof ServiceOrdersCreateRoute
+}
+
+const ServiceOrdersRouteChildren: ServiceOrdersRouteChildren = {
+  ServiceOrdersIdRoute: ServiceOrdersIdRoute,
+  ServiceOrdersCreateRoute: ServiceOrdersCreateRoute,
+}
+
+const ServiceOrdersRouteWithChildren = ServiceOrdersRoute._addFileChildren(
+  ServiceOrdersRouteChildren,
+)
+
+interface StoreRouteChildren {
+  StoreAdminRoute: typeof StoreAdminRoute
+  StoreCartRoute: typeof StoreCartRoute
+  StoreOrdersRoute: typeof StoreOrdersRoute
+  StoreIndexRoute: typeof StoreIndexRoute
+  StoreOrderOrderIdRoute: typeof StoreOrderOrderIdRoute
+  StoreProductProductIdRoute: typeof StoreProductProductIdRoute
+}
+
+const StoreRouteChildren: StoreRouteChildren = {
+  StoreAdminRoute: StoreAdminRoute,
+  StoreCartRoute: StoreCartRoute,
+  StoreOrdersRoute: StoreOrdersRoute,
+  StoreIndexRoute: StoreIndexRoute,
+  StoreOrderOrderIdRoute: StoreOrderOrderIdRoute,
+  StoreProductProductIdRoute: StoreProductProductIdRoute,
+}
+
+const StoreRouteWithChildren = StoreRoute._addFileChildren(StoreRouteChildren)
+
+interface VouchersRouteChildren {
+  VouchersCreateRoute: typeof VouchersCreateRoute
+  VouchersIndexRoute: typeof VouchersIndexRoute
+}
+
+const VouchersRouteChildren: VouchersRouteChildren = {
+  VouchersCreateRoute: VouchersCreateRoute,
+  VouchersIndexRoute: VouchersIndexRoute,
+}
+
+const VouchersRouteWithChildren = VouchersRoute._addFileChildren(
+  VouchersRouteChildren,
+)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AdminRoute: AdminRoute,
+  AgentRoute: AgentRouteWithChildren,
+  AgentRequestsAdminRoute: AgentRequestsAdminRoute,
+  AnalyticsRoute: AnalyticsRoute,
+  BookingDetailRoute: BookingDetailRoute,
+  BookingEditRoute: BookingEditRoute,
+  BookingFinanceRoute: BookingFinanceRoute,
+  BookingsRoute: BookingsRouteWithChildren,
+  ClearAuthCacheRoute: ClearAuthCacheRoute,
+  ClientsRoute: ClientsRouteWithChildren,
+  CostsRoute: CostsRoute,
+  CreateBookingRoute: CreateBookingRoute,
+  CreateCustomLaRoute: CreateCustomLaRoute,
+  CreateInvoiceRoute: CreateInvoiceRoute,
+  CreateManualInvoiceRoute: CreateManualInvoiceRoute,
+  CreateMasterHotelRoute: CreateMasterHotelRoute,
+  CreateMasterTransportRoute: CreateMasterTransportRoute,
+  CreateMuthowifBookingRoute: CreateMuthowifBookingRoute,
+  CreateReceiptRoute: CreateReceiptRoute,
+  CreateServiceOrderRoute: CreateServiceOrderRoute,
+  CreateTransportationBookingRoute: CreateTransportationBookingRoute,
+  CustomLaRequestsRoute: CustomLaRequestsRoute,
   DashboardRoute: DashboardRouteWithChildren,
-  DashboardTestRoute: DashboardTestRoute,
-  DebugRoute: DebugRoute,
   ForgotPasswordRoute: ForgotPasswordRoute,
+  InvoiceDetailRoute: InvoiceDetailRoute,
+  InvoicesRoute: InvoicesRoute,
+  LeadsRoute: LeadsRoute,
   LoginRoute: LoginRoute,
+  MasterHotelsRoute: MasterHotelsRoute,
+  MasterServicesRoute: MasterServicesRoute,
+  MasterTransportRoute: MasterTransportRoute,
+  MuthowifBookingsRoute: MuthowifBookingsRoute,
+  ProfileRoute: ProfileRoute,
+  ReceiptDetailRoute: ReceiptDetailRoute,
+  ReceiptsRoute: ReceiptsRoute,
   RegisterRoute: RegisterRoute,
-  TestAuthRoute: TestAuthRoute,
-  TestLogsRoute: TestLogsRoute,
-  TestRedirectRoute: TestRedirectRoute,
-  TestSimpleRedirectRoute: TestSimpleRedirectRoute,
-  TestUserDashboardRoute: TestUserDashboardRoute,
-  TestUserDashboardNoAuthRoute: TestUserDashboardNoAuthRoute,
+  ResetPasswordRoute: ResetPasswordRoute,
+  ServiceOrdersRoute: ServiceOrdersRouteWithChildren,
+  StoreRoute: StoreRouteWithChildren,
+  TransportationBookingsRoute: TransportationBookingsRoute,
+  VouchersRoute: VouchersRouteWithChildren,
+  CustomLaQuotationRoute: CustomLaQuotationRoute,
+  AgentRequestAdminDetailIdRoute: AgentRequestAdminDetailIdRoute,
   AuthCallbackRoute: AuthCallbackRoute,
+  BookingViewBookingIdRoute: BookingViewBookingIdRoute,
+  ClientDetailClientIdRoute: ClientDetailClientIdRoute,
+  CreateHotelPricingHotelIdRoute: CreateHotelPricingHotelIdRoute,
+  CreateTransportPricingRouteIdRoute: CreateTransportPricingRouteIdRoute,
+  CustomLaDetailIdRoute: CustomLaDetailIdRoute,
+  CustomLaQuotationIdRoute: CustomLaQuotationIdRoute,
+  MasterHotelDetailHotelIdRoute: MasterHotelDetailHotelIdRoute,
+  MasterHotelEditHotelIdRoute: MasterHotelEditHotelIdRoute,
+  MasterTransportDetailRouteIdRoute: MasterTransportDetailRouteIdRoute,
+  MasterTransportEditRouteIdRoute: MasterTransportEditRouteIdRoute,
+  MuthowifBookingDetailIdRoute: MuthowifBookingDetailIdRoute,
+  ServiceOrderDetailServiceOrderIdRoute: ServiceOrderDetailServiceOrderIdRoute,
+  ServiceOrderEditServiceOrderIdRoute: ServiceOrderEditServiceOrderIdRoute,
+  TransportationBookingDetailTransportationBookingIdRoute:
+    TransportationBookingDetailTransportationBookingIdRoute,
+  TransportationBookingEditTransportationBookingIdRoute:
+    TransportationBookingEditTransportationBookingIdRoute,
+  EditHotelPricingHotelIdPricingIdRoute: EditHotelPricingHotelIdPricingIdRoute,
+  EditTransportPricingRouteIdPricingIdRoute:
+    EditTransportPricingRouteIdPricingIdRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

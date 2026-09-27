@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html class="no-js" lang="id">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Invoice {{invoiceNo}}</title>
+  <style>
+    /* ====== Base ====== */
+    body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;line-height:1.4;color:#374151;background:#f9fafb;font-size:12px;margin:0;padding:0}
+    .cs-container{max-width:800px;margin:20px auto;padding:24px;background:#fff;box-shadow:0 10px 15px -3px rgba(0,0,0,.1);border-radius:8px}
+    .cs-flex{display:flex}.cs-justify-between{justify-content:space-between}.cs-align-start{align-items:flex-start}.cs-align-center{align-items:center}
+    .cs-text-right{text-align:right}.cs-text-center{text-align:center}
+    .cs-mb-1{margin-bottom:3px}.cs-mb-2{margin-bottom:6px}.cs-mb-3{margin-bottom:9px}.cs-mb-4{margin-bottom:12px}.cs-mb-6{margin-bottom:16px}.cs-mb-8{margin-bottom:20px}.cs-mt-8{margin-top:20px}
+    .cs-font-bold{font-weight:700}.cs-font-semibold{font-weight:600}
+    .cs-text-xs{font-size:10px}.cs-text-sm{font-size:11px}.cs-text-base{font-size:13px}.cs-text-lg{font-size:15px}.cs-text-xl{font-size:18px}.cs-text-2xl{font-size:20px}
+    .cs-text-gray-400{color:#9ca3af}.cs-text-gray-500{color:#6b7280}.cs-text-gray-600{color:#4b5563}.cs-text-gray-700{color:#374151}.cs-text-gray-800{color:#1f2937}
+    .cs-badge{display:inline-block;padding:3px 8px;border-radius:999px;background:#eef2ff;color:#3730a3;font-weight:700;font-size:10px;text-transform:uppercase;letter-spacing:0.5px}
+    .cs-divider{height:1px;background:#e5e7eb;margin:18px 0}
+    .cs-card{background:#f9fafb;border:1px solid #e5e7eb;border-radius:6px;padding:12px}
+    .cs-info-card{background:#f9fafb;border:1px solid #e5e7eb;border-radius:6px;padding:14px;margin-top:14px}
+    .cs-table{width:100%;border-collapse:collapse;margin-top:8px}
+    .cs-table th,.cs-table td{padding:9px 10px;text-align:left;vertical-align:top}
+    .cs-table th{font-weight:700;color:#111827;background:#f8fafc;border-top:1px solid #e2e8f0;border-bottom:1px solid #e2e8f0;font-size:11px}
+    .cs-table td{border-bottom:1px solid #f1f5f9;font-size:11px}
+    .cs-table tr:hover td{background:#fafafa}
+    .cs-num{text-align:right;white-space:nowrap}
+    .cs-total-table{width:100%;margin-top:10px;border-collapse:collapse}
+    .cs-total-table td{padding:5px 10px}
+    .cs-total-table .cs-label{text-align:right;color:#4b5563;font-size:12px}
+    .cs-total-table .cs-value{text-align:right;font-weight:600;font-size:12px;width:150px}
+    .cs-card-compact{padding:8px 12px}
+    .cs-mb-0{margin-bottom:0}
+    .cs-stack-tight > * + *{margin-top:3px}
+
+    @media print{
+      body{background:#fff;font-size:11px}
+      .cs-container{box-shadow:none;margin:0;padding:12px;max-width:100%}
+      .cs-no-print{display:none !important}
+    }
+  </style>
+</head>
+<body>
+  <div class="cs-container">
+    <!-- Header -->
+    <div class="cs-flex cs-justify-between cs-align-start cs-mb-6">
+      <div>
+        <img src="data:image/png;base64,{{logoBase64}}" alt="{{brandName}} Logo" style="height: 54px; width: auto; margin-bottom: 6px; display: block;">
+        <p class="cs-text-xs cs-text-gray-500 cs-mb-0">{{brandTagline}}</p>
+      </div>
+      <div class="cs-text-right">
+        <div class="cs-badge">INVOICE</div>
+        <p class="cs-font-bold cs-text-xl cs-mb-1" style="color:#111827">#{{invoiceNo}}</p>
+        <p class="cs-text-xs cs-text-gray-500 cs-mb-1">Tanggal: <span class="cs-font-semibold cs-text-gray-700">{{invoiceDate}}</span></p>
+        <p class="cs-text-xs cs-text-gray-500 cs-mb-0">Jatuh Tempo: <span class="cs-font-semibold cs-text-gray-700">{{dueDate}}</span></p>
+      </div>
+    </div>
+
+    <!-- Client & Invoice Details -->
+    <div class="cs-flex cs-justify-between cs-align-start cs-mb-4" style="gap: 16px;">
+      <div style="flex: 1;">
+        <p class="cs-font-bold cs-text-xs cs-text-gray-500 uppercase cs-mb-1" style="letter-spacing:0.5px">Ditujukan Kepada:</p>
+        <div class="cs-card cs-card-compact cs-stack-tight">
+          <p class="cs-font-bold cs-text-base cs-text-gray-800 cs-mb-0">{{client.name}}</p>
+          {{#if client.email}}
+          <p class="cs-text-xs cs-text-gray-600 cs-mb-0">Email: {{client.email}}</p>
+          {{/if}}
+          {{#if client.phone}}
+          <p class="cs-text-xs cs-text-gray-600 cs-mb-0">Telepon: {{client.phone}}</p>
+          {{/if}}
+          {{#if client.address}}
+          <p class="cs-text-xs cs-text-gray-600 cs-mb-0">Alamat: {{client.address}}</p>
+          {{/if}}
+        </div>
+      </div>
+
+      <div style="flex: 1;" class="cs-text-right">
+        <p class="cs-font-bold cs-text-xs cs-text-gray-500 uppercase cs-mb-1" style="letter-spacing:0.5px">Informasi Tagihan:</p>
+        <div class="cs-card cs-card-compact cs-stack-tight">
+          {{#if title}}
+          <p class="cs-font-bold cs-text-sm cs-text-gray-800 cs-mb-0">{{title}}</p>
+          {{else}}
+          <p class="cs-font-bold cs-text-sm cs-text-gray-800 cs-mb-0">Tagihan Layanan</p>
+          {{/if}}
+          <p class="cs-text-xs cs-text-gray-600 cs-mb-0">Mata Uang: <span class="cs-font-bold text-zinc-800">{{currency}}</span></p>
+          <p class="cs-text-xs cs-text-gray-600 cs-mb-0">Status: <span class="cs-font-semibold uppercase">{{status}}</span></p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Items Table -->
+    <div class="cs-mb-4">
+      <table class="cs-table">
+        <thead>
+          <tr>
+            <th style="width: 6%; text-align: center;">No.</th>
+            <th style="width: 50%;">Deskripsi Layanan / Item</th>
+            <th style="width: 14%; text-align: center;">Jumlah (Qty)</th>
+            <th style="width: 15%;" class="cs-num">Harga ({{currency}})</th>
+            <th style="width: 15%;" class="cs-num">Total ({{currency}})</th>
+          </tr>
+        </thead>
+        <tbody>
+          {{#each items}}
+          <tr>
+            <td style="text-align: center; color: #6b7280;">{{this.no}}</td>
+            <td>
+              <div class="cs-font-semibold cs-text-gray-800">{{this.description}}</div>
+              {{#if this.notes}}
+              <div class="cs-text-xs cs-text-gray-500 cs-mt-1">{{this.notes}}</div>
+              {{/if}}
+            </td>
+            <td style="text-align: center;">{{this.quantity}}</td>
+            <td class="cs-num">{{this.unitPriceFormatted}}</td>
+            <td class="cs-num cs-font-semibold">{{this.subtotalFormatted}}</td>
+          </tr>
+          {{/each}}
+        </tbody>
+      </table>
+
+      <!-- Totals Table -->
+      <table class="cs-total-table">
+        <tr>
+          <td class="cs-label">Subtotal</td>
+          <td class="cs-value">{{subtotalFormatted}}</td>
+        </tr>
+        <tr style="border-top: 1px solid #e2e8f0; border-bottom: 2px solid #0f172a;">
+          <td class="cs-label cs-font-bold cs-text-base" style="color: #0f172a;">Total Tagihan</td>
+          <td class="cs-value cs-font-bold cs-text-base" style="color: #0f172a;">{{grandTotalFormatted}}</td>
+        </tr>
+      </table>
+    </div>
+
+    {{#if notes}}
+    <!-- Additional Notes -->
+    <div class="cs-card cs-card-compact cs-mb-4">
+      <p class="cs-font-bold cs-text-xs cs-text-gray-700 cs-mb-1">Catatan Tambahan:</p>
+      <p class="cs-text-xs cs-text-gray-600 cs-mb-0" style="white-space: pre-line;">{{notes}}</p>
+    </div>
+    {{/if}}
+
+    <!-- Payment Instructions -->
+    <div class="cs-info-card">
+      <h3 class="cs-font-bold cs-text-sm cs-text-gray-800 cs-mb-2">Tata Cara & Informasi Pembayaran</h3>
+      <div class="cs-text-gray-600 cs-text-xs">
+        <p class="cs-mb-1">1. Pembayaran dapat ditransfer ke rekening resmi kami:</p>
+        <p class="cs-mb-1" style="padding-left: 12px;">
+          Bank: <span class="cs-font-bold cs-text-gray-800">{{bank.bankName}} ({{bank.bankCountry}})</span><br/>
+          Atas Nama: <span class="cs-font-bold cs-text-gray-800">{{bank.accountName}}</span><br/>
+          Nomor Rekening / IBAN: <span class="cs-font-bold cs-text-gray-800">{{bank.accountNumberOrIBAN}}</span>
+        </p>
+        <p class="cs-mb-1">2. Mohon sertakan nomor invoice <strong>#{{invoiceNo}}</strong> pada berita transfer.</p>
+        <p class="cs-mb-0">3. Konfirmasikan bukti transfer ke WhatsApp <strong>+966 539 101 812</strong> atau email <strong>finance@musafirin.co</strong>.</p>
+      </div>
+    </div>
+
+    <!-- Footer -->
+    <div class="cs-divider"></div>
+    <div class="cs-flex cs-justify-between cs-align-center">
+      <p class="cs-text-xs cs-text-gray-500 cs-mb-0">Terima kasih atas kerja sama dan kepercayaan Anda bersama {{brandName}}.</p>
+      <button class="cs-no-print" onclick="window.print()" style="border:1px solid #e5e7eb;background:#fff;border-radius:6px;padding:6px 12px;font-size:11px;font-weight:600;cursor:pointer">Cetak / Print</button>
+    </div>
+  </div>
+</body>
+</html>
