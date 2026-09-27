@@ -17,9 +17,9 @@ export const Route = createFileRoute('/admin')({
       throw redirect({ to: '/login' })
     }
     
-    const isOwner = await authService.isOwner()
-    if (!isOwner) {
-      throw redirect({ to: '/dashboard' })
+    const isAdmin = await authService.isAdmin()
+    if (!isAdmin) {
+      throw redirect({ to: '/dashboard/admin' })
     }
   },
   component: AdminPage,
@@ -199,8 +199,8 @@ function AdminPage() {
 
   return (
     <PageLayout
-      title="Staff Management"
-      subtitle="Manage staff accounts and their roles"
+      title="User & Staff Management"
+      subtitle="Manage user accounts, roles, and client types (Direct / Agent)"
       actions={actions}
     >
       {error && (

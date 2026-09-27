@@ -160,10 +160,10 @@ const navigationSections = [
         roles: ['admin', 'owner']
       },
       {
-        name: 'Staff Management',
+        name: 'User Management',
         href: '/admin',
         icon: Shield,
-        roles: ['owner']
+        roles: ['owner', 'admin']
       }
     ]
   }

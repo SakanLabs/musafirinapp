@@ -3,7 +3,7 @@ import { createClient } from '@supabase/supabase-js'
 import { db } from '../db'
 import { user, account } from '../db/schema'
 import { eq, desc } from 'drizzle-orm'
-import { requireOwner } from '../middleware/auth'
+import { requireAdmin } from '../middleware/auth'
 import type { ApiResponse } from 'shared/dist'
 import { hashPassword } from 'better-auth/crypto'
 
@@ -27,7 +27,7 @@ interface CreateUserRequest {
 }
 
 const app = new Hono()
-  .use('/*', requireOwner)
+  .use('/*', requireAdmin)
 
   .get('/', async (c) => {
     try {
