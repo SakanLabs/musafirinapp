@@ -127,6 +127,9 @@ function AdminPage() {
 
   const updateUser = async (userId: string, data: { role?: string; userType?: string }) => {
     try {
+      if (data.role && ['admin', 'owner', 'finance'].includes(data.role)) {
+        data.userType = 'direct';
+      }
       const response = await fetch(`${API_URL}/api/users/${userId}`, {
         method: 'PUT',
         headers: {
@@ -255,14 +258,18 @@ function AdminPage() {
                     </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <select
-                      value={user.userType}
-                      onChange={(e) => updateUser(user.id, { userType: e.target.value })}
-                      className="border border-gray-300 rounded-md px-2 py-1 text-sm"
-                    >
-                      <option value="direct">Direct</option>
-                      <option value="agent">Agent</option>
-                    </select>
+                    {user.role === 'admin' || user.role === 'owner' || user.role === 'finance' ? (
+                      <span className="text-xs font-medium text-gray-500 bg-gray-100 px-2 py-1 rounded">Direct (Staff)</span>
+                    ) : (
+                      <select
+                        value={user.userType}
+                        onChange={(e) => updateUser(user.id, { userType: e.target.value })}
+                        className="border border-gray-300 rounded-md px-2 py-1 text-sm"
+                      >
+                        <option value="direct">Direct</option>
+                        <option value="agent">Agent</option>
+                      </select>
+                    )}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <select

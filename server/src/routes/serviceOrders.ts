@@ -1,8 +1,8 @@
 import { Hono } from 'hono';
-import { eq, desc } from 'drizzle-orm';
+import { eq, desc, asc } from 'drizzle-orm';
 import { db } from '../db';
-import { clients, serviceOrders, serviceOrderChecklists, serviceOrderInvoices, serviceOrderReceipts, serviceOrderInvoicePayments } from '../db/schema';
-import type { NewServiceOrder, NewServiceOrderInvoice, NewServiceOrderReceipt } from '../db/schema';
+import { clients, serviceOrders, serviceOrderChecklists, serviceOrderInvoices, serviceOrderReceipts, serviceOrderInvoicePayments, clientDeposits, depositTransactions } from '../db/schema';
+import type { NewServiceOrder, NewServiceOrderInvoice, ServiceOrderInvoice, NewServiceOrderReceipt, NewDepositTransaction } from '../db/schema';
 import { requireAdmin, requireAdminOrFinance, requireFinance } from '../middleware/auth';
 import { generateServiceOrderNumber, generateServiceOrderInvoicePDF, generateServiceOrderInvoiceNumber, uploadToMinio, generateServiceOrderReceiptPDF } from '../utils/pdf';
 import { notifyAdminNewBooking } from '../lib/notification';
@@ -506,43 +506,87 @@ serviceOrderRoutes.post('/:id/regenerate-invoice', requireAdminOrFinance, async 
 
     const serviceOrder = serviceOrderData[0]!;
 
-    // Delete existing invoice if it exists
-    await db
-      .delete(serviceOrderInvoices)
-      .where(eq(serviceOrderInvoices.serviceOrderId, serviceOrderId));
+    // Check if invoice already exists
+    const existingInvoices = await db
+      .select()
+      .from(serviceOrderInvoices)
+      .where(eq(serviceOrderInvoices.serviceOrderId, serviceOrderId))
+      .limit(1);
 
-    // Generate new invoice number
-    const invoiceNumber = generateServiceOrderInvoiceNumber();
+    const existingInvoice = existingInvoices.length > 0 ? existingInvoices[0] : null;
 
-    // Calculate dates
-    const issueDate = customInvoiceDate ? new Date(customInvoiceDate) : new Date();
-    const dueDate = new Date(customDueDate);
+    let targetInvoice: ServiceOrderInvoice;
+    let totalPaid = 0;
 
-    // Save new invoice to database FIRST with null pdfUrl
-    const newInvoice: NewServiceOrderInvoice = {
-      number: invoiceNumber,
-      serviceOrderId: serviceOrderId,
-      amount: serviceOrder.totalPriceSAR,
-      currency: 'SAR',
-      issueDate: issueDate,
-      dueDate: dueDate,
-      status: 'draft',
-      pdfUrl: null,
-    };
+    if (existingInvoice) {
+      // Calculate total paid from existing payments to keep calculations intact
+      const payments = await db
+        .select()
+        .from(serviceOrderInvoicePayments)
+        .where(eq(serviceOrderInvoicePayments.invoiceId, existingInvoice.id));
 
-    const [insertedInvoice] = await db
-      .insert(serviceOrderInvoices)
-      .values(newInvoice)
-      .returning();
+      totalPaid = payments.reduce((acc, p) => acc + parseFloat(p.amount || '0'), 0);
+      const totalAmount = parseFloat(serviceOrder.totalPriceSAR || '0');
+
+      let invoiceStatus: 'draft' | 'sent' | 'partially_paid' | 'paid' | 'overdue' | 'cancelled' = existingInvoice.status;
+      if (totalPaid >= totalAmount && totalAmount > 0) {
+        invoiceStatus = 'paid';
+      } else if (totalPaid > 0) {
+        invoiceStatus = 'partially_paid';
+      }
+
+      const issueDate = customInvoiceDate ? new Date(customInvoiceDate) : (existingInvoice.issueDate || new Date());
+      const dueDate = new Date(customDueDate);
+
+      const [updatedInvoice] = await db
+        .update(serviceOrderInvoices)
+        .set({
+          amount: serviceOrder.totalPriceSAR,
+          paidAmount: totalPaid.toFixed(2),
+          status: invoiceStatus,
+          issueDate,
+          dueDate,
+          updatedAt: new Date(),
+        })
+        .where(eq(serviceOrderInvoices.id, existingInvoice.id))
+        .returning();
+
+      targetInvoice = updatedInvoice!;
+    } else {
+      // Generate new invoice if it didn't exist
+      const invoiceNumber = generateServiceOrderInvoiceNumber();
+      const issueDate = customInvoiceDate ? new Date(customInvoiceDate) : new Date();
+      const dueDate = new Date(customDueDate);
+
+      const newInvoice: NewServiceOrderInvoice = {
+        number: invoiceNumber,
+        serviceOrderId: serviceOrderId,
+        amount: serviceOrder.totalPriceSAR,
+        paidAmount: '0.00',
+        currency: 'SAR',
+        issueDate: issueDate,
+        dueDate: dueDate,
+        status: 'draft',
+        pdfUrl: null,
+      };
+
+      const [insertedInvoice] = await db
+        .insert(serviceOrderInvoices)
+        .values(newInvoice)
+        .returning();
+
+      targetInvoice = insertedInvoice!;
+    }
 
     // Now attempt to generate PDF
     try {
       // Create invoice object for PDF generation
       const invoiceForPDF = {
-        number: invoiceNumber,
-        amount: parseFloat(serviceOrder.totalPriceSAR),
-        currency: 'SAR',
-        status: 'draft' as const,
+        number: targetInvoice.number,
+        amount: parseFloat(targetInvoice.amount),
+        paidAmount: targetInvoice.paidAmount,
+        currency: targetInvoice.currency,
+        status: targetInvoice.status,
         pdfUrl: null,
       };
 
@@ -567,30 +611,30 @@ serviceOrderRoutes.post('/:id/regenerate-invoice', requireAdminOrFinance, async 
           email: serviceOrder.clientEmail!,
           phone: serviceOrder.clientPhone,
         },
-        customDueDate,
-        customInvoiceDate || new Date()
+        targetInvoice.dueDate,
+        targetInvoice.issueDate
       );
 
       // Upload to MinIO
       const pdfUrl = await uploadToMinio(
-        `service-order-invoices/${invoiceNumber}.pdf`,
+        `service-order-invoices/${targetInvoice.number}.pdf`,
         pdfBuffer,
         'application/pdf'
       );
 
       // Update the invoice in database with PDF URL
-      await db.update(serviceOrderInvoices).set({ pdfUrl }).where(eq(serviceOrderInvoices.id, insertedInvoice!.id));
-      insertedInvoice!.pdfUrl = pdfUrl;
+      await db.update(serviceOrderInvoices).set({ pdfUrl, updatedAt: new Date() }).where(eq(serviceOrderInvoices.id, targetInvoice.id));
+      targetInvoice.pdfUrl = pdfUrl;
     } catch (pdfError) {
-      console.error('Failed to regenerate/upload PDF, but invoice was recreated in DB:', pdfError);
+      console.error('Failed to regenerate/upload PDF, but invoice was updated in DB:', pdfError);
     }
 
     return c.json({
       success: true,
-      data: insertedInvoice,
+      data: targetInvoice,
       message: 'Service order invoice regenerated successfully',
-      downloadUrl: `/api/invoices/by-number/${insertedInvoice!.number}`
-    }, 201);
+      downloadUrl: `/api/invoices/by-number/${targetInvoice.number}`
+    }, 200);
   } catch (error) {
     console.error('Error regenerating service order invoice:', error);
     return c.json({ error: 'Failed to regenerate service order invoice' }, 500);
@@ -790,6 +834,590 @@ serviceOrderRoutes.post('/:id/receipt', requireAdminOrFinance, async (c) => {
   } catch (error) {
     console.error('Error creating service order receipt:', error);
     return c.json({ error: 'Failed to create service order receipt' }, 500);
+  }
+});
+
+// GET /api/service-orders/:id/billing - Get full billing, payments, and receipts data
+serviceOrderRoutes.get('/:id/billing', requireAdminOrFinance, async (c) => {
+  try {
+    const id = parseInt(c.req.param('id'));
+    if (!id || isNaN(id)) return c.json({ error: 'Invalid ID' }, 400);
+
+    const orderRows = await db
+      .select({
+        order: serviceOrders,
+        client: clients,
+      })
+      .from(serviceOrders)
+      .leftJoin(clients, eq(serviceOrders.clientId, clients.id))
+      .where(eq(serviceOrders.id, id))
+      .limit(1);
+
+    if (!orderRows.length) return c.json({ error: 'Service order not found' }, 404);
+
+    const { order, client } = orderRows[0]!;
+
+    // Fetch client deposit balance if client exists
+    let clientDepositBalance = '0.00';
+    if (order.clientId) {
+      const dep = await db
+        .select({ currentBalance: clientDeposits.currentBalance })
+        .from(clientDeposits)
+        .where(eq(clientDeposits.clientId, order.clientId))
+        .limit(1);
+      if (dep.length > 0) {
+        clientDepositBalance = dep[0]!.currentBalance;
+      }
+    }
+
+    // Fetch invoice
+    const invRows = await db
+      .select()
+      .from(serviceOrderInvoices)
+      .where(eq(serviceOrderInvoices.serviceOrderId, id))
+      .limit(1);
+
+    const invoice = invRows.length > 0 ? invRows[0] : null;
+
+    // Fetch receipts
+    const receiptsList = await db
+      .select()
+      .from(serviceOrderReceipts)
+      .where(eq(serviceOrderReceipts.serviceOrderId, id))
+      .orderBy(desc(serviceOrderReceipts.createdAt));
+
+    // Summary calculations
+    const totalAmount = invoice ? parseFloat(invoice.amount) : parseFloat(order.totalPriceSAR);
+    const paidAmount = invoice ? parseFloat(invoice.paidAmount || '0') : 0;
+    const remainingBalance = Math.max(0, totalAmount - paidAmount);
+    const isOrderPaidFull = paidAmount >= totalAmount && totalAmount > 0;
+    const paymentStatus = isOrderPaidFull
+      ? 'paid' 
+      : paidAmount > 0 
+        ? 'partial' 
+        : 'unpaid';
+
+    // Fetch payments chronologically to establish accurate termin sequence
+    let payments: any[] = [];
+    if (invoice) {
+      const rawPayments = await db
+        .select()
+        .from(serviceOrderInvoicePayments)
+        .where(eq(serviceOrderInvoicePayments.invoiceId, invoice.id))
+        .orderBy(asc(serviceOrderInvoicePayments.paidAt), asc(serviceOrderInvoicePayments.id));
+
+      const totalPaymentsCount = rawPayments.length;
+      payments = rawPayments.map((p, index) => {
+        const meta = (p.meta as any) || {};
+        const terminNumber = meta.termin || (index + 1);
+        const isLastPayment = index === totalPaymentsCount - 1;
+        let terminLabel = meta.terminLabel;
+        if (!terminLabel) {
+          if (isOrderPaidFull && isLastPayment) {
+            terminLabel = terminNumber === 1 ? 'Pelunasan (Lunas Penuh)' : `Termin #${terminNumber} (Pelunasan)`;
+          } else if (terminNumber === 1) {
+            terminLabel = 'Termin #1 (Uang Muka / DP)';
+          } else {
+            terminLabel = `Termin #${terminNumber}`;
+          }
+        }
+
+        // Match receipt specifically for this payment
+        const matchedReceipt = receiptsList.find(r => {
+          const rMeta = (r.meta as any) || {};
+          if (rMeta.paymentId && rMeta.paymentId === p.id) return true;
+          if (meta.receiptNumber && r.number === meta.receiptNumber) return true;
+          if (rMeta.referenceNumber && rMeta.referenceNumber === p.referenceNumber) return true;
+          if (rMeta.termin && rMeta.termin === terminNumber) return true;
+          return false;
+        }) || receiptsList.find(r => parseFloat(r.paidAmount) === parseFloat(p.amount))
+          || (receiptsList.length === 1 && totalPaymentsCount === 1 ? receiptsList[0] : null);
+
+        return {
+          ...p,
+          termin: terminNumber,
+          terminLabel,
+          receiptNumber: matchedReceipt?.number || meta.receiptNumber || null,
+          receiptUrl: matchedReceipt?.pdfUrl || null,
+        };
+      });
+
+      // Display newest payment on top for user view
+      payments.reverse();
+    }
+
+    return c.json({
+      success: true,
+      data: {
+        order,
+        client: client ? {
+          ...client,
+          depositBalance: clientDepositBalance,
+        } : null,
+        invoice,
+        payments,
+        receipts: receiptsList,
+        summary: {
+          totalAmount,
+          paidAmount,
+          remainingBalance,
+          paymentStatus,
+          currency: 'SAR',
+          clientDepositBalance: parseFloat(clientDepositBalance) || 0,
+        },
+      }
+    });
+  } catch (error) {
+    console.error('Error fetching service order billing:', error);
+    return c.json({ error: 'Failed to fetch service order billing' }, 500);
+  }
+});
+
+// POST /api/service-orders/:id/pay - Record payment for service order
+serviceOrderRoutes.post('/:id/pay', requireAdminOrFinance, async (c) => {
+  try {
+    const id = parseInt(c.req.param('id'));
+    if (!id || isNaN(id)) return c.json({ error: 'Invalid ID' }, 400);
+
+    const body = await c.req.json().catch(() => ({}));
+    const method = body?.method as 'bank_transfer' | 'deposit' | 'cash' | undefined;
+    const amountNum = body?.amount !== undefined ? parseFloat(body.amount) : undefined;
+    const referenceNumber: string | undefined = body?.referenceNumber;
+    const description: string | undefined = body?.description;
+    const autoGenerateReceipt: boolean = body?.autoGenerateReceipt !== false;
+
+    const allowedMethods = ['bank_transfer', 'deposit', 'cash'];
+    if (!method || !allowedMethods.includes(method)) {
+      return c.json({ error: 'Metode pembayaran tidak valid. Pilih: Transfer Bank, Saldo Deposit, atau Tunai' }, 400);
+    }
+    if (amountNum === undefined || isNaN(amountNum) || amountNum <= 0) {
+      return c.json({ error: 'Nominal pembayaran harus lebih besar dari 0' }, 400);
+    }
+
+    const orderRows = await db
+      .select({
+        order: serviceOrders,
+        client: clients,
+      })
+      .from(serviceOrders)
+      .leftJoin(clients, eq(serviceOrders.clientId, clients.id))
+      .where(eq(serviceOrders.id, id))
+      .limit(1);
+
+    if (!orderRows.length) return c.json({ error: 'Service order not found' }, 404);
+
+    const { order, client } = orderRows[0]!;
+
+    // Find or auto-generate invoice
+    let invoiceRows = await db
+      .select()
+      .from(serviceOrderInvoices)
+      .where(eq(serviceOrderInvoices.serviceOrderId, id))
+      .limit(1);
+
+    let invoice = invoiceRows.length > 0 ? invoiceRows[0] : null;
+
+    if (!invoice) {
+      // Auto-create invoice so payment can be bound
+      const invoiceNumber = generateServiceOrderInvoiceNumber();
+      const issueDate = new Date();
+      const dueDate = new Date();
+      dueDate.setDate(dueDate.getDate() + 3);
+
+      const [newInv] = await db
+        .insert(serviceOrderInvoices)
+        .values({
+          number: invoiceNumber,
+          serviceOrderId: id,
+          amount: order.totalPriceSAR,
+          paidAmount: '0.00',
+          currency: 'SAR',
+          issueDate,
+          dueDate,
+          status: 'draft',
+          pdfUrl: null,
+        })
+        .returning();
+      invoice = newInv!;
+
+      // Background attempt to generate invoice PDF
+      try {
+        const invoiceForPDF = {
+          number: invoiceNumber,
+          amount: parseFloat(order.totalPriceSAR),
+          currency: 'SAR',
+          status: 'draft' as const,
+          pdfUrl: null,
+        };
+        const pdfBuf = await generateServiceOrderInvoicePDF(
+          invoiceForPDF,
+          order,
+          client || {},
+          dueDate,
+          issueDate
+        );
+        const pdfUrl = await uploadToMinio(`service-order-invoices/${invoiceNumber}.pdf`, pdfBuf, 'application/pdf');
+        await db.update(serviceOrderInvoices).set({ pdfUrl }).where(eq(serviceOrderInvoices.id, invoice.id));
+        invoice.pdfUrl = pdfUrl;
+      } catch (e) {
+        console.warn('Auto invoice PDF generation deferred:', e);
+      }
+    }
+
+    const totalInvoiceAmount = parseFloat(invoice.amount);
+    const currentPaidAmount = parseFloat(invoice.paidAmount || '0');
+    const remainingBalance = Math.max(0, totalInvoiceAmount - currentPaidAmount);
+
+    if (remainingBalance <= 0) {
+      return c.json({ error: 'Order ini sudah lunas. Tidak ada sisa tagihan.' }, 400);
+    }
+
+    // Process payment within transaction
+    const paymentResult = await db.transaction(async (tx) => {
+      let depositUsed = 0;
+
+      if (method === 'deposit') {
+        if (!order.clientId) {
+          throw new Error('Klien tidak ditemukan untuk pemotongan deposit');
+        }
+
+        // Fetch client deposit
+        const depRows = await tx
+          .select()
+          .from(clientDeposits)
+          .where(eq(clientDeposits.clientId, order.clientId))
+          .limit(1);
+
+        const currentDepositBalance = depRows.length > 0 ? parseFloat(depRows[0]!.currentBalance) : 0;
+        depositUsed = Math.min(amountNum, remainingBalance);
+
+        if (currentDepositBalance < depositUsed) {
+          throw new Error(`Saldo deposit tidak mencukupi. Saldo saat ini: SAR ${currentDepositBalance.toLocaleString()}, diperlukan: SAR ${depositUsed.toLocaleString()}`);
+        }
+
+        const newDepositBalance = currentDepositBalance - depositUsed;
+        const newTotalUsed = (depRows.length > 0 ? parseFloat(depRows[0]!.totalUsed) : 0) + depositUsed;
+
+        await tx
+          .update(clientDeposits)
+          .set({
+            currentBalance: newDepositBalance.toString(),
+            totalUsed: newTotalUsed.toString(),
+            lastTransactionAt: new Date(),
+            updatedAt: new Date(),
+          })
+          .where(eq(clientDeposits.clientId, order.clientId));
+
+        // Insert deposit transaction
+        await tx.insert(depositTransactions).values({
+          clientId: order.clientId,
+          type: 'usage',
+          amount: depositUsed.toString(),
+          balanceBefore: currentDepositBalance.toString(),
+          balanceAfter: newDepositBalance.toString(),
+          currency: 'SAR',
+          status: 'completed',
+          description: description || `Pembayaran Service Order ${order.number}`,
+          referenceNumber: referenceNumber || `DEP-SO-${Date.now()}`,
+          processedAt: new Date(),
+        });
+      }
+
+      const effectivePayAmount = method === 'deposit' ? depositUsed : Math.min(amountNum, remainingBalance);
+      const newPaidTotal = currentPaidAmount + effectivePayAmount;
+      const newRemaining = Math.max(0, totalInvoiceAmount - newPaidTotal);
+      const isPaidFull = newPaidTotal >= totalInvoiceAmount;
+      const newInvoiceStatus = isPaidFull ? 'paid' : 'partially_paid';
+
+      const existingPayments = await tx
+        .select()
+        .from(serviceOrderInvoicePayments)
+        .where(eq(serviceOrderInvoicePayments.invoiceId, invoice!.id));
+      const terminNumber = existingPayments.length + 1;
+      let terminLabel = `Termin #${terminNumber}`;
+      if (isPaidFull && terminNumber === 1) {
+        terminLabel = 'Pelunasan (Lunas Penuh)';
+      } else if (isPaidFull) {
+        terminLabel = `Termin #${terminNumber} (Pelunasan)`;
+      } else if (terminNumber === 1) {
+        terminLabel = 'Termin #1 (Uang Muka / DP)';
+      }
+      const receiptNumber = `SOR-${new Date().getFullYear()}-${String(Date.now()).slice(-6)}`;
+
+      // 1. Record payment in serviceOrderInvoicePayments
+      const [paymentRecord] = await tx
+        .insert(serviceOrderInvoicePayments)
+        .values({
+          invoiceId: invoice!.id,
+          amount: effectivePayAmount.toString(),
+          currency: 'SAR',
+          method,
+          referenceNumber: referenceNumber || (method === 'deposit' ? `DEP-${Date.now()}` : `PAY-${Date.now()}`),
+          paidAt: new Date(),
+          status: 'completed',
+          meta: {
+            description: description || null,
+            termin: terminNumber,
+            terminLabel,
+            receiptNumber,
+          },
+        })
+        .returning();
+
+      if (!paymentRecord) {
+        throw new Error('Gagal menyimpan transaksi pembayaran');
+      }
+
+      // 2. Update serviceOrderInvoices
+      await tx
+        .update(serviceOrderInvoices)
+        .set({
+          paidAmount: newPaidTotal.toString(),
+          status: newInvoiceStatus,
+          updatedAt: new Date(),
+        })
+        .where(eq(serviceOrderInvoices.id, invoice!.id));
+
+      // 3. Update serviceOrders
+      const meta = (order.meta as any) || {};
+      const paymentsArr = Array.isArray(meta.payments) ? meta.payments : [];
+      paymentsArr.push({
+        id: paymentRecord.id,
+        method,
+        amount: effectivePayAmount,
+        date: new Date().toISOString(),
+        status: 'completed',
+        reference: paymentRecord.referenceNumber,
+        description: description || null,
+        termin: terminNumber,
+        terminLabel,
+        receiptNumber,
+      });
+      meta.payments = paymentsArr;
+      meta.remainingBalance = newRemaining;
+      if (method === 'deposit') {
+        meta.depositUsed = (meta.depositUsed || 0) + effectivePayAmount;
+      }
+
+      await tx
+        .update(serviceOrders)
+        .set({
+          status: isPaidFull ? 'paid' : order.status,
+          meta,
+          updatedAt: new Date(),
+        })
+        .where(eq(serviceOrders.id, id));
+
+      return {
+        payment: paymentRecord,
+        newPaidTotal,
+        newRemaining,
+        isPaidFull,
+        effectivePayAmount,
+        terminNumber,
+        terminLabel,
+        receiptNumber,
+      };
+    });
+
+    // Generate receipt if requested
+    let createdReceipt = null;
+    if (autoGenerateReceipt) {
+      try {
+        const receiptNumber = paymentResult.receiptNumber;
+        const newReceipt: NewServiceOrderReceipt = {
+          serviceOrderId: id,
+          serviceOrderInvoiceId: invoice.id,
+          number: receiptNumber,
+          totalAmount: totalInvoiceAmount.toString(),
+          paidAmount: paymentResult.effectivePayAmount.toString(),
+          balanceDue: paymentResult.newRemaining.toString(),
+          currency: 'SAR',
+          payerName: client?.name || order.groupLeaderName || 'Unknown',
+          pdfUrl: '',
+          meta: {
+            paymentId: paymentResult.payment.id,
+            termin: paymentResult.terminNumber,
+            terminLabel: paymentResult.terminLabel,
+            referenceNumber: paymentResult.payment.referenceNumber,
+            paymentMethod: method,
+            description: description || null,
+          },
+        };
+
+        const pdfBuffer = await generateServiceOrderReceiptPDF(
+          newReceipt,
+          order,
+          client || {},
+          invoice
+        );
+
+        const pdfUrl = await uploadToMinio(
+          `service-order-receipts/${receiptNumber}.pdf`,
+          pdfBuffer,
+          'application/pdf'
+        );
+
+        newReceipt.pdfUrl = pdfUrl;
+
+        const [receiptRow] = await db
+          .insert(serviceOrderReceipts)
+          .values(newReceipt)
+          .returning();
+
+        createdReceipt = receiptRow;
+      } catch (receiptErr) {
+        console.error('Error auto-generating receipt PDF:', receiptErr);
+      }
+    }
+
+    return c.json({
+      success: true,
+      message: 'Pembayaran berhasil dicatat',
+      data: {
+        payment: paymentResult.payment,
+        receipt: createdReceipt,
+        paidAmount: paymentResult.newPaidTotal,
+        remainingBalance: paymentResult.newRemaining,
+        isPaidFull: paymentResult.isPaidFull,
+      }
+    }, 201);
+  } catch (error: any) {
+    console.error('Error recording service order payment:', error);
+    return c.json({ error: error.message || 'Gagal mencatat pembayaran' }, 500);
+  }
+});
+
+// DELETE /api/service-orders/:id/payments/:paymentId - Cancel/delete a payment record
+serviceOrderRoutes.delete('/:id/payments/:paymentId', requireAdminOrFinance, async (c) => {
+  try {
+    const id = parseInt(c.req.param('id'));
+    const paymentId = parseInt(c.req.param('paymentId'));
+
+    if (!id || isNaN(id) || !paymentId || isNaN(paymentId)) {
+      return c.json({ error: 'Parameter tidak valid' }, 400);
+    }
+
+    const [payment] = await db
+      .select()
+      .from(serviceOrderInvoicePayments)
+      .where(eq(serviceOrderInvoicePayments.id, paymentId))
+      .limit(1);
+
+    if (!payment) {
+      return c.json({ error: 'Catatan pembayaran tidak ditemukan' }, 404);
+    }
+
+    const [invoice] = await db
+      .select()
+      .from(serviceOrderInvoices)
+      .where(eq(serviceOrderInvoices.id, payment.invoiceId))
+      .limit(1);
+
+    if (!invoice || invoice.serviceOrderId !== id) {
+      return c.json({ error: 'Invoice tidak cocok dengan service order' }, 400);
+    }
+
+    const [order] = await db
+      .select()
+      .from(serviceOrders)
+      .where(eq(serviceOrders.id, id))
+      .limit(1);
+
+    await db.transaction(async (tx) => {
+      // 1. If method was deposit, refund client deposit
+      if (payment.method === 'deposit' && order?.clientId) {
+        const depRows = await tx
+          .select()
+          .from(clientDeposits)
+          .where(eq(clientDeposits.clientId, order.clientId))
+          .limit(1);
+
+        if (depRows.length > 0) {
+          const refundAmount = parseFloat(payment.amount);
+          const currentDepBal = parseFloat(depRows[0]!.currentBalance);
+          const newDepBal = currentDepBal + refundAmount;
+          const newTotalUsed = Math.max(0, parseFloat(depRows[0]!.totalUsed) - refundAmount);
+
+          await tx
+            .update(clientDeposits)
+            .set({
+              currentBalance: newDepBal.toString(),
+              totalUsed: newTotalUsed.toString(),
+              updatedAt: new Date(),
+            })
+            .where(eq(clientDeposits.clientId, order.clientId));
+
+          await tx.insert(depositTransactions).values({
+            clientId: order.clientId,
+            type: 'refund',
+            amount: refundAmount.toString(),
+            balanceBefore: currentDepBal.toString(),
+            balanceAfter: newDepBal.toString(),
+            currency: 'SAR',
+            status: 'completed',
+            description: `Pengembalian pembatalan pembayaran visa ${order.number}`,
+            referenceNumber: `REF-DEP-${Date.now()}`,
+            processedAt: new Date(),
+          });
+        }
+      }
+
+      // 2. Delete payment record
+      await tx
+        .delete(serviceOrderInvoicePayments)
+        .where(eq(serviceOrderInvoicePayments.id, paymentId));
+
+      // 3. Recalculate remaining payments
+      const remainingPayments = await tx
+        .select()
+        .from(serviceOrderInvoicePayments)
+        .where(eq(serviceOrderInvoicePayments.invoiceId, invoice.id));
+
+      const newPaidTotal = remainingPayments.reduce((sum, p) => sum + parseFloat(p.amount), 0);
+      const totalInvoiceAmount = parseFloat(invoice.amount);
+      const newInvoiceStatus = newPaidTotal >= totalInvoiceAmount ? 'paid' : newPaidTotal > 0 ? 'partially_paid' : 'draft';
+
+      await tx
+        .update(serviceOrderInvoices)
+        .set({
+          paidAmount: newPaidTotal.toFixed(2),
+          status: newInvoiceStatus,
+          updatedAt: new Date(),
+        })
+        .where(eq(serviceOrderInvoices.id, invoice.id));
+
+      // 4. Update order meta and status
+      if (order) {
+        const meta = (order.meta as any) || {};
+        meta.payments = remainingPayments.map(p => ({
+          method: p.method,
+          amount: parseFloat(p.amount),
+          date: p.paidAt ? new Date(p.paidAt).toISOString() : new Date().toISOString(),
+          status: p.status,
+          reference: p.referenceNumber,
+          description: (p.meta as any)?.description || null,
+        }));
+        meta.remainingBalance = Math.max(0, totalInvoiceAmount - newPaidTotal);
+
+        await tx
+          .update(serviceOrders)
+          .set({
+            status: newPaidTotal >= totalInvoiceAmount ? 'paid' : 'submitted',
+            meta,
+            updatedAt: new Date(),
+          })
+          .where(eq(serviceOrders.id, id));
+      }
+    });
+
+    return c.json({
+      success: true,
+      message: 'Pembayaran berhasil dihapus/dibatalkan',
+    });
+  } catch (error: any) {
+    console.error('Error deleting payment:', error);
+    return c.json({ error: error.message || 'Gagal membatalkan pembayaran' }, 500);
   }
 });
 

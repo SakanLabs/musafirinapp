@@ -158,7 +158,12 @@
           {{#each payments}}
           <tr>
             <td>
-              <div class="cs-font-semibold">{{label}}</div>
+              <div class="cs-font-semibold">
+                {{#if terminBadge}}
+                <span class="cs-badge" style="background:#e0f2fe;color:#0369a1;margin-right:6px;">{{terminBadge}}</span>
+                {{/if}}
+                {{label}}
+              </div>
               <div class="cs-text-sm cs-text-gray-500">{{date}}</div>
               {{#if transportationDetails}}
               <div class="cs-text-sm cs-text-gray-700">{{transportationDetails.route}}</div>
@@ -176,24 +181,32 @@
           {{/each}}
         </tbody>
       </table>
-      <div class="cs-flex cs-justify-between cs-align-start cs-mt-2">
-        <div>
+      <div class="cs-flex cs-justify-between cs-align-start cs-mt-2 pt-2" style="border-top:1px solid #e5e7eb;padding-top:8px;">
+        <div style="line-height:1.6;">
           <p class="cs-text-sm cs-text-gray-700">Total Tagihan (Invoice)</p>
-          <p class="cs-text-sm cs-text-gray-700">Total Dibayar</p>
-          <p class="cs-text-sm cs-text-gray-700 cs-font-bold">Sisa Tagihan</p>
+          <p class="cs-text-sm cs-text-gray-700">
+            Pembayaran Ini {{#if terminBadge}}<span class="cs-badge" style="background:#e0f2fe;color:#0369a1;margin-left:4px;">{{terminBadge}}</span>{{/if}}
+          </p>
+          <p class="cs-text-sm cs-text-gray-700">Total Pembayaran Masuk (Kumulatif)</p>
+          <p class="cs-text-sm cs-font-bold cs-text-gray-900" style="margin-top:4px;">Sisa Tagihan</p>
         </div>
-        <div class="cs-text-right">
+        <div class="cs-text-right" style="line-height:1.6;">
           <p class="cs-text-sm cs-font-semibold">
             <img src="data:image/svg+xml;base64,{{saudiRiyalSVGBase64}}" class="cs-sar-icon" alt="SAR" />
             {{totalInvoiceAmount}}
           </p>
-          <p class="cs-text-sm cs-font-semibold">
+          <p class="cs-text-sm cs-font-semibold" style="color:#0284c7;">
+            <img src="data:image/svg+xml;base64,{{saudiRiyalSVGBase64}}" class="cs-sar-icon" alt="SAR" />
+            {{currentPaymentAmount}}
+          </p>
+          <p class="cs-text-sm cs-font-semibold" style="color:#16a34a;">
             <img src="data:image/svg+xml;base64,{{saudiRiyalSVGBase64}}" class="cs-sar-icon" alt="SAR" />
             {{totalPaidAmount}}
           </p>
-          <p class="cs-text-sm cs-font-bold">
+          <p class="cs-text-sm cs-font-bold" style="margin-top:4px;color:{{#if isPaidFull}}#16a34a{{else}}#dc2626{{/if}};">
             <img src="data:image/svg+xml;base64,{{saudiRiyalSVGBase64}}" class="cs-sar-icon" alt="SAR" />
             {{balanceDue}}
+            {{#if isPaidFull}}<span style="font-size:10px;margin-left:4px;color:#16a34a;font-weight:700;">(LUNAS)</span>{{/if}}
           </p>
         </div>
       </div>

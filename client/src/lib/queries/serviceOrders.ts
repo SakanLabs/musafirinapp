@@ -215,6 +215,8 @@ export function useGenerateServiceOrderInvoice() {
     },
     onSuccess: (_, variables) => {
       qc.invalidateQueries({ queryKey: serviceOrderKeys.detail(variables.serviceOrderId) });
+      qc.invalidateQueries({ queryKey: [...serviceOrderKeys.detail(variables.serviceOrderId), 'invoice'] });
+      qc.invalidateQueries({ queryKey: [...serviceOrderKeys.detail(variables.serviceOrderId), 'billing'] });
       qc.invalidateQueries({ queryKey: serviceOrderKeys.lists() });
     },
   });
@@ -281,6 +283,7 @@ export function useRegenerateServiceOrderInvoice() {
     onSuccess: (_, variables) => {
       qc.invalidateQueries({ queryKey: serviceOrderKeys.detail(variables.serviceOrderId) });
       qc.invalidateQueries({ queryKey: [...serviceOrderKeys.detail(variables.serviceOrderId), 'invoice'] });
+      qc.invalidateQueries({ queryKey: [...serviceOrderKeys.detail(variables.serviceOrderId), 'billing'] });
       qc.invalidateQueries({ queryKey: serviceOrderKeys.lists() });
     },
   });
@@ -307,6 +310,136 @@ export function useUpdateServiceOrderStatus() {
     onSuccess: (_, variables) => {
       qc.invalidateQueries({ queryKey: serviceOrderKeys.detail(variables.serviceOrderId) });
       qc.invalidateQueries({ queryKey: serviceOrderKeys.lists() });
+    },
+  });
+}
+
+export interface ServiceOrderPaymentItem {
+  id: number;
+  invoiceId: number;
+  amount: string;
+  currency: string;
+  method: string;
+  referenceNumber: string | null;
+  paidAt: string;
+  status: string;
+  meta: { description?: string } | null;
+}
+
+export interface ServiceOrderReceiptItem {
+  id: number;
+  number: string;
+  totalAmount: string;
+  paidAmount: string;
+  balanceDue: string;
+  currency: string;
+  payerName: string;
+  pdfUrl: string | null;
+  createdAt: string;
+}
+
+export interface ServiceOrderBillingData {
+  order: any;
+  client: {
+    id: number;
+    name: string;
+    email: string;
+    phone?: string;
+    depositBalance?: string;
+  } | null;
+  invoice: {
+    id: number;
+    number: string;
+    amount: string;
+    paidAmount: string;
+    status: string;
+    issueDate: string;
+    dueDate: string;
+    pdfUrl: string | null;
+  } | null;
+  payments: ServiceOrderPaymentItem[];
+  receipts: ServiceOrderReceiptItem[];
+  summary: {
+    totalAmount: number;
+    paidAmount: number;
+    remainingBalance: number;
+    paymentStatus: 'unpaid' | 'partial' | 'paid';
+    currency: string;
+    clientDepositBalance: number;
+  };
+}
+
+export interface PayServiceOrderData {
+  serviceOrderId: string | number;
+  amount: number;
+  method: 'bank_transfer' | 'deposit' | 'cash';
+  referenceNumber?: string;
+  description?: string;
+  autoGenerateReceipt?: boolean;
+}
+
+// Get billing, payment records, and receipts for service order
+export function useServiceOrderBilling(serviceOrderId: string | number) {
+  return useQuery({
+    queryKey: [...serviceOrderKeys.detail(serviceOrderId), 'billing'],
+    queryFn: async () => {
+      const response = await apiClient.get<{
+        success: boolean;
+        data: ServiceOrderBillingData;
+      }>(API_ENDPOINTS.SERVICE_ORDER_BILLING(serviceOrderId));
+      return response.data;
+    },
+    enabled: !!serviceOrderId,
+  });
+}
+
+// Record payment for service order
+export function usePayServiceOrder() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (data: PayServiceOrderData) => {
+      const response = await apiClient.post<{
+        success: boolean;
+        message: string;
+        data: any;
+      }>(API_ENDPOINTS.SERVICE_ORDER_PAY(data.serviceOrderId), {
+        amount: data.amount,
+        method: data.method,
+        referenceNumber: data.referenceNumber,
+        description: data.description,
+        autoGenerateReceipt: data.autoGenerateReceipt !== false,
+      });
+      return response.data;
+    },
+    onSuccess: (_, variables) => {
+      qc.invalidateQueries({ queryKey: serviceOrderKeys.detail(variables.serviceOrderId) });
+      qc.invalidateQueries({ queryKey: [...serviceOrderKeys.detail(variables.serviceOrderId), 'billing'] });
+      qc.invalidateQueries({ queryKey: [...serviceOrderKeys.detail(variables.serviceOrderId), 'invoice'] });
+      qc.invalidateQueries({ queryKey: serviceOrderKeys.lists() });
+      qc.invalidateQueries({ queryKey: ['invoices'] });
+      qc.invalidateQueries({ queryKey: ['receipts'] });
+    },
+  });
+}
+
+// Delete / cancel a service order payment
+export function useDeleteServiceOrderPayment() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ serviceOrderId, paymentId }: { serviceOrderId: string | number; paymentId: string | number }) => {
+      const response = await apiClient.delete<{
+        success: boolean;
+        message: string;
+      }>(API_ENDPOINTS.SERVICE_ORDER_DELETE_PAYMENT(serviceOrderId, paymentId));
+      return response;
+    },
+    onSuccess: (_, variables) => {
+      qc.invalidateQueries({ queryKey: serviceOrderKeys.detail(variables.serviceOrderId) });
+      qc.invalidateQueries({ queryKey: [...serviceOrderKeys.detail(variables.serviceOrderId), 'billing'] });
+      qc.invalidateQueries({ queryKey: [...serviceOrderKeys.detail(variables.serviceOrderId), 'invoice'] });
+      qc.invalidateQueries({ queryKey: serviceOrderKeys.lists() });
+      qc.invalidateQueries({ queryKey: ['invoices'] });
+      qc.invalidateQueries({ queryKey: ['receipts'] });
     },
   });
 }

@@ -15,6 +15,7 @@ interface ReceiptTemplateData {
     currency: string;
     amountInWords: string | null;
     notes: string | null;
+    meta?: any;
   };
   booking: {
     code: string;
@@ -89,6 +90,9 @@ export class ReceiptService {
       const paidAmount = this.calculatePaidAmount(booking);
       const balanceDue = (parseFloat(totalAmount) - parseFloat(paidAmount)).toFixed(2);
 
+      const isPaidFull = parseFloat(balanceDue) <= 0;
+      const terminBadge = isPaidFull ? 'Pelunasan (Lunas Penuh)' : 'Termin #1 (Uang Muka / DP)';
+
       // Prepare receipt data
       const newReceipt: NewReceipt = {
         number: receiptNumber,
@@ -112,7 +116,10 @@ export class ReceiptService {
         notes: null,
         amountInWords: null,
         pdfUrl: null,
-        meta: {},
+        meta: {
+          termin: 1,
+          terminLabel: terminBadge,
+        },
       };
 
       // Insert receipt
@@ -155,7 +162,7 @@ export class ReceiptService {
   // NEW: Generate a receipt for a specific invoice payment (partial payments)
   async generateReceiptForInvoicePayment(
     invoiceId: number,
-    payment: { amount: number; method: string; referenceNumber?: string; paidAt?: Date; description?: string }
+    payment: { amount: number; method: string; referenceNumber?: string; paidAt?: Date; description?: string; termin?: number; terminLabel?: string }
   ): Promise<Receipt | null> {
     try {
       // Fetch invoice
@@ -194,6 +201,20 @@ export class ReceiptService {
       const totalAmountStr = invoice.amount != null ? String(invoice.amount) : '0.00';
       const balanceAfterStr = balanceAfter.toFixed(2);
 
+      const terminNumber = payment.termin || (paymentsRows.length + (isAlreadyInTotalPaid ? 0 : 1));
+      const isPaidFull = balanceAfter <= 0;
+      let terminLabel = payment.terminLabel;
+      if (!terminLabel) {
+        terminLabel = `Termin #${terminNumber}`;
+        if (isPaidFull && terminNumber === 1) {
+          terminLabel = 'Pelunasan (Lunas Penuh)';
+        } else if (isPaidFull) {
+          terminLabel = `Termin #${terminNumber} (Pelunasan)`;
+        } else if (terminNumber === 1) {
+          terminLabel = 'Termin #1 (Uang Muka / DP)';
+        }
+      }
+
       // Create receipt with per-payment amount
       const receiptNumber = generateReceiptNumber();
       const newReceipt: NewReceipt = {
@@ -219,6 +240,8 @@ export class ReceiptService {
         amountInWords: null,
         pdfUrl: null,
         meta: {
+          termin: terminNumber,
+          terminLabel,
           payment: {
             method: payment.method,
             referenceNumber: payment.referenceNumber || null,
@@ -360,6 +383,7 @@ export class ReceiptService {
           currency: receipt.currency,
           amountInWords: receipt.amountInWords,
           notes: receipt.notes,
+          meta: receipt.meta,
         },
         booking: {
           code: booking.code,

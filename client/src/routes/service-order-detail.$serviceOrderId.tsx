@@ -24,13 +24,32 @@ import {
   Building,
   Car,
   Link as LinkIcon,
-  Package
+  Package,
+  CreditCard,
+  Wallet,
+  Banknote,
+  Building2,
+  CheckCircle2,
+  Download,
+  AlertCircle
 } from "lucide-react"
 import { authService } from "@/lib/auth"
 import { formatCurrency, formatDate } from "@/lib/utils"
-import { useServiceOrder, useDeleteServiceOrder, useGenerateServiceOrderInvoice, useServiceOrderInvoice, useRegenerateServiceOrderInvoice, useUpdateServiceOrderStatus, type ServiceOrderStatus } from "@/lib/queries/serviceOrders"
+import {
+  useServiceOrder,
+  useDeleteServiceOrder,
+  useGenerateServiceOrderInvoice,
+  useServiceOrderInvoice,
+  useRegenerateServiceOrderInvoice,
+  useUpdateServiceOrderStatus,
+  useServiceOrderBilling,
+  usePayServiceOrder,
+  useDeleteServiceOrderPayment,
+  type ServiceOrderStatus
+} from "@/lib/queries/serviceOrders"
 import { DueDateModal } from "@/components/modals/DueDateModal"
 import { StatusUpdateModal } from "@/components/modals/StatusUpdateModal"
+import { ServiceOrderPaymentModal, type PaymentMethod } from "@/components/modals/ServiceOrderPaymentModal"
 import { useState } from "react"
 
 export const Route = createFileRoute("/service-order-detail/$serviceOrderId")({
@@ -51,6 +70,7 @@ function ServiceOrderDetailPage() {
   // State for modals
   const [isDueDateModalOpen, setIsDueDateModalOpen] = useState(false)
   const [isStatusModalOpen, setIsStatusModalOpen] = useState(false)
+  const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false)
   const [isRegenerateMode, setIsRegenerateMode] = useState(false)
 
   // Fetch service order data using TanStack Query
@@ -59,11 +79,61 @@ function ServiceOrderDetailPage() {
   // Check if invoice already exists
   const { data: existingInvoice, isLoading: isInvoiceLoading } = useServiceOrderInvoice(serviceOrderId)
 
+  // Fetch complete billing and payment records
+  const { data: billingData, isLoading: isBillingLoading } = useServiceOrderBilling(serviceOrderId)
+
   // Mutations
   const deleteServiceOrder = useDeleteServiceOrder()
   const generateInvoice = useGenerateServiceOrderInvoice()
   const regenerateInvoice = useRegenerateServiceOrderInvoice()
   const updateStatus = useUpdateServiceOrderStatus()
+  const payServiceOrder = usePayServiceOrder()
+  const deletePayment = useDeleteServiceOrderPayment()
+
+  const billingSummary = billingData?.summary
+  const effectiveInvoice = billingData?.invoice || existingInvoice
+  const paymentPercent = billingSummary && billingSummary.totalAmount > 0
+    ? Math.min(100, Math.round((billingSummary.paidAmount / billingSummary.totalAmount) * 100))
+    : 0
+
+  const handleRecordPayment = async (data: {
+    amount: number;
+    method: PaymentMethod;
+    referenceNumber?: string;
+    description?: string;
+    autoGenerateReceipt: boolean;
+  }) => {
+    const result = await payServiceOrder.mutateAsync({
+      serviceOrderId,
+      amount: data.amount,
+      method: data.method,
+      referenceNumber: data.referenceNumber,
+      description: data.description,
+      autoGenerateReceipt: data.autoGenerateReceipt,
+    })
+    toast.success('Pembayaran berhasil dicatat!')
+    if (result.data?.receipt?.number) {
+      toast.info(`Kwitansi ${result.data.receipt.number} berhasil diterbitkan.`)
+    }
+  }
+
+  const handleDeletePayment = async (paymentId: number, amount: number) => {
+    if (!window.confirm(`Yakin ingin membatalkan/menghapus pembayaran sebesar ${formatCurrency(amount, 'SAR')} ini? Sisa tagihan dan status akan diperbarui otomatis.`)) {
+      return
+    }
+    try {
+      await deletePayment.mutateAsync({ serviceOrderId, paymentId })
+      toast.success('Pembayaran berhasil dibatalkan/dihapus')
+    } catch (err: any) {
+      toast.error(err?.message || 'Gagal membatalkan pembayaran')
+    }
+  }
+
+  const handleDownloadReceipt = (receiptNumber: string) => {
+    import("@/lib/api").then(({ apiClient }) => {
+      apiClient.downloadFile(`/api/receipts/number/${receiptNumber}/download`, `Receipt-${receiptNumber}.pdf`)
+    })
+  }
 
   const handleEdit = () => {
     navigate({ to: `/service-order-edit/${serviceOrderId}` })
@@ -194,6 +264,20 @@ Total: ${serviceOrder.totalPriceUSD ? formatCurrency(serviceOrder.totalPriceUSD,
       subtitle={`Visa Number: ${serviceOrder.number}`}
       actions={
         <div className="flex items-center space-x-2.5">
+          {billingSummary && (
+            <Badge
+              variant="outline"
+              className={`text-[10px] font-semibold py-0.5 px-2.5 rounded-full shadow-none capitalize ${
+                billingSummary.paymentStatus === 'paid'
+                  ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                  : billingSummary.paymentStatus === 'partial'
+                  ? 'bg-amber-50 text-amber-700 border-amber-200'
+                  : 'bg-zinc-100 text-zinc-600 border-zinc-200'
+              }`}
+            >
+              {billingSummary.paymentStatus === 'paid' ? 'Lunas' : billingSummary.paymentStatus === 'partial' ? 'Sebagian' : 'Belum Bayar'}
+            </Badge>
+          )}
           <Badge variant="outline" className={`text-[10px] font-semibold py-0.5 px-2.5 rounded-full shadow-none capitalize ${getStatusColor(serviceOrder.status)}`}>
             {serviceOrder.status}
           </Badge>
@@ -229,7 +313,7 @@ Total: ${serviceOrder.totalPriceUSD ? formatCurrency(serviceOrder.totalPriceUSD,
                 <span>Update Status</span>
               </Button>
 
-              {/* Invoice Actions */}
+              {/* Invoice & Payment Quick Actions */}
               {(!serviceOrder?.customLaRequestId) && (
                 !isInvoiceLoading && existingInvoice ? (
                   <>
@@ -273,6 +357,19 @@ Total: ${serviceOrder.totalPriceUSD ? formatCurrency(serviceOrder.totalPriceUSD,
                     <span>Generate Invoice</span>
                   </Button>
                 )
+              )}
+
+              {/* Record Payment Button */}
+              {billingSummary && billingSummary.remainingBalance > 0 && (
+                <Button
+                  size="sm"
+                  onClick={() => setIsPaymentModalOpen(true)}
+                  disabled={payServiceOrder.isPending}
+                  className="h-9 px-4 bg-[#111111] hover:bg-[#242424] text-white font-semibold text-xs rounded-md transition-colors flex items-center space-x-1.5 shadow-none border border-transparent"
+                >
+                  <CreditCard className="h-3.5 w-3.5" />
+                  <span>Terima Pembayaran</span>
+                </Button>
               )}
 
               <Button
@@ -582,6 +679,252 @@ Total: ${serviceOrder.totalPriceUSD ? formatCurrency(serviceOrder.totalPriceUSD,
           </Card>
         )}
 
+        {/* Tagihan & Pembayaran (Billing & Payments) */}
+        <Card className="border border-[#e5e7eb] rounded-xl shadow-none bg-white overflow-hidden">
+          <CardHeader className="bg-zinc-50/60 border-b border-[#e5e7eb] px-6 py-4 flex flex-row items-center justify-between space-y-0">
+            <div className="flex items-center space-x-3">
+              <div className="p-2 bg-white border border-zinc-200/80 rounded-lg shadow-2xs">
+                <Receipt className="h-4 w-4 text-zinc-700" />
+              </div>
+              <div>
+                <CardTitle className="text-sm font-bold text-zinc-900 tracking-tight flex items-center gap-2">
+                  <span>Tagihan & Pembayaran</span>
+                  {effectiveInvoice?.number && (
+                    <span className="font-mono text-xs font-semibold text-zinc-500">
+                      ({effectiveInvoice.number})
+                    </span>
+                  )}
+                  {billingSummary && (
+                    <Badge
+                      variant="outline"
+                      className={`text-[10px] font-semibold uppercase px-2 py-0.5 rounded-md ${
+                        billingSummary.paymentStatus === 'paid'
+                          ? 'bg-emerald-50 text-emerald-700 border-emerald-200/60'
+                          : billingSummary.paymentStatus === 'partial'
+                          ? 'bg-amber-50 text-amber-700 border-amber-200/60'
+                          : 'bg-zinc-100 text-zinc-600 border-zinc-200/60'
+                      }`}
+                    >
+                      {billingSummary.paymentStatus === 'paid' ? 'Lunas' : billingSummary.paymentStatus === 'partial' ? 'Cicilan' : 'Belum Bayar'}
+                    </Badge>
+                  )}
+                </CardTitle>
+                <p className="text-xs text-zinc-500 mt-0.5">
+                  Kelola tagihan, pencatatan pembayaran masuk, dan kwitansi resmi visa.
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center space-x-2">
+              {effectiveInvoice?.pdfUrl && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleViewInvoice}
+                  className="h-8 px-3 border-zinc-200 text-zinc-700 hover:bg-zinc-50 text-xs font-medium"
+                >
+                  <Eye className="h-3.5 w-3.5 mr-1.5 text-zinc-400" />
+                  <span>Lihat Invoice</span>
+                </Button>
+              )}
+
+              {effectiveInvoice && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={openRegenerateModal}
+                  disabled={regenerateInvoice.isPending}
+                  className="h-8 px-3 border-zinc-200 text-zinc-700 hover:bg-zinc-50 text-xs font-medium"
+                >
+                  <RefreshCw className="h-3.5 w-3.5 mr-1.5 text-zinc-400" />
+                  <span>Perbarui PDF</span>
+                </Button>
+              )}
+
+              {(!effectiveInvoice) && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={openGenerateModal}
+                  disabled={generateInvoice.isPending}
+                  className="h-8 px-3 border-zinc-200 text-zinc-700 hover:bg-zinc-50 text-xs font-medium"
+                >
+                  <FileText className="h-3.5 w-3.5 mr-1.5 text-zinc-400" />
+                  <span>Terbitkan Invoice</span>
+                </Button>
+              )}
+
+              {billingSummary && billingSummary.remainingBalance > 0 && (
+                <Button
+                  size="sm"
+                  onClick={() => setIsPaymentModalOpen(true)}
+                  disabled={payServiceOrder.isPending}
+                  className="h-8 px-3.5 bg-[#111111] hover:bg-[#242424] text-white font-semibold text-xs rounded-md shadow-none flex items-center space-x-1.5 border border-transparent"
+                >
+                  <CreditCard className="h-3.5 w-3.5" />
+                  <span>Terima Pembayaran</span>
+                </Button>
+              )}
+            </div>
+          </CardHeader>
+
+          <CardContent className="p-6 space-y-6">
+            {/* 3 Summary Stat Boxes */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 p-4 bg-zinc-50/70 rounded-xl border border-zinc-200/70">
+              <div className="space-y-1">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-500">Total Tagihan</span>
+                <p className="text-xl font-bold font-mono text-zinc-900">
+                  {formatCurrency(billingSummary?.totalAmount || serviceOrder.totalPriceSAR, 'SAR')}
+                </p>
+                <p className="text-[11px] font-mono text-zinc-400">
+                  {formatCurrency(serviceOrder.totalPriceUSD, 'USD')} (USD)
+                </p>
+              </div>
+
+              <div className="space-y-1 border-t md:border-t-0 md:border-l border-zinc-200/60 pt-3 md:pt-0 md:pl-4">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-500">Telah Dibayar</span>
+                <p className="text-xl font-bold font-mono text-emerald-600">
+                  {formatCurrency(billingSummary?.paidAmount || 0, 'SAR')}
+                </p>
+                <div className="flex items-center gap-1.5 text-[11px] text-emerald-700 font-medium">
+                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                  <span>{paymentPercent}% Terbayar</span>
+                </div>
+              </div>
+
+              <div className="space-y-1 border-t md:border-t-0 md:border-l border-zinc-200/60 pt-3 md:pt-0 md:pl-4">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-500">Sisa Tagihan</span>
+                <p className={`text-xl font-bold font-mono ${
+                  (billingSummary?.remainingBalance || 0) === 0 ? 'text-emerald-600' : 'text-rose-600'
+                }`}>
+                  {formatCurrency(billingSummary?.remainingBalance ?? serviceOrder.totalPriceSAR, 'SAR')}
+                </p>
+                <p className="text-[11px] text-zinc-400">
+                  {(billingSummary?.remainingBalance || 0) === 0 ? 'Semua tagihan lunas' : 'Menunggu pelunasan'}
+                </p>
+              </div>
+            </div>
+
+            {/* Riwayat Pembayaran & Kwitansi */}
+            <div className="space-y-3">
+              <div className="flex items-center justify-between border-b border-zinc-100 pb-2">
+                <h4 className="text-xs font-bold uppercase tracking-wider text-zinc-600">
+                  Riwayat Pembayaran & Kwitansi Resmi
+                </h4>
+                <span className="text-xs text-zinc-400 font-medium">
+                  {billingData?.payments?.length || 0} transaksi tercatat
+                </span>
+              </div>
+
+              {billingData?.payments && billingData.payments.length > 0 ? (
+                <div className="overflow-x-auto rounded-lg border border-zinc-200">
+                  <table className="w-full text-xs">
+                    <thead className="bg-zinc-50 border-b border-zinc-200">
+                      <tr>
+                        <th className="text-left font-bold text-zinc-600 py-2.5 px-4 uppercase tracking-wider">Tanggal</th>
+                        <th className="text-left font-bold text-zinc-600 py-2.5 px-4 uppercase tracking-wider">Metode</th>
+                        <th className="text-left font-bold text-zinc-600 py-2.5 px-4 uppercase tracking-wider">No. Referensi / Catatan</th>
+                        <th className="text-right font-bold text-zinc-600 py-2.5 px-4 uppercase tracking-wider">Nominal</th>
+                        <th className="text-right font-bold text-zinc-600 py-2.5 px-4 uppercase tracking-wider">Kwitansi (PDF)</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-zinc-100">
+                      {billingData.payments.map((p) => {
+                        const receiptNumber = p.receiptNumber || billingData.receipts?.find(r => 
+                          (r.meta?.paymentId && r.meta.paymentId === p.id) ||
+                          (r.meta?.referenceNumber && r.meta.referenceNumber === p.referenceNumber) ||
+                          (r.meta?.termin && r.meta.termin === p.termin) ||
+                          (parseFloat(r.paidAmount) === parseFloat(p.amount))
+                        )?.number || (billingData.receipts?.length === 1 && billingData.payments.length === 1 ? billingData.receipts[0]?.number : null);
+
+                        return (
+                          <tr key={p.id} className="hover:bg-zinc-50/60 transition-colors">
+                            <td className="py-3 px-4 font-mono text-zinc-700">
+                              {formatDate(p.paidAt)}
+                            </td>
+                            <td className="py-3 px-4">
+                              <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md font-medium text-[11px] bg-zinc-100 text-zinc-700">
+                                {p.method === 'bank_transfer' ? (
+                                  <>
+                                    <Building2 className="w-3 h-3 text-zinc-500" />
+                                    <span>Transfer Bank</span>
+                                  </>
+                                ) : p.method === 'deposit' ? (
+                                  <>
+                                    <Wallet className="w-3 h-3 text-emerald-600" />
+                                    <span>Saldo Deposit</span>
+                                  </>
+                                ) : (
+                                  <>
+                                    <Banknote className="w-3 h-3 text-zinc-500" />
+                                    <span>Tunai</span>
+                                  </>
+                                )}
+                              </span>
+                            </td>
+                            <td className="py-3 px-4">
+                              <div className="flex items-center gap-1.5 flex-wrap">
+                                {p.terminLabel ? (
+                                  <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold bg-sky-50 text-sky-700 border border-sky-200">
+                                    {p.terminLabel}
+                                  </span>
+                                ) : null}
+                                <span className="font-mono text-zinc-800">{p.referenceNumber || '-'}</span>
+                              </div>
+                              {p.meta?.description && (
+                                <div className="text-[11px] text-zinc-500 mt-0.5">{p.meta.description}</div>
+                              )}
+                            </td>
+                            <td className="py-3 px-4 text-right font-mono font-bold text-emerald-600 text-sm">
+                              {formatCurrency(p.amount, p.currency || 'SAR')}
+                            </td>
+                            <td className="py-3 px-4 text-right">
+                              <div className="flex items-center justify-end space-x-2">
+                                {receiptNumber ? (
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => handleDownloadReceipt(receiptNumber)}
+                                    className="h-7 text-[11px] px-2.5 font-medium border-zinc-200 text-zinc-700 hover:bg-zinc-50 hover:text-zinc-900 inline-flex items-center space-x-1"
+                                    title="Download Kwitansi PDF"
+                                  >
+                                    <Receipt className="w-3 h-3 text-zinc-500" />
+                                    <span>{receiptNumber}</span>
+                                  </Button>
+                                ) : (
+                                  <span className="text-zinc-400 text-[11px] italic mr-1">-</span>
+                                )}
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => handleDeletePayment(p.id, parseFloat(p.amount))}
+                                  disabled={deletePayment.isPending}
+                                  className="h-7 w-7 p-0 text-zinc-400 hover:text-red-600 hover:bg-red-50 rounded"
+                                  title="Batalkan / Hapus Pembayaran Ini"
+                                >
+                                  <Trash2 className="w-3.5 h-3.5" />
+                                </Button>
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              ) : (
+                <div className="text-center py-6 border border-dashed border-zinc-200 rounded-lg">
+                  <CreditCard className="w-6 h-6 text-zinc-300 mx-auto mb-2" />
+                  <p className="text-xs text-zinc-500 font-medium">Belum ada riwayat pembayaran yang dicatat.</p>
+                  <p className="text-[11px] text-zinc-400 mt-0.5">
+                    Klik tombol "Terima Pembayaran" di atas untuk mencatat pembayaran klien.
+                  </p>
+                </div>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+
         {/* Pricing Information */}
         <Card className="border border-[#e5e7eb] rounded-xl shadow-none bg-white">
           <CardHeader className="border-b border-gray-100 pb-3">
@@ -640,6 +983,20 @@ Total: ${serviceOrder.totalPriceUSD ? formatCurrency(serviceOrder.totalPriceUSD,
         onSubmit={handleUpdateStatus}
         currentStatus={serviceOrder.status}
         isLoading={updateStatus.isPending}
+      />
+
+      <ServiceOrderPaymentModal
+        isOpen={isPaymentModalOpen}
+        onClose={() => setIsPaymentModalOpen(false)}
+        orderNumber={serviceOrder.number}
+        totalAmount={billingSummary?.totalAmount || parseFloat(serviceOrder.totalPriceSAR)}
+        paidAmount={billingSummary?.paidAmount || 0}
+        remainingBalance={billingSummary?.remainingBalance ?? parseFloat(serviceOrder.totalPriceSAR)}
+        currency={billingSummary?.currency || 'SAR'}
+        clientName={serviceOrder.clientName || serviceOrder.groupLeaderName}
+        clientDepositBalance={billingSummary?.clientDepositBalance || 0}
+        onSubmit={handleRecordPayment}
+        isLoading={payServiceOrder.isPending}
       />
     </PageLayout>
   )

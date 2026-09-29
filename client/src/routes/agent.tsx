@@ -8,8 +8,8 @@ export const Route = createFileRoute("/agent")({
       throw redirect({ to: "/login" });
     }
 
-    // Only agent users can access agent portal
-    if (user.userType !== 'agent') {
+    // Only regular agent users can access agent portal; staff goes to admin dashboard
+    if (user.role === 'admin' || user.role === 'owner' || user.role === 'finance' || user.userType !== 'agent') {
       throw redirect({ to: "/dashboard/admin" });
     }
 
