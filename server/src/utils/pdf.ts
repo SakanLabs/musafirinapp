@@ -317,6 +317,16 @@ export async function getFileStreamFromMinio(fileName: string) {
   }
 }
 
+// Check if file exists in MinIO
+export async function fileExistsInMinio(fileName: string): Promise<boolean> {
+  try {
+    await minioClient.statObject(BUCKET_NAME, fileName);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 // Generate Service Order Receipt PDF
 export async function generateServiceOrderReceiptPDF(
   receiptReq: any,
@@ -329,9 +339,11 @@ export async function generateServiceOrderReceiptPDF(
 
   try {
     const { readFileSync } = await import('fs');
+    const Handlebars = (await import('handlebars')).default || (await import('handlebars'));
 
     const templatePath = getTemplatePath('kwitansi.html');
-    let template = readFileSync(templatePath, 'utf-8');
+    const templateSource = readFileSync(templatePath, 'utf-8');
+    const template = Handlebars.compile(templateSource);
 
     const logoBase64 = TemplateHelpers.getLogoBase64();
     const saudiRiyalSVGBase64 = TemplateHelpers.getSaudiRiyalSVGBase64();
@@ -344,79 +356,94 @@ export async function generateServiceOrderReceiptPDF(
       console.warn('Signature image not found, using transparent fallback');
     }
 
-    let renderedHtml = template;
-
     const formatDate = (date: any) => {
       if (!date) return '';
       const d = typeof date === 'string' ? new Date(date) : date;
-      return d.toLocaleDateString('en-CA');
+      return d.toLocaleDateString('en-GB');
     };
 
     const receiptDateStr = formatDate(receiptReq.issueDate || receiptReq.createdAt || new Date());
 
-    // Replace text templates
-    renderedHtml = renderedHtml.replace(/\{\{receiptNo\}\}/g, receiptReq.number || '');
-    renderedHtml = renderedHtml.replace(/\{\{receiptDate\}\}/g, receiptDateStr);
+    const totalInvoiceNum = parseFloat(receiptReq.totalAmount || invoiceReq?.amount || serviceOrderReq.totalPriceSAR || '0');
+    const currentPaymentNum = parseFloat(receiptReq.paidAmount || '0');
+    const balanceDueNum = parseFloat(receiptReq.balanceDue || '0');
 
-    renderedHtml = renderedHtml.replace(/\{\{payer\.name\}\}/g, receiptReq.payerName || clientReq.name || '');
-    renderedHtml = renderedHtml.replace(/\{\{payer\.email\}\}/g, clientReq.email || '-');
-    renderedHtml = renderedHtml.replace(/\{\{payer\.phone\}\}/g, clientReq.phone || '-');
-    renderedHtml = renderedHtml.replace(/\{\{payer\.address\}\}/g, '-');
-
-    renderedHtml = renderedHtml.replace(/\{\{invoice\.invoiceNo\}\}/g, invoiceReq?.number || '-');
-    renderedHtml = renderedHtml.replace(/\{\{invoice\.invoiceDate\}\}/g, invoiceReq?.issueDate ? formatDate(invoiceReq.issueDate) : '-');
-
-    renderedHtml = renderedHtml.replace(/\{\{hotelName\}\}/g, serviceOrderReq.productType || 'Service Order');
-    renderedHtml = renderedHtml.replace(/\{\{hotelAddress\}\}/g, '');
-
-    renderedHtml = renderedHtml.replace(/\{\{totals\.invoiceAmount\}\}/g, receiptReq.totalAmount || '0');
-    renderedHtml = renderedHtml.replace(/\{\{totals\.paidAmount\}\}/g, receiptReq.paidAmount || '0');
-    renderedHtml = renderedHtml.replace(/\{\{totals\.balanceDue\}\}/g, receiptReq.balanceDue || '0');
-    renderedHtml = renderedHtml.replace(/\{\{amountInWords\}\}/g, '');
-
-    renderedHtml = renderedHtml.replace(/\{\{bank\.bankName\}\}/g, 'Bank Syariah Indonesia');
-    renderedHtml = renderedHtml.replace(/\{\{bank\.bankCountry\}\}/g, 'Indonesia');
-    renderedHtml = renderedHtml.replace(/\{\{bank\.accountName\}\}/g, 'PT Thalhah Insan Rabbani');
-    renderedHtml = renderedHtml.replace(/\{\{bank\.accountNumberOrIBAN\}\}/g, '7254459741');
-
-    renderedHtml = renderedHtml.replace(/\{\{notes\}\}/g, serviceOrderReq.notes || '');
-    renderedHtml = renderedHtml.replace(/\{\{brandName\}\}/g, 'Musafirin');
-
-    renderedHtml = renderedHtml.replace(/\{\{logoBase64\}\}/g, logoBase64);
-    renderedHtml = renderedHtml.replace(/\{\{saudiRiyalSVGBase64\}\}/g, saudiRiyalSVGBase64);
-    renderedHtml = renderedHtml.replace(/\{\{signatureBase64\}\}/g, signatureBase64);
-
-    renderedHtml = renderedHtml.replace(/\{\{#if amountInWords\}\}[\s\S]*?\{\{\/if\}\}/g, '');
-    if (!serviceOrderReq.notes) {
-      renderedHtml = renderedHtml.replace(/\{\{#if notes\}\}[\s\S]*?\{\{\/if\}\}/g, '');
-    } else {
-      renderedHtml = renderedHtml.replace(/\{\{#if notes\}\}/g, '');
-      renderedHtml = renderedHtml.replace(/\{\{\/if\}\}/g, '');
+    let cumulativePaidNum = totalInvoiceNum - balanceDueNum;
+    if (isNaN(cumulativePaidNum) || cumulativePaidNum < currentPaymentNum) {
+      cumulativePaidNum = currentPaymentNum;
     }
 
-    const serviceDetails = `
-        <div class="cs-text-sm cs-text-gray-700">Type: ${serviceOrderReq.productType || ''}</div>
-        <div class="cs-text-sm cs-text-gray-500">Group Leader: ${serviceOrderReq.groupLeaderName || ''}</div>
-        <div class="cs-text-sm cs-text-gray-500">Total People: ${serviceOrderReq.totalPeople || '1'}</div>
-    `;
-    const paymentRow = `
-      <tr>
-        <td>
-          <div class="cs-font-semibold">Service Order Payment</div>
-          <div class="cs-text-sm cs-text-gray-500">${receiptDateStr}</div>
-          ${serviceDetails}
-        </td>
-        <td>Transfer Bank</td>
-        <td>-</td>
-        <td class="cs-num">
-          <img src="data:image/svg+xml;base64,${saudiRiyalSVGBase64}" class="cs-sar-icon" alt="SAR" />
-          ${receiptReq.paidAmount || '0'}
-        </td>
-      </tr>
-    `;
-    renderedHtml = renderedHtml.replace(/\{\{#each payments\}\}[\s\S]*?\{\{\/each\}\}/g, paymentRow);
+    const terminNumber = receiptReq.meta?.termin || 1;
+    const isPaidFull = balanceDueNum <= 0;
+    let terminBadge = receiptReq.meta?.terminLabel || `Termin #${terminNumber}`;
+    if (!receiptReq.meta?.terminLabel) {
+      if (isPaidFull && terminNumber === 1) {
+        terminBadge = 'Pelunasan (Lunas Penuh)';
+      } else if (isPaidFull) {
+        terminBadge = `Termin #${terminNumber} (Pelunasan)`;
+      } else if (terminNumber === 1) {
+        terminBadge = 'Termin #1 (Uang Muka / DP)';
+      }
+    }
 
-    await page.setContent(renderedHtml);
+    const productName = serviceOrderReq.productType ? (serviceOrderReq.productType.includes('visa') ? 'Visa Umrah' : serviceOrderReq.productType) : 'Service Order';
+    const paymentTitle = `Pembayaran ${productName}`;
+    const paymentDesc = receiptReq.meta?.description || (serviceOrderReq.notes ? `Catatan: ${serviceOrderReq.notes}` : '');
+    const refNumber = receiptReq.meta?.referenceNumber || receiptReq.meta?.payment?.referenceNumber || '-';
+    const methodStr = (receiptReq.meta?.paymentMethod || receiptReq.meta?.payment?.method || receiptReq.meta?.method) === 'deposit' ? 'Saldo Deposit' : 'Transfer Bank';
+
+    const serviceDetails = `Type: ${serviceOrderReq.productType || 'Visa'}${serviceOrderReq.groupLeaderName ? ` | Group: ${serviceOrderReq.groupLeaderName}` : ''}${serviceOrderReq.totalPeople ? ` (${serviceOrderReq.totalPeople} Pax)` : ''}`;
+
+    const templateData = {
+      receiptNo: receiptReq.number || '',
+      receiptDate: receiptDateStr,
+      payer: {
+        name: receiptReq.payerName || clientReq.name || '',
+        email: clientReq.email || '-',
+        phone: clientReq.phone || '-',
+        address: clientReq.address || '-',
+      },
+      invoice: {
+        invoiceNo: invoiceReq?.number || '-',
+        invoiceDate: invoiceReq?.issueDate ? formatDate(invoiceReq.issueDate) : '-',
+      },
+      hotelName: `Layanan ${productName}`,
+      hotelAddress: serviceOrderReq.groupLeaderName ? `Group Leader: ${serviceOrderReq.groupLeaderName} (${serviceOrderReq.totalPeople || 1} Pax)` : '',
+      terminBadge,
+      isPaidFull,
+      payments: [
+        {
+          label: paymentTitle,
+          terminBadge,
+          date: receiptDateStr,
+          description: paymentDesc,
+          details: serviceDetails,
+          method: methodStr,
+          transactionId: refNumber,
+          amount: currentPaymentNum.toFixed(2),
+        }
+      ],
+      totals: {
+        invoiceAmount: totalInvoiceNum.toFixed(2),
+        currentPaymentAmount: currentPaymentNum.toFixed(2),
+        paidAmount: cumulativePaidNum.toFixed(2),
+        balanceDue: balanceDueNum.toFixed(2),
+      },
+      bank: {
+        bankName: receiptReq.bankName || 'Bank Syariah Indonesia',
+        bankCountry: receiptReq.bankCountry || 'Indonesia',
+        accountName: receiptReq.accountName || 'PT Thalhah Insan Rabbani',
+        accountNumberOrIBAN: receiptReq.accountNumberOrIBAN || '7254459741',
+      },
+      notes: receiptReq.notes || serviceOrderReq.notes || '',
+      brandName: 'Musafirin',
+      logoBase64,
+      saudiRiyalSVGBase64,
+      signatureBase64,
+    };
+
+    const renderedHtml = template(templateData);
+    await page.setContent(renderedHtml, { waitUntil: 'networkidle0' });
     const pdf = await page.pdf({
       format: 'A4',
       printBackground: true,
@@ -496,19 +523,15 @@ export async function generateReceiptPDF(receiptData: any): Promise<string> {
   const page = await browser.newPage();
 
   try {
-    // Load template directly
     const { readFileSync } = await import('fs');
-    const { join } = await import('path');
+    const Handlebars = (await import('handlebars')).default || (await import('handlebars'));
     const templatePath = getTemplatePath('kwitansi.html');
-    let template = readFileSync(templatePath, 'utf-8');
+    const templateSource = readFileSync(templatePath, 'utf-8');
+    const template = Handlebars.compile(templateSource);
 
-    // Load logo base64
     const logoBase64 = TemplateHelpers.getLogoBase64();
-
-    // Load Saudi Riyal SVG base64
     const saudiRiyalSVGBase64 = TemplateHelpers.getSaudiRiyalSVGBase64();
 
-    // Load signature image base64
     let signatureBase64 = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=';
     try {
       const signaturePath = getClientPublicPath('ttd.png');
@@ -517,97 +540,89 @@ export async function generateReceiptPDF(receiptData: any): Promise<string> {
       console.warn('Signature image not found, using transparent fallback');
     }
 
-    // Comprehensive template replacement
-    let renderedHtml = template;
+    const totalInvoiceNum = parseFloat(receiptData.receipt?.totalAmount || '0');
+    const currentPaymentNum = parseFloat(receiptData.receipt?.paidAmount || '0');
+    const balanceDueNum = parseFloat(receiptData.receipt?.balanceDue || '0');
 
-    // Basic receipt info
-    renderedHtml = renderedHtml.replace(/\{\{receiptNo\}\}/g, receiptData.receipt?.number || '');
-    renderedHtml = renderedHtml.replace(/\{\{receiptDate\}\}/g, receiptData.receipt?.issueDate || '');
-
-    // Payer information
-    renderedHtml = renderedHtml.replace(/\{\{payer\.name\}\}/g, receiptData.payer?.name || '');
-    renderedHtml = renderedHtml.replace(/\{\{payer\.email\}\}/g, receiptData.payer?.email || '');
-    renderedHtml = renderedHtml.replace(/\{\{payer\.phone\}\}/g, receiptData.payer?.phone || '');
-    renderedHtml = renderedHtml.replace(/\{\{payer\.address\}\}/g, receiptData.payer?.address || '');
-
-    // Invoice information
-    renderedHtml = renderedHtml.replace(/\{\{invoice\.invoiceNo\}\}/g, receiptData.receipt?.number || '');
-    renderedHtml = renderedHtml.replace(/\{\{invoice\.invoiceDate\}\}/g, receiptData.receipt?.issueDate || '');
-
-    // Hotel information
-    renderedHtml = renderedHtml.replace(/\{\{hotelName\}\}/g, receiptData.booking?.hotelName || receiptData.hotel?.name || '');
-    renderedHtml = renderedHtml.replace(/\{\{hotelAddress\}\}/g, receiptData.hotel?.address || '');
-
-    // Totals
-    renderedHtml = renderedHtml.replace(/\{\{totals\.invoiceAmount\}\}/g, receiptData.receipt?.totalAmount || '0');
-    renderedHtml = renderedHtml.replace(/\{\{totals\.paidAmount\}\}/g, receiptData.receipt?.paidAmount || '0');
-    renderedHtml = renderedHtml.replace(/\{\{totals\.balanceDue\}\}/g, receiptData.receipt?.balanceDue || '0');
-
-    // Amount in words
-    renderedHtml = renderedHtml.replace(/\{\{amountInWords\}\}/g, receiptData.receipt?.amountInWords || '');
-
-    // Bank information
-    renderedHtml = renderedHtml.replace(/\{\{bank\.bankName\}\}/g, receiptData.bank?.name || '');
-    renderedHtml = renderedHtml.replace(/\{\{bank\.bankCountry\}\}/g, receiptData.bank?.country || '');
-    renderedHtml = renderedHtml.replace(/\{\{bank\.accountName\}\}/g, receiptData.bank?.accountName || '');
-    renderedHtml = renderedHtml.replace(/\{\{bank\.accountNumberOrIBAN\}\}/g, receiptData.bank?.accountNumber || '');
-
-    // Notes
-    renderedHtml = renderedHtml.replace(/\{\{notes\}\}/g, receiptData.receipt?.notes || '');
-
-    // Brand information
-    renderedHtml = renderedHtml.replace(/\{\{brandName\}\}/g, receiptData.brand?.name || 'Musafirin');
-
-    // Logo and icons
-    renderedHtml = renderedHtml.replace(/\{\{logoBase64\}\}/g, logoBase64);
-    renderedHtml = renderedHtml.replace(/\{\{saudiRiyalSVGBase64\}\}/g, saudiRiyalSVGBase64);
-    renderedHtml = renderedHtml.replace(/\{\{signatureBase64\}\}/g, signatureBase64);
-
-    // Handle conditional blocks (simple implementation)
-    // Remove {{#if amountInWords}} blocks if no amount in words
-    if (!receiptData.receipt?.amountInWords) {
-      renderedHtml = renderedHtml.replace(/\{\{#if amountInWords\}\}[\s\S]*?\{\{\/if\}\}/g, '');
-    } else {
-      renderedHtml = renderedHtml.replace(/\{\{#if amountInWords\}\}/g, '');
-      renderedHtml = renderedHtml.replace(/\{\{\/if\}\}/g, '');
+    let cumulativePaidNum = totalInvoiceNum - balanceDueNum;
+    if (isNaN(cumulativePaidNum) || cumulativePaidNum < currentPaymentNum) {
+      cumulativePaidNum = currentPaymentNum;
     }
 
-    // Remove {{#if notes}} blocks if no notes
-    if (!receiptData.receipt?.notes) {
-      renderedHtml = renderedHtml.replace(/\{\{#if notes\}\}[\s\S]*?\{\{\/if\}\}/g, '');
-    } else {
-      renderedHtml = renderedHtml.replace(/\{\{#if notes\}\}/g, '');
-      renderedHtml = renderedHtml.replace(/\{\{\/if\}\}/g, '');
+    const terminNumber = receiptData.receipt?.meta?.termin || 1;
+    const isPaidFull = balanceDueNum <= 0;
+    let terminBadge = receiptData.receipt?.meta?.terminLabel || `Termin #${terminNumber}`;
+    if (!receiptData.receipt?.meta?.terminLabel) {
+      if (isPaidFull && terminNumber === 1) {
+        terminBadge = 'Pelunasan (Lunas Penuh)';
+      } else if (isPaidFull) {
+        terminBadge = `Termin #${terminNumber} (Pelunasan)`;
+      } else if (terminNumber === 1) {
+        terminBadge = 'Termin #1 (Uang Muka / DP)';
+      }
     }
 
-    // Handle payments loop (simple implementation for now)
-    // Build hotel details under payment row
-    const hotelDetails = `
-        <div class="cs-text-sm cs-text-gray-700">${receiptData.booking?.hotelName || ''}</div>
-        <div class="cs-text-sm cs-text-gray-500">Check-in: ${receiptData.booking?.checkIn || ''}</div>
-        <div class="cs-text-sm cs-text-gray-500">Check-out: ${receiptData.booking?.checkOut || ''}</div>
-        ${receiptData.booking?.roomSummary ? `<div class=\"cs-text-sm cs-text-gray-700\">${receiptData.booking.roomSummary}</div>` : ''}
-    `;
-    const paymentRow = `
-      <tr>
-        <td>
-          <div class="cs-font-semibold">Pembayaran Hotel</div>
-          <div class="cs-text-sm cs-text-gray-500">${receiptData.receipt?.issueDate || ''}</div>
-          ${hotelDetails}
-        </td>
-        <td>Transfer Bank</td>
-        <td>-</td>
-        <td class="cs-num">
-          <img src="data:image/svg+xml;base64,${saudiRiyalSVGBase64}" class="cs-sar-icon" alt="SAR" />
-          ${receiptData.receipt?.paidAmount || '0'}
-        </td>
-      </tr>
-    `;
+    const paymentMethod = receiptData.receipt?.meta?.payment?.method === 'deposit' ? 'Saldo Deposit' : 'Transfer Bank';
+    const transactionId = receiptData.receipt?.meta?.payment?.referenceNumber || '-';
+    const description = receiptData.receipt?.meta?.payment?.description || receiptData.receipt?.notes || '';
 
-    // Replace the payments loop
-    renderedHtml = renderedHtml.replace(/\{\{#each payments\}\}[\s\S]*?\{\{\/each\}\}/g, paymentRow);
+    const hotelDetails = {
+      name: receiptData.booking?.hotelName || receiptData.hotel?.name || '',
+      checkIn: receiptData.booking?.checkIn || '',
+      checkOut: receiptData.booking?.checkOut || '',
+      roomSummary: receiptData.booking?.roomSummary || '',
+    };
 
-    await page.setContent(renderedHtml);
+    const templateData = {
+      receiptNo: receiptData.receipt?.number || '',
+      receiptDate: receiptData.receipt?.issueDate || '',
+      payer: {
+        name: receiptData.payer?.name || '',
+        email: receiptData.payer?.email || '',
+        phone: receiptData.payer?.phone || '',
+        address: receiptData.payer?.address || '',
+      },
+      invoice: {
+        invoiceNo: receiptData.receipt?.number || '',
+        invoiceDate: receiptData.receipt?.issueDate || '',
+      },
+      hotelName: receiptData.booking?.hotelName || receiptData.hotel?.name || '',
+      hotelAddress: receiptData.hotel?.address || '',
+      terminBadge,
+      isPaidFull,
+      payments: [
+        {
+          label: 'Pembayaran Hotel',
+          terminBadge,
+          date: receiptData.receipt?.issueDate || '',
+          description,
+          hotelDetails,
+          method: paymentMethod,
+          transactionId,
+          amount: currentPaymentNum.toFixed(2),
+        }
+      ],
+      totals: {
+        invoiceAmount: totalInvoiceNum.toFixed(2),
+        currentPaymentAmount: currentPaymentNum.toFixed(2),
+        paidAmount: cumulativePaidNum.toFixed(2),
+        balanceDue: balanceDueNum.toFixed(2),
+      },
+      bank: {
+        bankName: receiptData.bank?.name || 'Bank Syariah Indonesia',
+        bankCountry: receiptData.bank?.country || 'Indonesia',
+        accountName: receiptData.bank?.accountName || 'PT Thalhah Insan Rabbani',
+        accountNumberOrIBAN: receiptData.bank?.accountNumber || '7254459741',
+      },
+      notes: receiptData.receipt?.notes || '',
+      brandName: receiptData.brand?.name || 'Musafirin',
+      logoBase64,
+      saudiRiyalSVGBase64,
+      signatureBase64,
+    };
+
+    const renderedHtml = template(templateData);
+    await page.setContent(renderedHtml, { waitUntil: 'networkidle0' });
 
     const pdf = await page.pdf({
       format: 'A4',
@@ -670,8 +685,8 @@ export async function generateServiceOrderInvoicePDF(
     const subtotal = totalAmount;
     const discount = 0;
     const grandTotal = subtotal - discount;
-    const paidAmount = 0;
-    const balanceDue = grandTotal - paidAmount;
+    const paidAmount = parseFloat(invoice.paidAmount != null ? invoice.paidAmount.toString() : '0') || 0;
+    const balanceDue = Math.max(0, grandTotal - paidAmount);
 
     // Create service order item
     const totalPeople = serviceOrder.totalPeople || 1;
@@ -979,11 +994,30 @@ export async function generateTransportationReceiptPDF(
 
     // Determine vehicle type, driver name, driver phone from the first route or combine them
     const firstRoute = routes[0] || {};
-    const totalAmount = parseFloat(receipt.totalAmount || booking.totalAmount || '0');
+    const totalAmount = parseFloat(receipt.totalAmount || invoice?.amount || booking.totalAmount || '0');
+    const currentPayment = parseFloat(receipt.paidAmount || '0');
+    const balanceDue = parseFloat(receipt.balanceDue || '0');
+    let cumulativePaid = totalAmount - balanceDue;
+    if (isNaN(cumulativePaid) || cumulativePaid < currentPayment) {
+      cumulativePaid = currentPayment;
+    }
+
+    const terminNumber = receipt.meta?.termin || 1;
+    const isPaidFull = balanceDue <= 0;
+    let terminBadge = receipt.meta?.terminLabel || `Termin #${terminNumber}`;
+    if (!receipt.meta?.terminLabel) {
+      if (isPaidFull && terminNumber === 1) {
+        terminBadge = 'Pelunasan (Lunas Penuh)';
+      } else if (isPaidFull) {
+        terminBadge = `Termin #${terminNumber} (Pelunasan)`;
+      } else if (terminNumber === 1) {
+        terminBadge = 'Termin #1 (Uang Muka / DP)';
+      }
+    }
 
     // ToWords functionality (simplified for transportation or import from elsewhere if needed)
     // For now, using a placeholder or a simple toString
-    const amountInWords = receipt.amountInWords || `${totalAmount} SAR Only`;
+    const amountInWords = receipt.amountInWords || `${currentPayment.toFixed(2)} SAR Only`;
 
     const templateData = {
       receiptNo: receipt.number,
@@ -1009,19 +1043,23 @@ export async function generateTransportationReceiptPDF(
         vehiclePlateNumber: firstRoute.vehiclePlateNumber || '-',
         notes: booking.notes || ''
       },
+      terminBadge,
+      isPaidFull,
       payments: [
         {
           label: 'Pembayaran Transportasi',
-          date: formatDate(receipt.createdAt || new Date()),
-          method: 'Transfer',
-          transactionId: '-',
-          amount: totalAmount.toFixed(2),
+          terminBadge,
+          date: formatDate(receipt.issueDate || receipt.createdAt || new Date()),
+          method: receipt.meta?.method || 'Transfer Bank',
+          transactionId: receipt.meta?.referenceNumber || '-',
+          amount: currentPayment.toFixed(2),
           transportationDetails: null
         }
       ],
       totalInvoiceAmount: totalAmount.toFixed(2),
-      totalPaidAmount: totalAmount.toFixed(2),
-      balanceDue: '0.00',
+      currentPaymentAmount: currentPayment.toFixed(2),
+      totalPaidAmount: cumulativePaid.toFixed(2),
+      balanceDue: balanceDue.toFixed(2),
       notes: receipt.notes || '',
       billingContact: {
         email: 'billing@musafirin.com',
@@ -1233,50 +1271,65 @@ export async function generateCustomLaReceiptPDF(
   const browser = await launchBrowser();
   const page = await browser.newPage();
   try {
-    const templatePath = path.join(__dirname, '../templates/custom-la-receipt.html');
+    const templatePath = getTemplatePath('custom-la-receipt.html');
     const templateSource = fs.readFileSync(templatePath, 'utf8');
     const template = Handlebars.compile(templateSource);
 
-    const logoPath = path.join(__dirname, '../templates/logomusafirin.png');
-    const logoBase64 = fs.readFileSync(logoPath, 'base64');
+    const logoBase64 = TemplateHelpers.getLogoBase64();
+    const saudiRiyalSVGBase64 = TemplateHelpers.getSaudiRiyalSVGBase64();
+
+    const totalInvoiceNum = parseFloat(receiptData.totals?.invoiceAmount || receiptData.totalAmount || '0');
+    const currentPaymentNum = parseFloat(receiptData.totals?.currentPaymentAmount || receiptData.paidAmount || '0');
+    const balanceDueNum = parseFloat(receiptData.totals?.balanceDue || receiptData.balanceDue || '0');
+    let cumulativePaidNum = parseFloat(receiptData.totals?.totalPaidAmount || '0');
+    if (isNaN(cumulativePaidNum) || cumulativePaidNum <= 0) {
+      cumulativePaidNum = totalInvoiceNum - balanceDueNum;
+    }
+    if (isNaN(cumulativePaidNum) || cumulativePaidNum < currentPaymentNum) {
+      cumulativePaidNum = currentPaymentNum;
+    }
+
+    const terminNumber = receiptData.termin || 1;
+    const isPaidFull = balanceDueNum <= 0;
+    let terminBadge = receiptData.terminBadge || `Termin #${terminNumber}`;
+    if (!receiptData.terminBadge) {
+      if (isPaidFull && terminNumber === 1) {
+        terminBadge = 'Pelunasan (Lunas Penuh)';
+      } else if (isPaidFull) {
+        terminBadge = `Termin #${terminNumber} (Pelunasan)`;
+      } else if (terminNumber === 1) {
+        terminBadge = 'Termin #1 (Uang Muka / DP)';
+      }
+    }
 
     const data = {
       ...receiptData,
       logoBase64,
-      brandName: 'Musafirin'
+      saudiRiyalSVGBase64,
+      brandName: 'Musafirin',
+      terminBadge,
+      isFullyPaid: isPaidFull,
+      totals: {
+        invoiceAmount: totalInvoiceNum.toFixed(2),
+        currentPaymentAmount: currentPaymentNum.toFixed(2),
+        totalPaidAmount: cumulativePaidNum.toFixed(2),
+        balanceDue: balanceDueNum.toFixed(2),
+      }
     };
 
     const html = template(data);
     await page.setContent(html, { waitUntil: 'networkidle0' });
 
-    const fileName = `${receiptData.receiptNo}.pdf`;
-    const tempFilePath = path.join(__dirname, '../../temp', fileName);
-
-    if (!fs.existsSync(path.join(__dirname, '../../temp'))) {
-      fs.mkdirSync(path.join(__dirname, '../../temp'), { recursive: true });
-    }
-
-    await page.pdf({
-      path: tempFilePath,
+    const pdf = await page.pdf({
       format: 'A4',
       printBackground: true,
       margin: { top: '20px', right: '20px', bottom: '20px', left: '20px' }
     });
 
-    const fileStream = fs.createReadStream(tempFilePath);
-    await minioClient.putObject(
-      (process.env.MINIO_BUCKET || 'musafirin-assets'),
-      `receipts/${fileName}`,
-      fileStream,
-      fs.statSync(tempFilePath).size,
-      { 'Content-Type': 'application/pdf' }
-    );
+    const fileName = `receipts/${receiptData.receiptNo}.pdf`;
+    const pdfUrl = await uploadToMinio(fileName, Buffer.from(pdf), 'application/pdf');
 
-    fs.unlinkSync(tempFilePath);
-
-    const isLocal = (process.env.MINIO_ENDPOINT || 'localhost').includes('localhost') || (process.env.MINIO_ENDPOINT || 'localhost').includes('127.0.0.1');
-    const endpoint = isLocal ? 'localhost:9000' : (process.env.MINIO_ENDPOINT || 'localhost');
-    return `http://${endpoint}/${(process.env.MINIO_BUCKET || 'musafirin-assets')}/receipts/${fileName}`;
+    return pdfUrl;
   } finally {
     await page.close();
   }
@@ -1363,6 +1416,27 @@ export async function generateMuthowifReceiptPDF(
       if (fs.existsSync(signaturePath)) signatureBase64 = fs.readFileSync(signaturePath).toString('base64');
     } catch (e) { }
 
+    const totalInvoiceNum = parseFloat(receiptData.invoice?.amount || receiptData.totalAmount || '0');
+    const currentPaymentNum = parseFloat(receiptData.paidAmount || receiptData.totalAmount || '0');
+    const balanceDueNum = parseFloat(receiptData.balanceDue || '0');
+    let cumulativePaidNum = totalInvoiceNum - balanceDueNum;
+    if (isNaN(cumulativePaidNum) || cumulativePaidNum < currentPaymentNum) {
+      cumulativePaidNum = currentPaymentNum;
+    }
+
+    const terminNumber = receiptData.termin || receiptData.meta?.termin || 1;
+    const isPaidFull = balanceDueNum <= 0;
+    let terminBadge = receiptData.terminLabel || receiptData.meta?.terminLabel || `Termin #${terminNumber}`;
+    if (!receiptData.meta?.terminLabel && !receiptData.terminLabel) {
+      if (isPaidFull && terminNumber === 1) {
+        terminBadge = 'Pelunasan (Lunas Penuh)';
+      } else if (isPaidFull) {
+        terminBadge = `Termin #${terminNumber} (Pelunasan)`;
+      } else if (terminNumber === 1) {
+        terminBadge = 'Termin #1 (Uang Muka / DP)';
+      }
+    }
+
     // Provide the structure expected by kwitansi.html
     const data = {
       receiptNo: receiptData.receiptNo,
@@ -1379,9 +1453,12 @@ export async function generateMuthowifReceiptPDF(
       },
       hotelName: 'Muthowif Order',
       hotelAddress: receiptData.meetingPoint || '-',
+      terminBadge,
+      isPaidFull,
       payments: [
         {
           label: 'Layanan Muthowif',
+          terminBadge,
           date: receiptData.receiptDate,
           hotelDetails: {
             name: receiptData.events ? receiptData.events.join(', ') : 'Pemesanan Muthowif',
@@ -1389,16 +1466,17 @@ export async function generateMuthowifReceiptPDF(
             checkOut: '-',
             roomSummary: receiptData.guestName + ' (' + receiptData.totalPax + ' Pax)'
           },
-          method: 'Transfer Bank',
-          transactionId: '-',
-          amount: receiptData.totalAmount
+          method: receiptData.paymentMethod || 'Transfer Bank',
+          transactionId: receiptData.transactionId || '-',
+          amount: currentPaymentNum.toFixed(2)
         }
       ],
       saudiRiyalSVGBase64,
       totals: {
-        invoiceAmount: receiptData.invoice?.amount || receiptData.totalAmount,
-        paidAmount: receiptData.totalAmount,
-        balanceDue: receiptData.balanceDue || '0'
+        invoiceAmount: totalInvoiceNum.toFixed(2),
+        currentPaymentAmount: currentPaymentNum.toFixed(2),
+        paidAmount: cumulativePaidNum.toFixed(2),
+        balanceDue: balanceDueNum.toFixed(2)
       },
       amountInWords: '',
       bank: {

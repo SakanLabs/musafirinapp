@@ -548,7 +548,22 @@ transportationApp.post('/:id/receipt', requireAdminOrFinance, async (c) => {
     // For this specific receipt, it prints the current payment amount
     const balanceDue = Math.max(0, totalDue - (prevPaid + paymentAmount));
 
-    const newReceipt: NewTransportationReceipt = {
+    const existingReceipts = await db
+      .select()
+      .from(transportationReceipts)
+      .where(eq(transportationReceipts.transportationBookingId, id));
+    const terminNumber = existingReceipts.length + 1;
+    const isPaidFull = balanceDue <= 0;
+    let terminLabel = `Termin #${terminNumber}`;
+    if (isPaidFull && terminNumber === 1) {
+      terminLabel = 'Pelunasan (Lunas Penuh)';
+    } else if (isPaidFull) {
+      terminLabel = `Termin #${terminNumber} (Pelunasan)`;
+    } else if (terminNumber === 1) {
+      terminLabel = 'Termin #1 (Uang Muka / DP)';
+    }
+
+    const newReceipt: any = {
       transportationBookingId: id,
       number: receiptNumber,
       totalAmount: totalDue.toString(),
@@ -557,6 +572,10 @@ transportationApp.post('/:id/receipt', requireAdminOrFinance, async (c) => {
       currency: bookingData.currency || 'SAR',
       payerName: bookingData.customerName || 'Unknown',
       pdfUrl: '', // To be filled after upload
+      meta: {
+        termin: terminNumber,
+        terminLabel,
+      },
     };
 
     // Generate PDF

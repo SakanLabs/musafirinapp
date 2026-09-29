@@ -158,21 +158,43 @@ export function BillingTab({ laId }: { laId: number }) {
                         </tr>
                       </thead>
                       <tbody>
-                        {inv.payments.map((p: any) => {
+                        {inv.payments.map((p: any, idx: number) => {
                           const receipt = inv.receipts?.find((r: any) => r.paymentId === p.id);
+                          const terminNumber = p.termin || (idx + 1);
+                          const isFullyPaid = balanceDue <= 0 && idx === inv.payments.length - 1;
+                          let terminLabel = p.terminLabel;
+                          if (!terminLabel) {
+                            if (isFullyPaid && terminNumber === 1) {
+                              terminLabel = 'Pelunasan (Lunas Penuh)';
+                            } else if (isFullyPaid) {
+                              terminLabel = `Termin #${terminNumber} (Pelunasan)`;
+                            } else if (terminNumber === 1) {
+                              terminLabel = 'Termin #1 (Uang Muka / DP)';
+                            } else {
+                              terminLabel = `Termin #${terminNumber}`;
+                            }
+                          }
+
                           return (
                             <tr key={p.id} className="border-b border-zinc-100 last:border-0 hover:bg-zinc-50/55 transition-colors">
                               <td className="py-2.5 px-3 font-medium text-zinc-800">{formatDate(p.paymentDate)}</td>
-                              <td className="py-2.5 px-3 text-zinc-600">{p.paymentMethod}</td>
+                              <td className="py-2.5 px-3 text-zinc-600">
+                                <div className="flex items-center gap-1.5 flex-wrap">
+                                  <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold bg-sky-50 text-sky-700 border border-sky-200">
+                                    {terminLabel}
+                                  </span>
+                                  <span>{p.paymentMethod}</span>
+                                </div>
+                              </td>
                               <td className="text-right py-2.5 px-3 font-bold text-emerald-600">{formatCurrency(p.amount, p.currency)}</td>
                               <td className="text-right py-2.5 px-3">
-                                {receipt?.pdfUrl ? (
+                                {receipt?.number ? (
                                   <Button 
                                     variant="ghost" 
                                     size="sm" 
                                     onClick={() => {
                                       import("@/lib/api").then(({ apiClient }) => {
-                                        apiClient.downloadFile(`/api/receipts/${receipt.id}/download`, `Receipt-${receipt.number}.pdf`);
+                                        apiClient.downloadFile(`/api/receipts/${receipt.number}/download`, `Receipt-${receipt.number}.pdf`);
                                       });
                                     }} 
                                     className="h-8 text-xs font-semibold text-zinc-700 hover:text-black hover:bg-zinc-100 px-2.5"

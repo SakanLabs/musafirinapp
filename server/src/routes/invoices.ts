@@ -906,10 +906,23 @@ invoiceRoutes.get('/by-number/:number', async (c) => {
       const invoice = await db.select().from(transportationInvoices).where(eq(transportationInvoices.number, invoiceNumber)).limit(1);
       if (invoice.length === 0) return c.json({ error: 'Invoice not found' }, 404);
       pdfUrl = invoice[0]!.pdfUrl;
-    } else if (invoiceNumber.startsWith('SO-INV-')) {
+    } else if (invoiceNumber.startsWith('SO-INV-') || invoiceNumber.startsWith('SOI-')) {
       const invoice = await db.select().from(serviceOrderInvoices).where(eq(serviceOrderInvoices.number, invoiceNumber)).limit(1);
       if (invoice.length === 0) return c.json({ error: 'Invoice not found' }, 404);
       pdfUrl = invoice[0]!.pdfUrl;
+      const fn = pdfUrl ? pdfUrl.split('/').slice(-2).join('/') : '';
+      const exists = fn ? await checkFileExistsInMinio(fn) : false;
+      if (!exists) {
+        const inv = invoice[0]!;
+        const [order] = await db.select().from(serviceOrders).where(eq(serviceOrders.id, inv.serviceOrderId)).limit(1);
+        const [client] = order?.clientId ? await db.select().from(clients).where(eq(clients.id, order.clientId)).limit(1) : [null];
+        if (order) {
+          const { generateServiceOrderInvoicePDF } = await import('../utils/pdf');
+          const pdfBuffer = await generateServiceOrderInvoicePDF(inv, order, client || {}, inv.dueDate || new Date());
+          pdfUrl = await uploadToMinio(`service-order-invoices/${invoiceNumber}.pdf`, pdfBuffer, 'application/pdf');
+          await db.update(serviceOrderInvoices).set({ pdfUrl }).where(eq(serviceOrderInvoices.id, inv.id));
+        }
+      }
     } else if (invoiceNumber.startsWith('LA-INV-')) {
       const invoice = await db.select().from(customLaInvoices).where(eq(customLaInvoices.number, invoiceNumber)).limit(1);
       if (invoice.length === 0) return c.json({ error: 'Invoice not found' }, 404);
@@ -926,6 +939,32 @@ invoiceRoutes.get('/by-number/:number', async (c) => {
       const invoice = await db.select().from(invoices).where(eq(invoices.number, invoiceNumber)).limit(1);
       if (invoice.length === 0) return c.json({ error: 'Invoice not found' }, 404);
       pdfUrl = invoice[0]!.pdfUrl;
+      const fn = pdfUrl ? pdfUrl.split('/').slice(-2).join('/') : '';
+      const exists = fn ? await checkFileExistsInMinio(fn) : false;
+      if (!exists) {
+        const inv = invoice[0]!;
+        const [booking] = await db.select().from(bookings).where(eq(bookings.id, inv.bookingId)).limit(1);
+        const [client] = booking?.clientId ? await db.select().from(clients).where(eq(clients.id, booking.clientId)).limit(1) : [null];
+        const items = await db.select().from(bookingItems).where(eq(bookingItems.bookingId, inv.bookingId));
+        const extraServiceItems = await db.select().from(bookingServiceItems).where(eq(bookingServiceItems.bookingId, inv.bookingId));
+        if (booking && client) {
+          try {
+            const pdfBuffer = await generateInvoicePDF(
+              inv,
+              booking,
+              client,
+              items,
+              inv.dueDate || new Date(),
+              inv.issueDate || new Date(),
+              extraServiceItems
+            );
+            pdfUrl = await uploadToMinio(`invoices/${invoiceNumber}.pdf`, pdfBuffer, 'application/pdf');
+            await db.update(invoices).set({ pdfUrl }).where(eq(invoices.id, inv.id));
+          } catch (e) {
+            console.error('Failed to regenerate hotel invoice PDF:', e);
+          }
+        }
+      }
     }
 
     if (!pdfUrl) {
@@ -938,18 +977,18 @@ invoiceRoutes.get('/by-number/:number', async (c) => {
     const { getFileStreamFromMinio } = await import('../utils/pdf');
     const fileStream = await getFileStreamFromMinio(fileName);
 
+    const chunks: Buffer[] = [];
+    for await (const chunk of fileStream) {
+      chunks.push(typeof chunk === 'string' ? Buffer.from(chunk) : chunk);
+    }
+    const pdfBuffer = Buffer.concat(chunks);
+
+    const isView = c.req.query('view') === 'true';
     c.header('Content-Type', 'application/pdf');
-    c.header('Content-Disposition', `attachment; filename="${invoiceNumber}.pdf"`);
+    c.header('Content-Disposition', `${isView ? 'inline' : 'attachment'}; filename="${invoiceNumber}.pdf"`);
+    c.header('Content-Length', pdfBuffer.length.toString());
 
-    const webStream = new ReadableStream({
-      start(controller) {
-        fileStream.on('data', (chunk: any) => controller.enqueue(chunk));
-        fileStream.on('end', () => controller.close());
-        fileStream.on('error', (err: any) => controller.error(err));
-      }
-    });
-
-    return c.body(webStream as any);
+    return c.body(pdfBuffer);
   } catch (error) {
     console.error('Error serving invoice PDF:', error);
     return c.json({ error: 'Failed to serve invoice PDF' }, 500);
@@ -1154,13 +1193,27 @@ invoiceRoutes.post('/:invoiceId/pay', requireAdminOrFinance, async (c) => {
 
         // Update booking meta
         newRemaining = Math.max(remainingBalance - depositUsed, 0);
+        const terminNumber = payments.length + 1;
+        const isPaidFull = newRemaining <= 0;
+        let terminLabel = `Termin #${terminNumber}`;
+        if (isPaidFull && terminNumber === 1) {
+          terminLabel = 'Pelunasan (Lunas Penuh)';
+        } else if (isPaidFull) {
+          terminLabel = `Termin #${terminNumber} (Pelunasan)`;
+        } else if (terminNumber === 1) {
+          terminLabel = 'Termin #1 (Uang Muka / DP)';
+        }
+
         payments.push({
           method: 'deposit',
           amount: depositUsed,
           date: nowIso,
           status: 'completed',
           reference: usageTx.referenceNumber!,
-        });
+          termin: terminNumber,
+          terminLabel,
+          description: description || null,
+        } as any);
         meta.depositUsed = (typeof meta.depositUsed === 'number' ? meta.depositUsed : parseFloat(meta.depositUsed || '0') || 0) + depositUsed;
         meta.payments = payments;
         meta.remainingBalance = newRemaining;
@@ -1182,13 +1235,27 @@ invoiceRoutes.post('/:invoiceId/pay', requireAdminOrFinance, async (c) => {
 
         // Update booking meta payments for the payment part
         newRemaining = Math.max(remainingBalance - payAmt, 0);
+        const terminNumber = payments.length + 1;
+        const isPaidFull = newRemaining <= 0;
+        let terminLabel = `Termin #${terminNumber}`;
+        if (isPaidFull && terminNumber === 1) {
+          terminLabel = 'Pelunasan (Lunas Penuh)';
+        } else if (isPaidFull) {
+          terminLabel = `Termin #${terminNumber} (Pelunasan)`;
+        } else if (terminNumber === 1) {
+          terminLabel = 'Termin #1 (Uang Muka / DP)';
+        }
+
         payments.push({
           method,
           amount: payAmt,
           date: nowIso,
           status: 'completed',
           reference: referenceNumber || `PAY-${Date.now()}`,
-        });
+          termin: terminNumber,
+          terminLabel,
+          description: description || null,
+        } as any);
         meta.payments = payments;
         meta.remainingBalance = newRemaining;
 
@@ -1261,6 +1328,17 @@ invoiceRoutes.post('/:invoiceId/pay', requireAdminOrFinance, async (c) => {
       }
 
       // Record payment in invoice_payments
+      const currentTerminNumber = payments.length;
+      const isInvoicePaidFull = newRemaining <= 0;
+      let currentTerminLabel = `Termin #${currentTerminNumber}`;
+      if (isInvoicePaidFull && currentTerminNumber === 1) {
+        currentTerminLabel = 'Pelunasan (Lunas Penuh)';
+      } else if (isInvoicePaidFull) {
+        currentTerminLabel = `Termin #${currentTerminNumber} (Pelunasan)`;
+      } else if (currentTerminNumber === 1) {
+        currentTerminLabel = 'Termin #1 (Uang Muka / DP)';
+      }
+
       const paymentRecord: NewInvoicePayment = {
         invoiceId,
         amount: paidThisTxn.toString(),
@@ -1269,7 +1347,12 @@ invoiceRoutes.post('/:invoiceId/pay', requireAdminOrFinance, async (c) => {
         referenceNumber: referenceNumber || undefined,
         paidAt: new Date(nowIso),
         status: 'completed',
-        meta: { description: description || null, bookingCode: invoiceRow.bookingCode } as any,
+        meta: { 
+          description: description || null, 
+          bookingCode: invoiceRow.bookingCode,
+          termin: currentTerminNumber,
+          terminLabel: currentTerminLabel,
+        } as any,
       };
       await tx.insert(invoicePayments).values(paymentRecord);
 
@@ -1292,6 +1375,8 @@ invoiceRoutes.post('/:invoiceId/pay', requireAdminOrFinance, async (c) => {
           referenceNumber,
           paidAt: new Date(nowIso),
           description,
+          termin: currentTerminNumber,
+          terminLabel: currentTerminLabel,
         });
       } catch (receiptError) {
         console.error(`Failed to generate receipt for payment of invoice ${invoiceId}:`, receiptError);

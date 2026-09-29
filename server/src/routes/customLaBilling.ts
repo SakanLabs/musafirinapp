@@ -6,7 +6,7 @@ import {
   customLaInvoicePayments, 
   customLaReceipts 
 } from "../db/schema";
-import { eq, desc } from "drizzle-orm";
+import { eq, desc, asc } from "drizzle-orm";
 import { requireAdmin } from "../middleware/auth";
 import { generateCustomLaInvoicePDF, generateCustomLaReceiptPDF } from "../utils/pdf";
 
@@ -29,12 +29,36 @@ app.get("/:id", async (c) => {
     
     // Fetch payments and receipts for these invoices
     const billingData = await Promise.all(invoices.map(async (inv) => {
-      const payments = await db.query.customLaInvoicePayments.findMany({
-        where: eq(customLaInvoicePayments.invoiceId, inv.id)
+      const rawPayments = await db.query.customLaInvoicePayments.findMany({
+        where: eq(customLaInvoicePayments.invoiceId, inv.id),
+        orderBy: [asc(customLaInvoicePayments.createdAt), asc(customLaInvoicePayments.id)]
       });
       const receipts = await db.query.customLaReceipts.findMany({
-        where: eq(customLaReceipts.invoiceId, inv.id)
+        where: eq(customLaReceipts.invoiceId, inv.id),
+        orderBy: [desc(customLaReceipts.createdAt)]
       });
+
+      const totalPaymentsCount = rawPayments.length;
+      const totalPaidAmount = rawPayments.reduce((sum, p) => sum + parseFloat(p.amount), 0);
+      const isInvoicePaidFull = totalPaidAmount >= parseFloat(inv.amount);
+
+      const payments = rawPayments.map((p, index) => {
+        const terminNumber = index + 1;
+        const isLastPayment = index === totalPaymentsCount - 1;
+        let terminLabel = `Termin #${terminNumber}`;
+        if (isInvoicePaidFull && isLastPayment) {
+          terminLabel = terminNumber === 1 ? 'Pelunasan (Lunas Penuh)' : `Termin #${terminNumber} (Pelunasan)`;
+        } else if (terminNumber === 1) {
+          terminLabel = 'Termin #1 (Uang Muka / DP)';
+        }
+
+        return {
+          ...p,
+          termin: terminNumber,
+          terminLabel,
+        };
+      });
+
       return { ...inv, payments, receipts };
     }));
 
@@ -175,7 +199,7 @@ app.post("/:id/invoice", async (c) => {
   }
 });
 
-// Record Payment
+// Record Payment and Auto-generate Receipt (matching Visa)
 app.post("/:id/payment", async (c) => {
   try {
     const id = parseInt(c.req.param("id"));
@@ -194,6 +218,11 @@ app.post("/:id/payment", async (c) => {
     if (invoice.customLaRequestId !== id) {
       return c.json({ success: false, error: "Invoice does not belong to this request" }, 400);
     }
+
+    const requestRows = await db.query.customLaRequests.findMany({
+      where: eq(customLaRequests.id, id)
+    });
+    const request = requestRows[0];
     
     const payment = await db.insert(customLaInvoicePayments).values({
       invoiceId: invoice.id,
@@ -206,11 +235,13 @@ app.post("/:id/payment", async (c) => {
     
     // Update invoice status if fully paid
     const allPayments = await db.query.customLaInvoicePayments.findMany({
-      where: eq(customLaInvoicePayments.invoiceId, invoice.id)
+      where: eq(customLaInvoicePayments.invoiceId, invoice.id),
+      orderBy: [asc(customLaInvoicePayments.createdAt), asc(customLaInvoicePayments.id)]
     });
     
     const totalPaid = allPayments.reduce((sum, p) => sum + parseFloat(p.amount), 0);
     const invoiceTotal = parseFloat(invoice.amount);
+    const balanceDue = Math.max(0, invoiceTotal - totalPaid);
     
     if (totalPaid >= invoiceTotal) {
       await db.update(customLaInvoices).set({ status: 'paid' }).where(eq(customLaInvoices.id, invoice.id));
@@ -220,7 +251,76 @@ app.post("/:id/payment", async (c) => {
       await db.update(customLaInvoices).set({ status: 'sent' }).where(eq(customLaInvoices.id, invoice.id));
     }
 
-    return c.json({ success: true, data: payment[0]! });
+    // Auto-generate Receipt immediately
+    let createdReceipt: any = null;
+    try {
+      const terminNumber = allPayments.length;
+      const isFullyPaid = balanceDue <= 0;
+      let terminBadge = `Termin #${terminNumber}`;
+      if (isFullyPaid && terminNumber === 1) {
+        terminBadge = 'Pelunasan (Lunas Penuh)';
+      } else if (isFullyPaid) {
+        terminBadge = `Termin #${terminNumber} (Pelunasan)`;
+      } else if (terminNumber === 1) {
+        terminBadge = 'Termin #1 (Uang Muka / DP)';
+      }
+
+      const receiptCode = generateReceiptCode();
+      const receiptData = {
+        receiptNo: receiptCode,
+        receiptDate: new Date().toLocaleDateString('id-ID'),
+        isFullyPaid,
+        termin: terminNumber,
+        terminBadge,
+        payer: {
+          name: request?.customerName || 'Customer',
+          email: request?.customerEmail || '-',
+          phone: request?.customerPhone || '-',
+        },
+        invoiceNo: invoice.number,
+        groupLeaderName: request?.customerName || 'Customer',
+        pax: request?.totalPax || 1,
+        paymentMethod: payment[0]!.paymentMethod,
+        currency: payment[0]!.currency,
+        paidAmount: payment[0]!.amount,
+        totals: {
+          invoiceAmount: invoice.amount,
+          currentPaymentAmount: payment[0]!.amount,
+          totalPaidAmount: totalPaid.toFixed(2),
+          balanceDue: balanceDue.toFixed(2)
+        },
+        notes: payment[0]!.notes
+      };
+
+      const pdfUrl = await generateCustomLaReceiptPDF(receiptData);
+
+      const [receiptRow] = await db.insert(customLaReceipts).values({
+        number: receiptCode,
+        customLaRequestId: id,
+        invoiceId: invoice.id,
+        paymentId: payment[0]!.id,
+        totalAmount: invoice.amount,
+        paidAmount: payment[0]!.amount,
+        balanceDue: String(balanceDue),
+        currency: payment[0]!.currency || "SAR",
+        payerName: request?.customerName || 'Customer',
+        payerEmail: request?.customerEmail || null,
+        payerPhone: request?.customerPhone || null,
+        paymentMethod: payment[0]!.paymentMethod,
+        notes: payment[0]!.notes || null,
+        pdfUrl
+      }).returning();
+
+      createdReceipt = receiptRow;
+    } catch (receiptErr) {
+      console.error("Failed to auto-generate receipt for custom LA payment:", receiptErr);
+    }
+
+    return c.json({ 
+      success: true, 
+      data: payment[0]!,
+      receipt: createdReceipt
+    });
   } catch (error) {
     console.error("Failed to record payment:", error);
     return c.json({ success: false, error: "Failed to record payment" }, 500);
@@ -257,12 +357,25 @@ app.post("/:id/receipt/:paymentId", async (c) => {
     const totalPaidAmount = allPayments.reduce((sum, p) => sum + parseFloat(p.amount), 0);
     const balanceDue = Math.max(0, parseFloat(invoice.amount) - totalPaidAmount);
     
+    const terminNumber = allPayments.length;
+    const isFullyPaid = balanceDue <= 0;
+    let terminBadge = `Termin #${terminNumber}`;
+    if (isFullyPaid && terminNumber === 1) {
+      terminBadge = 'Pelunasan (Lunas Penuh)';
+    } else if (isFullyPaid) {
+      terminBadge = `Termin #${terminNumber} (Pelunasan)`;
+    } else if (terminNumber === 1) {
+      terminBadge = 'Termin #1 (Uang Muka / DP)';
+    }
+
     const receiptCode = generateReceiptCode();
     
     const receiptData = {
       receiptNo: receiptCode,
       receiptDate: new Date().toLocaleDateString('id-ID'),
-      isFullyPaid: balanceDue <= 0,
+      isFullyPaid,
+      termin: terminNumber,
+      terminBadge,
       payer: {
         name: request.customerName,
         email: request.customerEmail,
@@ -276,6 +389,7 @@ app.post("/:id/receipt/:paymentId", async (c) => {
       paidAmount: payment.amount,
       totals: {
         invoiceAmount: invoice.amount,
+        currentPaymentAmount: payment.amount,
         totalPaidAmount: totalPaidAmount.toFixed(2),
         balanceDue: balanceDue.toFixed(2)
       },
@@ -284,19 +398,37 @@ app.post("/:id/receipt/:paymentId", async (c) => {
     
     const pdfUrl = await generateCustomLaReceiptPDF(receiptData);
     
-    const receipt = await db.insert(customLaReceipts).values({
-      number: receiptCode,
-      customLaRequestId: id,
-      invoiceId: invoice.id,
-      paymentId: payment.id,
-      totalAmount: invoice.amount,
-      paidAmount: payment.amount,
-      balanceDue: String(balanceDue),
-      currency: "SAR",
-      payerName: request.customerName,
-      paymentMethod: payment.paymentMethod,
-      pdfUrl
-    }).returning();
+    const existingReceipt = await db.query.customLaReceipts.findFirst({
+      where: eq(customLaReceipts.paymentId, payment.id)
+    });
+
+    let receipt;
+    if (existingReceipt) {
+      receipt = await db.update(customLaReceipts).set({
+        totalAmount: invoice.amount,
+        paidAmount: payment.amount,
+        balanceDue: String(balanceDue),
+        pdfUrl,
+        updatedAt: new Date(),
+      }).where(eq(customLaReceipts.id, existingReceipt.id)).returning();
+    } else {
+      receipt = await db.insert(customLaReceipts).values({
+        number: receiptCode,
+        customLaRequestId: id,
+        invoiceId: invoice.id,
+        paymentId: payment.id,
+        totalAmount: invoice.amount,
+        paidAmount: payment.amount,
+        balanceDue: String(balanceDue),
+        currency: payment.currency || "SAR",
+        payerName: request.customerName,
+        payerEmail: request.customerEmail || null,
+        payerPhone: request.customerPhone || null,
+        paymentMethod: payment.paymentMethod,
+        notes: payment.notes || null,
+        pdfUrl
+      }).returning();
+    }
     
     return c.json({ success: true, data: receipt[0]! });
   } catch (error) {

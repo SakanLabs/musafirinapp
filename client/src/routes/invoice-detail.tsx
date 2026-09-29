@@ -12,7 +12,7 @@ import { useInvoice, usePayInvoice, type Invoice } from "@/lib/queries/invoices"
 import { useReceiptsByBooking, useGenerateReceipt } from "@/lib/queries/receipts";
 import { useRegenerateInvoice } from "@/lib/queries/bookings";
 import { authService } from "@/lib/auth";
-import { FileText, Download, Banknote, CalendarDays, Loader2, Info, MessageCircle, ArrowLeft, RefreshCw } from "lucide-react";
+import { FileText, Download, Banknote, CalendarDays, Loader2, Info, MessageCircle, ArrowLeft, RefreshCw, Receipt } from "lucide-react";
 import { useNavigate } from "@tanstack/react-router";
 
 export const Route = createFileRoute("/invoice-detail")({
@@ -431,26 +431,69 @@ function InvoiceDetailPage() {
                 <p className="text-xs text-zinc-500 italic py-2">Belum ada data pembayaran untuk invoice ini.</p>
               ) : (
                 <div className="space-y-2.5">
-                  {payments.map((p, idx) => (
-                    <div key={idx} className="flex items-center justify-between border border-[#e5e7eb] rounded-lg p-3.5 bg-white transition-all hover:border-[#111111]/30">
-                      <div className="flex items-center space-x-3">
-                        <div className="p-2 bg-emerald-50 rounded-lg">
-                          <Banknote className="h-4 w-4 text-emerald-600" />
+                  {payments.map((p, idx) => {
+                    const matchedReceipt = receiptsForBooking?.find(r => 
+                      (r.meta?.payment?.referenceNumber && r.meta.payment.referenceNumber === p.reference) ||
+                      (r.meta?.termin && r.meta.termin === (idx + 1)) ||
+                      (parseFloat(r.paidAmount) === parseFloat(p.amount.toString()))
+                    ) || (receiptsForBooking?.length === 1 && payments?.length === 1 ? receiptsForBooking[0] : null);
+
+                    const terminNumber = (p as any).termin || (idx + 1);
+                    const isFullyPaid = remainingBalance <= 0 && idx === payments.length - 1;
+                    let terminLabel = (p as any).terminLabel;
+                    if (!terminLabel) {
+                      if (isFullyPaid && terminNumber === 1) {
+                        terminLabel = 'Pelunasan (Lunas Penuh)';
+                      } else if (isFullyPaid) {
+                        terminLabel = `Termin #${terminNumber} (Pelunasan)`;
+                      } else if (terminNumber === 1) {
+                        terminLabel = 'Termin #1 (Uang Muka / DP)';
+                      } else {
+                        terminLabel = `Termin #${terminNumber}`;
+                      }
+                    }
+
+                    return (
+                      <div key={idx} className="flex items-center justify-between border border-[#e5e7eb] rounded-lg p-3.5 bg-white transition-all hover:border-[#111111]/30">
+                        <div className="flex items-center space-x-3">
+                          <div className="p-2 bg-emerald-50 rounded-lg">
+                            <Banknote className="h-4 w-4 text-emerald-600" />
+                          </div>
+                          <div>
+                            <div className="text-xs font-bold text-[#111111] flex items-center gap-2 flex-wrap">
+                              <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold bg-sky-50 text-sky-700 border border-sky-200">
+                                {terminLabel}
+                              </span>
+                              <span>{p.method.toUpperCase()} • {formatCurrency(p.amount.toString(), "SAR")}</span>
+                            </div>
+                            <div className="text-[10px] text-zinc-400 font-bold uppercase tracking-wider mt-0.5">
+                              {new Date(p.date).toLocaleString()} • Ref: {p.reference || "-"}
+                            </div>
+                          </div>
                         </div>
-                        <div>
-                          <div className="text-xs font-bold text-[#111111]">
-                            {p.method.toUpperCase()} • {formatCurrency(p.amount.toString(), "SAR")}
-                          </div>
-                          <div className="text-[10px] text-zinc-400 font-bold uppercase tracking-wider mt-0.5">
-                            {new Date(p.date).toLocaleString()} • Ref: {p.reference || "-"}
-                          </div>
+                        <div className="flex items-center space-x-2">
+                          {matchedReceipt ? (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => {
+                                const API_BASE_URL = import.meta.env.VITE_API_URL || window.location.origin.replace(':5173', ':3000');
+                                window.open(`${API_BASE_URL}/api/receipts/${matchedReceipt.number}/download`, '_blank');
+                              }}
+                              className="h-7 text-[11px] px-2.5 font-medium border-zinc-200 text-zinc-700 hover:bg-zinc-50 hover:text-zinc-900 inline-flex items-center space-x-1"
+                              title="Download Kwitansi PDF"
+                            >
+                              <Receipt className="w-3 h-3 text-zinc-500" />
+                              <span>{matchedReceipt.number}</span>
+                            </Button>
+                          ) : null}
+                          <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[9px] font-bold uppercase tracking-wider border bg-emerald-50 text-emerald-700 border-emerald-200/50">
+                            {p.status}
+                          </span>
                         </div>
                       </div>
-                      <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[9px] font-bold uppercase tracking-wider border bg-emerald-50 text-emerald-700 border-emerald-200/50">
-                        {p.status}
-                      </span>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               )}
             </div>

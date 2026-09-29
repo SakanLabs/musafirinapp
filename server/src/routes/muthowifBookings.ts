@@ -232,6 +232,23 @@ muthowifBookingsApp.post('/:id/receipt', requireAdmin, async (c) => {
       if (inv.length > 0) invoice = inv[0];
     }
 
+    const existingReceipts = await db
+      .select()
+      .from(muthowifReceipts)
+      .where(eq(muthowifReceipts.muthowifBookingId, id));
+    const terminNumber = existingReceipts.length + 1;
+    const isPaidFull = Number(balanceDue) <= 0;
+    let terminLabel = `Termin #${terminNumber}`;
+    if (isPaidFull && terminNumber === 1) {
+      terminLabel = 'Pelunasan (Lunas Penuh)';
+    } else if (isPaidFull) {
+      terminLabel = `Termin #${terminNumber} (Pelunasan)`;
+    } else if (terminNumber === 1) {
+      terminLabel = 'Termin #1 (Uang Muka / DP)';
+    }
+
+    const totalInvoiceAmount = invoice?.amount || booking[0]!.totalAmount;
+
     const pdfUrl = await generateMuthowifReceiptPDF({
       receiptNo: receiptNumber,
       receiptDate: new Date().toLocaleDateString('id-ID'),
@@ -242,8 +259,11 @@ muthowifBookingsApp.post('/:id/receipt', requireAdmin, async (c) => {
       currency: booking[0]!.currency,
       events: booking[0]!.events,
       meetingPoint: booking[0]!.meetingPoint,
-      totalAmount: paidAmount.toString(),
+      totalAmount: totalInvoiceAmount.toString(),
+      paidAmount: paidAmount.toString(),
       balanceDue: balanceDue.toString(),
+      termin: terminNumber,
+      terminLabel,
       invoice: invoice
     });
 
