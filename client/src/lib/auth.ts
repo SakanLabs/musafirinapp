@@ -216,8 +216,15 @@ export const authService = {
     const user = await authService.getCurrentUser()
     if (!user) return '/login'
     
+    // Staff roles (admin, owner, finance) always go to admin dashboard
+    if (['admin', 'owner', 'finance'].includes(user.role)) {
+      return '/dashboard/admin'
+    }
+
     // Agent users go to agent portal
-    if (user.userType === 'agent') return '/agent/dashboard'
+    if (user.userType === 'agent') {
+      return '/agent/dashboard'
+    }
     
     return '/dashboard/admin'
   },

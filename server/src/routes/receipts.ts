@@ -427,51 +427,50 @@ receiptRoutes.get('/:id/download', requireAdminOrFinance, async (c) => {
       return c.json({ error: 'Receipt not found' }, 404);
     }
 
-    if (!receipt.pdfUrl) {
-      // Try to regenerate it
+    const { getFileStreamFromMinio, fileExistsInMinio, generateReceiptPDF } = await import('../utils/pdf');
+
+    let fileName = receipt.pdfUrl ? receipt.pdfUrl.split('/').slice(-2).join('/') : '';
+    const exists = fileName ? await fileExistsInMinio(fileName) : false;
+
+    if (!exists) {
       const receiptData = await receiptService.prepareReceiptData(receipt.id);
       if (receiptData) {
         try {
-          const { generateReceiptPDF } = await import('../utils/pdf');
           const pdfUrl = await generateReceiptPDF(receiptData);
           await db.update(receipts).set({ pdfUrl }).where(eq(receipts.id, receipt.id));
           receipt.pdfUrl = pdfUrl;
+          fileName = pdfUrl.split('/').slice(-2).join('/');
         } catch (e) {
           console.error('Failed to regenerate receipt PDF:', e);
         }
       }
-
-      if (!receipt.pdfUrl) {
-        return c.json({ error: 'PDF not available for this receipt' }, 404);
-      }
     }
 
-    const urlParts = receipt.pdfUrl.split('/');
-    const fileName = urlParts.slice(-2).join('/');
+    if (!fileName || !(await fileExistsInMinio(fileName))) {
+      return c.json({ error: 'PDF not available for this receipt' }, 404);
+    }
 
-    const { getFileStreamFromMinio } = await import('../utils/pdf');
     const fileStream = await getFileStreamFromMinio(fileName);
+    const chunks: Buffer[] = [];
+    for await (const chunk of fileStream) {
+      chunks.push(typeof chunk === 'string' ? Buffer.from(chunk) : chunk);
+    }
+    const pdfBuffer = Buffer.concat(chunks);
 
+    const isView = c.req.query('view') === 'true';
     c.header('Content-Type', 'application/pdf');
-    c.header('Content-Disposition', `attachment; filename="${receipt.number}.pdf"`);
+    c.header('Content-Disposition', `${isView ? 'inline' : 'attachment'}; filename="${receipt.number}.pdf"`);
+    c.header('Content-Length', pdfBuffer.length.toString());
 
-    const webStream = new ReadableStream({
-      start(controller) {
-        fileStream.on('data', (chunk: any) => controller.enqueue(chunk));
-        fileStream.on('end', () => controller.close());
-        fileStream.on('error', (err: any) => controller.error(err));
-      }
-    });
-
-    return c.body(webStream as any);
+    return c.body(pdfBuffer);
   } catch (error) {
     console.error('Error downloading receipt:', error);
     return c.json({ error: 'Failed to download receipt' }, 500);
   }
 });
 
-// GET /api/receipts/number/:number/download - Download receipt PDF by number
-receiptRoutes.get('/number/:number/download', requireAdminOrFinance, async (c) => {
+// GET /api/receipts/number/:number/download - Download receipt PDF by number (Public for client downloads)
+receiptRoutes.get('/number/:number/download', async (c) => {
   try {
     const receiptNumber = c.req.param('number');
 
@@ -479,21 +478,51 @@ receiptRoutes.get('/number/:number/download', requireAdminOrFinance, async (c) =
       return c.json({ error: 'Receipt number is required' }, 400);
     }
 
-    let pdfUrl = null;
+    const { getFileStreamFromMinio, fileExistsInMinio } = await import('../utils/pdf');
+    let pdfUrl: string | null = null;
 
     // Search in receipts
     if (!pdfUrl) {
-      const r = await db.select({ pdfUrl: receipts.pdfUrl }).from(receipts).where(eq(receipts.number, receiptNumber)).limit(1);
-      if (r.length > 0) pdfUrl = r[0]!.pdfUrl;
+      const r = await db.select({ id: receipts.id, pdfUrl: receipts.pdfUrl }).from(receipts).where(eq(receipts.number, receiptNumber)).limit(1);
+      if (r.length > 0) {
+        pdfUrl = r[0]!.pdfUrl;
+        const fn = pdfUrl ? pdfUrl.split('/').slice(-2).join('/') : '';
+        const exists = fn ? await fileExistsInMinio(fn) : false;
+        if (!exists) {
+          // Regenerate
+          const receiptData = await receiptService.prepareReceiptData(r[0]!.id);
+          if (receiptData) {
+            const { generateReceiptPDF } = await import('../utils/pdf');
+            pdfUrl = await generateReceiptPDF(receiptData);
+            await db.update(receipts).set({ pdfUrl }).where(eq(receipts.id, r[0]!.id));
+          }
+        }
+      }
+    }
+    // Search in serviceOrderReceipts
+    if (!pdfUrl) {
+      const r = await db.select().from(serviceOrderReceipts).where(eq(serviceOrderReceipts.number, receiptNumber)).limit(1);
+      if (r.length > 0) {
+        pdfUrl = r[0]!.pdfUrl;
+        const fn = pdfUrl ? pdfUrl.split('/').slice(-2).join('/') : '';
+        const exists = fn ? await fileExistsInMinio(fn) : false;
+        if (!exists) {
+          const soReceipt = r[0]!;
+          const [order] = await db.select().from(serviceOrders).where(eq(serviceOrders.id, soReceipt.serviceOrderId)).limit(1);
+          const [client] = order?.clientId ? await db.select().from(clients).where(eq(clients.id, order.clientId)).limit(1) : [null];
+          const [invoice] = soReceipt.serviceOrderInvoiceId ? await db.select().from(serviceOrderInvoices).where(eq(serviceOrderInvoices.id, soReceipt.serviceOrderInvoiceId)).limit(1) : [null];
+          if (order) {
+            const { generateServiceOrderReceiptPDF, uploadToMinio } = await import('../utils/pdf');
+            const pdfBuffer = await generateServiceOrderReceiptPDF(soReceipt, order, client || {}, invoice || null);
+            pdfUrl = await uploadToMinio(`service-order-receipts/${receiptNumber}.pdf`, pdfBuffer, 'application/pdf');
+            await db.update(serviceOrderReceipts).set({ pdfUrl }).where(eq(serviceOrderReceipts.id, soReceipt.id));
+          }
+        }
+      }
     }
     // Search in transportationReceipts
     if (!pdfUrl) {
       const r = await db.select({ pdfUrl: transportationReceipts.pdfUrl }).from(transportationReceipts).where(eq(transportationReceipts.number, receiptNumber)).limit(1);
-      if (r.length > 0) pdfUrl = r[0]!.pdfUrl;
-    }
-    // Search in serviceOrderReceipts
-    if (!pdfUrl) {
-      const r = await db.select({ pdfUrl: serviceOrderReceipts.pdfUrl }).from(serviceOrderReceipts).where(eq(serviceOrderReceipts.number, receiptNumber)).limit(1);
       if (r.length > 0) pdfUrl = r[0]!.pdfUrl;
     }
     // Search in customLaReceipts
@@ -514,21 +543,19 @@ receiptRoutes.get('/number/:number/download', requireAdminOrFinance, async (c) =
     const urlParts = pdfUrl.split('/');
     const fileName = urlParts.slice(-2).join('/');
 
-    const { getFileStreamFromMinio } = await import('../utils/pdf');
     const fileStream = await getFileStreamFromMinio(fileName);
+    const chunks: Buffer[] = [];
+    for await (const chunk of fileStream) {
+      chunks.push(typeof chunk === 'string' ? Buffer.from(chunk) : chunk);
+    }
+    const pdfBuffer = Buffer.concat(chunks);
 
+    const isView = c.req.query('view') === 'true';
     c.header('Content-Type', 'application/pdf');
-    c.header('Content-Disposition', `attachment; filename="${receiptNumber}.pdf"`);
+    c.header('Content-Disposition', `${isView ? 'inline' : 'attachment'}; filename="${receiptNumber}.pdf"`);
+    c.header('Content-Length', pdfBuffer.length.toString());
 
-    const webStream = new ReadableStream({
-      start(controller) {
-        fileStream.on('data', (chunk: any) => controller.enqueue(chunk));
-        fileStream.on('end', () => controller.close());
-        fileStream.on('error', (err: any) => controller.error(err));
-      }
-    });
-
-    return c.body(webStream as any);
+    return c.body(pdfBuffer);
   } catch (error) {
     console.error('Error downloading receipt by number:', error);
     return c.json({ error: 'Failed to download receipt' }, 500);

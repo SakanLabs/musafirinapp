@@ -150,13 +150,23 @@ export const apiClient = {
   // Download file from URL
   async downloadFile(url: string, filename: string): Promise<void> {
     try {
-      const response = await fetch(url, {
+      const fullUrl = url.startsWith('http://') || url.startsWith('https://')
+        ? url
+        : `${API_BASE_URL}${url.startsWith('/') ? '' : '/'}${url}`;
+
+      const response = await fetch(fullUrl, {
         method: 'GET',
         credentials: 'include',
       });
 
       if (!response.ok) {
         throw new Error(`Download failed: ${response.status} ${response.statusText}`);
+      }
+
+      const contentType = response.headers.get('content-type');
+      if (contentType && contentType.includes('application/json')) {
+        const errorJson = await response.json();
+        throw new Error(errorJson.error || 'Server returned an error instead of a file');
       }
 
       const blob = await response.blob();
@@ -283,6 +293,9 @@ export const API_ENDPOINTS = {
   SERVICE_ORDER_REGENERATE_INVOICE: (id: string | number) => `/api/service-orders/${id}/regenerate-invoice`,
   SERVICE_ORDER_UPDATE_STATUS: (id: string | number) => `/api/service-orders/${id}/status`,
   SERVICE_ORDER_RECEIPT: (id: string | number) => `/api/service-orders/${id}/receipt`,
+  SERVICE_ORDER_BILLING: (id: string | number) => `/api/service-orders/${id}/billing`,
+  SERVICE_ORDER_PAY: (id: string | number) => `/api/service-orders/${id}/pay`,
+  SERVICE_ORDER_DELETE_PAYMENT: (id: string | number, paymentId: string | number) => `/api/service-orders/${id}/payments/${paymentId}`,
 
   // Transportation Bookings
   TRANSPORTATION: '/api/transportation',

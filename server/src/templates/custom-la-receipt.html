@@ -115,7 +115,12 @@
         <tbody>
           <tr>
             <td>
-              <div class="cs-font-semibold">Pembayaran Paket LA</div>
+              <div class="cs-font-semibold">
+                {{#if terminBadge}}
+                <span class="cs-badge" style="background:#e0f2fe;color:#0369a1;margin-right:6px;">{{terminBadge}}</span>
+                {{/if}}
+                Pembayaran Paket LA
+              </div>
               <div class="cs-text-sm cs-text-gray-500">{{receiptDate}}</div>
             </td>
             <td>{{paymentMethod}}</td>
@@ -128,20 +133,27 @@
       </table>
       
       <div class="cs-flex cs-justify-between cs-align-start cs-mt-2 pt-2" style="border-top:1px solid var(--line); padding-top:8px;">
-        <div>
+        <div style="line-height:1.6;">
           <p class="cs-text-sm cs-text-gray-700">Total Tagihan (Invoice)</p>
-          <p class="cs-text-sm cs-text-gray-700">Total Telah Dibayar (Semua Cicilan)</p>
-          <p class="cs-text-sm cs-text-gray-700 cs-font-bold">Sisa Tagihan Saat Ini</p>
+          <p class="cs-text-sm cs-text-gray-700">
+            Pembayaran Ini {{#if terminBadge}}<span class="cs-badge" style="background:#e0f2fe;color:#0369a1;margin-left:4px;">{{terminBadge}}</span>{{/if}}
+          </p>
+          <p class="cs-text-sm cs-text-gray-700">Total Telah Dibayar (Kumulatif)</p>
+          <p class="cs-text-sm cs-font-bold cs-text-gray-900" style="margin-top:4px;">Sisa Tagihan Saat Ini</p>
         </div>
-        <div class="cs-text-right">
+        <div class="cs-text-right" style="line-height:1.6;">
           <p class="cs-text-sm cs-font-semibold">
             {{totals.invoiceAmount}}
           </p>
-          <p class="cs-text-sm cs-font-semibold">
+          <p class="cs-text-sm cs-font-semibold" style="color:#0284c7;">
+            {{totals.currentPaymentAmount}}
+          </p>
+          <p class="cs-text-sm cs-font-semibold" style="color:#16a34a;">
             {{totals.totalPaidAmount}}
           </p>
-          <p class="cs-text-sm cs-font-bold {{#if isFullyPaid}}cs-text-success{{else}}cs-text-danger{{/if}}" {{#unless isFullyPaid}}style="color:#dc2626"{{/unless}}>
+          <p class="cs-text-sm cs-font-bold" style="margin-top:4px;color:{{#if isFullyPaid}}#16a34a{{else}}#dc2626{{/if}};">
             {{totals.balanceDue}}
+            {{#if isFullyPaid}}<span style="font-size:10px;margin-left:4px;color:#16a34a;font-weight:700;">(LUNAS)</span>{{/if}}
           </p>
         </div>
       </div>

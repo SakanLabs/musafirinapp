@@ -191,7 +191,12 @@ const app = new Hono()
 
       if (body.name) updateData.name = body.name
       if (body.userType) updateData.userType = body.userType
-      if (body.role && ['user', 'admin', 'finance', 'owner'].includes(body.role)) updateData.role = body.role
+      if (body.role && ['user', 'admin', 'finance', 'owner'].includes(body.role)) {
+        updateData.role = body.role
+        if (['admin', 'finance', 'owner'].includes(body.role) && !body.userType) {
+          updateData.userType = 'direct'
+        }
+      }
 
       await db.update(user).set(updateData).where(eq(user.id, userId))
 

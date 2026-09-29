@@ -1,10 +1,10 @@
 import { Hono } from 'hono';
 import { eq, desc, sql, inArray } from 'drizzle-orm';
 import { db } from '../db';
-import { bookings, bookingItems, bookingItemPricingPeriods, clients, clientDeposits, depositTransactions, invoices, vouchers, operationalCosts } from '../db/schema';
+import { bookings, bookingItems, bookingItemPricingPeriods, clients, clientDeposits, depositTransactions, invoices, invoicePayments, receipts, vouchers, operationalCosts } from '../db/schema';
 import { requireAdmin } from '../middleware/auth';
 import { generateBookingCode } from '../utils/pdf';
-import type { NewBooking, NewBookingItem, NewBookingItemPricingPeriod, NewClient, NewDepositTransaction } from '../db/schema';
+import type { NewBooking, NewBookingItem, NewBookingItemPricingPeriod, NewClient, NewDepositTransaction, NewInvoicePayment } from '../db/schema';
 import { ReceiptService } from '../services/ReceiptService';
 import { notifyAdminNewBooking } from '../lib/notification';
 
@@ -1053,6 +1053,7 @@ bookingRoutes.post('/:id/pay', requireAdmin, async (c) => {
     const updated = await db.transaction(async (tx) => {
       let newRemaining = remainingBalance;
       let newPaymentStatus: 'unpaid' | 'partial' | 'paid' | 'overdue' = bookingRow.paymentStatus || 'unpaid';
+      let paidThisTxn = 0;
 
       if (method === 'deposit') {
         // Ensure deposit record exists
@@ -1082,6 +1083,7 @@ bookingRoutes.post('/:id/pay', requireAdmin, async (c) => {
 
         const currentBalance = parseFloat(depositRows[0]!.currentBalance);
         const depositUsed = Math.min(amountNum as number, remainingBalance);
+        paidThisTxn = depositUsed;
 
         if (currentBalance < depositUsed) {
           throw new Error(`INSUFFICIENT_DEPOSIT:${currentBalance}:${depositUsed}`);
@@ -1119,13 +1121,27 @@ bookingRoutes.post('/:id/pay', requireAdmin, async (c) => {
 
         // Update booking meta
         newRemaining = Math.max(remainingBalance - depositUsed, 0);
+        const terminNumber = payments.length + 1;
+        const isPaidFull = newRemaining <= 0;
+        let terminLabel = `Termin #${terminNumber}`;
+        if (isPaidFull && terminNumber === 1) {
+          terminLabel = 'Pelunasan (Lunas Penuh)';
+        } else if (isPaidFull) {
+          terminLabel = `Termin #${terminNumber} (Pelunasan)`;
+        } else if (terminNumber === 1) {
+          terminLabel = 'Termin #1 (Uang Muka / DP)';
+        }
+
         payments.push({
           method: 'deposit',
           amount: depositUsed,
           date: nowIso,
           status: 'completed',
           reference: usageTx.referenceNumber!,
-        });
+          termin: terminNumber,
+          terminLabel,
+          description: description || null,
+        } as any);
         meta.depositUsed = (typeof meta.depositUsed === 'number' ? meta.depositUsed : parseFloat(meta.depositUsed || '0') || 0) + depositUsed;
         meta.payments = payments;
         meta.remainingBalance = newRemaining;
@@ -1143,16 +1159,31 @@ bookingRoutes.post('/:id/pay', requireAdmin, async (c) => {
       } else if (method === 'bank_transfer' || method === 'cash') {
         const payAmt = Math.min(amountNum as number, remainingBalance);
         const surplusCredit = Math.max((amountNum as number) - remainingBalance, 0);
+        paidThisTxn = payAmt;
 
         // Update booking meta payments for the payment part
         newRemaining = Math.max(remainingBalance - payAmt, 0);
+        const terminNumber = payments.length + 1;
+        const isPaidFull = newRemaining <= 0;
+        let terminLabel = `Termin #${terminNumber}`;
+        if (isPaidFull && terminNumber === 1) {
+          terminLabel = 'Pelunasan (Lunas Penuh)';
+        } else if (isPaidFull) {
+          terminLabel = `Termin #${terminNumber} (Pelunasan)`;
+        } else if (terminNumber === 1) {
+          terminLabel = 'Termin #1 (Uang Muka / DP)';
+        }
+
         payments.push({
           method,
           amount: payAmt,
           date: nowIso,
           status: 'completed',
           reference: referenceNumber || `PAY-${Date.now()}`,
-        });
+          termin: terminNumber,
+          terminLabel,
+          description: description || null,
+        } as any);
         meta.payments = payments;
         meta.remainingBalance = newRemaining;
 
@@ -1224,6 +1255,35 @@ bookingRoutes.post('/:id/pay', requireAdmin, async (c) => {
         }
       }
 
+      // Record payment in invoice_payments table
+      const currentTerminNumber = payments.length;
+      const isInvoicePaidFull = newRemaining <= 0;
+      let currentTerminLabel = `Termin #${currentTerminNumber}`;
+      if (isInvoicePaidFull && currentTerminNumber === 1) {
+        currentTerminLabel = 'Pelunasan (Lunas Penuh)';
+      } else if (isInvoicePaidFull) {
+        currentTerminLabel = `Termin #${currentTerminNumber} (Pelunasan)`;
+      } else if (currentTerminNumber === 1) {
+        currentTerminLabel = 'Termin #1 (Uang Muka / DP)';
+      }
+
+      const paymentRecord: NewInvoicePayment = {
+        invoiceId: invoiceRows[0]!.id,
+        amount: paidThisTxn.toString(),
+        currency: 'SAR',
+        method,
+        referenceNumber: referenceNumber || undefined,
+        paidAt: new Date(nowIso),
+        status: 'completed',
+        meta: {
+          description: description || null,
+          bookingCode: bookingRow.code,
+          termin: currentTerminNumber,
+          terminLabel: currentTerminLabel,
+        } as any,
+      };
+      await tx.insert(invoicePayments).values(paymentRecord);
+
       // Sync invoice.status with booking.paymentStatus if invoice exists
       const inv = await tx
         .select({ id: invoices.id, dueDate: invoices.dueDate })
@@ -1245,6 +1305,23 @@ bookingRoutes.post('/:id/pay', requireAdmin, async (c) => {
           .update(invoices)
           .set({ status: newInvoiceStatus })
           .where(eq(invoices.id, inv[0]!.id));
+      }
+
+      // Auto-generate receipt for this payment (for every termin, matching Visa)
+      let generatedReceipt = null;
+      try {
+        generatedReceipt = await receiptService.generateReceiptForInvoicePayment(invoiceRows[0]!.id, {
+          amount: paidThisTxn,
+          method,
+          referenceNumber,
+          paidAt: new Date(nowIso),
+          description,
+          termin: currentTerminNumber,
+          terminLabel: currentTerminLabel,
+        });
+        console.log(`Auto-generated receipt for booking ${bookingId} payment (Termin #${currentTerminNumber})`);
+      } catch (receiptError) {
+        console.error(`Failed to auto-generate receipt for booking ${bookingId}:`, receiptError);
       }
 
       // Return updated booking details (same shape as GET /api/bookings/:id)
@@ -1273,46 +1350,31 @@ bookingRoutes.post('/:id/pay', requireAdmin, async (c) => {
         .where(eq(bookings.id, bookingId))
         .limit(1);
 
-      // Auto-generate receipt if booking is now fully paid
-      if (newPaymentStatus === 'paid') {
-        try {
-          // Check if receipt already exists for this booking
-          const existingReceipts = await receiptService.getReceiptsByBooking(bookingId);
-          if (existingReceipts.length === 0) {
-            // Generate receipt automatically
-            await receiptService.generateReceiptForBooking(bookingId);
-            console.log(`Auto-generated receipt for booking ${bookingId} after payment was recorded`);
-          }
-        } catch (receiptError) {
-          console.error(`Failed to auto-generate receipt for booking ${bookingId}:`, receiptError);
-          // Don't fail the payment process if receipt generation fails
-        }
-      }
-
-      return result[0]!;
+      return { booking: result[0]!, receipt: generatedReceipt };
     });
 
     return c.json({
       success: true,
       data: {
-        id: updated.id,
-        code: updated.code,
-        clientId: updated.clientId,
-        clientName: updated.clientName,
-        clientEmail: updated.clientEmail,
-        clientPhone: updated.clientPhone,
-        hotelName: updated.hotelName,
-        city: updated.city,
-        checkIn: updated.checkIn,
-        checkOut: updated.checkOut,
-        totalAmount: updated.totalAmount,
-        paymentStatus: updated.paymentStatus,
-        bookingStatus: updated.bookingStatus,
-        mealPlan: updated.mealPlan,
-        meta: updated.meta,
-        createdAt: updated.createdAt,
-        updatedAt: updated.updatedAt,
+        id: updated.booking.id,
+        code: updated.booking.code,
+        clientId: updated.booking.clientId,
+        clientName: updated.booking.clientName,
+        clientEmail: updated.booking.clientEmail,
+        clientPhone: updated.booking.clientPhone,
+        hotelName: updated.booking.hotelName,
+        city: updated.booking.city,
+        checkIn: updated.booking.checkIn,
+        checkOut: updated.booking.checkOut,
+        totalAmount: updated.booking.totalAmount,
+        paymentStatus: updated.booking.paymentStatus,
+        bookingStatus: updated.booking.bookingStatus,
+        mealPlan: updated.booking.mealPlan,
+        meta: updated.booking.meta,
+        createdAt: updated.booking.createdAt,
+        updatedAt: updated.booking.updatedAt,
       },
+      receipt: updated.receipt,
       message: 'Payment recorded successfully',
     });
   } catch (error) {
@@ -1327,6 +1389,139 @@ bookingRoutes.post('/:id/pay', requireAdmin, async (c) => {
       );
     }
     return c.json({ error: 'Failed to record payment' }, 500);
+  }
+});
+
+// DELETE /api/bookings/:id/payments/:ref - Cancel/delete a payment record
+bookingRoutes.delete('/:id/payments/:ref', requireAdmin, async (c) => {
+  try {
+    const bookingId = parseInt(c.req.param('id').replace(/["']/g, ''));
+    const paymentRef = c.req.param('ref');
+
+    if (!bookingId || isNaN(bookingId) || !paymentRef) {
+      return c.json({ error: 'Parameter tidak valid' }, 400);
+    }
+
+    const bookingRows = await db
+      .select()
+      .from(bookings)
+      .where(eq(bookings.id, bookingId))
+      .limit(1);
+
+    if (bookingRows.length === 0) {
+      return c.json({ error: 'Booking tidak ditemukan' }, 404);
+    }
+
+    const bookingRow = bookingRows[0]!;
+    const meta: any = bookingRow.meta || {};
+    const payments: any[] = Array.isArray(meta.payments) ? meta.payments : [];
+
+    const paymentIndex = payments.findIndex((p: any) => p.reference === paymentRef || String(p.id) === paymentRef);
+    if (paymentIndex === -1) {
+      return c.json({ error: 'Catatan pembayaran tidak ditemukan' }, 404);
+    }
+
+    const targetPayment = payments[paymentIndex];
+    const refundAmount = typeof targetPayment.amount === 'number' ? targetPayment.amount : parseFloat(targetPayment.amount || '0');
+
+    await db.transaction(async (tx) => {
+      // 1. If method was deposit, refund client deposit
+      if (targetPayment.method === 'deposit' && bookingRow.clientId) {
+        const depRows = await tx
+          .select()
+          .from(clientDeposits)
+          .where(eq(clientDeposits.clientId, bookingRow.clientId))
+          .limit(1);
+
+        if (depRows.length > 0) {
+          const currentDepBal = parseFloat(depRows[0]!.currentBalance);
+          const newDepBal = currentDepBal + refundAmount;
+          const newTotalUsed = Math.max(0, parseFloat(depRows[0]!.totalUsed) - refundAmount);
+
+          await tx
+            .update(clientDeposits)
+            .set({
+              currentBalance: newDepBal.toString(),
+              totalUsed: newTotalUsed.toString(),
+              lastTransactionAt: new Date(),
+              updatedAt: new Date(),
+            })
+            .where(eq(clientDeposits.clientId, bookingRow.clientId));
+
+          const refundTx: NewDepositTransaction = {
+            clientId: bookingRow.clientId,
+            type: 'adjustment',
+            amount: refundAmount.toString(),
+            balanceBefore: currentDepBal.toString(),
+            balanceAfter: newDepBal.toString(),
+            currency: 'SAR',
+            status: 'completed',
+            description: `Refund pembatalan pembayaran booking ${bookingRow.code} (${paymentRef})`,
+            bookingId: bookingId,
+            referenceNumber: `DEP-REFUND-${Date.now()}`,
+            processedAt: new Date(),
+          };
+          await tx.insert(depositTransactions).values(refundTx);
+        }
+      }
+
+      // 2. Remove from payments array and re-calculate
+      payments.splice(paymentIndex, 1);
+
+      const totalAmountNum = parseFloat(bookingRow.totalAmount as any);
+      const newPaidSoFar = payments.reduce((sum, p) => sum + (typeof p.amount === 'number' ? p.amount : parseFloat(p.amount || '0')), 0);
+      const newRemaining = Math.max(totalAmountNum - newPaidSoFar, 0);
+
+      meta.payments = payments;
+      meta.remainingBalance = newRemaining;
+      if (targetPayment.method === 'deposit') {
+        meta.depositUsed = Math.max(0, (typeof meta.depositUsed === 'number' ? meta.depositUsed : parseFloat(meta.depositUsed || '0')) - refundAmount);
+      }
+
+      const newPaymentStatus: 'unpaid' | 'partial' | 'paid' =
+        newPaidSoFar >= totalAmountNum ? 'paid' : newPaidSoFar > 0 ? 'partial' : 'unpaid';
+
+      await tx
+        .update(bookings)
+        .set({
+          paymentStatus: newPaymentStatus,
+          meta,
+          updatedAt: new Date(),
+        })
+        .where(eq(bookings.id, bookingId));
+
+      // 3. Sync invoice status
+      const inv = await tx
+        .select({ id: invoices.id })
+        .from(invoices)
+        .where(eq(invoices.bookingId, bookingId))
+        .limit(1);
+
+      if (inv.length > 0) {
+        await tx
+          .update(invoices)
+          .set({ status: newPaymentStatus === 'paid' ? 'paid' : 'sent' })
+          .where(eq(invoices.id, inv[0]!.id));
+
+        // 4. Delete payment from invoicePayments
+        await tx
+          .delete(invoicePayments)
+          .where(eq(invoicePayments.referenceNumber, targetPayment.reference || paymentRef));
+      }
+
+      // 5. Delete associated receipt if any
+      await tx
+        .delete(receipts)
+        .where(sql`${receipts.bookingId} = ${bookingId} AND (${receipts.meta}->'payment'->>'referenceNumber' = ${targetPayment.reference || paymentRef} OR ${receipts.number} = ${paymentRef})`);
+    });
+
+    return c.json({
+      success: true,
+      message: 'Pembayaran berhasil dibatalkan',
+    });
+  } catch (error: any) {
+    console.error('Error deleting booking payment:', error);
+    return c.json({ error: error.message || 'Gagal membatalkan pembayaran' }, 500);
   }
 });
 

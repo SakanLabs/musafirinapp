@@ -1,5 +1,6 @@
 import { createFileRoute, redirect, Link, useNavigate } from "@tanstack/react-router"
 import { useState } from "react"
+import { useQueryClient } from "@tanstack/react-query"
 import { toast } from "sonner"
 import { PageLayout } from "@/components/layout/PageLayout"
 import { Button } from "@/components/ui/button"
@@ -25,13 +26,20 @@ import {
   Trash2,
   CheckCircle2,
   Building,
+  Building2,
   DollarSign,
   HelpCircle,
   TrendingUp,
   CreditCard,
   Plus,
   Receipt,
-  AlertCircle
+  AlertCircle,
+  Eye,
+  RefreshCw,
+  Wallet,
+  Banknote,
+  Download,
+  ExternalLink
 } from "lucide-react"
 import { SARCurrency } from "@/components/ui/sar-currency"
 import { authService } from "@/lib/auth"
@@ -49,7 +57,7 @@ function parseBookingPayments(meta: unknown) {
   const payments = (meta as Record<string, unknown>)["payments"]
   if (!Array.isArray(payments)) return []
   return payments
-    .map((p): { method: string; amount: number; date: string; status: string; reference?: string; description?: string } | null => {
+    .map((p): { method: string; amount: number; date: string; status: string; reference?: string; description?: string; termin?: number; terminLabel?: string } | null => {
       if (!p || typeof p !== "object") return null
       const method = String(p.method || "")
       const amount = typeof p.amount === "number" ? p.amount : parseFloat(String(p.amount)) || 0
@@ -57,10 +65,12 @@ function parseBookingPayments(meta: unknown) {
       const status = String(p.status || "completed")
       const reference = p.reference ? String(p.reference) : undefined
       const description = p.description ? String(p.description) : undefined
+      const termin = typeof p.termin === "number" ? p.termin : undefined
+      const terminLabel = p.terminLabel ? String(p.terminLabel) : undefined
       if (!method && amount <= 0) return null
-      return { method, amount, date, status, reference, description }
+      return { method, amount, date, status, reference, description, termin, terminLabel }
     })
-    .filter((p): p is { method: string; amount: number; date: string; status: string; reference?: string; description?: string } => !!p)
+    .filter((p): p is { method: string; amount: number; date: string; status: string; reference?: string; description?: string; termin?: number; terminLabel?: string } => !!p)
 }
 
 // Helper functions for monochromatic theme
@@ -111,6 +121,8 @@ function BookingDetailPage() {
   const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false)
   const [isSuccessModalOpen, setIsSuccessModalOpen] = useState(false)
 
+  const queryClient = useQueryClient()
+
   // Fetch booking data using TanStack Query
   const { data: booking, isLoading, error } = useBooking(id)
   const generateInvoiceMutation = useGenerateInvoice()
@@ -133,9 +145,52 @@ function BookingDetailPage() {
     description: ""
   })
 
+  // PDF Preview State (for instant view modal)
+  const [viewingPdf, setViewingPdf] = useState<{ url: string; title: string; filename: string } | null>(null)
+
   // Check if invoice and voucher already exist
   const { data: existingInvoice } = useCheckInvoiceExists(id)
   const { data: existingVoucher } = useCheckVoucherExists(id)
+
+  const handleViewReceipt = (receiptNumber: string) => {
+    setViewingPdf({
+      url: `/api/receipts/number/${receiptNumber}/download?view=true`,
+      title: `Kwitansi Resmi #${receiptNumber}`,
+      filename: `Receipt-${receiptNumber}.pdf`
+    })
+  }
+
+  const handleDownloadReceipt = (receiptNumber: string) => {
+    import("@/lib/api").then(({ apiClient }) => {
+      apiClient.downloadFile(`/api/receipts/number/${receiptNumber}/download`, `Receipt-${receiptNumber}.pdf`)
+    })
+  }
+
+  const handleViewInvoice = () => {
+    if (existingInvoice?.number) {
+      setViewingPdf({
+        url: `/api/invoices/by-number/${existingInvoice.number}?view=true`,
+        title: `Invoice Resmi #${existingInvoice.number}`,
+        filename: `Invoice-${existingInvoice.number}.pdf`
+      })
+    }
+  }
+
+  const handleDeletePayment = async (reference: string, amount: number) => {
+    if (!window.confirm(`Yakin ingin membatalkan/menghapus pembayaran sebesar ${formatCurrency(amount.toString(), 'SAR')} ini? Sisa tagihan dan status akan diperbarui otomatis.`)) {
+      return
+    }
+    try {
+      const { apiClient } = await import("@/lib/api")
+      await apiClient.delete(`/api/bookings/${id}/payments/${encodeURIComponent(reference)}`)
+      toast.success('Pembayaran berhasil dibatalkan')
+      queryClient.invalidateQueries({ queryKey: ['bookings'] })
+      queryClient.invalidateQueries({ queryKey: ['receipts'] })
+      queryClient.invalidateQueries({ queryKey: ['invoices'] })
+    } catch (err: any) {
+      toast.error(err?.message || 'Gagal membatalkan pembayaran')
+    }
+  }
 
   const handleOpenPayModal = () => {
     if (!booking) return
@@ -169,7 +224,10 @@ function BookingDetailPage() {
         referenceNumber: payForm.referenceNumber.trim() || undefined,
         description: payForm.description.trim() || undefined
       })
-      toast.success("Pembayaran berhasil dicatat!")
+      queryClient.invalidateQueries({ queryKey: ['bookings'] })
+      queryClient.invalidateQueries({ queryKey: ['receipts'] })
+      queryClient.invalidateQueries({ queryKey: ['invoices'] })
+      toast.success("Pembayaran berhasil dicatat dan kwitansi otomatis diterbitkan!")
       setIsPayModalOpen(false)
     } catch (err: any) {
       toast.error(err.message || "Gagal mencatat pembayaran")
@@ -180,6 +238,7 @@ function BookingDetailPage() {
     if (!booking) return
     try {
       const receipt = await generateReceiptMutation.mutateAsync(booking.id)
+      queryClient.invalidateQueries({ queryKey: ['receipts'] })
       toast.success(`Kwitansi ${receipt.number} berhasil diterbitkan!`)
     } catch (err: any) {
       toast.error(err.message || "Gagal membuat kwitansi")
@@ -198,12 +257,13 @@ function BookingDetailPage() {
       })
 
       const message = existingInvoice
-        ? "Invoice berhasil digenerate ulang! Anda akan diarahkan ke halaman invoices."
-        : "Invoice berhasil digenerate! Anda akan diarahkan ke halaman invoices."
+        ? "Invoice berhasil diperbarui!"
+        : "Invoice berhasil diterbitkan!"
 
       toast.success(message)
       setIsDueDateModalOpen(false)
-      navigate({ to: '/invoices' })
+      queryClient.invalidateQueries({ queryKey: ['invoices'] })
+      queryClient.invalidateQueries({ queryKey: ['bookings'] })
     } catch (error) {
       console.error("Failed to generate invoice:", error)
       const msg = error instanceof Error ? error.message : "Gagal generate invoice"
@@ -603,168 +663,6 @@ function BookingDetailPage() {
               </CardContent>
             </Card>
 
-            {/* Payment History & Installments (Termin) Card */}
-                {(() => {
-                  const total = Number(booking.totalAmount) || 0
-                  const payments = parseBookingPayments(booking.meta)
-                  const paid = payments.reduce((sum, p) => sum + p.amount, 0)
-                  const remaining = Math.max(total - paid, 0)
-                  const pct = total > 0 ? Math.min(Math.round((paid / total) * 100), 100) : 0
-
-                  return (
-                    <Card className="border border-[#e5e7eb] rounded-xl shadow-[0_1px_2px_rgba(0,0,0,0.04)] bg-white overflow-hidden">
-                      <CardHeader className="border-b border-[#e5e7eb] px-6 py-4 bg-gray-50/20 flex flex-row items-center justify-between">
-                        <CardTitle className="text-sm font-bold text-[#111111] flex items-center gap-2">
-                          <CreditCard className="h-4 w-4 text-gray-400" />
-                          Riwayat Pembayaran & Tracking Termin
-                        </CardTitle>
-                        <Button
-                          size="sm"
-                          onClick={handleOpenPayModal}
-                          className="bg-[#111111] hover:bg-[#242424] text-white text-xs font-semibold h-8 px-3 rounded-md flex items-center gap-1 shadow-none"
-                        >
-                          <Plus className="h-3.5 w-3.5" />
-                          Catat Pembayaran
-                        </Button>
-                      </CardHeader>
-                      <CardContent className="p-4 md:p-6 space-y-5">
-                        {/* Financial Snapshot */}
-                        <div className="p-4 bg-zinc-50/70 rounded-xl border border-zinc-200/80 space-y-3">
-                          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-center">
-                            <div>
-                              <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider">Total Tagihan</span>
-                              <p className="text-base font-bold text-zinc-950 mt-0.5">{formatCurrency(total.toString(), "SAR")}</p>
-                            </div>
-                            <div>
-                              <span className="text-[10px] font-bold text-emerald-600 uppercase tracking-wider">Total Terbayar</span>
-                              <p className="text-base font-bold text-emerald-600 mt-0.5">{formatCurrency(paid.toString(), "SAR")}</p>
-                            </div>
-                            <div>
-                              <span className="text-[10px] font-bold text-rose-600 uppercase tracking-wider">Sisa Tagihan</span>
-                              <p className={`text-base font-bold mt-0.5 ${remaining > 0 ? "text-rose-600" : "text-emerald-700"}`}>
-                                {remaining > 0 ? formatCurrency(remaining.toString(), "SAR") : "Lunas ✓"}
-                              </p>
-                            </div>
-                          </div>
-
-                          <div className="pt-3 border-t border-zinc-200">
-                            <div className="flex justify-between text-xs font-semibold mb-1.5">
-                              <span className="text-zinc-600">Realisasi Pelunasan</span>
-                              <span className={pct === 100 ? "text-emerald-700 font-bold" : "text-amber-700 font-bold"}>
-                                {pct}% {pct === 100 ? "Lunas" : "Sebagian"}
-                              </span>
-                            </div>
-                            <div className="w-full bg-zinc-200/70 rounded-full h-2 overflow-hidden">
-                              <div
-                                className={`h-full rounded-full transition-all duration-300 ${
-                                  pct === 100 ? "bg-emerald-600" : pct > 0 ? "bg-amber-500" : "bg-zinc-300"
-                                }`}
-                                style={{ width: `${pct}%` }}
-                              />
-                            </div>
-                          </div>
-                        </div>
-
-                        {/* List of Payments */}
-                        <div className="space-y-3">
-                          <h4 className="text-xs font-bold text-zinc-800 uppercase tracking-wider">Rincian Termin Pembayaran</h4>
-                          {payments.length === 0 ? (
-                            <div className="p-6 text-center bg-zinc-50/50 rounded-xl border border-dashed border-zinc-200 text-zinc-400">
-                              <Clock className="h-5 w-5 mx-auto mb-1.5 text-zinc-300" />
-                              <p className="text-xs font-medium">Belum ada pembayaran yang dicatat untuk pemesanan ini.</p>
-                              <p className="text-[11px] text-zinc-400 mt-0.5">Gunakan tombol "Catat Pembayaran" di atas untuk memasukkan pembayaran DP.</p>
-                            </div>
-                          ) : (
-                            payments.map((p, pIdx) => (
-                              <div
-                                key={pIdx}
-                                className="p-3.5 bg-white rounded-xl border border-zinc-200/90 shadow-none space-y-2 hover:border-zinc-300 transition-colors"
-                              >
-                                <div className="flex items-center justify-between">
-                                  <div className="flex items-center gap-2">
-                                    <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase bg-zinc-100 text-zinc-800 border border-zinc-200">
-                                      {pIdx === 0 ? "Pembayaran #1 (DP)" : `Termin ke-${pIdx + 1}`}
-                                    </span>
-                                    <span className="text-xs font-semibold text-zinc-600 capitalize">{p.method.replace("_", " ")}</span>
-                                  </div>
-                                  <span className="text-sm font-extrabold text-emerald-700">
-                                    {formatCurrency(p.amount.toString(), "SAR")}
-                                  </span>
-                                </div>
-
-                                <div className="grid grid-cols-2 gap-2 text-[11px] text-zinc-500 pt-1.5 border-t border-zinc-100">
-                                  <div>
-                                    <span className="text-zinc-400">Tanggal:</span> {formatDate(p.date)}
-                                  </div>
-                                  {p.reference && (
-                                    <div>
-                                      <span className="text-zinc-400">Referensi:</span> <span className="font-mono text-zinc-800 font-semibold">{p.reference}</span>
-                                    </div>
-                                  )}
-                                </div>
-
-                                {p.description && (
-                                  <div className="text-[11px] text-zinc-700 bg-zinc-50 px-2.5 py-1.5 rounded-md border border-zinc-150">
-                                    <span className="font-semibold text-zinc-500">Catatan:</span> {p.description}
-                                  </div>
-                                )}
-                              </div>
-                            ))
-                          )}
-                        </div>
-
-                        {/* Receipts Section */}
-                        <div className="pt-3 border-t border-zinc-100 space-y-3">
-                          <div className="flex items-center justify-between">
-                            <h4 className="text-xs font-bold text-zinc-800 uppercase tracking-wider">Kwitansi Terbit</h4>
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={handleGenerateReceipt}
-                              disabled={generateReceiptMutation.isPending}
-                              className="h-8 px-2.5 text-xs font-semibold rounded-md border-zinc-300 shadow-none flex items-center gap-1.5"
-                            >
-                              {generateReceiptMutation.isPending ? (
-                                <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                              ) : (
-                                <Receipt className="h-3.5 w-3.5" />
-                              )}
-                              Terbitkan Kwitansi Baru
-                            </Button>
-                          </div>
-
-                          {receiptsForBooking.length === 0 ? (
-                            <p className="text-zinc-400 text-xs italic">Belum ada kwitansi yang diterbitkan.</p>
-                          ) : (
-                            <div className="space-y-2">
-                              {receiptsForBooking.map((rcpt) => (
-                                <div
-                                  key={rcpt.id}
-                                  className="p-3 bg-zinc-50/70 rounded-lg border border-zinc-200 flex items-center justify-between"
-                                >
-                                  <div>
-                                    <div className="font-mono font-bold text-xs text-zinc-900">{rcpt.number}</div>
-                                    <div className="text-[10px] text-zinc-500">
-                                      Diterbitkan: {formatDate(rcpt.issueDate)} • Nominal: {formatCurrency(rcpt.amount, rcpt.currency)}
-                                    </div>
-                                  </div>
-                                  <Button
-                                    size="sm"
-                                    variant="ghost"
-                                    onClick={() => window.open(rcpt.pdfUrl || `/api/receipts/${rcpt.id}/download`, "_blank")}
-                                    className="h-7 px-2.5 text-xs font-semibold text-zinc-700 hover:text-black hover:bg-zinc-200"
-                                  >
-                                    Buka PDF &rarr;
-                                  </Button>
-                                </div>
-                              ))}
-                            </div>
-                          )}
-                        </div>
-                      </CardContent>
-                    </Card>
-                  )
-                })()}
               </div>
 
           {/* Sidebar parameters (1 col) */}
@@ -895,7 +793,354 @@ function BookingDetailPage() {
             </Card>
           </div>
         </div>
+
+        {/* Tagihan & Pembayaran (Billing & Payments) - Same layout as Visa */}
+        {(() => {
+          const total = existingInvoice?.amount ? parseFloat(existingInvoice.amount) : (Number(booking.totalAmount) || 0)
+          const payments = parseBookingPayments(booking.meta)
+          const paid = payments.reduce((sum, p) => sum + p.amount, 0)
+          const remaining = Math.max(total - paid, 0)
+          const pct = total > 0 ? Math.min(Math.round((paid / total) * 100), 100) : 0
+          const currentPaymentStatus = booking.paymentStatus || (remaining === 0 ? 'paid' : paid > 0 ? 'partial' : 'unpaid')
+
+          return (
+            <Card className="border border-[#e5e7eb] rounded-xl shadow-none bg-white overflow-hidden">
+              <CardHeader className="bg-zinc-50/60 border-b border-[#e5e7eb] px-6 py-4 flex flex-row items-center justify-between space-y-0">
+                <div className="flex items-center space-x-3">
+                  <div className="p-2 bg-white border border-zinc-200/80 rounded-lg shadow-2xs">
+                    <Receipt className="h-4 w-4 text-zinc-700" />
+                  </div>
+                  <div>
+                    <CardTitle className="text-sm font-bold text-zinc-900 tracking-tight flex items-center gap-2">
+                      <span>Tagihan & Pembayaran</span>
+                      {existingInvoice?.number && (
+                        <span className="font-mono text-xs font-semibold text-zinc-500">
+                          ({existingInvoice.number})
+                        </span>
+                      )}
+                      <Badge
+                        variant="outline"
+                        className={`text-[10px] font-semibold uppercase px-2 py-0.5 rounded-md ${
+                          currentPaymentStatus === 'paid'
+                            ? 'bg-emerald-50 text-emerald-700 border-emerald-200/60'
+                            : currentPaymentStatus === 'partial'
+                            ? 'bg-amber-50 text-amber-700 border-amber-200/60'
+                            : 'bg-zinc-100 text-zinc-600 border-zinc-200/60'
+                        }`}
+                      >
+                        {currentPaymentStatus === 'paid' ? 'Lunas' : currentPaymentStatus === 'partial' ? 'Cicilan' : 'Belum Bayar'}
+                      </Badge>
+                    </CardTitle>
+                    <p className="text-xs text-zinc-500 mt-0.5">
+                      Kelola tagihan, pencatatan pembayaran masuk, dan kwitansi resmi hotel.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-center space-x-2">
+                  {existingInvoice?.number && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={handleViewInvoice}
+                      className="h-8 px-3 border-zinc-200 text-zinc-700 hover:bg-zinc-50 text-xs font-medium"
+                    >
+                      <Eye className="h-3.5 w-3.5 mr-1.5 text-zinc-400" />
+                      <span>Lihat Invoice</span>
+                    </Button>
+                  )}
+
+                  {existingInvoice && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={handleGenerateInvoice}
+                      disabled={generateInvoiceMutation.isPending}
+                      className="h-8 px-3 border-zinc-200 text-zinc-700 hover:bg-zinc-50 text-xs font-medium"
+                    >
+                      <RefreshCw className={`h-3.5 w-3.5 mr-1.5 text-zinc-400 ${generateInvoiceMutation.isPending ? 'animate-spin' : ''}`} />
+                      <span>Perbarui PDF</span>
+                    </Button>
+                  )}
+
+                  {!existingInvoice && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={handleGenerateInvoice}
+                      disabled={generateInvoiceMutation.isPending}
+                      className="h-8 px-3 border-zinc-200 text-zinc-700 hover:bg-zinc-50 text-xs font-medium"
+                    >
+                      <FileText className="h-3.5 w-3.5 mr-1.5 text-zinc-400" />
+                      <span>Terbitkan Invoice</span>
+                    </Button>
+                  )}
+
+                  {remaining > 0 && (
+                    <Button
+                      size="sm"
+                      onClick={handleOpenPayModal}
+                      disabled={payBookingMutation.isPending}
+                      className="h-8 px-3.5 bg-[#111111] hover:bg-[#242424] text-white font-semibold text-xs rounded-md shadow-none flex items-center space-x-1.5 border border-transparent"
+                    >
+                      <CreditCard className="h-3.5 w-3.5" />
+                      <span>Terima Pembayaran</span>
+                    </Button>
+                  )}
+                </div>
+              </CardHeader>
+
+              <CardContent className="p-6 space-y-6">
+                {/* 3 Summary Stat Boxes */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 p-4 bg-zinc-50/70 rounded-xl border border-zinc-200/70">
+                  <div className="space-y-1">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-500">Total Tagihan</span>
+                    <p className="text-xl font-bold font-mono text-zinc-900">
+                      {formatCurrency(total.toString(), 'SAR')}
+                    </p>
+                    {booking.meta && (booking.meta as any).totalPriceUSD ? (
+                      <p className="text-[11px] font-mono text-zinc-400">
+                        {formatCurrency(String((booking.meta as any).totalPriceUSD), 'USD')} (USD)
+                      </p>
+                    ) : (
+                      <p className="text-[11px] text-zinc-400">
+                        {booking.hotelName} • {nights} Malam
+                      </p>
+                    )}
+                  </div>
+
+                  <div className="space-y-1 border-t md:border-t-0 md:border-l border-zinc-200/60 pt-3 md:pt-0 md:pl-4">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-500">Telah Dibayar</span>
+                    <p className="text-xl font-bold font-mono text-emerald-600">
+                      {formatCurrency(paid.toString(), 'SAR')}
+                    </p>
+                    <div className="flex items-center gap-1.5 text-[11px] text-emerald-700 font-medium">
+                      <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                      <span>{pct}% Terbayar</span>
+                    </div>
+                  </div>
+
+                  <div className="space-y-1 border-t md:border-t-0 md:border-l border-zinc-200/60 pt-3 md:pt-0 md:pl-4">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-500">Sisa Tagihan</span>
+                    <p className={`text-xl font-bold font-mono ${remaining === 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
+                      {formatCurrency(remaining.toString(), 'SAR')}
+                    </p>
+                    <p className="text-[11px] text-zinc-400">
+                      {remaining === 0 ? 'Semua tagihan lunas' : 'Menunggu pelunasan'}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Riwayat Pembayaran & Kwitansi Resmi */}
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between border-b border-zinc-100 pb-2">
+                    <h4 className="text-xs font-bold uppercase tracking-wider text-zinc-600">
+                      Riwayat Pembayaran & Kwitansi Resmi
+                    </h4>
+                    <span className="text-xs text-zinc-400 font-medium">
+                      {payments.length} transaksi tercatat
+                    </span>
+                  </div>
+
+                  {payments && payments.length > 0 ? (
+                    <div className="overflow-x-auto rounded-lg border border-zinc-200">
+                      <table className="w-full text-xs">
+                        <thead className="bg-zinc-50 border-b border-zinc-200">
+                          <tr>
+                            <th className="text-left font-bold text-zinc-600 py-2.5 px-4 uppercase tracking-wider">Tanggal</th>
+                            <th className="text-left font-bold text-zinc-600 py-2.5 px-4 uppercase tracking-wider">Metode</th>
+                            <th className="text-left font-bold text-zinc-600 py-2.5 px-4 uppercase tracking-wider">No. Referensi / Catatan</th>
+                            <th className="text-right font-bold text-zinc-600 py-2.5 px-4 uppercase tracking-wider">Nominal</th>
+                            <th className="text-right font-bold text-zinc-600 py-2.5 px-4 uppercase tracking-wider">Kwitansi (PDF)</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-zinc-100">
+                          {payments.map((p, idx) => {
+                            const terminNumber = p.termin || (idx + 1);
+                            const isFullyPaid = remaining <= 0 && idx === payments.length - 1;
+                            let terminLabel = p.terminLabel;
+                            if (!terminLabel) {
+                              if (isFullyPaid && terminNumber === 1) {
+                                terminLabel = 'Pelunasan (Lunas Penuh)';
+                              } else if (isFullyPaid) {
+                                terminLabel = `Termin #${terminNumber} (Pelunasan)`;
+                              } else if (terminNumber === 1) {
+                                terminLabel = 'Termin #1 (Uang Muka / DP)';
+                              } else {
+                                terminLabel = `Termin #${terminNumber}`;
+                              }
+                            }
+
+                            // Find matching receipt from receiptsForBooking
+                            const receipt = receiptsForBooking.find(r => 
+                              (r.meta?.payment?.referenceNumber && r.meta.payment.referenceNumber === p.reference) ||
+                              (r.meta?.termin && r.meta.termin === terminNumber) ||
+                              (parseFloat(r.paidAmount) === p.amount)
+                            ) || (receiptsForBooking.length === 1 && payments.length === 1 ? receiptsForBooking[0] : null);
+                            const receiptNumber = receipt?.number;
+
+                            return (
+                              <tr key={idx} className="hover:bg-zinc-50/60 transition-colors">
+                                <td className="py-3 px-4 font-mono text-zinc-700">
+                                  {formatDate(p.date)}
+                                </td>
+                                <td className="py-3 px-4">
+                                  <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md font-medium text-[11px] bg-zinc-100 text-zinc-700">
+                                    {p.method === 'bank_transfer' ? (
+                                      <>
+                                        <Building2 className="w-3 h-3 text-zinc-500" />
+                                        <span>Transfer Bank</span>
+                                      </>
+                                    ) : p.method === 'deposit' ? (
+                                      <>
+                                        <Wallet className="w-3 h-3 text-emerald-600" />
+                                        <span>Saldo Deposit</span>
+                                      </>
+                                    ) : (
+                                      <>
+                                        <Banknote className="w-3 h-3 text-zinc-500" />
+                                        <span>Tunai</span>
+                                      </>
+                                    )}
+                                  </span>
+                                </td>
+                                <td className="py-3 px-4">
+                                  <div className="flex items-center gap-1.5 flex-wrap">
+                                    {terminLabel ? (
+                                      <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold bg-sky-50 text-sky-700 border border-sky-200">
+                                        {terminLabel}
+                                      </span>
+                                    ) : null}
+                                    <span className="font-mono text-zinc-800">{p.reference || '-'}</span>
+                                  </div>
+                                  {p.description && (
+                                    <div className="text-[11px] text-zinc-500 mt-0.5">{p.description}</div>
+                                  )}
+                                </td>
+                                <td className="py-3 px-4 text-right font-mono font-bold text-emerald-600 text-sm">
+                                  {formatCurrency(p.amount.toString(), 'SAR')}
+                                </td>
+                                <td className="py-3 px-4 text-right">
+                                  <div className="flex items-center justify-end space-x-1.5">
+                                    {receiptNumber ? (
+                                      <>
+                                        <Button
+                                          variant="outline"
+                                          size="sm"
+                                          onClick={() => handleViewReceipt(receiptNumber)}
+                                          className="h-7 text-[11px] px-2.5 font-medium border-zinc-200 text-zinc-700 hover:bg-zinc-50 hover:text-zinc-900 inline-flex items-center space-x-1"
+                                          title="Lihat Kwitansi PDF Langsung"
+                                        >
+                                          <Receipt className="w-3.5 h-3.5 text-zinc-500" />
+                                          <span className="font-mono">{receiptNumber}</span>
+                                        </Button>
+                                        <Button
+                                          variant="ghost"
+                                          size="sm"
+                                          onClick={() => handleDownloadReceipt(receiptNumber)}
+                                          className="h-7 w-7 p-0 text-zinc-400 hover:text-zinc-700 hover:bg-zinc-100 rounded"
+                                          title="Unduh Kwitansi PDF"
+                                        >
+                                          <Download className="w-3.5 h-3.5" />
+                                        </Button>
+                                      </>
+                                    ) : (
+                                      <Button
+                                        variant="outline"
+                                        size="sm"
+                                        onClick={handleGenerateReceipt}
+                                        disabled={generateReceiptMutation.isPending}
+                                        className="h-7 text-[11px] px-2 font-medium border-zinc-200 text-zinc-600 hover:bg-zinc-50"
+                                      >
+                                        <Plus className="w-3 h-3 mr-1" />
+                                        <span>Generate</span>
+                                      </Button>
+                                    )}
+
+                                    {p.reference && (
+                                      <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        onClick={() => handleDeletePayment(p.reference!, p.amount)}
+                                        className="h-7 w-7 p-0 text-zinc-400 hover:text-red-600 hover:bg-red-50 rounded"
+                                        title="Batalkan / Hapus Pembayaran Ini"
+                                      >
+                                        <Trash2 className="w-3.5 h-3.5" />
+                                      </Button>
+                                    )}
+                                  </div>
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  ) : (
+                    <div className="p-6 text-center bg-zinc-50/50 rounded-xl border border-dashed border-zinc-200 text-zinc-400">
+                      <Clock className="h-5 w-5 mx-auto mb-1.5 text-zinc-300" />
+                      <p className="text-xs font-medium">Belum ada riwayat pembayaran yang dicatat untuk pemesanan ini.</p>
+                      <p className="text-[11px] text-zinc-400 mt-0.5">Gunakan tombol "Terima Pembayaran" di atas untuk memasukkan pembayaran atau uang muka (DP).</p>
+                    </div>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          );
+        })()}
       </div>
+
+      {/* Modal: Lihat PDF Langsung (Invoice & Kwitansi) */}
+      <Modal
+        isOpen={!!viewingPdf}
+        onClose={() => setViewingPdf(null)}
+        title={viewingPdf?.title || "Lihat Dokumen PDF"}
+        size="xl"
+        footer={
+          <div className="flex items-center justify-between w-full">
+            <div className="text-xs text-zinc-500 font-medium">
+              Dokumen resmi tercatat dalam sistem Musafirin
+            </div>
+            <div className="flex items-center space-x-2">
+              {viewingPdf && (
+                <>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => window.open(viewingPdf.url, '_blank')}
+                    className="h-8 text-xs font-medium"
+                  >
+                    <ExternalLink className="w-3.5 h-3.5 mr-1 text-zinc-500" />
+                    Buka di Tab Baru
+                  </Button>
+                  <Button
+                    size="sm"
+                    onClick={() => {
+                      import("@/lib/api").then(({ apiClient }) => {
+                        apiClient.downloadFile(viewingPdf.url.replace('?view=true', ''), viewingPdf.filename);
+                      });
+                    }}
+                    className="h-8 text-xs font-medium bg-[#111111] hover:bg-[#242424] text-white"
+                  >
+                    <Download className="w-3.5 h-3.5 mr-1" />
+                    Unduh PDF
+                  </Button>
+                </>
+              )}
+            </div>
+          </div>
+        }
+      >
+        {viewingPdf && (
+          <div className="w-full h-[650px] bg-zinc-100 rounded-lg overflow-hidden border border-zinc-200">
+            <iframe
+              src={viewingPdf.url}
+              className="w-full h-full"
+              title={viewingPdf.title}
+            />
+          </div>
+        )}
+      </Modal>
 
       {/* Due Date dialog modal */}
       <DueDateModal
