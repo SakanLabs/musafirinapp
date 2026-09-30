@@ -20,7 +20,8 @@ import {
   ShoppingBag,
   ClipboardList,
   Map,
-  DollarSign
+  DollarSign,
+  ArrowLeftRight
 } from 'lucide-react'
 import { useState, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
@@ -129,6 +130,12 @@ const navigationSections = [
         href: '/vouchers',
         icon: Ticket,
         roles: ['admin', 'owner']
+      },
+      {
+        name: 'Kurs BCA',
+        href: '/exchange-rates',
+        icon: ArrowLeftRight,
+        roles: ['admin', 'owner', 'finance']
       }
     ]
   },

@@ -278,6 +278,43 @@ export async function ensureTablesExist() {
       );
     `;
 
+    // Exchange Rates table for BCA SAR→IDR rate history
+    await client`
+      CREATE TABLE IF NOT EXISTS exchange_rates (
+        id SERIAL PRIMARY KEY,
+        base_currency VARCHAR(3) NOT NULL DEFAULT 'SAR',
+        quote_currency VARCHAR(3) NOT NULL DEFAULT 'IDR',
+        rate_type VARCHAR(50) NOT NULL DEFAULT 'BANK_NOTES_SELL',
+        rate NUMERIC(15, 4) NOT NULL,
+        source VARCHAR(50) NOT NULL DEFAULT 'BCA',
+        source_url TEXT,
+        source_updated_at TIMESTAMP,
+        fetched_at TIMESTAMP NOT NULL,
+        created_at TIMESTAMP NOT NULL DEFAULT NOW()
+      );
+    `;
+
+    // Add exchange rate snapshot columns to invoices (idempotent)
+    await client`
+      DO $$ BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'invoices' AND column_name = 'exchange_rate') THEN
+          ALTER TABLE invoices ADD COLUMN exchange_rate NUMERIC(15, 4);
+        END IF;
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'invoices' AND column_name = 'exchange_rate_source') THEN
+          ALTER TABLE invoices ADD COLUMN exchange_rate_source VARCHAR(50);
+        END IF;
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'invoices' AND column_name = 'exchange_rate_type') THEN
+          ALTER TABLE invoices ADD COLUMN exchange_rate_type VARCHAR(50);
+        END IF;
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'invoices' AND column_name = 'exchange_rate_source_updated_at') THEN
+          ALTER TABLE invoices ADD COLUMN exchange_rate_source_updated_at TIMESTAMP;
+        END IF;
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'invoices' AND column_name = 'converted_amount_idr') THEN
+          ALTER TABLE invoices ADD COLUMN converted_amount_idr NUMERIC(15, 0);
+        END IF;
+      END $$;
+    `;
+
     console.log('[DB Bootstrap] Schema check & auto-sync verified successfully');
   } catch (err) {
     console.error('[DB Bootstrap] Warning: Schema auto-sync encountered an issue:', err);

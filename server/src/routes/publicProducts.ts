@@ -3,6 +3,17 @@ import { db } from "../db";
 import { hotels, hotelPricingPeriods, transportationRoutesMaster, transportationRoutePricingPeriods, user, serviceMaster } from "../db/schema";
 import { eq, and, sql, gte, lte, ilike } from "drizzle-orm";
 import { verify } from "hono/jwt";
+import { getCurrentSarToIdrRate, type ExchangeRateData } from "../services/ExchangeRateService";
+
+// Helper to safely get exchange rate (never blocks response)
+async function getExchangeRateOrNull(): Promise<{ rate: number; source: string; rateType: string; fetchedAt: string; stale: boolean } | null> {
+  try {
+    const data = await getCurrentSarToIdrRate();
+    return { rate: data.rate, source: data.source, rateType: data.rateType, fetchedAt: data.fetchedAt, stale: data.stale };
+  } catch {
+    return null;
+  }
+}
 
 const app = new Hono();
 
@@ -183,6 +194,9 @@ app.get("/hotels", async (c) => {
       })
       .filter(h => h.pricing.length > 0); // Only return hotels that have matching pricing for the filtered criteria
 
+    // Fetch exchange rate for IDR display (non-blocking)
+    const exchangeRate = await getExchangeRateOrNull();
+
     return c.json({ 
       success: true, 
       data: formattedHotels, 
@@ -197,6 +211,7 @@ app.get("/hotels", async (c) => {
         targetRoomTypes: targetRoomTypes || 'all',
         mealPlan: selectedMealPlan || null
       },
+      exchangeRate,
       userType 
     });
   } catch (error) {
@@ -258,9 +273,13 @@ app.get("/transportation", async (c) => {
       }
     });
 
+    // Fetch exchange rate for IDR display (non-blocking)
+    const exchangeRate = await getExchangeRateOrNull();
+
     return c.json({ 
       success: true, 
       data: Array.from(routesMap.values()),
+      exchangeRate,
       userType,
       userEmail: email
     });
@@ -278,9 +297,13 @@ app.get("/services", async (c) => {
       orderBy: (serviceMaster, { asc }) => [asc(serviceMaster.category), asc(serviceMaster.name)]
     });
 
+    // Fetch exchange rate for IDR display (non-blocking)
+    const exchangeRate = await getExchangeRateOrNull();
+
     return c.json({ 
       success: true, 
-      data: services
+      data: services,
+      exchangeRate
     });
   } catch (error) {
     console.error("Failed to fetch public services:", error);

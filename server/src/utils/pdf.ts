@@ -126,7 +126,7 @@ export async function generateInvoicePDF(
 
   try {
     // Prepare data for template
-    const templateData = TemplateHelpers.prepareInvoiceData(invoice, booking, client, bookingItems, customDueDate, customInvoiceDate, extraServiceItems);
+    const templateData = await TemplateHelpers.prepareInvoiceData(invoice, booking, client, bookingItems, customDueDate, customInvoiceDate, extraServiceItems);
 
     // Render HTML using template engine
     const html = templateEngine.renderInvoice(templateData);

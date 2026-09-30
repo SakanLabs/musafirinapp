@@ -1,5 +1,6 @@
 import { readFileSync } from 'fs';
 import { join } from 'path';
+import { getCurrentSarToIdrRate, formatIdr } from '../services/ExchangeRateService';
 
 export interface InvoiceTemplateData {
   brandName: string;
@@ -83,6 +84,13 @@ export interface InvoiceTemplateData {
   };
 
   notes?: string;
+
+  // IDR conversion (from BCA exchange rate)
+  hasExchangeRate?: boolean;
+  grandTotalIdr?: string;
+  balanceDueIdr?: string;
+  exchangeRateValue?: string;
+  exchangeRateSource?: string;
 }
 
 export interface VoucherTemplateData {
@@ -455,7 +463,7 @@ export class TemplateHelpers {
   /**
    * Prepare invoice data for template
    */
-  static prepareInvoiceData(
+  static async prepareInvoiceData(
     invoice: any,
     booking: any,
     client: any,
@@ -463,7 +471,7 @@ export class TemplateHelpers {
     customDueDate: Date | string,
     customInvoiceDate?: Date | string,
     extraServiceItems: any[] = []
-  ): InvoiceTemplateData {
+  ): Promise<InvoiceTemplateData & { templateName?: string }> {
     const checkInDate = this.formatDate(booking.checkIn);
     const checkOutDate = this.formatDate(booking.checkOut);
     const totalNights = this.calculateDuration(booking.checkIn, booking.checkOut);
@@ -779,8 +787,32 @@ export class TemplateHelpers {
       grandTotal: finalData.grandTotal
     });
 
+    // Fetch exchange rate for IDR display
+    let exchangeRateInfo: { hasExchangeRate: boolean; grandTotalIdr: string; balanceDueIdr: string; exchangeRateValue: string; exchangeRateSource: string } = {
+      hasExchangeRate: false,
+      grandTotalIdr: '',
+      balanceDueIdr: '',
+      exchangeRateValue: '',
+      exchangeRateSource: '',
+    };
+    try {
+      const rateData = await getCurrentSarToIdrRate();
+      const grandTotalIdrAmount = Math.round(grandTotal * rateData.rate);
+      const balanceDueIdrAmount = Math.round(balanceDue * rateData.rate);
+      exchangeRateInfo = {
+        hasExchangeRate: true,
+        grandTotalIdr: formatIdr(grandTotalIdrAmount),
+        balanceDueIdr: formatIdr(balanceDueIdrAmount),
+        exchangeRateValue: new Intl.NumberFormat('id-ID').format(rateData.rate),
+        exchangeRateSource: 'BCA Bank Notes Sell',
+      };
+    } catch (err) {
+      console.warn('[Template] Could not fetch exchange rate for invoice IDR display:', err instanceof Error ? err.message : err);
+    }
+
     return {
       ...finalData,
+      ...exchangeRateInfo,
       templateName
     };
   }

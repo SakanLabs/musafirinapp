@@ -34,10 +34,17 @@ import profileRoutes from "./routes/profile";
 import storeRoutes from "./routes/store";
 import muthowifBookingsRoutes from "./routes/muthowifBookings";
 import agentRequestRoutes from "./routes/agentRequests";
+import exchangeRateRoutes from "./routes/exchangeRates";
 import { ensureTablesExist } from "./db/bootstrap";
+import { initExchangeRateService } from "./services/ExchangeRateService";
 
 // Ensure newly required database tables and enums exist
-ensureTablesExist().catch((err) => {
+ensureTablesExist().then(() => {
+  // Initialize exchange rate service after tables are ready
+  initExchangeRateService().catch((err) => {
+    console.error("Failed to initialize exchange rate service:", err);
+  });
+}).catch((err) => {
   console.error("Failed to run db bootstrap on startup:", err);
 });
 
@@ -100,6 +107,7 @@ export const app = new Hono()
   .route("/api/store", storeRoutes)
   .route("/api/muthowif-bookings", muthowifBookingsRoutes)
   .route("/api/agent-requests", agentRequestRoutes)
+  .route("/api/exchange-rates", exchangeRateRoutes)
   .get("/", (c) => {
     return c.text("Hello Hono!");
   })

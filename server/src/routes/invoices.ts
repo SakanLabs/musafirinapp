@@ -7,6 +7,7 @@ import { generateInvoiceNumber, generateInvoicePDF, generateManualInvoicePDF, up
 import { TemplateHelpers } from '../utils/template';
 import type { NewInvoice, NewDepositTransaction, NewInvoicePayment } from '../db/schema';
 import { ReceiptService } from '../services/ReceiptService';
+import { getCurrentSarToIdrRate } from '../services/ExchangeRateService';
 
 const invoiceRoutes = new Hono();
 const receiptService = new ReceiptService();
@@ -176,6 +177,22 @@ invoiceRoutes.get('/booking/:bookingId', requireAdminOrFinance, async (c) => {
     const issueDate = new Date();
     const dueDate = customDueDate; // Use the provided due date
 
+    // Snapshot exchange rate at invoice creation time
+    let exchangeRateSnapshot: { rate: number; source: string; rateType: string; sourceUpdatedAt: string | null; convertedAmountIdr: number } | null = null;
+    try {
+      const rateData = await getCurrentSarToIdrRate();
+      const sarAmount = (Number(bookingData.totalAmount) || 0) + extraTotal;
+      exchangeRateSnapshot = {
+        rate: rateData.rate,
+        source: rateData.source,
+        rateType: rateData.rateType,
+        sourceUpdatedAt: rateData.sourceUpdatedAt,
+        convertedAmountIdr: Math.round(sarAmount * rateData.rate),
+      };
+    } catch (err) {
+      console.warn('[Invoice] Could not snapshot exchange rate:', err instanceof Error ? err.message : err);
+    }
+
     // Save invoice to database FIRST with null pdfUrl
     const newInvoice: NewInvoice = {
       number: invoiceNumber,
@@ -186,6 +203,12 @@ invoiceRoutes.get('/booking/:bookingId', requireAdminOrFinance, async (c) => {
       dueDate: dueDate,
       status: 'draft',
       pdfUrl: null,
+      // Exchange rate snapshot (frozen)
+      exchangeRate: exchangeRateSnapshot ? String(exchangeRateSnapshot.rate) : null,
+      exchangeRateSource: exchangeRateSnapshot?.source || null,
+      exchangeRateType: exchangeRateSnapshot?.rateType || null,
+      exchangeRateSourceUpdatedAt: exchangeRateSnapshot?.sourceUpdatedAt ? new Date(exchangeRateSnapshot.sourceUpdatedAt) : null,
+      convertedAmountIdr: exchangeRateSnapshot ? String(exchangeRateSnapshot.convertedAmountIdr) : null,
     };
 
     const [insertedInvoice] = await db
