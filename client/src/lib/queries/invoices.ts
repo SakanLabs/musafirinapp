@@ -456,3 +456,105 @@ export function useDeleteManualInvoicePayment() {
     },
   });
 }
+
+// ==========================================
+// Invoice Terms & Conditions Settings Hooks
+// ==========================================
+
+export interface InvoiceTermsSetting {
+  id: number;
+  type: string;
+  name: string;
+  title: string;
+  checkInTime: string;
+  checkOutTime: string;
+  terms: string[];
+  notes?: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface UpdateInvoiceTermsSettingPayload {
+  name?: string;
+  title?: string;
+  checkInTime?: string;
+  checkOutTime?: string;
+  terms?: string[];
+  notes?: string;
+}
+
+export const invoiceTermsKeys = {
+  all: ['invoice-terms-settings'] as const,
+  lists: () => [...invoiceTermsKeys.all, 'list'] as const,
+  detail: (type: string) => [...invoiceTermsKeys.all, 'detail', type] as const,
+};
+
+// Hook to get all terms settings
+export function useInvoiceTermsSettings() {
+  return useQuery({
+    queryKey: invoiceTermsKeys.lists(),
+    queryFn: async () => {
+      const response = await apiClient.get<{ success: boolean; data: InvoiceTermsSetting[] }>(
+        API_ENDPOINTS.INVOICE_TERMS_SETTINGS
+      );
+      return response.data;
+    },
+  });
+}
+
+// Hook to get terms setting by type
+export function useInvoiceTermsSetting(type: string) {
+  return useQuery({
+    queryKey: invoiceTermsKeys.detail(type),
+    queryFn: async () => {
+      const response = await apiClient.get<{
+        success: boolean;
+        data: {
+          title: string;
+          checkInTime: string;
+          checkOutTime: string;
+          terms: string[];
+          termsHtml: string;
+          setting?: InvoiceTermsSetting;
+        };
+      }>(API_ENDPOINTS.INVOICE_TERMS_SETTING_BY_TYPE(type));
+      return response.data;
+    },
+    enabled: !!type,
+  });
+}
+
+// Hook to update terms setting by type
+export function useUpdateInvoiceTermsSetting() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ type, data }: { type: string; data: UpdateInvoiceTermsSettingPayload }) => {
+      const response = await apiClient.put<{ success: boolean; message: string; data: InvoiceTermsSetting }>(
+        API_ENDPOINTS.INVOICE_TERMS_SETTING_BY_TYPE(type),
+        data
+      );
+      return response;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: invoiceTermsKeys.all });
+    },
+  });
+}
+
+// Hook to reset terms setting by type to defaults
+export function useResetInvoiceTermsSetting() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (type: string) => {
+      const response = await apiClient.post<{ success: boolean; message: string; data: InvoiceTermsSetting }>(
+        API_ENDPOINTS.INVOICE_TERMS_SETTING_RESET(type)
+      );
+      return response;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: invoiceTermsKeys.all });
+    },
+  });
+}

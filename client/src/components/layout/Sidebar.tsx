@@ -21,7 +21,8 @@ import {
   ClipboardList,
   Map,
   DollarSign,
-  ArrowLeftRight
+  ArrowLeftRight,
+  SlidersHorizontal
 } from 'lucide-react'
 import { useState, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
@@ -135,6 +136,12 @@ const navigationSections = [
         name: 'Kurs BCA',
         href: '/exchange-rates',
         icon: ArrowLeftRight,
+        roles: ['admin', 'owner', 'finance']
+      },
+      {
+        name: 'Setting Syarat & Ketentuan',
+        href: '/invoice-terms-settings',
+        icon: SlidersHorizontal,
         roles: ['admin', 'owner', 'finance']
       }
     ]

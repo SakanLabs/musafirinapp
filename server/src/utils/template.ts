@@ -1,6 +1,7 @@
 import { readFileSync } from 'fs';
 import { join } from 'path';
 import { getCurrentSarToIdrRate, formatIdr } from '../services/ExchangeRateService';
+import { InvoiceTermsService } from '../services/InvoiceTermsService';
 
 export interface InvoiceTemplateData {
   brandName: string;
@@ -83,6 +84,10 @@ export interface InvoiceTemplateData {
     policyCheckInTime: string;
     policyCheckOutTime: string;
   };
+
+  termsTitle?: string;
+  termsHtml?: string;
+  termsList?: string[];
 
   notes?: string;
 
@@ -695,6 +700,9 @@ export class TemplateHelpers {
 
 
 
+    // Fetch dynamic terms & conditions setting
+    const termsConfig = await InvoiceTermsService.getByType('hotel');
+
     const finalData = {
       brandName: "Musafirin",
       brandTagline: "We are musafirin of Baitullah",
@@ -742,12 +750,16 @@ export class TemplateHelpers {
         phone: "+6281235623973"
       },
 
+      termsTitle: termsConfig.title || "Ketentuan Pemesanan",
+      termsHtml: termsConfig.termsHtml,
+      termsList: termsConfig.terms,
+
       terms: {
         downPaymentPercent: 30,
         settlementDeadline: this.formatDate(customDueDate),
         cancellationPolicy: "Pembatalan ≤ 7 hari sebelum check-in dikenakan 1 malam; ≤ 72 jam non-refundable, mengikuti kebijakan hotel.",
-        policyCheckInTime: "15:00",
-        policyCheckOutTime: "12:00"
+        policyCheckInTime: termsConfig.checkInTime || "16:00",
+        policyCheckOutTime: termsConfig.checkOutTime || "12:00"
       },
 
       notes: "Harap bawa ID saat check-in."

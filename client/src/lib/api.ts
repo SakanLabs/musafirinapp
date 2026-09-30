@@ -314,4 +314,9 @@ export const API_ENDPOINTS = {
   EXCHANGE_RATE_SAR_IDR_REFRESH: '/api/exchange-rates/SAR-IDR/refresh',
   EXCHANGE_RATE_SAR_IDR_MANUAL: '/api/exchange-rates/SAR-IDR/manual',
   EXCHANGE_RATE_SAR_IDR_STATUS: '/api/exchange-rates/SAR-IDR/status',
+
+  // Invoice Terms Settings
+  INVOICE_TERMS_SETTINGS: '/api/invoice-terms-settings',
+  INVOICE_TERMS_SETTING_BY_TYPE: (type: string) => `/api/invoice-terms-settings/${type}`,
+  INVOICE_TERMS_SETTING_RESET: (type: string) => `/api/invoice-terms-settings/${type}/reset`,
 } as const;

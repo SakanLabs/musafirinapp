@@ -221,12 +221,9 @@
 
     <!-- Terms & Conditions -->
     <div class="cs-info-card">
-      <h3 class="cs-text-lg cs-font-bold cs-text-gray-800 cs-mb-2">Ketentuan Pemesanan</h3>
+      <h3 class="cs-text-lg cs-font-bold cs-text-gray-800 cs-mb-2">{{termsTitle}}</h3>
       <div class="cs-text-gray-600 cs-text-sm">
-        <p class="cs-mb-1">• Pemesanan <span class="cs-font-semibold">terkonfirmasi</span> setelah Full Payment.</p>
-        <p class="cs-mb-1">• <span class="cs-font-semibold">Pembatalan:</span> Pesanan ini tidak dapat di batalkan dan di refund.</p>
-        <p class="cs-mb-1">• Check-in: {{terms.policyCheckInTime}} | Check-out: {{terms.policyCheckOutTime}}.</p>
-        <p>• Perubahan/permintaan khusus tergantung ketersediaan. Harga dapat berubah sebelum pelunasan.</p>
+        {{termsHtml}}
       </div>
     </div>
 
