@@ -1387,3 +1387,20 @@ export type AgentRequestTimelineEntry = typeof agentRequestTimeline.$inferSelect
 export type NewAgentRequestTimelineEntry = typeof agentRequestTimeline.$inferInsert;
 export type AgentNotification = typeof agentNotifications.$inferSelect;
 export type NewAgentNotification = typeof agentNotifications.$inferInsert;
+
+// Dynamic Invoice Terms & Conditions Settings
+export const invoiceTermsSettings = pgTable('invoice_terms_settings', {
+  id: serial('id').primaryKey(),
+  type: varchar('type', { length: 50 }).notNull().unique(), // 'hotel', 'manual', 'transportation', 'custom_la', 'muthowif'
+  name: varchar('name', { length: 100 }).notNull(), // Label for UI display
+  title: varchar('title', { length: 255 }).notNull().default('Ketentuan Pemesanan'),
+  checkInTime: varchar('check_in_time', { length: 20 }).default('16:00'),
+  checkOutTime: varchar('check_out_time', { length: 20 }).default('12:00'),
+  terms: jsonb('terms').notNull(), // Array of string bullet points
+  notes: text('notes'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+});
+
+export type InvoiceTermsSetting = typeof invoiceTermsSettings.$inferSelect;
+export type NewInvoiceTermsSetting = typeof invoiceTermsSettings.$inferInsert;

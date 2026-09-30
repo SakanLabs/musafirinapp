@@ -14,7 +14,8 @@ import {
   Trash2,
   MessageCircle,
   Edit,
-  CreditCard
+  CreditCard,
+  SlidersHorizontal
 } from "lucide-react"
 import { formatCurrency, formatDate } from "@/lib/utils"
 import { useInvoices, type Invoice, useBackfillInvoiceStatus, useDeleteInvoice } from "@/lib/queries/invoices"
@@ -295,6 +296,16 @@ function InvoicesPage() {
             <Filter className="h-4 w-4 mr-2" />
             Filter
           </Button>
+          <Link to="/invoice-terms-settings">
+            <Button
+              variant="outline"
+              className="h-9 px-3.5 border-[#e5e7eb] text-zinc-700 hover:bg-gray-50 hover:text-black flex items-center rounded-md font-semibold text-xs bg-white shadow-none"
+              title="Pengaturan Syarat & Ketentuan Invoice"
+            >
+              <SlidersHorizontal className="h-3.5 w-3.5 mr-1.5 text-zinc-500" />
+              Setting T&C
+            </Button>
+          </Link>
           <Link to="/create-manual-invoice">
             <Button
               variant="outline"

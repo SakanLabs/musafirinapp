@@ -923,6 +923,16 @@ export async function generateTransportationInvoicePDF(
       saudiRiyalSVGBase64
     };
 
+    // Load dynamic terms & conditions setting
+    try {
+      const { InvoiceTermsService } = await import('../services/InvoiceTermsService');
+      const termsConfig = await InvoiceTermsService.getByType('transportation');
+      (templateData as any).termsTitle = termsConfig.title || 'Syarat & Ketentuan';
+      (templateData as any).termsHtml = termsConfig.termsHtml;
+    } catch (err) {
+      console.warn('Failed to load dynamic terms for transportation invoice:', err);
+    }
+
     const renderedHtml = template(templateData);
 
     await page.setContent(renderedHtml);
@@ -1908,8 +1918,19 @@ export async function generateManualInvoicePDF(
       billingContact: {
         email: 'finance@musafirin.co',
         phone: '+966 539 101 812'
-      }
+      },
+      termsTitle: 'Ketentuan Pemesanan',
+      termsHtml: '',
     };
+
+    try {
+      const { InvoiceTermsService } = await import('../services/InvoiceTermsService');
+      const termsConfig = await InvoiceTermsService.getByType('manual');
+      data.termsTitle = termsConfig.title || 'Ketentuan Pemesanan';
+      data.termsHtml = termsConfig.termsHtml;
+    } catch (err) {
+      console.warn('Failed to load terms for manual invoice PDF:', err);
+    }
 
     const html = template(data);
     await page.setContent(html);

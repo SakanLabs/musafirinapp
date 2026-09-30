@@ -25,6 +25,7 @@ import { Route as MasterHotelsRouteImport } from './routes/master-hotels'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as LeadsRouteImport } from './routes/leads'
 import { Route as InvoicesRouteImport } from './routes/invoices'
+import { Route as InvoiceTermsSettingsRouteImport } from './routes/invoice-terms-settings'
 import { Route as InvoiceDetailRouteImport } from './routes/invoice-detail'
 import { Route as ForgotPasswordRouteImport } from './routes/forgot-password'
 import { Route as ExchangeRatesRouteImport } from './routes/exchange-rates'
@@ -173,6 +174,11 @@ const LeadsRoute = LeadsRouteImport.update({
 const InvoicesRoute = InvoicesRouteImport.update({
   id: '/invoices',
   path: '/invoices',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const InvoiceTermsSettingsRoute = InvoiceTermsSettingsRouteImport.update({
+  id: '/invoice-terms-settings',
+  path: '/invoice-terms-settings',
   getParentRoute: () => rootRouteImport,
 } as any)
 const InvoiceDetailRoute = InvoiceDetailRouteImport.update({
@@ -562,6 +568,7 @@ export interface FileRoutesByFullPath {
   '/exchange-rates': typeof ExchangeRatesRoute
   '/forgot-password': typeof ForgotPasswordRoute
   '/invoice-detail': typeof InvoiceDetailRoute
+  '/invoice-terms-settings': typeof InvoiceTermsSettingsRoute
   '/invoices': typeof InvoicesRoute
   '/leads': typeof LeadsRoute
   '/login': typeof LoginRoute
@@ -648,6 +655,7 @@ export interface FileRoutesByTo {
   '/exchange-rates': typeof ExchangeRatesRoute
   '/forgot-password': typeof ForgotPasswordRoute
   '/invoice-detail': typeof InvoiceDetailRoute
+  '/invoice-terms-settings': typeof InvoiceTermsSettingsRoute
   '/invoices': typeof InvoicesRoute
   '/leads': typeof LeadsRoute
   '/login': typeof LoginRoute
@@ -734,6 +742,7 @@ export interface FileRoutesById {
   '/exchange-rates': typeof ExchangeRatesRoute
   '/forgot-password': typeof ForgotPasswordRoute
   '/invoice-detail': typeof InvoiceDetailRoute
+  '/invoice-terms-settings': typeof InvoiceTermsSettingsRoute
   '/invoices': typeof InvoicesRoute
   '/leads': typeof LeadsRoute
   '/login': typeof LoginRoute
@@ -823,6 +832,7 @@ export interface FileRouteTypes {
     | '/exchange-rates'
     | '/forgot-password'
     | '/invoice-detail'
+    | '/invoice-terms-settings'
     | '/invoices'
     | '/leads'
     | '/login'
@@ -909,6 +919,7 @@ export interface FileRouteTypes {
     | '/exchange-rates'
     | '/forgot-password'
     | '/invoice-detail'
+    | '/invoice-terms-settings'
     | '/invoices'
     | '/leads'
     | '/login'
@@ -994,6 +1005,7 @@ export interface FileRouteTypes {
     | '/exchange-rates'
     | '/forgot-password'
     | '/invoice-detail'
+    | '/invoice-terms-settings'
     | '/invoices'
     | '/leads'
     | '/login'
@@ -1082,6 +1094,7 @@ export interface RootRouteChildren {
   ExchangeRatesRoute: typeof ExchangeRatesRoute
   ForgotPasswordRoute: typeof ForgotPasswordRoute
   InvoiceDetailRoute: typeof InvoiceDetailRoute
+  InvoiceTermsSettingsRoute: typeof InvoiceTermsSettingsRoute
   InvoicesRoute: typeof InvoicesRoute
   LeadsRoute: typeof LeadsRoute
   LoginRoute: typeof LoginRoute
@@ -1232,6 +1245,13 @@ declare module '@tanstack/react-router' {
       path: '/invoices'
       fullPath: '/invoices'
       preLoaderRoute: typeof InvoicesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/invoice-terms-settings': {
+      id: '/invoice-terms-settings'
+      path: '/invoice-terms-settings'
+      fullPath: '/invoice-terms-settings'
+      preLoaderRoute: typeof InvoiceTermsSettingsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/invoice-detail': {
@@ -1866,6 +1886,7 @@ const rootRouteChildren: RootRouteChildren = {
   ExchangeRatesRoute: ExchangeRatesRoute,
   ForgotPasswordRoute: ForgotPasswordRoute,
   InvoiceDetailRoute: InvoiceDetailRoute,
+  InvoiceTermsSettingsRoute: InvoiceTermsSettingsRoute,
   InvoicesRoute: InvoicesRoute,
   LeadsRoute: LeadsRoute,
   LoginRoute: LoginRoute,

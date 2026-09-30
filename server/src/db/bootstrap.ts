@@ -358,6 +358,95 @@ export async function ensureTablesExist() {
       END $$;
     `;
 
+    // Invoice Terms & Conditions Settings table
+    await client`
+      CREATE TABLE IF NOT EXISTS invoice_terms_settings (
+        id SERIAL PRIMARY KEY,
+        type VARCHAR(50) NOT NULL UNIQUE,
+        name VARCHAR(100) NOT NULL,
+        title VARCHAR(255) NOT NULL DEFAULT 'Ketentuan Pemesanan',
+        check_in_time VARCHAR(20) DEFAULT '16:00',
+        check_out_time VARCHAR(20) DEFAULT '12:00',
+        terms JSONB NOT NULL,
+        notes TEXT,
+        created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+        updated_at TIMESTAMP NOT NULL DEFAULT NOW()
+      );
+    `;
+
+    // Seed default terms settings if table is empty
+    const existingTerms = await client`SELECT COUNT(*)::int as count FROM invoice_terms_settings`;
+    if ((existingTerms[0]?.count ?? 0) === 0) {
+      await client`
+        INSERT INTO invoice_terms_settings (type, name, title, check_in_time, check_out_time, terms)
+        VALUES 
+          (
+            'hotel',
+            'Invoice Hotel & Booking Umum',
+            'Ketentuan Pemesanan',
+            '16:00',
+            '12:00',
+            ${JSON.stringify([
+              "Pemesanan terkonfirmasi setelah Full Payment.",
+              "Pembatalan: Pesanan ini tidak dapat di batalkan dan di refund.",
+              "Check-in: {checkInTime} | Check-out: {checkOutTime}.",
+              "Perubahan/permintaan khusus tergantung ketersediaan. Harga dapat berubah sebelum pelunasan."
+            ])}::jsonb
+          ),
+          (
+            'manual',
+            'Invoice Manual',
+            'Ketentuan Pemesanan',
+            '16:00',
+            '12:00',
+            ${JSON.stringify([
+              "Pemesanan terkonfirmasi setelah pembayaran uang muka / termin disetujui sesuai kesepakatan.",
+              "Pembatalan & Perubahan: Mengikuti ketentuan dan kebijakan layanan terkait yang telah disepakati.",
+              "Pelunasan wajib diselesaikan paling lambat pada tanggal jatuh tempo yang tertera pada invoice."
+            ])}::jsonb
+          ),
+          (
+            'transportation',
+            'Invoice Transportasi',
+            'Syarat & Ketentuan',
+            '16:00',
+            '12:00',
+            ${JSON.stringify([
+              "Pemesanan transportasi terkonfirmasi setelah pembayaran diterima.",
+              "Pembatalan: Mengikuti kebijakan operasional armada.",
+              "Perubahan jadwal mohon konfirmasi maksimal 24 jam sebelum penjemputan.",
+              "Kapasitas bagasi menyesuaikan jenis kendaraan yang dipesan."
+            ])}::jsonb
+          ),
+          (
+            'custom_la',
+            'Invoice Land Arrangement (LA)',
+            'Ketentuan Pemesanan LA',
+            '16:00',
+            '12:00',
+            ${JSON.stringify([
+              "Pemesanan Land Arrangement terkonfirmasi setelah deposit / pembayaran disetujui sesuai invoice.",
+              "Pembatalan & perubahan jadwal mengikuti regulasi otoritas Saudi serta kebijakan pihak hotel/transportasi.",
+              "Pelunasan wajib diselesaikan paling lambat pada tanggal jatuh tempo yang telah disepakati."
+            ])}::jsonb
+          ),
+          (
+            'muthowif',
+            'Invoice Muthowif',
+            'Syarat & Ketentuan Layanan',
+            '16:00',
+            '12:00',
+            ${JSON.stringify([
+              "Jadwal pendampingan Muthowif terkonfirmasi setelah pembayaran atau uang muka diterima.",
+              "Perubahan jadwal mohon dikonfirmasikan paling lambat 24 jam sebelum waktu pelaksanaan kegiatan.",
+              "Biaya akomodasi atau transportasi tambahan di luar paket menjadi tanggungan pihak pemesan."
+            ])}::jsonb
+          )
+        ON CONFLICT (type) DO NOTHING;
+      `;
+      console.log('[DB Bootstrap] Seeded default invoice terms and conditions settings');
+    }
+
     console.log('[DB Bootstrap] Schema check & auto-sync verified successfully');
   } catch (err) {
     console.error('[DB Bootstrap] Warning: Schema auto-sync encountered an issue:', err);
