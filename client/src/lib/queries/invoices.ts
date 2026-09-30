@@ -190,6 +190,8 @@ export interface ManualInvoicePaymentTerm {
   amount: number;
   dueDate: string;
   notes?: string;
+  idrAmount?: number;
+  exchangeRate?: number;
 }
 
 export interface CreateManualInvoiceData {
@@ -363,6 +365,8 @@ export interface PayManualInvoiceData {
   referenceNumber?: string;
   description?: string;
   autoGenerateReceipt?: boolean;
+  idrAmount?: number;
+  exchangeRate?: number;
 }
 
 export function usePayManualInvoice() {
@@ -384,7 +388,44 @@ export function usePayManualInvoice() {
         referenceNumber: data.referenceNumber,
         description: data.description,
         autoGenerateReceipt: data.autoGenerateReceipt !== false,
+        idrAmount: data.idrAmount,
+        exchangeRate: data.exchangeRate,
       });
+      return response;
+    },
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['manual-invoices', 'detail', variables.manualInvoiceId] });
+      queryClient.invalidateQueries({ queryKey: invoiceKeys.lists() });
+      queryClient.invalidateQueries({ queryKey: ['receipts'] });
+      queryClient.invalidateQueries({ queryKey: ['clients'] });
+    },
+  });
+}
+
+// Update / edit manual invoice payment
+export interface UpdateManualInvoicePaymentData {
+  manualInvoiceId: string | number;
+  paymentId: string | number;
+  data: {
+    amount?: number;
+    idrAmount?: number;
+    exchangeRate?: number;
+    method?: string;
+    referenceNumber?: string;
+    description?: string;
+    paidAt?: string;
+  };
+}
+
+export function useUpdateManualInvoicePayment() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ manualInvoiceId, paymentId, data }: UpdateManualInvoicePaymentData) => {
+      const response = await apiClient.put<{ success: boolean; message: string; paymentId: number }>(
+        API_ENDPOINTS.INVOICE_MANUAL_UPDATE_PAYMENT(manualInvoiceId, paymentId),
+        data
+      );
       return response;
     },
     onSuccess: (_, variables) => {

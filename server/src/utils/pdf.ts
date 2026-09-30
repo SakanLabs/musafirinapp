@@ -1778,13 +1778,29 @@ export async function generateManualInvoicePDF(
             terminLabel = `Termin #${terminNum}`;
           }
         }
+        const pMeta = p.meta || {};
+        const termMeta = term || {};
+        // Locked IDR amount: check payment meta first, then term, then fallback to current exchange rate
+        let termIdrText = '';
+        if (pMeta.idrAmount && !isNaN(parseFloat(pMeta.idrAmount))) {
+          termIdrText = formatIdr(Math.round(parseFloat(pMeta.idrAmount)));
+        } else if (pMeta.exchangeRate && !isNaN(parseFloat(pMeta.exchangeRate))) {
+          termIdrText = formatIdr(Math.round(pAmount * parseFloat(pMeta.exchangeRate)));
+        } else if (termMeta.idrAmount && !isNaN(parseFloat(termMeta.idrAmount))) {
+          termIdrText = formatIdr(Math.round(parseFloat(termMeta.idrAmount)));
+        } else if (termMeta.exchangeRate && !isNaN(parseFloat(termMeta.exchangeRate))) {
+          termIdrText = formatIdr(Math.round(pAmount * parseFloat(termMeta.exchangeRate)));
+        } else if (exchangeRate > 0) {
+          termIdrText = formatIdr(Math.round(pAmount * exchangeRate));
+        }
+
         paymentSchedule.push({
           terminLabel,
           date: TemplateHelpers.formatDate(p.paidAt || p.createdAt || new Date()),
           method: (p.method || 'Bank Transfer').toUpperCase(),
           reference: p.referenceNumber || p.meta?.referenceNumber || '',
           amountFormatted: TemplateHelpers.formatCurrency(pAmount),
-          amountIdr: exchangeRate > 0 ? formatIdr(Math.round(pAmount * exchangeRate)) : '',
+          amountIdr: termIdrText,
           isPaid: true,
           statusText: 'Lunas',
         });
@@ -1799,13 +1815,22 @@ export async function generateManualInvoicePDF(
 
           runningRemainingBalance = Math.max(0, runningRemainingBalance - termAllocated);
 
+          let pendingIdrText = '';
+          if (term.idrAmount && !isNaN(parseFloat(term.idrAmount))) {
+            pendingIdrText = formatIdr(Math.round(parseFloat(term.idrAmount)));
+          } else if (term.exchangeRate && !isNaN(parseFloat(term.exchangeRate))) {
+            pendingIdrText = formatIdr(Math.round(termAllocated * parseFloat(term.exchangeRate)));
+          } else if (exchangeRate > 0) {
+            pendingIdrText = formatIdr(Math.round(termAllocated * exchangeRate));
+          }
+
           paymentSchedule.push({
             terminLabel: term.label || `Termin #${term.termNumber || idx + 1}`,
             date: TemplateHelpers.formatDate(term.dueDate || manualInvoice.dueDate || new Date()),
             method: 'Menunggu Pembayaran',
             reference: '',
             amountFormatted: TemplateHelpers.formatCurrency(termAllocated),
-            amountIdr: exchangeRate > 0 ? formatIdr(Math.round(termAllocated * exchangeRate)) : '',
+            amountIdr: pendingIdrText,
             isPaid: false,
             statusText: 'Menunggu',
           });
@@ -1818,13 +1843,22 @@ export async function generateManualInvoicePDF(
       for (let i = configuredTerms.length; i < totalPaidCount; i++) {
         const p = paymentsList[i];
         const pAmount = parseFloat(p.amount) || 0;
+        const pMeta = p.meta || {};
+        let extraIdrText = '';
+        if (pMeta.idrAmount && !isNaN(parseFloat(pMeta.idrAmount))) {
+          extraIdrText = formatIdr(Math.round(parseFloat(pMeta.idrAmount)));
+        } else if (pMeta.exchangeRate && !isNaN(parseFloat(pMeta.exchangeRate))) {
+          extraIdrText = formatIdr(Math.round(pAmount * parseFloat(pMeta.exchangeRate)));
+        } else if (exchangeRate > 0) {
+          extraIdrText = formatIdr(Math.round(pAmount * exchangeRate));
+        }
         paymentSchedule.push({
           terminLabel: p.meta?.terminLabel || `Termin #${i + 1}`,
           date: TemplateHelpers.formatDate(p.paidAt || p.createdAt || new Date()),
           method: (p.method || 'Bank Transfer').toUpperCase(),
           reference: p.referenceNumber || p.meta?.referenceNumber || '',
           amountFormatted: TemplateHelpers.formatCurrency(pAmount),
-          amountIdr: exchangeRate > 0 ? formatIdr(Math.round(pAmount * exchangeRate)) : '',
+          amountIdr: extraIdrText,
           isPaid: true,
           statusText: 'Lunas',
         });
@@ -1975,6 +2009,16 @@ export async function generateManualInvoiceReceiptPDF(
       ? manualInvoiceReq.items.map((i: any) => `${i.description} (${i.quantity}x)`).join(', ')
       : '';
 
+    const receiptMeta = receiptReq.meta || {};
+    let idrAmountText = '';
+    let exchangeRateText = '';
+    if (receiptMeta.idrAmount && !isNaN(parseFloat(receiptMeta.idrAmount))) {
+      idrAmountText = new Intl.NumberFormat('id-ID').format(Math.round(parseFloat(receiptMeta.idrAmount)));
+    }
+    if (receiptMeta.exchangeRate && !isNaN(parseFloat(receiptMeta.exchangeRate))) {
+      exchangeRateText = new Intl.NumberFormat('id-ID', { minimumFractionDigits: 0, maximumFractionDigits: 2 }).format(parseFloat(receiptMeta.exchangeRate));
+    }
+
     const templateData = {
       receiptNo: receiptReq.number || '',
       receiptDate: receiptDateStr,
@@ -1992,6 +2036,8 @@ export async function generateManualInvoiceReceiptPDF(
       hotelAddress: itemsSummary ? `Layanan: ${itemsSummary}` : '',
       terminBadge,
       isPaidFull,
+      idrAmountText,
+      exchangeRateText,
       payments: [
         {
           label: paymentTitle,

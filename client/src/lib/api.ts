@@ -247,6 +247,7 @@ export const API_ENDPOINTS = {
   INVOICE_MANUAL_UPDATE: (id: string | number) => `/api/invoices/manual/${id}`,
   INVOICE_MANUAL_PAY: (id: string | number) => `/api/invoices/manual/${id}/pay`,
   INVOICE_MANUAL_DELETE_PAYMENT: (invoiceId: string | number, paymentId: string | number) => `/api/invoices/manual/${invoiceId}/payments/${paymentId}`,
+  INVOICE_MANUAL_UPDATE_PAYMENT: (invoiceId: string | number, paymentId: string | number) => `/api/invoices/manual/${invoiceId}/payments/${paymentId}`,
   INVOICE_BY_ID: (id: string) => `/api/invoices/${id}`,
   GENERATE_INVOICE: (id: string) => `/api/invoices/${id}/generate`,
   REGENERATE_INVOICE: (id: string) => `/api/invoices/${id}/generate`,
