@@ -183,6 +183,12 @@ export const invoices = pgTable('invoices', {
   dueDate: timestamp('due_date').notNull(),
   status: invoiceStatusEnum('status').default('draft').notNull(),
   pdfUrl: text('pdf_url'),
+  // Exchange rate snapshot — frozen at invoice creation time
+  exchangeRate: decimal('exchange_rate', { precision: 15, scale: 4 }),
+  exchangeRateSource: varchar('exchange_rate_source', { length: 50 }),
+  exchangeRateType: varchar('exchange_rate_type', { length: 50 }),
+  exchangeRateSourceUpdatedAt: timestamp('exchange_rate_source_updated_at'),
+  convertedAmountIdr: decimal('converted_amount_idr', { precision: 15, scale: 0 }),
 });
 
 // Vouchers table
@@ -784,6 +790,23 @@ export const customLaExpenses = pgTable('custom_la_expenses', {
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
 });
+
+// Exchange Rates table — stores BCA exchange rate history
+export const exchangeRates = pgTable('exchange_rates', {
+  id: serial('id').primaryKey(),
+  baseCurrency: varchar('base_currency', { length: 3 }).notNull().default('SAR'),
+  quoteCurrency: varchar('quote_currency', { length: 3 }).notNull().default('IDR'),
+  rateType: varchar('rate_type', { length: 50 }).notNull().default('BANK_NOTES_SELL'),
+  rate: decimal('rate', { precision: 15, scale: 4 }).notNull(),
+  source: varchar('source', { length: 50 }).notNull().default('BCA'),
+  sourceUrl: text('source_url'),
+  sourceUpdatedAt: timestamp('source_updated_at'),
+  fetchedAt: timestamp('fetched_at').notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+});
+
+export type ExchangeRate = typeof exchangeRates.$inferSelect;
+export type NewExchangeRate = typeof exchangeRates.$inferInsert;
 
 // Store-specific Enums
 export const storePaymentStatusEnum = pgEnum('store_payment_status', ['unpaid', 'partial', 'paid', 'verified', 'failed']);

@@ -172,6 +172,14 @@
             {{grandTotal}}
           </td>
         </tr>
+        {{#if hasExchangeRate}}
+        <tr>
+          <td class="cs-label" style="font-weight:700; color:#1a56db">Total (IDR)</td>
+          <td class="cs-value" style="font-weight:700; color:#1a56db">
+            {{grandTotalIdr}}
+          </td>
+        </tr>
+        {{/if}}
         <tr>
           <td class="cs-label">Terbayar</td>
           <td class="cs-value">
@@ -186,6 +194,14 @@
             {{balanceDue}}
           </td>
         </tr>
+        {{#if hasExchangeRate}}
+        <tr>
+          <td class="cs-label" style="color:#1a56db">Sisa Tagihan (IDR)</td>
+          <td class="cs-value" style="color:#1a56db">
+            {{balanceDueIdr}}
+          </td>
+        </tr>
+        {{/if}}
       </table>
     </div>
 
@@ -197,7 +213,7 @@
         <p class="cs-mb-1">Atas Nama: <span class="cs-font-semibold">{{bank.accountName}}</span> | No. Rek: <span class="cs-font-semibold">{{bank.accountNumberOrIBAN}}</span></p>
         <p class="cs-mb-1">2. Kirim bukti ke {{billingContact.email}} / WA {{billingContact.phone}} dengan nomor invoice.</p>
         <p>3. Biaya bank ditanggung pembayar.</p>
-        <p>Note: Kurs SAR update tiap hari mengikuti: https://www.bca.co.id/id/informasi/kurs. Bank Notes - Jual SAR</p>
+        <p>Note: Kurs SAR update tiap hari mengikuti: https://www.bca.co.id/id/informasi/kurs. Bank Notes - Jual SAR{{#if hasExchangeRate}} (1 SAR = Rp {{exchangeRateValue}}){{/if}}</p>
       </div>
     </div>
 

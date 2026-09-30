@@ -27,6 +27,7 @@ import { Route as LeadsRouteImport } from './routes/leads'
 import { Route as InvoicesRouteImport } from './routes/invoices'
 import { Route as InvoiceDetailRouteImport } from './routes/invoice-detail'
 import { Route as ForgotPasswordRouteImport } from './routes/forgot-password'
+import { Route as ExchangeRatesRouteImport } from './routes/exchange-rates'
 import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as CustomLaRequestsRouteImport } from './routes/custom-la-requests'
 import { Route as CreateTransportationBookingRouteImport } from './routes/create-transportation-booking'
@@ -182,6 +183,11 @@ const InvoiceDetailRoute = InvoiceDetailRouteImport.update({
 const ForgotPasswordRoute = ForgotPasswordRouteImport.update({
   id: '/forgot-password',
   path: '/forgot-password',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ExchangeRatesRoute = ExchangeRatesRouteImport.update({
+  id: '/exchange-rates',
+  path: '/exchange-rates',
   getParentRoute: () => rootRouteImport,
 } as any)
 const DashboardRoute = DashboardRouteImport.update({
@@ -553,6 +559,7 @@ export interface FileRoutesByFullPath {
   '/create-transportation-booking': typeof CreateTransportationBookingRoute
   '/custom-la-requests': typeof CustomLaRequestsRoute
   '/dashboard': typeof DashboardRouteWithChildren
+  '/exchange-rates': typeof ExchangeRatesRoute
   '/forgot-password': typeof ForgotPasswordRoute
   '/invoice-detail': typeof InvoiceDetailRoute
   '/invoices': typeof InvoicesRoute
@@ -638,6 +645,7 @@ export interface FileRoutesByTo {
   '/create-transportation-booking': typeof CreateTransportationBookingRoute
   '/custom-la-requests': typeof CustomLaRequestsRoute
   '/dashboard': typeof DashboardRouteWithChildren
+  '/exchange-rates': typeof ExchangeRatesRoute
   '/forgot-password': typeof ForgotPasswordRoute
   '/invoice-detail': typeof InvoiceDetailRoute
   '/invoices': typeof InvoicesRoute
@@ -723,6 +731,7 @@ export interface FileRoutesById {
   '/create-transportation-booking': typeof CreateTransportationBookingRoute
   '/custom-la-requests': typeof CustomLaRequestsRoute
   '/dashboard': typeof DashboardRouteWithChildren
+  '/exchange-rates': typeof ExchangeRatesRoute
   '/forgot-password': typeof ForgotPasswordRoute
   '/invoice-detail': typeof InvoiceDetailRoute
   '/invoices': typeof InvoicesRoute
@@ -811,6 +820,7 @@ export interface FileRouteTypes {
     | '/create-transportation-booking'
     | '/custom-la-requests'
     | '/dashboard'
+    | '/exchange-rates'
     | '/forgot-password'
     | '/invoice-detail'
     | '/invoices'
@@ -896,6 +906,7 @@ export interface FileRouteTypes {
     | '/create-transportation-booking'
     | '/custom-la-requests'
     | '/dashboard'
+    | '/exchange-rates'
     | '/forgot-password'
     | '/invoice-detail'
     | '/invoices'
@@ -980,6 +991,7 @@ export interface FileRouteTypes {
     | '/create-transportation-booking'
     | '/custom-la-requests'
     | '/dashboard'
+    | '/exchange-rates'
     | '/forgot-password'
     | '/invoice-detail'
     | '/invoices'
@@ -1067,6 +1079,7 @@ export interface RootRouteChildren {
   CreateTransportationBookingRoute: typeof CreateTransportationBookingRoute
   CustomLaRequestsRoute: typeof CustomLaRequestsRoute
   DashboardRoute: typeof DashboardRouteWithChildren
+  ExchangeRatesRoute: typeof ExchangeRatesRoute
   ForgotPasswordRoute: typeof ForgotPasswordRoute
   InvoiceDetailRoute: typeof InvoiceDetailRoute
   InvoicesRoute: typeof InvoicesRoute
@@ -1233,6 +1246,13 @@ declare module '@tanstack/react-router' {
       path: '/forgot-password'
       fullPath: '/forgot-password'
       preLoaderRoute: typeof ForgotPasswordRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/exchange-rates': {
+      id: '/exchange-rates'
+      path: '/exchange-rates'
+      fullPath: '/exchange-rates'
+      preLoaderRoute: typeof ExchangeRatesRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/dashboard': {
@@ -1843,6 +1863,7 @@ const rootRouteChildren: RootRouteChildren = {
   CreateTransportationBookingRoute: CreateTransportationBookingRoute,
   CustomLaRequestsRoute: CustomLaRequestsRoute,
   DashboardRoute: DashboardRouteWithChildren,
+  ExchangeRatesRoute: ExchangeRatesRoute,
   ForgotPasswordRoute: ForgotPasswordRoute,
   InvoiceDetailRoute: InvoiceDetailRoute,
   InvoicesRoute: InvoicesRoute,

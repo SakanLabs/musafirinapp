@@ -302,4 +302,11 @@ export const API_ENDPOINTS = {
   TRANSPORTATION_BY_ID: (id: string | number) => `/api/transportation/${id}`,
   TRANSPORTATION_INVOICE: (id: string | number) => `/api/transportation/${id}/invoice`,
   TRANSPORTATION_RECEIPT: (id: string | number) => `/api/transportation/${id}/receipt`,
+
+  // Exchange Rates
+  EXCHANGE_RATE_SAR_IDR: '/api/exchange-rates/SAR-IDR',
+  EXCHANGE_RATE_SAR_IDR_CONVERT: (amount: number) => `/api/exchange-rates/SAR-IDR/convert?amount=${amount}`,
+  EXCHANGE_RATE_SAR_IDR_REFRESH: '/api/exchange-rates/SAR-IDR/refresh',
+  EXCHANGE_RATE_SAR_IDR_MANUAL: '/api/exchange-rates/SAR-IDR/manual',
+  EXCHANGE_RATE_SAR_IDR_STATUS: '/api/exchange-rates/SAR-IDR/status',
 } as const;
