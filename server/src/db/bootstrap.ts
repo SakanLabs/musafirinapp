@@ -352,6 +352,9 @@ export async function ensureTablesExist() {
         IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'invoices' AND column_name = 'converted_amount_idr') THEN
           ALTER TABLE invoices ADD COLUMN converted_amount_idr NUMERIC(15, 0);
         END IF;
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'manual_invoices' AND column_name = 'payment_terms') THEN
+          ALTER TABLE manual_invoices ADD COLUMN payment_terms JSONB;
+        END IF;
       END $$;
     `;
 

@@ -762,6 +762,7 @@ export const manualInvoices = pgTable('manual_invoices', {
   dueDate: timestamp('due_date').notNull(),
   status: invoiceStatusEnum('status').default('draft').notNull(),
   items: jsonb('items').notNull(), // Array of { description: string, quantity: number, unitPrice: number, subtotal: number, notes?: string }
+  paymentTerms: jsonb('payment_terms'), // Array of { termNumber: number, label: string, percentage: number, amount: number, dueDate: string, notes?: string }
   notes: text('notes'),
   pdfUrl: text('pdf_url'),
   createdAt: timestamp('created_at').defaultNow().notNull(),

@@ -592,6 +592,79 @@ invoiceRoutes.get('/', requireAdminOrFinance, async (c) => {
   }
 });
 
+export interface ManualInvoicePaymentTerm {
+  termNumber: number;
+  label: string;
+  percentage: number;
+  amount: number;
+  dueDate?: string;
+  notes?: string;
+}
+
+export function normalizePaymentTerms(
+  rawTerms: any,
+  totalAmount: number,
+  issueDate: Date,
+  dueDate: Date
+): ManualInvoicePaymentTerm[] {
+  if (Array.isArray(rawTerms) && rawTerms.length > 0) {
+    return rawTerms.map((t: any, idx: number) => {
+      const termNumber = parseInt(t.termNumber) || idx + 1;
+      const percentage = Math.max(0, parseFloat(t.percentage) || 0);
+      const rawAmt = parseFloat(t.amount);
+      const amount = !isNaN(rawAmt) && rawAmt > 0
+        ? Math.round(rawAmt * 100) / 100
+        : Math.round((percentage / 100) * totalAmount * 100) / 100;
+      const label = (t.label || '').trim() || (idx === 0 ? 'Termin #1 (Uang Muka / DP)' : (idx === rawTerms.length - 1 ? `Termin #${termNumber} (Pelunasan)` : `Termin #${termNumber}`));
+      const termDueDate = t.dueDate ? (new Date(t.dueDate).toISOString().split('T')[0] || '') : (dueDate.toISOString().split('T')[0] || '');
+      return {
+        termNumber,
+        label,
+        percentage: percentage || (totalAmount > 0 ? Math.round((amount / totalAmount) * 1000) / 10 : 0),
+        amount,
+        dueDate: termDueDate,
+        notes: (t.notes || '').trim() || undefined,
+      };
+    });
+  }
+
+  // Default Policy: 3 Termin (60%, 20%, 20%)
+  const term1Amount = Math.round(totalAmount * 0.60 * 100) / 100;
+  const term2Amount = Math.round(totalAmount * 0.20 * 100) / 100;
+  const term3Amount = Math.round((totalAmount - term1Amount - term2Amount) * 100) / 100;
+
+  const issueDateStr = issueDate.toISOString().split('T')[0] || '';
+  const dueDateStr = dueDate.toISOString().split('T')[0] || '';
+
+  const diffTime = Math.max(0, dueDate.getTime() - issueDate.getTime());
+  const midDate = new Date(issueDate.getTime() + Math.round(diffTime * 0.5));
+  const midDateStr = midDate.toISOString().split('T')[0] || '';
+
+  return [
+    {
+      termNumber: 1,
+      label: 'Termin #1 (Uang Muka / DP)',
+      percentage: 60,
+      amount: term1Amount,
+      dueDate: issueDateStr,
+    },
+    {
+      termNumber: 2,
+      label: 'Termin #2',
+      percentage: 20,
+      amount: term2Amount,
+      dueDate: midDateStr,
+    },
+    {
+      termNumber: 3,
+      label: 'Termin #3 (Pelunasan)',
+      percentage: 20,
+      amount: term3Amount,
+      dueDate: dueDateStr,
+    },
+  ];
+}
+
 // POST /api/invoices/manual - Create manual invoice without booking
 invoiceRoutes.post('/manual', requireAdminOrFinance, async (c) => {
   try {
@@ -607,7 +680,8 @@ invoiceRoutes.post('/manual', requireAdminOrFinance, async (c) => {
       issueDate,
       currency = 'SAR',
       items,
-      notes
+      notes,
+      paymentTerms
     } = body;
 
     if (!clientName || !clientName.trim()) {
@@ -643,6 +717,10 @@ invoiceRoutes.post('/manual', requireAdminOrFinance, async (c) => {
     const randomSuffix = Math.floor(100000 + Math.random() * 900000);
     const invoiceNumber = `INV-MAN-${year}-${randomSuffix}`;
 
+    const effectiveIssueDate = issueDate ? new Date(issueDate) : new Date();
+    const effectiveDueDate = new Date(dueDate);
+    const normalizedTerms = normalizePaymentTerms(paymentTerms, totalAmount, effectiveIssueDate, effectiveDueDate);
+
     const newInvoiceData = {
       number: invoiceNumber,
       clientId: clientId ? parseInt(clientId) : null,
@@ -654,10 +732,11 @@ invoiceRoutes.post('/manual', requireAdminOrFinance, async (c) => {
       amount: totalAmount.toFixed(2),
       paidAmount: '0.00',
       currency: (currency || 'SAR').toUpperCase(),
-      issueDate: issueDate ? new Date(issueDate) : new Date(),
-      dueDate: new Date(dueDate),
+      issueDate: effectiveIssueDate,
+      dueDate: effectiveDueDate,
       status: 'draft' as const,
       items: validatedItems,
+      paymentTerms: normalizedTerms,
       notes: notes?.trim() || null,
       pdfUrl: null as string | null
     };
@@ -671,7 +750,8 @@ invoiceRoutes.post('/manual', requireAdminOrFinance, async (c) => {
     try {
       const pdfUrl = await generateManualInvoicePDF({
         ...inserted,
-        items: validatedItems
+        items: validatedItems,
+        paymentTerms: normalizedTerms,
       });
       await db.update(manualInvoices).set({ pdfUrl }).where(eq(manualInvoices.id, inserted.id));
       inserted.pdfUrl = pdfUrl;
@@ -738,10 +818,15 @@ invoiceRoutes.get('/manual/:id', requireAdminOrFinance, async (c) => {
     const paidAmount = parseFloat(invoice.paidAmount || '0');
     const remainingBalance = Math.max(0, totalAmount - paidAmount);
 
+    const effectivePaymentTerms = (invoice.paymentTerms && Array.isArray(invoice.paymentTerms) && invoice.paymentTerms.length > 0)
+      ? invoice.paymentTerms
+      : normalizePaymentTerms(null, totalAmount, invoice.issueDate || new Date(), invoice.dueDate || new Date());
+
     return c.json({
       success: true,
       data: {
         ...invoice,
+        paymentTerms: effectivePaymentTerms,
         client: clientData,
         summary: {
           totalAmount,
@@ -790,7 +875,8 @@ invoiceRoutes.put('/manual/:id', requireAdminOrFinance, async (c) => {
       issueDate,
       currency = 'SAR',
       items,
-      notes
+      notes,
+      paymentTerms
     } = body;
 
     if (!clientName || !clientName.trim()) {
@@ -828,6 +914,10 @@ invoiceRoutes.put('/manual/:id', requireAdminOrFinance, async (c) => {
       newStatus = 'sent';
     }
 
+    const effectiveIssueDate = issueDate ? new Date(issueDate) : existing.issueDate;
+    const effectiveDueDate = new Date(dueDate);
+    const normalizedTerms = normalizePaymentTerms(paymentTerms, totalAmount, effectiveIssueDate, effectiveDueDate);
+
     const updatePayload = {
       clientId: clientId ? parseInt(clientId) : null,
       clientName: clientName.trim(),
@@ -837,10 +927,11 @@ invoiceRoutes.put('/manual/:id', requireAdminOrFinance, async (c) => {
       title: title?.trim() || null,
       amount: totalAmount.toFixed(2),
       currency: (currency || 'SAR').toUpperCase(),
-      issueDate: issueDate ? new Date(issueDate) : existing.issueDate,
-      dueDate: new Date(dueDate),
+      issueDate: effectiveIssueDate,
+      dueDate: effectiveDueDate,
       status: newStatus,
       items: validatedItems,
+      paymentTerms: normalizedTerms,
       notes: notes?.trim() || null,
       updatedAt: new Date(),
     };
@@ -860,6 +951,7 @@ invoiceRoutes.put('/manual/:id', requireAdminOrFinance, async (c) => {
       const pdfUrl = await generateManualInvoicePDF({
         ...updated,
         items: validatedItems,
+        paymentTerms: normalizedTerms,
       });
       await db.update(manualInvoices).set({ pdfUrl }).where(eq(manualInvoices.id, id));
       updated.pdfUrl = pdfUrl;
