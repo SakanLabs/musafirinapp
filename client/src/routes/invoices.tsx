@@ -12,7 +12,9 @@ import {
   Filter,
   Loader2,
   Trash2,
-  MessageCircle
+  MessageCircle,
+  Edit,
+  CreditCard
 } from "lucide-react"
 import { formatCurrency, formatDate } from "@/lib/utils"
 import { useInvoices, type Invoice, useBackfillInvoiceStatus, useDeleteInvoice } from "@/lib/queries/invoices"
@@ -169,15 +171,24 @@ function InvoicesPage() {
         return (
           <div className="flex items-center gap-1.5">
             {invoice.number.startsWith('INV-MAN-') ? (
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() => window.open(`${API_BASE_URL}/api/invoices/by-number/${invoice.number}`, '_blank')}
-                className="h-8 w-8 p-0 border-[#e5e7eb] text-zinc-700 hover:bg-zinc-50 hover:text-black flex items-center justify-center transition-colors bg-white shadow-none"
-                title="Lihat Invoice PDF"
-              >
-                <Eye className="h-3.5 w-3.5" />
-              </Button>
+              <>
+                <Link
+                  to={`/create-manual-invoice?id=${invoice.id}` as any}
+                  className="h-8 w-8 rounded-md border border-[#e5e7eb] text-zinc-700 hover:bg-zinc-50 hover:text-black flex items-center justify-center transition-colors bg-white shadow-none"
+                  title="Edit & Pembayaran Invoice Manual"
+                >
+                  <Edit className="h-3.5 w-3.5" />
+                </Link>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => window.open(`${API_BASE_URL}/api/invoices/by-number/${invoice.number}`, '_blank')}
+                  className="h-8 w-8 p-0 border-[#e5e7eb] text-zinc-700 hover:bg-zinc-50 hover:text-black flex items-center justify-center transition-colors bg-white shadow-none"
+                  title="Lihat Invoice PDF"
+                >
+                  <Eye className="h-3.5 w-3.5" />
+                </Button>
+              </>
             ) : (
               <Link
                 to={detailLink as any}

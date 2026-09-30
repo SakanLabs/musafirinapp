@@ -1,7 +1,7 @@
 import { Hono } from 'hono';
 import { eq, desc, sql } from 'drizzle-orm';
 import { db } from '../db';
-import { receipts, bookings, clients, invoices, transportationReceipts, transportationInvoices, transportationBookings, serviceOrderReceipts, serviceOrderInvoices, serviceOrders, customLaReceipts, customLaInvoices, customLaRequests, muthowifReceipts, muthowifInvoices, muthowifBookings } from '../db/schema';
+import { receipts, bookings, clients, invoices, transportationReceipts, transportationInvoices, transportationBookings, serviceOrderReceipts, serviceOrderInvoices, serviceOrders, customLaReceipts, customLaInvoices, customLaRequests, muthowifReceipts, muthowifInvoices, muthowifBookings, manualInvoiceReceipts, manualInvoices } from '../db/schema';
 import { requireAdminOrFinance } from '../middleware/auth';
 import { ReceiptService } from '../services/ReceiptService';
 
@@ -134,13 +134,37 @@ receiptRoutes.get('/', requireAdminOrFinance, async (c) => {
       .leftJoin(muthowifInvoices, eq(muthowifReceipts.muthowifInvoiceId, muthowifInvoices.id))
       .leftJoin(muthowifBookings, eq(muthowifReceipts.muthowifBookingId, muthowifBookings.id));
 
+    // 6. Manual Invoice Receipts
+    const allManualReceipts = await db
+      .select({
+        id: manualInvoiceReceipts.id,
+        number: manualInvoiceReceipts.number,
+        invoiceId: manualInvoiceReceipts.manualInvoiceId,
+        totalAmount: manualInvoiceReceipts.totalAmount,
+        paidAmount: manualInvoiceReceipts.paidAmount,
+        balanceDue: manualInvoiceReceipts.balanceDue,
+        currency: manualInvoiceReceipts.currency,
+        issueDate: manualInvoiceReceipts.issueDate,
+        payerName: manualInvoiceReceipts.payerName,
+        payerEmail: manualInvoiceReceipts.payerEmail,
+        hotelName: sql`COALESCE(${manualInvoices.title}, 'Invoice Manual')`.as('hotelName'),
+        pdfUrl: manualInvoiceReceipts.pdfUrl,
+        createdAt: manualInvoiceReceipts.createdAt,
+        bookingCode: sql`'MANUAL'`.as('bookingCode'),
+        invoiceNumber: manualInvoices.number,
+        clientName: manualInvoiceReceipts.payerName,
+      })
+      .from(manualInvoiceReceipts)
+      .leftJoin(manualInvoices, eq(manualInvoiceReceipts.manualInvoiceId, manualInvoices.id));
+
     // Combine all receipts and sort by createdAt descending
     const combinedReceipts = [
       ...allReceipts,
       ...allTransReceipts,
       ...allSOReceipts,
       ...allLAReceipts,
-      ...allMuthowifReceipts
+      ...allMuthowifReceipts,
+      ...allManualReceipts,
     ].sort((a, b) => {
       const dateA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
       const dateB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
@@ -405,6 +429,34 @@ receiptRoutes.get('/number/:number', requireAdminOrFinance, async (c) => {
       return c.json({ success: true, data: { ...data, hotelName: data.hotelName ? `Custom LA (${data.hotelName})` : 'Custom LA' } });
     }
 
+    // 5. Search in manualInvoiceReceipts
+    const manReceipt = await db
+      .select({
+        id: manualInvoiceReceipts.id,
+        number: manualInvoiceReceipts.number,
+        totalAmount: manualInvoiceReceipts.totalAmount,
+        paidAmount: manualInvoiceReceipts.paidAmount,
+        balanceDue: manualInvoiceReceipts.balanceDue,
+        currency: manualInvoiceReceipts.currency,
+        issueDate: manualInvoiceReceipts.issueDate,
+        payerName: manualInvoiceReceipts.payerName,
+        payerEmail: manualInvoiceReceipts.payerEmail,
+        hotelName: sql`COALESCE(${manualInvoices.title}, 'Invoice Manual')`.as('hotelName'),
+        pdfUrl: manualInvoiceReceipts.pdfUrl,
+        bookingCode: sql`'MANUAL'`.as('bookingCode'),
+        invoiceNumber: manualInvoices.number,
+        clientName: manualInvoiceReceipts.payerName,
+      })
+      .from(manualInvoiceReceipts)
+      .leftJoin(manualInvoices, eq(manualInvoiceReceipts.manualInvoiceId, manualInvoices.id))
+      .where(eq(manualInvoiceReceipts.number, receiptNumber))
+      .limit(1);
+
+    if (manReceipt.length > 0) {
+      const data = manReceipt[0]!;
+      return c.json({ success: true, data: { ...data, hotelName: data.hotelName || 'Invoice Manual' } });
+    }
+
     return c.json({ error: 'Receipt not found' }, 404);
   } catch (error) {
     console.error('Error fetching receipt by number:', error);
@@ -469,8 +521,8 @@ receiptRoutes.get('/:id/download', requireAdminOrFinance, async (c) => {
   }
 });
 
-// GET /api/receipts/number/:number/download - Download receipt PDF by number (Public for client downloads)
-receiptRoutes.get('/number/:number/download', async (c) => {
+// Serve receipt PDF by receipt number (Public for client downloads & viewing)
+const serveReceiptPdfByNumber = async (c: any) => {
   try {
     const receiptNumber = c.req.param('number');
 
@@ -535,6 +587,25 @@ receiptRoutes.get('/number/:number/download', async (c) => {
       const r = await db.select({ pdfUrl: muthowifReceipts.pdfUrl }).from(muthowifReceipts).where(eq(muthowifReceipts.number, receiptNumber)).limit(1);
       if (r.length > 0) pdfUrl = r[0]!.pdfUrl;
     }
+    // Search in manualInvoiceReceipts
+    if (!pdfUrl) {
+      const r = await db.select().from(manualInvoiceReceipts).where(eq(manualInvoiceReceipts.number, receiptNumber)).limit(1);
+      if (r.length > 0) {
+        pdfUrl = r[0]!.pdfUrl;
+        const fn = pdfUrl ? pdfUrl.split('/').slice(-2).join('/') : '';
+        const exists = fn ? await fileExistsInMinio(fn) : false;
+        if (!exists) {
+          const manRec = r[0]!;
+          const [manInv] = await db.select().from(manualInvoices).where(eq(manualInvoices.id, manRec.manualInvoiceId)).limit(1);
+          if (manInv) {
+            const { generateManualInvoiceReceiptPDF, uploadToMinio } = await import('../utils/pdf');
+            const pdfBuffer = await generateManualInvoiceReceiptPDF(manRec, manInv);
+            pdfUrl = await uploadToMinio(`receipts/${receiptNumber}.pdf`, pdfBuffer, 'application/pdf');
+            await db.update(manualInvoiceReceipts).set({ pdfUrl }).where(eq(manualInvoiceReceipts.id, manRec.id));
+          }
+        }
+      }
+    }
 
     if (!pdfUrl) {
       return c.json({ error: 'Receipt not found or PDF not available' }, 404);
@@ -550,7 +621,7 @@ receiptRoutes.get('/number/:number/download', async (c) => {
     }
     const pdfBuffer = Buffer.concat(chunks);
 
-    const isView = c.req.query('view') === 'true';
+    const isView = c.req.query('view') === 'true' || (!c.req.path.endsWith('/download') && c.req.query('download') !== 'true');
     c.header('Content-Type', 'application/pdf');
     c.header('Content-Disposition', `${isView ? 'inline' : 'attachment'}; filename="${receiptNumber}.pdf"`);
     c.header('Content-Length', pdfBuffer.length.toString());
@@ -560,6 +631,10 @@ receiptRoutes.get('/number/:number/download', async (c) => {
     console.error('Error downloading receipt by number:', error);
     return c.json({ error: 'Failed to download receipt' }, 500);
   }
-});
+};
+
+receiptRoutes.get('/by-number/:number', serveReceiptPdfByNumber);
+receiptRoutes.get('/by-number/:number/download', serveReceiptPdfByNumber);
+receiptRoutes.get('/number/:number/download', serveReceiptPdfByNumber);
 
 export default receiptRoutes;

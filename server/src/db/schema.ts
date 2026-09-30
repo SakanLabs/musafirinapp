@@ -771,6 +771,49 @@ export const manualInvoices = pgTable('manual_invoices', {
 export type ManualInvoice = typeof manualInvoices.$inferSelect;
 export type NewManualInvoice = typeof manualInvoices.$inferInsert;
 
+// Manual Invoice Payments — Tracks payments made towards manual invoices
+export const manualInvoicePayments = pgTable('manual_invoice_payments', {
+  id: serial('id').primaryKey(),
+  manualInvoiceId: integer('manual_invoice_id').notNull().references(() => manualInvoices.id, { onDelete: 'cascade' }),
+  amount: decimal('amount', { precision: 10, scale: 2 }).notNull(),
+  currency: varchar('currency', { length: 3 }).default('SAR').notNull(),
+  method: varchar('method', { length: 50 }), // bank_transfer, deposit, cash
+  referenceNumber: varchar('reference_number', { length: 100 }),
+  paidAt: timestamp('paid_at').defaultNow().notNull(),
+  status: depositTransactionStatusEnum('status').default('completed').notNull(),
+  meta: jsonb('meta'), // termin, terminLabel, receiptNumber, description, notes
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+});
+
+export type ManualInvoicePayment = typeof manualInvoicePayments.$inferSelect;
+export type NewManualInvoicePayment = typeof manualInvoicePayments.$inferInsert;
+
+// Manual Invoice Receipts — Official Kwitansi generated for manual invoice payments
+export const manualInvoiceReceipts = pgTable('manual_invoice_receipts', {
+  id: serial('id').primaryKey(),
+  manualInvoiceId: integer('manual_invoice_id').notNull().references(() => manualInvoices.id, { onDelete: 'cascade' }),
+  paymentId: integer('payment_id').references(() => manualInvoicePayments.id, { onDelete: 'set null' }),
+  number: varchar('number', { length: 50 }).notNull().unique(), // Format: RCP-MAN-YYYY-XXXX
+  totalAmount: decimal('total_amount', { precision: 10, scale: 2 }).notNull(),
+  paidAmount: decimal('paid_amount', { precision: 10, scale: 2 }).notNull(),
+  balanceDue: decimal('balance_due', { precision: 10, scale: 2 }).notNull(),
+  currency: varchar('currency', { length: 3 }).default('SAR').notNull(),
+  issueDate: timestamp('issue_date').defaultNow().notNull(),
+  payerName: varchar('payer_name', { length: 255 }).notNull(),
+  payerEmail: varchar('payer_email', { length: 255 }),
+  payerPhone: varchar('payer_phone', { length: 50 }),
+  payerAddress: text('payer_address'),
+  pdfUrl: text('pdf_url'),
+  meta: jsonb('meta'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+});
+
+export type ManualInvoiceReceipt = typeof manualInvoiceReceipts.$inferSelect;
+export type NewManualInvoiceReceipt = typeof manualInvoiceReceipts.$inferInsert;
+
+
 // Custom LA Expenses — Tracking money out to suppliers per Custom LA request
 export const customLaExpenseStatusEnum = pgEnum('custom_la_expense_status', ['pending', 'paid', 'cancelled']);
 

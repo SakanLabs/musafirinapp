@@ -4,6 +4,7 @@ import { getCurrentSarToIdrRate, formatIdr } from '../services/ExchangeRateServi
 
 export interface InvoiceTemplateData {
   brandName: string;
+  brandTagline?: string;
   logoBase64: string;
   saudiRiyalSVGBase64: string;
   invoiceNo: string;
@@ -696,6 +697,7 @@ export class TemplateHelpers {
 
     const finalData = {
       brandName: "Musafirin",
+      brandTagline: "We are musafirin of Baitullah",
       logoBase64: this.getLogoBase64(),
       saudiRiyalSVGBase64: this.getSaudiRiyalSVGBase64(),
       invoiceNo: invoice.number,

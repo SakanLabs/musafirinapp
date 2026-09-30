@@ -1,11 +1,11 @@
 import { Hono } from 'hono';
 import { eq, desc, sql } from 'drizzle-orm';
 import { db } from '../db';
-import { invoices, bookings, clients, bookingItems, bookingItemPricingPeriods, clientDeposits, depositTransactions, bookingServiceItems, invoicePayments, transportationInvoices, transportationBookings, serviceOrderInvoices, serviceOrders, customLaInvoices, customLaRequests, muthowifInvoices, muthowifBookings, manualInvoices, agentRequestInvoices, agentRequests, user } from '../db/schema';
+import { invoices, bookings, clients, bookingItems, bookingItemPricingPeriods, clientDeposits, depositTransactions, bookingServiceItems, invoicePayments, transportationInvoices, transportationBookings, serviceOrderInvoices, serviceOrders, customLaInvoices, customLaRequests, muthowifInvoices, muthowifBookings, manualInvoices, manualInvoicePayments, manualInvoiceReceipts, agentRequestInvoices, agentRequests, user } from '../db/schema';
 import { requireAdminOrFinance } from '../middleware/auth';
-import { generateInvoiceNumber, generateInvoicePDF, generateManualInvoicePDF, uploadToMinio, checkFileExistsInMinio, deleteFromMinio } from '../utils/pdf';
+import { generateInvoiceNumber, generateInvoicePDF, generateManualInvoicePDF, generateManualInvoiceReceiptPDF, uploadToMinio, checkFileExistsInMinio, deleteFromMinio } from '../utils/pdf';
 import { TemplateHelpers } from '../utils/template';
-import type { NewInvoice, NewDepositTransaction, NewInvoicePayment } from '../db/schema';
+import type { NewInvoice, NewDepositTransaction, NewInvoicePayment, NewManualInvoicePayment, NewManualInvoiceReceipt } from '../db/schema';
 import { ReceiptService } from '../services/ReceiptService';
 import { getCurrentSarToIdrRate } from '../services/ExchangeRateService';
 
@@ -691,6 +691,509 @@ invoiceRoutes.post('/manual', requireAdminOrFinance, async (c) => {
   }
 });
 
+// GET /api/invoices/manual/:id - Get full manual invoice details with payments and receipts
+invoiceRoutes.get('/manual/:id', requireAdminOrFinance, async (c) => {
+  try {
+    const id = parseInt(c.req.param('id'));
+    if (!id || isNaN(id)) {
+      return c.json({ error: 'Invalid manual invoice ID' }, 400);
+    }
+
+    const [invoice] = await db
+      .select()
+      .from(manualInvoices)
+      .where(eq(manualInvoices.id, id))
+      .limit(1);
+
+    if (!invoice) {
+      return c.json({ error: 'Invoice manual tidak ditemukan' }, 404);
+    }
+
+    let clientData: any = null;
+    let clientDepositBalance = 0;
+
+    if (invoice.clientId) {
+      const [foundClient] = await db.select().from(clients).where(eq(clients.id, invoice.clientId)).limit(1);
+      clientData = foundClient || null;
+
+      const [deposit] = await db.select().from(clientDeposits).where(eq(clientDeposits.clientId, invoice.clientId)).limit(1);
+      if (deposit) {
+        clientDepositBalance = parseFloat(deposit.currentBalance || '0');
+      }
+    }
+
+    const payments = await db
+      .select()
+      .from(manualInvoicePayments)
+      .where(eq(manualInvoicePayments.manualInvoiceId, id))
+      .orderBy(manualInvoicePayments.paidAt);
+
+    const receipts = await db
+      .select()
+      .from(manualInvoiceReceipts)
+      .where(eq(manualInvoiceReceipts.manualInvoiceId, id))
+      .orderBy(manualInvoiceReceipts.createdAt);
+
+    const totalAmount = parseFloat(invoice.amount || '0');
+    const paidAmount = parseFloat(invoice.paidAmount || '0');
+    const remainingBalance = Math.max(0, totalAmount - paidAmount);
+
+    return c.json({
+      success: true,
+      data: {
+        ...invoice,
+        client: clientData,
+        summary: {
+          totalAmount,
+          paidAmount,
+          remainingBalance,
+          currency: invoice.currency || 'SAR',
+          clientDepositBalance,
+        },
+        payments,
+        receipts,
+      }
+    });
+  } catch (error) {
+    console.error('Error fetching manual invoice:', error);
+    return c.json({ error: 'Gagal mengambil data manual invoice' }, 500);
+  }
+});
+
+// PUT /api/invoices/manual/:id - Edit/update manual invoice
+invoiceRoutes.put('/manual/:id', requireAdminOrFinance, async (c) => {
+  try {
+    const id = parseInt(c.req.param('id'));
+    if (!id || isNaN(id)) {
+      return c.json({ error: 'Invalid manual invoice ID' }, 400);
+    }
+
+    const [existing] = await db
+      .select()
+      .from(manualInvoices)
+      .where(eq(manualInvoices.id, id))
+      .limit(1);
+
+    if (!existing) {
+      return c.json({ error: 'Invoice manual tidak ditemukan' }, 404);
+    }
+
+    const body = await c.req.json().catch(() => ({}));
+    const {
+      clientId,
+      clientName,
+      clientEmail,
+      clientPhone,
+      clientAddress,
+      title,
+      dueDate,
+      issueDate,
+      currency = 'SAR',
+      items,
+      notes
+    } = body;
+
+    if (!clientName || !clientName.trim()) {
+      return c.json({ error: 'Nama client wajib diisi' }, 400);
+    }
+
+    if (!dueDate) {
+      return c.json({ error: 'Tanggal jatuh tempo wajib diisi' }, 400);
+    }
+
+    if (!items || !Array.isArray(items) || items.length === 0) {
+      return c.json({ error: 'Minimal harus ada 1 item layanan' }, 400);
+    }
+
+    let totalAmount = 0;
+    const validatedItems = items.map((item: any) => {
+      const quantity = Math.max(1, parseInt(item.quantity) || 1);
+      const unitPrice = Math.max(0, parseFloat(item.unitPrice) || 0);
+      const subtotal = quantity * unitPrice;
+      totalAmount += subtotal;
+      return {
+        description: (item.description || '').trim() || 'Item Layanan',
+        quantity,
+        unitPrice,
+        subtotal,
+        notes: (item.notes || '').trim() || ''
+      };
+    });
+
+    const currentPaid = parseFloat(existing.paidAmount || '0');
+    let newStatus = existing.status;
+    if (currentPaid >= totalAmount && totalAmount > 0) {
+      newStatus = 'paid';
+    } else if (currentPaid > 0) {
+      newStatus = 'sent';
+    }
+
+    const updatePayload = {
+      clientId: clientId ? parseInt(clientId) : null,
+      clientName: clientName.trim(),
+      clientEmail: clientEmail?.trim() || null,
+      clientPhone: clientPhone?.trim() || null,
+      clientAddress: clientAddress?.trim() || null,
+      title: title?.trim() || null,
+      amount: totalAmount.toFixed(2),
+      currency: (currency || 'SAR').toUpperCase(),
+      issueDate: issueDate ? new Date(issueDate) : existing.issueDate,
+      dueDate: new Date(dueDate),
+      status: newStatus,
+      items: validatedItems,
+      notes: notes?.trim() || null,
+      updatedAt: new Date(),
+    };
+
+    const [updated] = await db
+      .update(manualInvoices)
+      .set(updatePayload as any)
+      .where(eq(manualInvoices.id, id))
+      .returning();
+
+    if (!updated) {
+      return c.json({ error: 'Gagal memperbarui invoice manual' }, 500);
+    }
+
+    // Regenerate PDF
+    try {
+      const pdfUrl = await generateManualInvoicePDF({
+        ...updated,
+        items: validatedItems,
+      });
+      await db.update(manualInvoices).set({ pdfUrl }).where(eq(manualInvoices.id, id));
+      updated.pdfUrl = pdfUrl;
+    } catch (pdfErr) {
+      console.error('Failed to regenerate manual invoice PDF:', pdfErr);
+    }
+
+    return c.json({
+      success: true,
+      message: 'Invoice manual berhasil diperbarui',
+      data: updated,
+      downloadUrl: `/api/invoices/by-number/${updated.number}`
+    });
+  } catch (error) {
+    console.error('Error updating manual invoice:', error);
+    return c.json({ error: 'Gagal memperbarui invoice manual' }, 500);
+  }
+});
+
+// POST /api/invoices/manual/:id/pay - Record payment for manual invoice
+invoiceRoutes.post('/manual/:id/pay', requireAdminOrFinance, async (c) => {
+  try {
+    const id = parseInt(c.req.param('id'));
+    if (!id || isNaN(id)) return c.json({ error: 'Invalid manual invoice ID' }, 400);
+
+    const body = await c.req.json().catch(() => ({}));
+    const method = body?.method as 'bank_transfer' | 'deposit' | 'cash' | undefined;
+    const amountNum = body?.amount !== undefined ? parseFloat(body.amount) : undefined;
+    const referenceNumber: string | undefined = body?.referenceNumber;
+    const description: string | undefined = body?.description;
+    const autoGenerateReceipt: boolean = body?.autoGenerateReceipt !== false;
+
+    const allowedMethods = ['bank_transfer', 'deposit', 'cash'];
+    if (!method || !allowedMethods.includes(method)) {
+      return c.json({ error: 'Metode pembayaran tidak valid. Pilih: Transfer Bank, Saldo Deposit, atau Tunai' }, 400);
+    }
+    if (amountNum === undefined || isNaN(amountNum) || amountNum <= 0) {
+      return c.json({ error: 'Nominal pembayaran harus lebih besar dari 0' }, 400);
+    }
+
+    const [invoice] = await db
+      .select()
+      .from(manualInvoices)
+      .where(eq(manualInvoices.id, id))
+      .limit(1);
+
+    if (!invoice) return c.json({ error: 'Invoice manual tidak ditemukan' }, 404);
+
+    const totalAmount = parseFloat(invoice.amount || '0');
+    const currentPaid = parseFloat(invoice.paidAmount || '0');
+    const remainingBalance = Math.max(0, totalAmount - currentPaid);
+
+    if (remainingBalance <= 0) {
+      return c.json({ error: 'Invoice ini sudah lunas. Tidak ada sisa tagihan.' }, 400);
+    }
+
+    const [clientRow] = invoice.clientId
+      ? await db.select().from(clients).where(eq(clients.id, invoice.clientId)).limit(1)
+      : [null];
+
+    const result = await db.transaction(async (tx) => {
+      let depositUsed = 0;
+
+      if (method === 'deposit') {
+        if (!invoice.clientId) {
+          throw new Error('Klien tidak terhubung untuk pemotongan saldo deposit');
+        }
+
+        const depRows = await tx
+          .select()
+          .from(clientDeposits)
+          .where(eq(clientDeposits.clientId, invoice.clientId))
+          .limit(1);
+
+        const currentBalance = depRows.length > 0 ? parseFloat(depRows[0]!.currentBalance) : 0;
+        depositUsed = Math.min(amountNum, remainingBalance);
+
+        if (currentBalance < depositUsed) {
+          throw new Error(`Saldo deposit klien tidak mencukupi (Saldo: ${currentBalance.toLocaleString()} SAR, Diperlukan: ${depositUsed.toLocaleString()} SAR)`);
+        }
+
+        const newBalance = currentBalance - depositUsed;
+        const newTotalUsed = (depRows.length > 0 ? parseFloat(depRows[0]!.totalUsed) : 0) + depositUsed;
+
+        await tx
+          .update(clientDeposits)
+          .set({
+            currentBalance: newBalance.toString(),
+            totalUsed: newTotalUsed.toString(),
+            lastTransactionAt: new Date(),
+            updatedAt: new Date(),
+          })
+          .where(eq(clientDeposits.clientId, invoice.clientId));
+
+        await tx.insert(depositTransactions).values({
+          clientId: invoice.clientId,
+          type: 'usage',
+          amount: depositUsed.toString(),
+          balanceBefore: currentBalance.toString(),
+          balanceAfter: newBalance.toString(),
+          currency: invoice.currency || 'SAR',
+          status: 'completed',
+          description: description || `Pembayaran Invoice ${invoice.number}`,
+          referenceNumber: referenceNumber || `DEP-INV-${Date.now()}`,
+          processedAt: new Date(),
+        });
+      }
+
+      const effectivePayAmount = method === 'deposit' ? depositUsed : Math.min(amountNum, remainingBalance);
+      const newPaidTotal = currentPaid + effectivePayAmount;
+      const newRemaining = Math.max(0, totalAmount - newPaidTotal);
+      const isPaidFull = newPaidTotal >= totalAmount;
+      const newInvoiceStatus: 'draft' | 'sent' | 'paid' | 'overdue' | 'cancelled' = isPaidFull ? 'paid' : 'sent';
+
+      const existingPayments = await tx
+        .select()
+        .from(manualInvoicePayments)
+        .where(eq(manualInvoicePayments.manualInvoiceId, id));
+
+      const terminNumber = existingPayments.length + 1;
+      let terminLabel = `Termin #${terminNumber}`;
+      if (isPaidFull && terminNumber === 1) {
+        terminLabel = 'Pelunasan (Lunas Penuh)';
+      } else if (isPaidFull) {
+        terminLabel = `Termin #${terminNumber} (Pelunasan)`;
+      } else if (terminNumber === 1) {
+        terminLabel = 'Termin #1 (Uang Muka / DP)';
+      }
+
+      const receiptNumber = `RCP-MAN-${new Date().getFullYear()}-${Math.floor(100000 + Math.random() * 900000)}`;
+
+      const [paymentRecord] = await tx
+        .insert(manualInvoicePayments)
+        .values({
+          manualInvoiceId: id,
+          amount: effectivePayAmount.toString(),
+          currency: invoice.currency || 'SAR',
+          method,
+          referenceNumber: referenceNumber || (method === 'deposit' ? `DEP-${Date.now()}` : `PAY-${Date.now()}`),
+          paidAt: new Date(),
+          status: 'completed',
+          meta: {
+            description: description || null,
+            termin: terminNumber,
+            terminLabel,
+            receiptNumber,
+          },
+        })
+        .returning();
+
+      await tx
+        .update(manualInvoices)
+        .set({
+          paidAmount: newPaidTotal.toString(),
+          status: newInvoiceStatus,
+          updatedAt: new Date(),
+        })
+        .where(eq(manualInvoices.id, id));
+
+      return {
+        payment: paymentRecord!,
+        newPaidTotal,
+        newRemaining,
+        isPaidFull,
+        effectivePayAmount,
+        terminNumber,
+        terminLabel,
+        receiptNumber,
+      };
+    });
+
+    let receiptRecord = null;
+    if (autoGenerateReceipt) {
+      try {
+        const receiptNumber = result.receiptNumber;
+        const newReceiptData: NewManualInvoiceReceipt = {
+          manualInvoiceId: id,
+          paymentId: result.payment.id,
+          number: receiptNumber,
+          totalAmount: totalAmount.toString(),
+          paidAmount: result.effectivePayAmount.toString(),
+          balanceDue: result.newRemaining.toString(),
+          currency: invoice.currency || 'SAR',
+          issueDate: new Date(),
+          payerName: invoice.clientName,
+          payerEmail: invoice.clientEmail || null,
+          payerPhone: invoice.clientPhone || null,
+          payerAddress: invoice.clientAddress || null,
+          pdfUrl: '',
+          meta: {
+            termin: result.terminNumber,
+            terminLabel: result.terminLabel,
+            referenceNumber: result.payment.referenceNumber,
+            paymentMethod: method,
+            description: description || null,
+          },
+        };
+
+        const pdfBuffer = await generateManualInvoiceReceiptPDF(
+          newReceiptData,
+          invoice,
+          clientRow
+        );
+
+        const pdfUrl = await uploadToMinio(`receipts/${receiptNumber}.pdf`, pdfBuffer, 'application/pdf');
+        newReceiptData.pdfUrl = pdfUrl;
+
+        const [created] = await db.insert(manualInvoiceReceipts).values(newReceiptData).returning();
+        receiptRecord = created;
+      } catch (receiptErr) {
+        console.error('Failed to generate receipt for manual invoice:', receiptErr);
+      }
+    }
+
+    // Regenerate manual invoice PDF with updated payments & dynamic termin breakdown
+    try {
+      const [freshInv] = await db.select().from(manualInvoices).where(eq(manualInvoices.id, id)).limit(1);
+      if (freshInv) {
+        const freshPdfUrl = await generateManualInvoicePDF(freshInv);
+        await db.update(manualInvoices).set({ pdfUrl: freshPdfUrl }).where(eq(manualInvoices.id, id));
+      }
+    } catch (pdfErr) {
+      console.error('Failed to regenerate manual invoice PDF after payment:', pdfErr);
+    }
+
+    return c.json({
+      success: true,
+      message: 'Pembayaran invoice manual berhasil dicatat',
+      data: {
+        payment: result.payment,
+        receipt: receiptRecord,
+        summary: {
+          totalAmount,
+          paidAmount: result.newPaidTotal,
+          remainingBalance: result.newRemaining,
+          currency: invoice.currency || 'SAR',
+        }
+      }
+    });
+  } catch (error: any) {
+    console.error('Error recording manual invoice payment:', error);
+    return c.json({ error: error?.message || 'Gagal memproses pembayaran' }, 500);
+  }
+});
+
+// DELETE /api/invoices/manual/:id/payments/:paymentId - Cancel/delete manual invoice payment
+invoiceRoutes.delete('/manual/:id/payments/:paymentId', requireAdminOrFinance, async (c) => {
+  try {
+    const id = parseInt(c.req.param('id'));
+    const paymentId = parseInt(c.req.param('paymentId'));
+    if (!id || !paymentId || isNaN(id) || isNaN(paymentId)) {
+      return c.json({ error: 'Invalid parameters' }, 400);
+    }
+
+    const [invoice] = await db.select().from(manualInvoices).where(eq(manualInvoices.id, id)).limit(1);
+    if (!invoice) return c.json({ error: 'Invoice manual tidak ditemukan' }, 404);
+
+    const [payment] = await db.select().from(manualInvoicePayments).where(eq(manualInvoicePayments.id, paymentId)).limit(1);
+    if (!payment || payment.manualInvoiceId !== id) {
+      return c.json({ error: 'Data pembayaran tidak ditemukan' }, 404);
+    }
+
+    const payAmt = parseFloat(payment.amount || '0');
+
+    await db.transaction(async (tx) => {
+      // If method was deposit, refund to client
+      if (payment.method === 'deposit' && invoice.clientId) {
+        const depRows = await tx.select().from(clientDeposits).where(eq(clientDeposits.clientId, invoice.clientId)).limit(1);
+        if (depRows.length > 0) {
+          const currentBal = parseFloat(depRows[0]!.currentBalance || '0');
+          const currentUsed = parseFloat(depRows[0]!.totalUsed || '0');
+          const newBal = currentBal + payAmt;
+          const newUsed = Math.max(0, currentUsed - payAmt);
+
+          await tx.update(clientDeposits).set({
+            currentBalance: newBal.toString(),
+            totalUsed: newUsed.toString(),
+            lastTransactionAt: new Date(),
+            updatedAt: new Date(),
+          }).where(eq(clientDeposits.clientId, invoice.clientId));
+
+          await tx.insert(depositTransactions).values({
+            clientId: invoice.clientId,
+            type: 'refund',
+            amount: payAmt.toString(),
+            balanceBefore: currentBal.toString(),
+            balanceAfter: newBal.toString(),
+            currency: invoice.currency || 'SAR',
+            status: 'completed',
+            description: `Refund pembatalan pembayaran Invoice ${invoice.number}`,
+            referenceNumber: `REFUND-${Date.now()}`,
+            processedAt: new Date(),
+          });
+        }
+      }
+
+      // Delete linked receipts
+      await tx.delete(manualInvoiceReceipts).where(eq(manualInvoiceReceipts.paymentId, paymentId));
+
+      // Delete payment
+      await tx.delete(manualInvoicePayments).where(eq(manualInvoicePayments.id, paymentId));
+
+      // Recalculate invoice paid amount
+      const remainingPayments = await tx.select().from(manualInvoicePayments).where(eq(manualInvoicePayments.manualInvoiceId, id));
+      const newPaidTotal = remainingPayments.reduce((s, p) => s + (parseFloat(p.amount || '0') || 0), 0);
+      const totalAmount = parseFloat(invoice.amount || '0');
+      const isPaidFull = newPaidTotal >= totalAmount && totalAmount > 0;
+      const newStatus = isPaidFull ? 'paid' : newPaidTotal > 0 ? 'sent' : 'draft';
+
+      await tx.update(manualInvoices).set({
+        paidAmount: newPaidTotal.toString(),
+        status: newStatus,
+        updatedAt: new Date(),
+      }).where(eq(manualInvoices.id, id));
+    });
+
+    // Regenerate manual invoice PDF after payment deletion
+    try {
+      const [freshInv] = await db.select().from(manualInvoices).where(eq(manualInvoices.id, id)).limit(1);
+      if (freshInv) {
+        const freshPdfUrl = await generateManualInvoicePDF(freshInv);
+        await db.update(manualInvoices).set({ pdfUrl: freshPdfUrl }).where(eq(manualInvoices.id, id));
+      }
+    } catch (pdfErr) {
+      console.error('Failed to regenerate manual invoice PDF after payment deletion:', pdfErr);
+    }
+
+    return c.json({ success: true, message: 'Pembayaran berhasil dibatalkan dan dihapus' });
+  } catch (error: any) {
+    console.error('Error deleting manual invoice payment:', error);
+    return c.json({ error: error?.message || 'Gagal menghapus pembayaran' }, 500);
+  }
+});
+
 // POST /api/invoices/:bookingId/generate - Generate invoice for booking
 invoiceRoutes.post('/:bookingId/generate', requireAdminOrFinance, async (c) => {
   try {
@@ -958,6 +1461,16 @@ invoiceRoutes.get('/by-number/:number', async (c) => {
       const invoice = await db.select().from(manualInvoices).where(eq(manualInvoices.number, invoiceNumber)).limit(1);
       if (invoice.length === 0) return c.json({ error: 'Invoice not found' }, 404);
       pdfUrl = invoice[0]!.pdfUrl;
+      const fn = pdfUrl ? pdfUrl.split('/').slice(-2).join('/') : '';
+      const exists = fn ? await checkFileExistsInMinio(fn) : false;
+      if (!exists) {
+        try {
+          pdfUrl = await generateManualInvoicePDF(invoice[0]!);
+          await db.update(manualInvoices).set({ pdfUrl }).where(eq(manualInvoices.id, invoice[0]!.id));
+        } catch (e) {
+          console.error('Failed to regenerate manual invoice PDF:', e);
+        }
+      }
     } else {
       const invoice = await db.select().from(invoices).where(eq(invoices.number, invoiceNumber)).limit(1);
       if (invoice.length === 0) return c.json({ error: 'Invoice not found' }, 404);
@@ -1054,6 +1567,60 @@ invoiceRoutes.get('/:id', requireAdminOrFinance, async (c) => {
       .limit(1);
 
     if (result.length === 0) {
+      // Check in manualInvoices
+      const [manualInv] = await db
+        .select()
+        .from(manualInvoices)
+        .where(eq(manualInvoices.id, invoiceId))
+        .limit(1);
+
+      if (manualInv) {
+        const payments = await db
+          .select()
+          .from(manualInvoicePayments)
+          .where(eq(manualInvoicePayments.manualInvoiceId, manualInv.id))
+          .orderBy(manualInvoicePayments.paidAt);
+
+        const totalAmount = parseFloat(manualInv.amount || '0');
+        const paidAmount = parseFloat(manualInv.paidAmount || '0');
+        const remainingBalance = Math.max(0, totalAmount - paidAmount);
+
+        return c.json({
+          success: true,
+          data: {
+            id: manualInv.id,
+            number: manualInv.number,
+            bookingId: manualInv.id,
+            amount: manualInv.amount,
+            currency: manualInv.currency,
+            issueDate: manualInv.issueDate,
+            dueDate: manualInv.dueDate,
+            status: manualInv.status,
+            pdfUrl: manualInv.pdfUrl,
+            bookingCode: 'MANUAL',
+            clientName: manualInv.clientName,
+            clientEmail: manualInv.clientEmail || '',
+            hotelName: manualInv.title || 'Invoice Manual',
+            city: 'Manual',
+            bookingPaymentStatus: (paidAmount >= totalAmount && totalAmount > 0) ? 'paid' : paidAmount > 0 ? 'partial' : 'unpaid',
+            bookingMeta: {
+              remainingBalance,
+              payments: payments.map(p => ({
+                id: p.id,
+                method: p.method,
+                amount: parseFloat(p.amount || '0'),
+                date: p.paidAt ? new Date(p.paidAt).toISOString() : new Date().toISOString(),
+                status: p.status,
+                reference: p.referenceNumber,
+                termin: (p.meta as any)?.termin,
+                terminLabel: (p.meta as any)?.terminLabel,
+                description: (p.meta as any)?.description,
+              })),
+            },
+          },
+        });
+      }
+
       return c.json({ error: 'Invoice not found' }, 404);
     }
 
@@ -1117,6 +1684,220 @@ invoiceRoutes.post('/:invoiceId/pay', requireAdminOrFinance, async (c) => {
       .limit(1);
 
     if (invRows.length === 0 || !invRows[0]?.bookingId) {
+      // Check if this is a manual invoice
+      const [manualInv] = await db
+        .select()
+        .from(manualInvoices)
+        .where(eq(manualInvoices.id, invoiceId))
+        .limit(1);
+
+      if (manualInv) {
+        const totalAmount = parseFloat(manualInv.amount || '0');
+        const currentPaid = parseFloat(manualInv.paidAmount || '0');
+        const remainingBalance = Math.max(0, totalAmount - currentPaid);
+
+        if (remainingBalance <= 0) {
+          return c.json({ error: 'Invoice ini sudah lunas. Tidak ada sisa tagihan.' }, 400);
+        }
+
+        const [clientRow] = manualInv.clientId
+          ? await db.select().from(clients).where(eq(clients.id, manualInv.clientId)).limit(1)
+          : [null];
+
+        const result = await db.transaction(async (tx) => {
+          let depositUsed = 0;
+
+          if (method === 'deposit') {
+            if (!manualInv.clientId) {
+              throw new Error('Klien tidak terhubung untuk pemotongan saldo deposit');
+            }
+
+            const depRows = await tx
+              .select()
+              .from(clientDeposits)
+              .where(eq(clientDeposits.clientId, manualInv.clientId))
+              .limit(1);
+
+            const currentBalance = depRows.length > 0 ? parseFloat(depRows[0]!.currentBalance) : 0;
+            depositUsed = Math.min(amountNum as number, remainingBalance);
+
+            if (currentBalance < depositUsed) {
+              throw new Error(`Saldo deposit klien tidak mencukupi (Saldo: ${currentBalance.toLocaleString()} SAR, Diperlukan: ${depositUsed.toLocaleString()} SAR)`);
+            }
+
+            const newBalance = currentBalance - depositUsed;
+            const newTotalUsed = (depRows.length > 0 ? parseFloat(depRows[0]!.totalUsed) : 0) + depositUsed;
+
+            await tx
+              .update(clientDeposits)
+              .set({
+                currentBalance: newBalance.toString(),
+                totalUsed: newTotalUsed.toString(),
+                lastTransactionAt: new Date(),
+                updatedAt: new Date(),
+              })
+              .where(eq(clientDeposits.clientId, manualInv.clientId));
+
+            await tx.insert(depositTransactions).values({
+              clientId: manualInv.clientId,
+              type: 'usage',
+              amount: depositUsed.toString(),
+              balanceBefore: currentBalance.toString(),
+              balanceAfter: newBalance.toString(),
+              currency: manualInv.currency || 'SAR',
+              status: 'completed',
+              description: description || `Pembayaran Invoice ${manualInv.number}`,
+              referenceNumber: referenceNumber || `DEP-INV-${Date.now()}`,
+              processedAt: new Date(),
+            });
+          }
+
+          const effectivePayAmount = method === 'deposit' ? depositUsed : Math.min(amountNum as number, remainingBalance);
+          const newPaidTotal = currentPaid + effectivePayAmount;
+          const newRemaining = Math.max(0, totalAmount - newPaidTotal);
+          const isPaidFull = newPaidTotal >= totalAmount;
+          const newInvoiceStatus: 'draft' | 'sent' | 'paid' | 'overdue' | 'cancelled' = isPaidFull ? 'paid' : 'sent';
+
+          const existingPayments = await tx
+            .select()
+            .from(manualInvoicePayments)
+            .where(eq(manualInvoicePayments.manualInvoiceId, invoiceId));
+
+          const terminNumber = existingPayments.length + 1;
+          let terminLabel = `Termin #${terminNumber}`;
+          if (isPaidFull && terminNumber === 1) {
+            terminLabel = 'Pelunasan (Lunas Penuh)';
+          } else if (isPaidFull) {
+            terminLabel = `Termin #${terminNumber} (Pelunasan)`;
+          } else if (terminNumber === 1) {
+            terminLabel = 'Termin #1 (Uang Muka / DP)';
+          }
+
+          const receiptNumber = `RCP-MAN-${new Date().getFullYear()}-${Math.floor(100000 + Math.random() * 900000)}`;
+
+          const [paymentRecord] = await tx
+            .insert(manualInvoicePayments)
+            .values({
+              manualInvoiceId: invoiceId,
+              amount: effectivePayAmount.toString(),
+              currency: manualInv.currency || 'SAR',
+              method,
+              referenceNumber: referenceNumber || (method === 'deposit' ? `DEP-${Date.now()}` : `PAY-${Date.now()}`),
+              paidAt: new Date(),
+              status: 'completed',
+              meta: {
+                description: description || null,
+                termin: terminNumber,
+                terminLabel,
+                receiptNumber,
+              },
+            })
+            .returning();
+
+          await tx
+            .update(manualInvoices)
+            .set({
+              paidAmount: newPaidTotal.toString(),
+              status: newInvoiceStatus,
+              updatedAt: new Date(),
+            })
+            .where(eq(manualInvoices.id, invoiceId));
+
+          return {
+            payment: paymentRecord!,
+            newPaidTotal,
+            newRemaining,
+            isPaidFull,
+            effectivePayAmount,
+            terminNumber,
+            terminLabel,
+            receiptNumber,
+          };
+        });
+
+        if (body?.autoGenerateReceipt !== false) {
+          try {
+            const receiptNumber = result.receiptNumber;
+            const newReceiptData: NewManualInvoiceReceipt = {
+              manualInvoiceId: invoiceId,
+              paymentId: result.payment.id,
+              number: receiptNumber,
+              totalAmount: totalAmount.toString(),
+              paidAmount: result.effectivePayAmount.toString(),
+              balanceDue: result.newRemaining.toString(),
+              currency: manualInv.currency || 'SAR',
+              issueDate: new Date(),
+              payerName: manualInv.clientName,
+              payerEmail: manualInv.clientEmail || null,
+              payerPhone: manualInv.clientPhone || null,
+              payerAddress: manualInv.clientAddress || null,
+              pdfUrl: '',
+              meta: {
+                termin: result.terminNumber,
+                terminLabel: result.terminLabel,
+                referenceNumber: result.payment.referenceNumber,
+                paymentMethod: method,
+                description: description || null,
+              },
+            };
+
+            const pdfBuffer = await generateManualInvoiceReceiptPDF(
+              newReceiptData,
+              manualInv,
+              clientRow
+            );
+
+            const pdfUrl = await uploadToMinio(`receipts/${receiptNumber}.pdf`, pdfBuffer, 'application/pdf');
+            newReceiptData.pdfUrl = pdfUrl;
+
+            await db.insert(manualInvoiceReceipts).values(newReceiptData);
+          } catch (receiptErr) {
+            console.error('Failed to generate receipt for manual invoice in pay endpoint:', receiptErr);
+          }
+        }
+
+        const allPayments = await db
+          .select()
+          .from(manualInvoicePayments)
+          .where(eq(manualInvoicePayments.manualInvoiceId, invoiceId))
+          .orderBy(manualInvoicePayments.paidAt);
+
+        return c.json({
+          success: true,
+          data: {
+            id: manualInv.id,
+            number: manualInv.number,
+            bookingId: manualInv.id,
+            amount: manualInv.amount,
+            currency: manualInv.currency,
+            issueDate: manualInv.issueDate,
+            dueDate: manualInv.dueDate,
+            status: result.isPaidFull ? 'paid' : 'sent',
+            pdfUrl: manualInv.pdfUrl,
+            bookingCode: 'MANUAL',
+            clientName: manualInv.clientName,
+            clientEmail: manualInv.clientEmail || '',
+            hotelName: manualInv.title || 'Invoice Manual',
+            city: 'Manual',
+            bookingPaymentStatus: result.isPaidFull ? 'paid' : 'partial',
+            bookingMeta: {
+              remainingBalance: result.newRemaining,
+              payments: allPayments.map(p => ({
+                id: p.id,
+                method: p.method,
+                amount: parseFloat(p.amount || '0'),
+                date: p.paidAt ? new Date(p.paidAt).toISOString() : new Date().toISOString(),
+                status: p.status,
+                reference: p.referenceNumber,
+                termin: (p.meta as any)?.termin,
+                terminLabel: (p.meta as any)?.terminLabel,
+                description: (p.meta as any)?.description,
+              })),
+            },
+          },
+        });
+      }
+
       return c.json({ error: 'Invoice not found or not linked to a booking' }, 404);
     }
 

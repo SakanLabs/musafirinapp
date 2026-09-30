@@ -64,7 +64,10 @@
     <!-- Header -->
     <div class="cs-flex cs-justify-between cs-align-start cs-mb-6">
       <div>
-        <img src="data:image/png;base64,{{logoBase64}}" alt="Musafirin Logo" class="cs-logo-img" style="height: 60px; width: auto; margin-bottom: 8px;">
+        <img src="data:image/png;base64,{{logoBase64}}" alt="Musafirin Logo" class="cs-logo-img" style="height: 60px; width: auto; margin-bottom: 6px;">
+        {{#if brandTagline}}
+        <p class="cs-text-xs cs-text-gray-500 cs-mb-0">{{brandTagline}}</p>
+        {{/if}}
       </div>
       <div class="cs-text-right">
         <div class="cs-badge">Invoice</div>
