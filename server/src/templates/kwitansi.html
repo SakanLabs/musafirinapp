@@ -144,8 +144,18 @@
             <td>{{method}}</td>
             <td>{{transactionId}}</td>
             <td class="cs-num">
-              <img src="data:image/svg+xml;base64,{{@root.saudiRiyalSVGBase64}}" class="cs-sar-icon" alt="SAR" />
-              {{amount}}
+              <div style="font-weight:700;">
+                <img src="data:image/svg+xml;base64,{{@root.saudiRiyalSVGBase64}}" class="cs-sar-icon" alt="SAR" />
+                {{amount}}
+              </div>
+              {{#if @root.idrAmountText}}
+              <div style="font-size:11px;color:#0284c7;font-weight:600;margin-top:2px;">
+                Rp {{@root.idrAmountText}}
+                {{#if @root.exchangeRateText}}
+                <span style="color:#64748b;font-weight:normal;font-size:10px;display:block;">(Kurs: Rp {{@root.exchangeRateText}})</span>
+                {{/if}}
+              </div>
+              {{/if}}
             </td>
           </tr>
           {{/each}}
@@ -156,6 +166,9 @@
           <p class="cs-text-sm cs-text-gray-700">Total Tagihan (Invoice)</p>
           <p class="cs-text-sm cs-text-gray-700">
             Pembayaran Ini {{#if terminBadge}}<span class="cs-badge" style="background:#e0f2fe;color:#0369a1;margin-left:4px;">{{terminBadge}}</span>{{/if}}
+            {{#if idrAmountText}}
+            <span style="font-size:10px;color:#64748b;display:block;">(Setara: Rp {{idrAmountText}})</span>
+            {{/if}}
           </p>
           <p class="cs-text-sm cs-text-gray-700">Total Pembayaran Masuk (Kumulatif)</p>
           <p class="cs-text-sm cs-font-bold cs-text-gray-900" style="margin-top:4px;">Sisa Tagihan</p>

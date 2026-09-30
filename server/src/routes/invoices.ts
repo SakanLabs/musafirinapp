@@ -599,6 +599,8 @@ export interface ManualInvoicePaymentTerm {
   amount: number;
   dueDate?: string;
   notes?: string;
+  idrAmount?: number;
+  exchangeRate?: number;
 }
 
 export function normalizePaymentTerms(
@@ -617,6 +619,10 @@ export function normalizePaymentTerms(
         : Math.round((percentage / 100) * totalAmount * 100) / 100;
       const label = (t.label || '').trim() || (idx === 0 ? 'Termin #1 (Uang Muka / DP)' : (idx === rawTerms.length - 1 ? `Termin #${termNumber} (Pelunasan)` : `Termin #${termNumber}`));
       const termDueDate = t.dueDate ? (new Date(t.dueDate).toISOString().split('T')[0] || '') : (dueDate.toISOString().split('T')[0] || '');
+      const rawIdr = parseFloat(t.idrAmount);
+      const idrAmount = !isNaN(rawIdr) && rawIdr > 0 ? Math.round(rawIdr) : undefined;
+      const rawRate = parseFloat(t.exchangeRate);
+      const exchangeRate = !isNaN(rawRate) && rawRate > 0 ? Math.round(rawRate * 100) / 100 : undefined;
       return {
         termNumber,
         label,
@@ -624,6 +630,8 @@ export function normalizePaymentTerms(
         amount,
         dueDate: termDueDate,
         notes: (t.notes || '').trim() || undefined,
+        idrAmount,
+        exchangeRate,
       };
     });
   }
@@ -983,6 +991,8 @@ invoiceRoutes.post('/manual/:id/pay', requireAdminOrFinance, async (c) => {
     const referenceNumber: string | undefined = body?.referenceNumber;
     const description: string | undefined = body?.description;
     const autoGenerateReceipt: boolean = body?.autoGenerateReceipt !== false;
+    const idrAmount: number | undefined = body?.idrAmount !== undefined ? parseFloat(body.idrAmount) : undefined;
+    const exchangeRate: number | undefined = body?.exchangeRate !== undefined ? parseFloat(body.exchangeRate) : undefined;
 
     const allowedMethods = ['bank_transfer', 'deposit', 'cash'];
     if (!method || !allowedMethods.includes(method)) {
@@ -1098,6 +1108,8 @@ invoiceRoutes.post('/manual/:id/pay', requireAdminOrFinance, async (c) => {
             termin: terminNumber,
             terminLabel,
             receiptNumber,
+            idrAmount: idrAmount && !isNaN(idrAmount) ? idrAmount : undefined,
+            exchangeRate: exchangeRate && !isNaN(exchangeRate) ? exchangeRate : undefined,
           },
         })
         .returning();
@@ -1147,6 +1159,8 @@ invoiceRoutes.post('/manual/:id/pay', requireAdminOrFinance, async (c) => {
             referenceNumber: result.payment.referenceNumber,
             paymentMethod: method,
             description: description || null,
+            idrAmount: idrAmount && !isNaN(idrAmount) ? idrAmount : undefined,
+            exchangeRate: exchangeRate && !isNaN(exchangeRate) ? exchangeRate : undefined,
           },
         };
 
@@ -1283,6 +1297,117 @@ invoiceRoutes.delete('/manual/:id/payments/:paymentId', requireAdminOrFinance, a
   } catch (error: any) {
     console.error('Error deleting manual invoice payment:', error);
     return c.json({ error: error?.message || 'Gagal menghapus pembayaran' }, 500);
+  }
+});
+
+// PUT /api/invoices/manual/:id/payments/:paymentId - Edit payment nominal, kurs, or metadata
+invoiceRoutes.put('/manual/:id/payments/:paymentId', requireAdminOrFinance, async (c) => {
+  try {
+    const id = parseInt(c.req.param('id'));
+    const paymentId = parseInt(c.req.param('paymentId'));
+    if (!id || !paymentId || isNaN(id) || isNaN(paymentId)) {
+      return c.json({ error: 'Invalid parameters' }, 400);
+    }
+
+    const [invoice] = await db.select().from(manualInvoices).where(eq(manualInvoices.id, id)).limit(1);
+    if (!invoice) return c.json({ error: 'Invoice manual tidak ditemukan' }, 404);
+
+    const [payment] = await db.select().from(manualInvoicePayments).where(eq(manualInvoicePayments.id, paymentId)).limit(1);
+    if (!payment || payment.manualInvoiceId !== id) {
+      return c.json({ error: 'Data pembayaran tidak ditemukan' }, 404);
+    }
+
+    const body = await c.req.json().catch(() => ({}));
+    const newAmountNum = body?.amount !== undefined ? parseFloat(body.amount) : undefined;
+    const newMethod = body?.method;
+    const newRef = body?.referenceNumber;
+    const newDesc = body?.description;
+    const newPaidAt = body?.paidAt ? new Date(body.paidAt) : undefined;
+    const idrAmount = body?.idrAmount !== undefined ? parseFloat(body.idrAmount) : undefined;
+    const exchangeRate = body?.exchangeRate !== undefined ? parseFloat(body.exchangeRate) : undefined;
+
+    const currentMeta = (payment.meta as any) || {};
+    const updatedMeta = {
+      ...currentMeta,
+      description: newDesc !== undefined ? newDesc : currentMeta.description,
+      idrAmount: idrAmount !== undefined && !isNaN(idrAmount) ? idrAmount : currentMeta.idrAmount,
+      exchangeRate: exchangeRate !== undefined && !isNaN(exchangeRate) ? exchangeRate : currentMeta.exchangeRate,
+    };
+
+    const updateData: any = {
+      meta: updatedMeta,
+      updatedAt: new Date(),
+    };
+    if (newAmountNum !== undefined && !isNaN(newAmountNum) && newAmountNum > 0) {
+      updateData.amount = newAmountNum.toString();
+    }
+    if (newMethod) updateData.method = newMethod;
+    if (newRef !== undefined) updateData.referenceNumber = newRef;
+    if (newPaidAt) updateData.paidAt = newPaidAt;
+
+    await db.update(manualInvoicePayments).set(updateData).where(eq(manualInvoicePayments.id, paymentId));
+
+    // Recalculate invoice total paid
+    const allPayments = await db.select().from(manualInvoicePayments).where(eq(manualInvoicePayments.manualInvoiceId, id));
+    const newPaidTotal = allPayments.reduce((s, p) => s + (parseFloat(p.amount || '0') || 0), 0);
+    const totalAmount = parseFloat(invoice.amount || '0');
+    const isPaidFull = newPaidTotal >= totalAmount && totalAmount > 0;
+    const newStatus = isPaidFull ? 'paid' : newPaidTotal > 0 ? 'sent' : 'draft';
+
+    await db.update(manualInvoices).set({
+      paidAmount: newPaidTotal.toString(),
+      status: newStatus,
+      updatedAt: new Date(),
+    }).where(eq(manualInvoices.id, id));
+
+    // Also update linked receipt if exists
+    const [linkedReceipt] = await db.select().from(manualInvoiceReceipts).where(eq(manualInvoiceReceipts.paymentId, paymentId)).limit(1);
+    if (linkedReceipt) {
+      const receiptMeta = (linkedReceipt.meta as any) || {};
+      const updatedReceiptMeta = {
+        ...receiptMeta,
+        idrAmount: updatedMeta.idrAmount,
+        exchangeRate: updatedMeta.exchangeRate,
+        referenceNumber: newRef !== undefined ? newRef : receiptMeta.referenceNumber,
+      };
+      await db.update(manualInvoiceReceipts).set({
+        paidAmount: updateData.amount || linkedReceipt.paidAmount,
+        meta: updatedReceiptMeta,
+        updatedAt: new Date(),
+      }).where(eq(manualInvoiceReceipts.id, linkedReceipt.id));
+
+      // Regenerate receipt PDF
+      try {
+        const [freshReceipt] = await db.select().from(manualInvoiceReceipts).where(eq(manualInvoiceReceipts.id, linkedReceipt.id)).limit(1);
+        if (freshReceipt) {
+          const pdfBuffer = await generateManualInvoiceReceiptPDF(freshReceipt, invoice);
+          const pdfUrl = await uploadToMinio(`receipts/${freshReceipt.number}.pdf`, pdfBuffer, 'application/pdf');
+          await db.update(manualInvoiceReceipts).set({ pdfUrl }).where(eq(manualInvoiceReceipts.id, freshReceipt.id));
+        }
+      } catch (err) {
+        console.warn('Could not regenerate receipt PDF on payment edit:', err);
+      }
+    }
+
+    // Regenerate invoice PDF
+    try {
+      const [freshInv] = await db.select().from(manualInvoices).where(eq(manualInvoices.id, id)).limit(1);
+      if (freshInv) {
+        const pdfUrl = await generateManualInvoicePDF(freshInv);
+        await db.update(manualInvoices).set({ pdfUrl }).where(eq(manualInvoices.id, id));
+      }
+    } catch (err) {
+      console.warn('Could not regenerate invoice PDF on payment edit:', err);
+    }
+
+    return c.json({
+      success: true,
+      message: 'Data pembayaran & kurs berhasil diperbarui',
+      paymentId,
+    });
+  } catch (error: any) {
+    console.error('Error updating manual invoice payment:', error);
+    return c.json({ error: error?.message || 'Gagal memperbarui pembayaran' }, 500);
   }
 });
 

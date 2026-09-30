@@ -22,16 +22,20 @@ import {
   MessageCircle,
   ExternalLink,
   Info,
-  AlertTriangle
+  AlertTriangle,
+  Pencil
 } from "lucide-react"
 import { authService } from "@/lib/auth"
 import { formatCurrency, formatDate } from "@/lib/utils"
+import { Modal } from "@/components/ui/modal"
+import { Label } from "@/components/ui/label"
 import { useClients } from "@/lib/queries/clients"
 import {
   useCreateManualInvoice,
   useManualInvoice,
   useUpdateManualInvoice,
   usePayManualInvoice,
+  useUpdateManualInvoicePayment,
   useDeleteManualInvoicePayment,
   type CreateManualInvoiceItem,
   type ManualInvoicePaymentTerm
@@ -165,8 +169,53 @@ function CreateManualInvoicePage() {
           amount: Number(t.amount) || 0,
           dueDate: t.dueDate ? new Date(t.dueDate).toISOString().split('T')[0] : (invoiceData.dueDate ? new Date(invoiceData.dueDate).toISOString().split('T')[0] : ""),
           notes: t.notes || "",
+          idrAmount: t.idrAmount ? Number(t.idrAmount) : undefined,
+          exchangeRate: t.exchangeRate ? Number(t.exchangeRate) : undefined,
         })))
         setIsTermsManuallyCustomized(true)
+      } else if (Array.isArray(invoiceData.payments) && invoiceData.payments.length > 0) {
+        // Build initial terms honoring already recorded payments!
+        const totalAmt = parseFloat(invoiceData.amount) || 0;
+        const terms: any[] = [];
+        let totalPaidSoFar = 0;
+        invoiceData.payments.forEach((p: any, pIdx: number) => {
+          const pAmt = parseFloat(p.amount) || 0;
+          totalPaidSoFar += pAmt;
+          const pPct = totalAmt > 0 ? Math.round((pAmt / totalAmt) * 1000) / 10 : 0;
+          terms.push({
+            termNumber: pIdx + 1,
+            label: p.meta?.terminLabel || (pIdx === 0 ? "Termin #1 (Uang Muka / DP)" : `Termin #${pIdx + 1}`),
+            percentage: pPct,
+            amount: pAmt,
+            dueDate: p.paidAt ? new Date(p.paidAt).toISOString().split('T')[0] : (invoiceData.issueDate ? new Date(invoiceData.issueDate).toISOString().split('T')[0] : ""),
+            notes: p.meta?.description || "",
+            idrAmount: p.meta?.idrAmount ? Number(p.meta.idrAmount) : undefined,
+            exchangeRate: p.meta?.exchangeRate ? Number(p.meta.exchangeRate) : undefined,
+          });
+        });
+        const remAmt = Math.max(0, totalAmt - totalPaidSoFar);
+        const remPct = Math.max(0, Math.round((100 - terms.reduce((s, t) => s + t.percentage, 0)) * 10) / 10);
+        if (remAmt > 0) {
+          const nextTermNum = terms.length + 1;
+          const halfRem = Math.round(remAmt * 0.5 * 100) / 100;
+          const halfPct = Math.round(remPct * 0.5 * 10) / 10;
+          terms.push({
+            termNumber: nextTermNum,
+            label: `Termin #${nextTermNum}`,
+            percentage: halfPct,
+            amount: halfRem,
+            dueDate: invoiceData.dueDate ? new Date(invoiceData.dueDate).toISOString().split('T')[0] : "",
+          });
+          terms.push({
+            termNumber: nextTermNum + 1,
+            label: `Termin #${nextTermNum + 1} (Pelunasan)`,
+            percentage: Math.round((remPct - halfPct) * 10) / 10,
+            amount: Math.round((remAmt - halfRem) * 100) / 100,
+            dueDate: invoiceData.dueDate ? new Date(invoiceData.dueDate).toISOString().split('T')[0] : "",
+          });
+        }
+        setPaymentTerms(terms);
+        setIsTermsManuallyCustomized(true);
       }
     }
   }, [invoiceData])
@@ -307,10 +356,18 @@ function CreateManualInvoicePage() {
         const pct = parseFloat(val) || 0
         current.percentage = pct
         current.amount = Math.round((pct / 100) * grandTotal * 100) / 100
+        if (currentRate && !current.idrAmount) current.idrAmount = Math.round(current.amount * currentRate)
       } else if (field === 'amount') {
         const amt = parseFloat(val) || 0
         current.amount = amt
         current.percentage = grandTotal > 0 ? Math.round((amt / grandTotal) * 1000) / 10 : 0
+        if (currentRate && !current.idrAmount) current.idrAmount = Math.round(amt * currentRate)
+      } else if (field === 'idrAmount') {
+        const idr = val ? parseFloat(val) : undefined
+        current.idrAmount = idr
+        if (current.amount > 0 && idr) {
+          current.exchangeRate = Math.round((idr / current.amount) * 100) / 100
+        }
       }
       next[index] = current
       return next
@@ -347,6 +404,52 @@ function CreateManualInvoicePage() {
     ? Math.min(100, Math.round((paidInvoiceAmount / totalInvoiceAmount) * 100))
     : 0
 
+  const updatePaymentMutation = useUpdateManualInvoicePayment();
+  const [editingPayment, setEditingPayment] = useState<any | null>(null);
+  const [editPayAmount, setEditPayAmount] = useState<string>('');
+  const [editPayIdr, setEditPayIdr] = useState<string>('');
+  const [editPayRate, setEditPayRate] = useState<string>('');
+  const [editPayRef, setEditPayRef] = useState<string>('');
+  const [editPayDesc, setEditPayDesc] = useState<string>('');
+
+  const handleOpenEditPayment = (p: any) => {
+    setEditingPayment(p);
+    setEditPayAmount(p.amount ? String(p.amount) : '');
+    const pIdr = p.meta?.idrAmount ? String(p.meta.idrAmount) : '';
+    const pRate = p.meta?.exchangeRate ? String(p.meta.exchangeRate) : '';
+    setEditPayIdr(pIdr);
+    setEditPayRate(pRate || (currentRate ? String(Math.round(currentRate)) : ''));
+    setEditPayRef(p.referenceNumber || '');
+    setEditPayDesc(p.meta?.description || '');
+  };
+
+  const handleSaveEditPayment = async () => {
+    if (!id || !editingPayment) return;
+    const numAmt = parseFloat(editPayAmount);
+    if (!numAmt || numAmt <= 0) {
+      toast.error("Nominal pembayaran harus lebih besar dari 0");
+      return;
+    }
+    try {
+      const res = await updatePaymentMutation.mutateAsync({
+        manualInvoiceId: id,
+        paymentId: editingPayment.id,
+        data: {
+          amount: numAmt,
+          idrAmount: editPayIdr ? parseFloat(editPayIdr) : undefined,
+          exchangeRate: editPayRate ? parseFloat(editPayRate) : undefined,
+          referenceNumber: editPayRef.trim() || undefined,
+          description: editPayDesc.trim() || undefined,
+        }
+      });
+      toast.success(res.message || "Data pembayaran & kurs berhasil diperbarui!");
+      setEditingPayment(null);
+      refetchInvoice();
+    } catch (err: any) {
+      toast.error(err?.message || "Gagal memperbarui data pembayaran");
+    }
+  };
+
   // Record payment handler
   const handleRecordPayment = async (data: {
     amount: number;
@@ -354,6 +457,8 @@ function CreateManualInvoicePage() {
     referenceNumber?: string;
     description?: string;
     autoGenerateReceipt: boolean;
+    idrAmount?: number;
+    exchangeRate?: number;
   }) => {
     if (!id) return;
     try {
@@ -364,6 +469,8 @@ function CreateManualInvoicePage() {
         referenceNumber: data.referenceNumber,
         description: data.description,
         autoGenerateReceipt: data.autoGenerateReceipt,
+        idrAmount: data.idrAmount,
+        exchangeRate: data.exchangeRate,
       })
       toast.success(res.message || "Pembayaran berhasil dicatat")
       refetchInvoice()
@@ -469,6 +576,8 @@ function CreateManualInvoicePage() {
         amount: Number(t.amount) || 0,
         dueDate: t.dueDate || dueDate,
         notes: t.notes?.trim() || undefined,
+        idrAmount: t.idrAmount ? Number(t.idrAmount) : undefined,
+        exchangeRate: t.exchangeRate ? Number(t.exchangeRate) : undefined,
       }))
     }
 
@@ -697,8 +806,24 @@ function CreateManualInvoicePage() {
                                   )}
                                 </div>
                               </td>
-                              <td className="py-3 px-4 text-right font-mono font-bold text-emerald-600">
-                                {formatCurrency(p.amount, p.currency || currency)}
+                              <td className="py-3 px-4 text-right">
+                                <div className="font-mono font-bold text-emerald-600">
+                                  {formatCurrency(p.amount, p.currency || currency)}
+                                </div>
+                                {p.meta?.idrAmount ? (
+                                  <div className="text-[11px] font-mono font-semibold text-blue-700">
+                                    {formatIdr(p.meta.idrAmount)}
+                                    {p.meta.exchangeRate && (
+                                      <span className="text-[10px] text-zinc-400 font-sans block">
+                                        (Kurs: Rp {new Intl.NumberFormat('id-ID').format(p.meta.exchangeRate)})
+                                      </span>
+                                    )}
+                                  </div>
+                                ) : currentRate && (p.currency || currency) === 'SAR' ? (
+                                  <div className="text-[11px] font-mono text-zinc-400">
+                                    ≈ {formatIdr(Math.round(parseFloat(p.amount) * currentRate))}
+                                  </div>
+                                ) : null}
                               </td>
                               <td className="py-3 px-4 text-right">
                                 {receiptNumber ? (
@@ -716,15 +841,25 @@ function CreateManualInvoicePage() {
                                 )}
                               </td>
                               <td className="py-3 px-4 text-center">
-                                <button
-                                  type="button"
-                                  onClick={() => handleDeletePayment(p.id)}
-                                  disabled={deletePaymentMutation.isPending}
-                                  className="text-zinc-400 hover:text-rose-600 transition-colors p-1"
-                                  title="Batalkan pembayaran ini"
-                                >
-                                  <Trash2 className="w-3.5 h-3.5" />
-                                </button>
+                                <div className="flex items-center justify-center gap-1">
+                                  <button
+                                    type="button"
+                                    onClick={() => handleOpenEditPayment(p)}
+                                    className="text-zinc-400 hover:text-blue-600 transition-colors p-1"
+                                    title="Edit pembayaran & kunci kurs IDR"
+                                  >
+                                    <Pencil className="w-3.5 h-3.5" />
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleDeletePayment(p.id)}
+                                    disabled={deletePaymentMutation.isPending}
+                                    className="text-zinc-400 hover:text-rose-600 transition-colors p-1"
+                                    title="Batalkan pembayaran ini"
+                                  >
+                                    <Trash2 className="w-3.5 h-3.5" />
+                                  </button>
+                                </div>
                               </td>
                             </tr>
                           );
@@ -1142,8 +1277,8 @@ function CreateManualInvoicePage() {
                         )}
                       </div>
 
-                      <div className="grid grid-cols-1 md:grid-cols-12 gap-3 items-end">
-                        <div className="md:col-span-4">
+                      <div className="grid grid-cols-1 md:grid-cols-12 gap-2.5 items-end">
+                        <div className="md:col-span-3">
                           <label className="block text-[10px] font-bold text-zinc-400 uppercase tracking-wider mb-1">
                             Label Termin
                           </label>
@@ -1173,7 +1308,7 @@ function CreateManualInvoicePage() {
                           </div>
                         </div>
 
-                        <div className="md:col-span-3">
+                        <div className="md:col-span-2">
                           <label className="block text-[10px] font-bold text-zinc-400 uppercase tracking-wider mb-1">
                             Nominal ({currency})
                           </label>
@@ -1185,14 +1320,36 @@ function CreateManualInvoicePage() {
                             onChange={(e) => handleUpdateTerm(index, "amount", e.target.value)}
                             className="h-9 px-3 border border-[#e5e7eb] rounded-md bg-white text-xs font-bold text-zinc-950 focus:border-[#111111] shadow-none text-right font-mono"
                           />
-                          {estIdr ? (
-                            <span className="block text-[10px] font-mono text-zinc-400 text-right mt-0.5">
-                              ≈ {formatIdr(estIdr)}
+                        </div>
+
+                        <div className="md:col-span-3">
+                          <label className="block text-[10px] font-bold text-zinc-400 uppercase tracking-wider mb-1">
+                            Nominal Terkunci (IDR)
+                          </label>
+                          <div className="relative">
+                            <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-[10px] font-bold text-zinc-400">
+                              Rp
+                            </span>
+                            <Input
+                              type="number"
+                              placeholder={estIdr ? String(estIdr) : "Opsional"}
+                              value={term.idrAmount || ""}
+                              onChange={(e) => handleUpdateTerm(index, "idrAmount", e.target.value)}
+                              className="h-9 pl-7 pr-2 border border-[#e5e7eb] rounded-md bg-white text-xs font-semibold text-zinc-950 focus:border-[#111111] shadow-none font-mono"
+                            />
+                          </div>
+                          {term.idrAmount ? (
+                            <span className="block text-[10px] font-mono text-blue-600 font-semibold mt-0.5">
+                              🔒 Terkunci: {formatIdr(term.idrAmount)}
+                            </span>
+                          ) : estIdr ? (
+                            <span className="block text-[10px] font-mono text-zinc-400 mt-0.5">
+                              Est: {formatIdr(estIdr)}
                             </span>
                           ) : null}
                         </div>
 
-                        <div className="md:col-span-3">
+                        <div className="md:col-span-2">
                           <label className="block text-[10px] font-bold text-zinc-400 uppercase tracking-wider mb-1">
                             Jatuh Tempo
                           </label>
@@ -1342,6 +1499,157 @@ function CreateManualInvoicePage() {
           paymentTerms={invoiceData.paymentTerms || paymentTerms}
           existingPaymentsCount={invoiceData.payments?.length || 0}
         />
+      )}
+
+      {/* Edit Payment Modal */}
+      {editingPayment && (
+        <Modal
+          isOpen={!!editingPayment}
+          onClose={() => setEditingPayment(null)}
+          title="Edit Pembayaran & Kunci Kurs IDR"
+        >
+          <div className="space-y-4">
+            <div className="p-3 bg-blue-50/80 border border-blue-200/90 rounded-xl text-xs text-blue-900">
+              <p className="font-bold flex items-center gap-1.5">
+                <Info className="w-3.5 h-3.5 text-blue-700" />
+                Edit Pembayaran: {editingPayment.meta?.terminLabel || `Pembayaran #${editingPayment.id}`}
+              </p>
+              <p className="text-[11px] text-blue-700/90 mt-1">
+                Anda dapat mengunci nominal IDR yang ditransfer tamu beserta kurs yang berlaku saat transaksi. Kwitansi resmi dan jadwal pembayaran di invoice akan otomatis disesuaikan secara permanen.
+              </p>
+            </div>
+
+            <div className="space-y-3">
+              <div>
+                <Label className="text-xs font-semibold text-zinc-700">Nominal Pembayaran ({currency})</Label>
+                <div className="relative mt-1">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 font-mono text-xs font-bold text-zinc-400">
+                    {currency}
+                  </span>
+                  <Input
+                    type="number"
+                    step="0.01"
+                    min="0.01"
+                    value={editPayAmount}
+                    onChange={(e) => {
+                      setEditPayAmount(e.target.value);
+                      const amt = parseFloat(e.target.value) || 0;
+                      const r = parseFloat(editPayRate) || 0;
+                      if (amt > 0 && r > 0) setEditPayIdr(String(Math.round(amt * r)));
+                    }}
+                    className="pl-14 text-sm font-mono font-bold"
+                  />
+                </div>
+              </div>
+
+              {currency === 'SAR' && (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 p-3 bg-zinc-50 rounded-xl border border-zinc-200">
+                  <div>
+                    <Label className="text-[10px] font-bold text-zinc-600 uppercase tracking-wider">
+                      Nominal IDR (Terkunci)
+                    </Label>
+                    <div className="relative mt-1">
+                      <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-xs font-bold text-zinc-400">
+                        Rp
+                      </span>
+                      <Input
+                        type="number"
+                        placeholder="Contoh: 34600000"
+                        value={editPayIdr}
+                        onChange={(e) => {
+                          setEditPayIdr(e.target.value);
+                          const idr = parseFloat(e.target.value) || 0;
+                          const amt = parseFloat(editPayAmount) || 0;
+                          if (idr > 0 && amt > 0) {
+                            setEditPayRate(String(Math.round((idr / amt) * 100) / 100));
+                          }
+                        }}
+                        className="pl-9 h-9 text-xs font-mono font-bold bg-white"
+                      />
+                    </div>
+                    {editPayIdr && !isNaN(parseFloat(editPayIdr)) && (
+                      <span className="text-[10px] text-zinc-600 font-mono block mt-1">
+                        Rp {new Intl.NumberFormat('id-ID').format(parseFloat(editPayIdr))}
+                      </span>
+                    )}
+                  </div>
+
+                  <div>
+                    <Label className="text-[10px] font-bold text-zinc-600 uppercase tracking-wider">
+                      Kurs (IDR / SAR)
+                    </Label>
+                    <div className="relative mt-1">
+                      <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-xs font-bold text-zinc-400">
+                        Rp
+                      </span>
+                      <Input
+                        type="number"
+                        step="0.01"
+                        placeholder="Contoh: 4733.24"
+                        value={editPayRate}
+                        onChange={(e) => {
+                          setEditPayRate(e.target.value);
+                          const r = parseFloat(e.target.value) || 0;
+                          const amt = parseFloat(editPayAmount) || 0;
+                          if (r > 0 && amt > 0) {
+                            setEditPayIdr(String(Math.round(amt * r)));
+                          }
+                        }}
+                        className="pl-9 h-9 text-xs font-mono font-bold bg-white"
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              <div>
+                <Label className="text-xs font-semibold text-zinc-700">No. Referensi / Bukti Transfer</Label>
+                <Input
+                  value={editPayRef}
+                  onChange={(e) => setEditPayRef(e.target.value)}
+                  placeholder="Contoh: TRF-BCA-12345"
+                  className="mt-1 text-xs"
+                />
+              </div>
+
+              <div>
+                <Label className="text-xs font-semibold text-zinc-700">Catatan Pembayaran</Label>
+                <Input
+                  value={editPayDesc}
+                  onChange={(e) => setEditPayDesc(e.target.value)}
+                  placeholder="Catatan tambahan"
+                  className="mt-1 text-xs"
+                />
+              </div>
+            </div>
+
+            <div className="flex justify-end gap-2 pt-2 border-t border-zinc-100">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setEditingPayment(null)}
+                className="text-xs"
+              >
+                Batal
+              </Button>
+              <Button
+                type="button"
+                onClick={handleSaveEditPayment}
+                disabled={updatePaymentMutation.isPending}
+                className="bg-[#111111] hover:bg-[#242424] text-white text-xs font-semibold"
+              >
+                {updatePaymentMutation.isPending ? (
+                  <>
+                    <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />
+                    Menyimpan...
+                  </>
+                ) : (
+                  "Simpan Perubahan"
+                )}
+              </Button>
+            </div>
+          </div>
+        </Modal>
       )}
     </PageLayout>
   )
