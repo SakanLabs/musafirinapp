@@ -1717,52 +1717,118 @@ export async function generateManualInvoicePDF(
       console.warn('Failed to fetch exchange rate for manual invoice PDF:', err);
     }
 
-    // Build dynamic payment schedule (termin pembayaran)
+    // Build dynamic payment schedule (termin pembayaran) based on configured paymentTerms or default 3-term policy (60% / 20% / 20%)
     const { formatIdr } = await import('../services/ExchangeRateService');
     const paymentSchedule: any[] = [];
 
-    paymentsList.forEach((p: any, idx: number) => {
-      const terminNum = p.meta?.termin || (idx + 1);
-      const isThisPaymentFull = isPaidFull && idx === paymentsList.length - 1;
-      let terminLabel = p.meta?.terminLabel;
-      if (!terminLabel) {
-        if (isThisPaymentFull && terminNum === 1) {
-          terminLabel = 'Pelunasan (Lunas Penuh)';
-        } else if (isThisPaymentFull) {
-          terminLabel = `Termin #${terminNum} (Pelunasan)`;
-        } else if (terminNum === 1) {
-          terminLabel = 'Termin #1 (Uang Muka / DP)';
-        } else {
-          terminLabel = `Termin #${terminNum}`;
+    let configuredTerms: any[] = manualInvoice.paymentTerms;
+    if (!Array.isArray(configuredTerms) || configuredTerms.length === 0) {
+      const term1Amount = Math.round(subtotal * 0.60 * 100) / 100;
+      const term2Amount = Math.round(subtotal * 0.20 * 100) / 100;
+      const term3Amount = Math.round((subtotal - term1Amount - term2Amount) * 100) / 100;
+      const issueDate = manualInvoice.issueDate ? new Date(manualInvoice.issueDate) : new Date();
+      const dueDate = manualInvoice.dueDate ? new Date(manualInvoice.dueDate) : new Date();
+      const diffTime = Math.max(0, dueDate.getTime() - issueDate.getTime());
+      const midDate = new Date(issueDate.getTime() + Math.round(diffTime * 0.5));
+
+      configuredTerms = [
+        {
+          termNumber: 1,
+          label: 'Termin #1 (Uang Muka / DP)',
+          percentage: 60,
+          amount: term1Amount,
+          dueDate: issueDate.toISOString().split('T')[0],
+        },
+        {
+          termNumber: 2,
+          label: 'Termin #2',
+          percentage: 20,
+          amount: term2Amount,
+          dueDate: midDate.toISOString().split('T')[0],
+        },
+        {
+          termNumber: 3,
+          label: 'Termin #3 (Pelunasan)',
+          percentage: 20,
+          amount: term3Amount,
+          dueDate: dueDate.toISOString().split('T')[0],
+        },
+      ];
+    }
+
+    const totalPaidCount = paymentsList.length;
+    let runningRemainingBalance = balanceDue;
+
+    configuredTerms.forEach((term: any, idx: number) => {
+      if (idx < totalPaidCount) {
+        // Term has an actual recorded payment
+        const p = paymentsList[idx];
+        const pAmount = parseFloat(p.amount) || 0;
+        const terminNum = p.meta?.termin || term.termNumber || (idx + 1);
+        const isThisPaymentFull = isPaidFull && idx === totalPaidCount - 1;
+        let terminLabel = p.meta?.terminLabel || term.label;
+        if (!terminLabel) {
+          if (isThisPaymentFull && terminNum === 1) {
+            terminLabel = 'Pelunasan (Lunas Penuh)';
+          } else if (isThisPaymentFull) {
+            terminLabel = `Termin #${terminNum} (Pelunasan)`;
+          } else if (terminNum === 1) {
+            terminLabel = 'Termin #1 (Uang Muka / DP)';
+          } else {
+            terminLabel = `Termin #${terminNum}`;
+          }
+        }
+        paymentSchedule.push({
+          terminLabel,
+          date: TemplateHelpers.formatDate(p.paidAt || p.createdAt || new Date()),
+          method: (p.method || 'Bank Transfer').toUpperCase(),
+          reference: p.referenceNumber || p.meta?.referenceNumber || '',
+          amountFormatted: TemplateHelpers.formatCurrency(pAmount),
+          amountIdr: exchangeRate > 0 ? formatIdr(Math.round(pAmount * exchangeRate)) : '',
+          isPaid: true,
+          statusText: 'Lunas',
+        });
+      } else {
+        // Term is pending/scheduled
+        if (runningRemainingBalance > 0.001) {
+          const isLastConfiguredTerm = idx === configuredTerms.length - 1;
+          const plannedTermAmount = parseFloat(term.amount) || 0;
+          const termAllocated = isLastConfiguredTerm
+            ? runningRemainingBalance
+            : Math.min(runningRemainingBalance, plannedTermAmount > 0 ? plannedTermAmount : Math.round((parseFloat(term.percentage || 0) / 100) * subtotal * 100) / 100);
+
+          runningRemainingBalance = Math.max(0, runningRemainingBalance - termAllocated);
+
+          paymentSchedule.push({
+            terminLabel: term.label || `Termin #${term.termNumber || idx + 1}`,
+            date: TemplateHelpers.formatDate(term.dueDate || manualInvoice.dueDate || new Date()),
+            method: 'Menunggu Pembayaran',
+            reference: '',
+            amountFormatted: TemplateHelpers.formatCurrency(termAllocated),
+            amountIdr: exchangeRate > 0 ? formatIdr(Math.round(termAllocated * exchangeRate)) : '',
+            isPaid: false,
+            statusText: 'Menunggu',
+          });
         }
       }
-      const pAmount = parseFloat(p.amount) || 0;
-      paymentSchedule.push({
-        terminLabel,
-        date: TemplateHelpers.formatDate(p.paidAt || p.createdAt || new Date()),
-        method: (p.method || 'Bank Transfer').toUpperCase(),
-        reference: p.referenceNumber || p.meta?.referenceNumber || '',
-        amountFormatted: TemplateHelpers.formatCurrency(pAmount),
-        amountIdr: exchangeRate > 0 ? formatIdr(Math.round(pAmount * exchangeRate)) : '',
-        isPaid: true,
-      });
     });
 
-    // If remaining balance exists, add upcoming / pending termin
-    if (balanceDue > 0.001) {
-      const nextTerminNum = paymentsList.length + 1;
-      const terminLabel = paymentsList.length === 0
-        ? 'Termin #1 (Pelunasan Penuh)'
-        : `Termin #${nextTerminNum} (Pelunasan Sisa Tagihan)`;
-      paymentSchedule.push({
-        terminLabel,
-        date: TemplateHelpers.formatDate(manualInvoice.dueDate || new Date()),
-        method: 'Menunggu Pembayaran',
-        reference: '',
-        amountFormatted: TemplateHelpers.formatCurrency(balanceDue),
-        amountIdr: exchangeRate > 0 ? formatIdr(Math.round(balanceDue * exchangeRate)) : '',
-        isPaid: false,
-      });
+    // If there are extra payments beyond configured terms
+    if (totalPaidCount > configuredTerms.length) {
+      for (let i = configuredTerms.length; i < totalPaidCount; i++) {
+        const p = paymentsList[i];
+        const pAmount = parseFloat(p.amount) || 0;
+        paymentSchedule.push({
+          terminLabel: p.meta?.terminLabel || `Termin #${i + 1}`,
+          date: TemplateHelpers.formatDate(p.paidAt || p.createdAt || new Date()),
+          method: (p.method || 'Bank Transfer').toUpperCase(),
+          reference: p.referenceNumber || p.meta?.referenceNumber || '',
+          amountFormatted: TemplateHelpers.formatCurrency(pAmount),
+          amountIdr: exchangeRate > 0 ? formatIdr(Math.round(pAmount * exchangeRate)) : '',
+          isPaid: true,
+          statusText: 'Lunas',
+        });
+      }
     }
 
     const items = (manualInvoice.items || []).map((item: any, idx: number) => ({

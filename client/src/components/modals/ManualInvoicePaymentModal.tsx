@@ -19,6 +19,15 @@ interface ManualInvoicePaymentModalProps {
   currency?: string;
   clientName?: string;
   clientDepositBalance?: number;
+  paymentTerms?: Array<{
+    termNumber: number;
+    label: string;
+    percentage: number;
+    amount: number;
+    dueDate: string;
+    notes?: string;
+  }>;
+  existingPaymentsCount?: number;
   onSubmit: (data: {
     amount: number;
     method: PaymentMethod;
@@ -39,6 +48,8 @@ export function ManualInvoicePaymentModal({
   currency = 'SAR',
   clientName,
   clientDepositBalance = 0,
+  paymentTerms,
+  existingPaymentsCount = 0,
   onSubmit,
   isLoading = false,
 }: ManualInvoicePaymentModalProps) {
@@ -49,16 +60,26 @@ export function ManualInvoicePaymentModal({
   const [autoGenerateReceipt, setAutoGenerateReceipt] = useState(true);
   const [error, setError] = useState('');
 
+  const scheduledTerm = paymentTerms && paymentTerms.length > existingPaymentsCount
+    ? paymentTerms[existingPaymentsCount]
+    : null;
+
   useEffect(() => {
     if (isOpen) {
-      setAmount('');
       setMethod('bank_transfer');
       setReferenceNumber('');
-      setDescription(paidAmount === 0 ? 'Pembayaran Uang Muka (DP)' : 'Pembayaran Pelunasan');
       setAutoGenerateReceipt(true);
       setError('');
+      if (scheduledTerm) {
+        const suggested = Math.min(remainingBalance, scheduledTerm.amount || 0);
+        setAmount(suggested > 0 ? String(suggested) : '');
+        setDescription(scheduledTerm.label || (paidAmount === 0 ? 'Pembayaran Uang Muka (DP)' : 'Pembayaran Pelunasan'));
+      } else {
+        setAmount('');
+        setDescription(paidAmount === 0 ? 'Pembayaran Uang Muka (DP)' : 'Pembayaran Pelunasan');
+      }
     }
-  }, [isOpen, remainingBalance, paidAmount]);
+  }, [isOpen, remainingBalance, paidAmount, scheduledTerm]);
 
   const numAmount = parseFloat(amount) || 0;
   const isDepositInsufficient = method === 'deposit' && numAmount > clientDepositBalance;
@@ -195,6 +216,35 @@ export function ManualInvoicePaymentModal({
           }`}>
             <span className="font-medium">Saldo Deposit Klien Tersedia:</span>
             <span className="font-bold font-mono">{formatCurrency(clientDepositBalance, 'SAR')}</span>
+          </div>
+        )}
+
+        {/* Next Scheduled Termin Banner */}
+        {scheduledTerm && (
+          <div className="p-3 rounded-xl bg-sky-50/80 border border-sky-200/90 text-xs text-sky-950 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+            <div>
+              <div className="font-bold flex items-center gap-1.5 text-sky-900">
+                <span className="px-1.5 py-0.5 rounded bg-sky-200/70 text-[10px] font-bold uppercase tracking-wider">
+                  Target Jadwal
+                </span>
+                <span>{scheduledTerm.label}</span>
+              </div>
+              <div className="text-[11px] text-sky-700 mt-0.5">
+                Kewajiban: <strong className="font-mono">{formatCurrency(scheduledTerm.amount, currency)}</strong> ({scheduledTerm.percentage}%)
+                {scheduledTerm.dueDate && <span> • Jatuh Tempo: {scheduledTerm.dueDate}</span>}
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => {
+                const suggested = Math.min(remainingBalance, scheduledTerm.amount || 0);
+                if (suggested > 0) setAmount(String(suggested));
+                setDescription(scheduledTerm.label);
+              }}
+              className="px-2.5 py-1 rounded-lg bg-sky-600 hover:bg-sky-700 text-white font-semibold text-[11px] transition-colors whitespace-nowrap self-start sm:self-center"
+            >
+              Isi Sesuai Jadwal
+            </button>
           </div>
         )}
 

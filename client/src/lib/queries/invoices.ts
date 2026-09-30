@@ -183,6 +183,15 @@ export interface CreateManualInvoiceItem {
   notes?: string;
 }
 
+export interface ManualInvoicePaymentTerm {
+  termNumber: number;
+  label: string;
+  percentage: number;
+  amount: number;
+  dueDate: string;
+  notes?: string;
+}
+
 export interface CreateManualInvoiceData {
   clientId?: number | null;
   clientName: string;
@@ -195,6 +204,7 @@ export interface CreateManualInvoiceData {
   dueDate: string;
   notes?: string;
   items: CreateManualInvoiceItem[];
+  paymentTerms?: ManualInvoicePaymentTerm[];
 }
 
 export interface CreateManualInvoiceResponse {
@@ -289,6 +299,7 @@ export interface ManualInvoiceDetail {
   dueDate: string;
   status: 'draft' | 'sent' | 'paid' | 'pending' | 'overdue' | 'cancelled';
   items: CreateManualInvoiceItem[];
+  paymentTerms?: ManualInvoicePaymentTerm[];
   notes?: string | null;
   pdfUrl?: string | null;
   createdAt: string;
