@@ -236,3 +236,171 @@ export function useCreateManualInvoice() {
     },
   });
 }
+
+// Manual invoice types
+export interface ManualInvoicePaymentRecord {
+  id: number;
+  manualInvoiceId: number;
+  amount: string;
+  currency: string;
+  method?: string;
+  referenceNumber?: string;
+  paidAt: string;
+  status: string;
+  meta?: {
+    termin?: number;
+    terminLabel?: string;
+    description?: string;
+    receiptNumber?: string;
+  };
+}
+
+export interface ManualInvoiceReceiptRecord {
+  id: number;
+  manualInvoiceId: number;
+  paymentId?: number;
+  number: string;
+  totalAmount: string;
+  paidAmount: string;
+  balanceDue: string;
+  currency: string;
+  issueDate: string;
+  payerName: string;
+  payerEmail?: string;
+  payerPhone?: string;
+  payerAddress?: string;
+  pdfUrl?: string;
+  meta?: Record<string, any>;
+}
+
+export interface ManualInvoiceDetail {
+  id: number;
+  number: string;
+  clientId?: number | null;
+  clientName: string;
+  clientEmail?: string | null;
+  clientPhone?: string | null;
+  clientAddress?: string | null;
+  title?: string | null;
+  amount: string;
+  paidAmount: string;
+  currency: string;
+  issueDate: string;
+  dueDate: string;
+  status: 'draft' | 'sent' | 'paid' | 'pending' | 'overdue' | 'cancelled';
+  items: CreateManualInvoiceItem[];
+  notes?: string | null;
+  pdfUrl?: string | null;
+  createdAt: string;
+  updatedAt: string;
+  client?: {
+    id: number;
+    name: string;
+    email?: string;
+    phone?: string;
+    address?: string;
+  } | null;
+  summary: {
+    totalAmount: number;
+    paidAmount: number;
+    remainingBalance: number;
+    currency: string;
+    clientDepositBalance: number;
+  };
+  payments: ManualInvoicePaymentRecord[];
+  receipts: ManualInvoiceReceiptRecord[];
+}
+
+// Get manual invoice by ID
+export function useManualInvoice(id?: string | number) {
+  return useQuery({
+    queryKey: ['manual-invoices', 'detail', id],
+    queryFn: async () => {
+      const response = await apiClient.get<{ success: boolean; data: ManualInvoiceDetail }>(
+        API_ENDPOINTS.INVOICE_MANUAL_DETAIL(id!)
+      );
+      return response.data;
+    },
+    enabled: !!id,
+  });
+}
+
+// Update manual invoice
+export function useUpdateManualInvoice() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ id, data }: { id: string | number; data: CreateManualInvoiceData }) => {
+      const response = await apiClient.put<{ success: boolean; message: string; data: any; downloadUrl?: string }>(
+        API_ENDPOINTS.INVOICE_MANUAL_UPDATE(id),
+        data
+      );
+      return response;
+    },
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['manual-invoices', 'detail', variables.id] });
+      queryClient.invalidateQueries({ queryKey: invoiceKeys.lists() });
+    },
+  });
+}
+
+// Record payment for manual invoice
+export interface PayManualInvoiceData {
+  manualInvoiceId: string | number;
+  method: 'bank_transfer' | 'deposit' | 'cash';
+  amount: number;
+  referenceNumber?: string;
+  description?: string;
+  autoGenerateReceipt?: boolean;
+}
+
+export function usePayManualInvoice() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (data: PayManualInvoiceData) => {
+      const response = await apiClient.post<{
+        success: boolean;
+        message: string;
+        data: {
+          payment: ManualInvoicePaymentRecord;
+          receipt?: ManualInvoiceReceiptRecord;
+          summary: any;
+        };
+      }>(API_ENDPOINTS.INVOICE_MANUAL_PAY(data.manualInvoiceId), {
+        method: data.method,
+        amount: data.amount,
+        referenceNumber: data.referenceNumber,
+        description: data.description,
+        autoGenerateReceipt: data.autoGenerateReceipt !== false,
+      });
+      return response;
+    },
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['manual-invoices', 'detail', variables.manualInvoiceId] });
+      queryClient.invalidateQueries({ queryKey: invoiceKeys.lists() });
+      queryClient.invalidateQueries({ queryKey: ['receipts'] });
+      queryClient.invalidateQueries({ queryKey: ['clients'] });
+    },
+  });
+}
+
+// Delete / cancel manual invoice payment
+export function useDeleteManualInvoicePayment() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ manualInvoiceId, paymentId }: { manualInvoiceId: string | number; paymentId: string | number }) => {
+      const response = await apiClient.delete<{ success: boolean; message: string }>(
+        API_ENDPOINTS.INVOICE_MANUAL_DELETE_PAYMENT(manualInvoiceId, paymentId)
+      );
+      return response;
+    },
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['manual-invoices', 'detail', variables.manualInvoiceId] });
+      queryClient.invalidateQueries({ queryKey: invoiceKeys.lists() });
+      queryClient.invalidateQueries({ queryKey: ['receipts'] });
+      queryClient.invalidateQueries({ queryKey: ['clients'] });
+    },
+  });
+}

@@ -12,7 +12,7 @@ import { useInvoice, usePayInvoice, type Invoice } from "@/lib/queries/invoices"
 import { useReceiptsByBooking, useGenerateReceipt } from "@/lib/queries/receipts";
 import { useRegenerateInvoice } from "@/lib/queries/bookings";
 import { authService } from "@/lib/auth";
-import { FileText, Download, Banknote, CalendarDays, Loader2, Info, MessageCircle, ArrowLeft, RefreshCw, Receipt } from "lucide-react";
+import { FileText, Download, Banknote, CalendarDays, Loader2, Info, MessageCircle, ArrowLeft, RefreshCw, Receipt, Edit } from "lucide-react";
 import { useNavigate } from "@tanstack/react-router";
 
 export const Route = createFileRoute("/invoice-detail")({
@@ -286,7 +286,17 @@ function InvoiceDetailPage() {
               <Download className="h-4 w-4 mr-2 text-zinc-500" />
               Download PDF
             </Button>
-            {isAdmin && (
+            {invoice.number.startsWith('INV-MAN-') && (
+              <Button
+                variant="outline"
+                onClick={() => navigate({ to: `/create-manual-invoice?id=${invoice.id}` as any })}
+                className="h-9 px-3.5 border-zinc-200 text-zinc-700 hover:bg-zinc-50 hover:text-[#111111] flex items-center rounded-md text-xs font-semibold transition-colors bg-white shadow-none"
+              >
+                <Edit className="h-4 w-4 mr-2 text-zinc-500" />
+                Edit Invoice
+              </Button>
+            )}
+            {isAdmin && !invoice.number.startsWith('INV-MAN-') && (
               <Button 
                 variant="outline" 
                 onClick={async () => {

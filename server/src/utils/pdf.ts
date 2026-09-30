@@ -198,7 +198,7 @@ export async function generateVoucherPDF(
   const voucherData = {
     // Brand info
     brandName: "Musafirin",
-    brandTagline: "Atur Sendiri Perjalanan Ibadahmu",
+    brandTagline: "We are musafirin of Baitullah",
     brandWebsite: "https://hotel.musafirin.co",
     logoBase64: TemplateHelpers.getLogoBase64(),
     voucherNo: voucher.number,
@@ -1660,14 +1660,110 @@ export async function generateManualInvoicePDF(
       }
     }
 
+    let saudiRiyalSVGBase64 = '';
+    try {
+      saudiRiyalSVGBase64 = TemplateHelpers.getSaudiRiyalSVGBase64();
+    } catch {
+      saudiRiyalSVGBase64 = '';
+    }
+
     const defaultBank = {
       bankName: 'Bank Syariah Indonesia',
       bankCountry: 'Indonesia',
-      accountName: 'PT Thalhah Insan Rabbani',
+      accountName: 'PT. Thalhah Insan Rabbani',
       accountNumberOrIBAN: '7254459741'
     };
 
     const currency = manualInvoice.currency || 'SAR';
+    const subtotal = parseFloat(manualInvoice.amount) || 0;
+
+    // Fetch payments associated with this manual invoice
+    let paymentsList: any[] = manualInvoice.payments || [];
+    if ((!paymentsList || paymentsList.length === 0) && manualInvoice.id) {
+      try {
+        const { db } = await import('../db');
+        const { manualInvoicePayments } = await import('../db/schema');
+        const { eq, asc } = await import('drizzle-orm');
+        paymentsList = await db
+          .select()
+          .from(manualInvoicePayments)
+          .where(eq(manualInvoicePayments.manualInvoiceId, manualInvoice.id))
+          .orderBy(asc(manualInvoicePayments.paidAt));
+      } catch (err) {
+        console.warn('Could not query payments for manual invoice PDF:', err);
+      }
+    }
+
+    const paidAmount = paymentsList.reduce((sum: number, p: any) => sum + (parseFloat(p.amount) || 0), 0);
+    const balanceDue = Math.max(0, subtotal - paidAmount);
+    const isPaidFull = balanceDue <= 0.001 && subtotal > 0;
+    const isPartial = paidAmount > 0 && !isPaidFull;
+
+    // Fetch live SAR to IDR rate
+    let hasExchangeRate = false;
+    let grandTotalIdr = '';
+    let balanceDueIdr = '';
+    let exchangeRateValue = '';
+    let exchangeRate = 0;
+    try {
+      const { getCurrentSarToIdrRate, formatIdr } = await import('../services/ExchangeRateService');
+      const rateData = await getCurrentSarToIdrRate();
+      exchangeRate = rateData.rate;
+      grandTotalIdr = formatIdr(Math.round(subtotal * exchangeRate));
+      balanceDueIdr = formatIdr(Math.round(balanceDue * exchangeRate));
+      exchangeRateValue = new Intl.NumberFormat('id-ID').format(exchangeRate);
+      hasExchangeRate = true;
+    } catch (err) {
+      console.warn('Failed to fetch exchange rate for manual invoice PDF:', err);
+    }
+
+    // Build dynamic payment schedule (termin pembayaran)
+    const { formatIdr } = await import('../services/ExchangeRateService');
+    const paymentSchedule: any[] = [];
+
+    paymentsList.forEach((p: any, idx: number) => {
+      const terminNum = p.meta?.termin || (idx + 1);
+      const isThisPaymentFull = isPaidFull && idx === paymentsList.length - 1;
+      let terminLabel = p.meta?.terminLabel;
+      if (!terminLabel) {
+        if (isThisPaymentFull && terminNum === 1) {
+          terminLabel = 'Pelunasan (Lunas Penuh)';
+        } else if (isThisPaymentFull) {
+          terminLabel = `Termin #${terminNum} (Pelunasan)`;
+        } else if (terminNum === 1) {
+          terminLabel = 'Termin #1 (Uang Muka / DP)';
+        } else {
+          terminLabel = `Termin #${terminNum}`;
+        }
+      }
+      const pAmount = parseFloat(p.amount) || 0;
+      paymentSchedule.push({
+        terminLabel,
+        date: TemplateHelpers.formatDate(p.paidAt || p.createdAt || new Date()),
+        method: (p.method || 'Bank Transfer').toUpperCase(),
+        reference: p.referenceNumber || p.meta?.referenceNumber || '',
+        amountFormatted: TemplateHelpers.formatCurrency(pAmount),
+        amountIdr: exchangeRate > 0 ? formatIdr(Math.round(pAmount * exchangeRate)) : '',
+        isPaid: true,
+      });
+    });
+
+    // If remaining balance exists, add upcoming / pending termin
+    if (balanceDue > 0.001) {
+      const nextTerminNum = paymentsList.length + 1;
+      const terminLabel = paymentsList.length === 0
+        ? 'Termin #1 (Pelunasan Penuh)'
+        : `Termin #${nextTerminNum} (Pelunasan Sisa Tagihan)`;
+      paymentSchedule.push({
+        terminLabel,
+        date: TemplateHelpers.formatDate(manualInvoice.dueDate || new Date()),
+        method: 'Menunggu Pembayaran',
+        reference: '',
+        amountFormatted: TemplateHelpers.formatCurrency(balanceDue),
+        amountIdr: exchangeRate > 0 ? formatIdr(Math.round(balanceDue * exchangeRate)) : '',
+        isPaid: false,
+      });
+    }
 
     const items = (manualInvoice.items || []).map((item: any, idx: number) => ({
       no: idx + 1,
@@ -1680,13 +1776,16 @@ export async function generateManualInvoicePDF(
 
     const data = {
       brandName: 'Musafirin',
-      brandTagline: 'Atur Sendiri Perjalanan Ibadahmu',
+      brandTagline: 'We are musafirin of Baitullah',
       logoBase64,
+      saudiRiyalSVGBase64,
       invoiceNo: manualInvoice.number,
       invoiceDate: TemplateHelpers.formatDate(manualInvoice.issueDate),
       dueDate: TemplateHelpers.formatDate(manualInvoice.dueDate),
       status: (manualInvoice.status || 'DRAFT').toUpperCase(),
-      title: manualInvoice.title || '',
+      isPaidFull,
+      isPartial,
+      title: manualInvoice.title || 'Tagihan Layanan',
       client: {
         name: manualInvoice.clientName,
         email: manualInvoice.clientEmail || '',
@@ -1695,10 +1794,21 @@ export async function generateManualInvoicePDF(
       },
       currency,
       items,
-      subtotalFormatted: TemplateHelpers.formatCurrency(manualInvoice.amount),
-      grandTotalFormatted: TemplateHelpers.formatCurrency(manualInvoice.amount),
+      subtotal: TemplateHelpers.formatCurrency(subtotal),
+      grandTotal: TemplateHelpers.formatCurrency(subtotal),
+      paidAmount: TemplateHelpers.formatCurrency(paidAmount),
+      balanceDue: TemplateHelpers.formatCurrency(balanceDue),
+      hasExchangeRate,
+      grandTotalIdr,
+      balanceDueIdr,
+      exchangeRateValue,
+      paymentSchedule,
       notes: manualInvoice.notes || '',
-      bank: defaultBank
+      bank: defaultBank,
+      billingContact: {
+        email: 'finance@musafirin.co',
+        phone: '+966 539 101 812'
+      }
     };
 
     const html = template(data);
@@ -1729,4 +1839,139 @@ export async function generateManualInvoicePDF(
     await page.close();
   }
 }
+
+// Generate Manual Invoice Receipt PDF
+export async function generateManualInvoiceReceiptPDF(
+  receiptReq: any,
+  manualInvoiceReq: any,
+  clientReq?: any
+): Promise<Buffer> {
+  const browser = await launchBrowser();
+  const page = await browser.newPage();
+
+  try {
+    const { readFileSync } = await import('fs');
+    const Handlebars = (await import('handlebars')).default || (await import('handlebars'));
+
+    const templatePath = getTemplatePath('kwitansi.html');
+    const templateSource = readFileSync(templatePath, 'utf-8');
+    const template = Handlebars.compile(templateSource);
+
+    const logoBase64 = TemplateHelpers.getLogoBase64();
+    const saudiRiyalSVGBase64 = TemplateHelpers.getSaudiRiyalSVGBase64();
+
+    let signatureBase64 = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=';
+    try {
+      const signaturePath = getClientPublicPath('ttd.png');
+      signatureBase64 = readFileSync(signaturePath).toString('base64');
+    } catch (e) {
+      console.warn('Signature image not found, using transparent fallback');
+    }
+
+    const formatDate = (date: any) => {
+      if (!date) return '';
+      const d = typeof date === 'string' ? new Date(date) : date;
+      return d.toLocaleDateString('en-GB');
+    };
+
+    const receiptDateStr = formatDate(receiptReq.issueDate || receiptReq.createdAt || new Date());
+
+    const totalInvoiceNum = parseFloat(receiptReq.totalAmount || manualInvoiceReq?.amount || '0');
+    const currentPaymentNum = parseFloat(receiptReq.paidAmount || '0');
+    const balanceDueNum = parseFloat(receiptReq.balanceDue || '0');
+
+    let cumulativePaidNum = totalInvoiceNum - balanceDueNum;
+    if (isNaN(cumulativePaidNum) || cumulativePaidNum < currentPaymentNum) {
+      cumulativePaidNum = currentPaymentNum;
+    }
+
+    const terminNumber = receiptReq.meta?.termin || 1;
+    const isPaidFull = balanceDueNum <= 0;
+    let terminBadge = receiptReq.meta?.terminLabel || `Termin #${terminNumber}`;
+    if (!receiptReq.meta?.terminLabel) {
+      if (isPaidFull && terminNumber === 1) {
+        terminBadge = 'Pelunasan (Lunas Penuh)';
+      } else if (isPaidFull) {
+        terminBadge = `Termin #${terminNumber} (Pelunasan)`;
+      } else if (terminNumber === 1) {
+        terminBadge = 'Termin #1 (Uang Muka / DP)';
+      }
+    }
+
+    const invoiceTitle = manualInvoiceReq?.title || 'Invoice Manual';
+    const paymentTitle = `Pembayaran ${invoiceTitle}`;
+    const paymentDesc = receiptReq.meta?.description || manualInvoiceReq?.notes || '';
+    const refNumber = receiptReq.meta?.referenceNumber || '-';
+    const rawMethod = receiptReq.meta?.paymentMethod || receiptReq.meta?.method || 'bank_transfer';
+    const methodStr = rawMethod === 'deposit' ? 'Saldo Deposit' : rawMethod === 'cash' ? 'Tunai / Cash' : 'Transfer Bank';
+
+    const itemsSummary = Array.isArray(manualInvoiceReq?.items)
+      ? manualInvoiceReq.items.map((i: any) => `${i.description} (${i.quantity}x)`).join(', ')
+      : '';
+
+    const templateData = {
+      receiptNo: receiptReq.number || '',
+      receiptDate: receiptDateStr,
+      payer: {
+        name: receiptReq.payerName || manualInvoiceReq?.clientName || clientReq?.name || '',
+        email: receiptReq.payerEmail || manualInvoiceReq?.clientEmail || clientReq?.email || '-',
+        phone: receiptReq.payerPhone || manualInvoiceReq?.clientPhone || clientReq?.phone || '-',
+        address: receiptReq.payerAddress || manualInvoiceReq?.clientAddress || clientReq?.address || '-',
+      },
+      invoice: {
+        invoiceNo: manualInvoiceReq?.number || '-',
+        invoiceDate: manualInvoiceReq?.issueDate ? formatDate(manualInvoiceReq.issueDate) : '-',
+      },
+      hotelName: invoiceTitle,
+      hotelAddress: itemsSummary ? `Layanan: ${itemsSummary}` : '',
+      terminBadge,
+      isPaidFull,
+      payments: [
+        {
+          label: paymentTitle,
+          terminBadge,
+          date: receiptDateStr,
+          description: paymentDesc,
+          details: itemsSummary ? `Rincian: ${itemsSummary}` : '',
+          method: methodStr,
+          transactionId: refNumber,
+          amount: currentPaymentNum.toFixed(2),
+        }
+      ],
+      totals: {
+        invoiceAmount: totalInvoiceNum.toFixed(2),
+        currentPaymentAmount: currentPaymentNum.toFixed(2),
+        paidAmount: cumulativePaidNum.toFixed(2),
+        balanceDue: balanceDueNum.toFixed(2),
+      },
+      bank: {
+        bankName: 'Bank Syariah Indonesia',
+        bankCountry: 'Indonesia',
+        accountName: 'PT Thalhah Insan Rabbani',
+        accountNumberOrIBAN: '7254459741',
+      },
+      notes: receiptReq.notes || manualInvoiceReq?.notes || '',
+      brandName: 'Musafirin',
+      logoBase64,
+      saudiRiyalSVGBase64,
+      signatureBase64,
+    };
+
+    const renderedHtml = template(templateData);
+    await page.setContent(renderedHtml, { waitUntil: 'networkidle0' });
+    const pdf = await page.pdf({
+      format: 'A4',
+      printBackground: true,
+      margin: { top: '20px', right: '20px', bottom: '20px', left: '20px' }
+    });
+
+    return Buffer.from(pdf);
+  } catch (error) {
+    console.error('Error generating manual invoice receipt PDF:', error);
+    throw error;
+  } finally {
+    await page.close();
+  }
+}
+
 

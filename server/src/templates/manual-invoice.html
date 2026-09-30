@@ -2,39 +2,54 @@
 <html class="no-js" lang="id">
 <head>
   <meta charset="utf-8" />
+  <meta http-equiv="x-ua-compatible" content="ie=edge" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="author" content="Musafirin" />
   <title>Invoice {{invoiceNo}}</title>
   <style>
     /* ====== Base ====== */
-    body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;line-height:1.4;color:#374151;background:#f9fafb;font-size:12px;margin:0;padding:0}
-    .cs-container{max-width:800px;margin:20px auto;padding:24px;background:#fff;box-shadow:0 10px 15px -3px rgba(0,0,0,.1);border-radius:8px}
+    body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif,'Apple Color Emoji','Segoe UI Emoji','Segoe UI Symbol';line-height:1.35;color:#374151;background:#f9fafb;font-size:12px;margin:0;padding:0}
+    .cs-container{max-width:800px;margin:20px auto;padding:24px;background:#fff;box-shadow:0 10px 15px -3px rgba(0,0,0,.1),0 4px 6px -2px rgba(0,0,0,.05);border-radius:8px}
     .cs-flex{display:flex}.cs-justify-between{justify-content:space-between}.cs-align-start{align-items:flex-start}.cs-align-center{align-items:center}
     .cs-text-right{text-align:right}.cs-text-center{text-align:center}
-    .cs-mb-1{margin-bottom:3px}.cs-mb-2{margin-bottom:6px}.cs-mb-3{margin-bottom:9px}.cs-mb-4{margin-bottom:12px}.cs-mb-6{margin-bottom:16px}.cs-mb-8{margin-bottom:20px}.cs-mt-8{margin-top:20px}
+    .cs-mb-1{margin-bottom:3px}.cs-mb-2{margin-bottom:6px}.cs-mb-3{margin-bottom:10px}.cs-mb-4{margin-bottom:14px}.cs-mb-6{margin-bottom:18px}.cs-mt-1{margin-top:3px}.cs-mt-2{margin-top:6px}
     .cs-font-bold{font-weight:700}.cs-font-semibold{font-weight:600}
-    .cs-text-xs{font-size:10px}.cs-text-sm{font-size:11px}.cs-text-base{font-size:13px}.cs-text-lg{font-size:15px}.cs-text-xl{font-size:18px}.cs-text-2xl{font-size:20px}
+    .cs-text-xs{font-size:10.5px}.cs-text-sm{font-size:11.5px}.cs-text-base{font-size:13px}.cs-text-lg{font-size:15px}.cs-text-xl{font-size:18px}.cs-text-2xl{font-size:20px}
     .cs-text-gray-400{color:#9ca3af}.cs-text-gray-500{color:#6b7280}.cs-text-gray-600{color:#4b5563}.cs-text-gray-700{color:#374151}.cs-text-gray-800{color:#1f2937}
-    .cs-badge{display:inline-block;padding:3px 8px;border-radius:999px;background:#eef2ff;color:#3730a3;font-weight:700;font-size:10px;text-transform:uppercase;letter-spacing:0.5px}
+    .cs-badge{display:inline-block;padding:2px 8px;border-radius:999px;background:#eef2ff;color:#3730a3;font-weight:600;font-size:10.5px;text-transform:uppercase;letter-spacing:0.3px}
+    .cs-badge-success{background:#ecfdf5;color:#047857;border:1px solid #a7f3d0}
+    .cs-badge-warning{background:#fffbeb;color:#b45309;border:1px solid #fde68a}
+    .cs-badge-info{background:#f0f9ff;color:#0369a1;border:1px solid #bae6fd}
     .cs-divider{height:1px;background:#e5e7eb;margin:18px 0}
+    
+    /* Cards */
     .cs-card{background:#f9fafb;border:1px solid #e5e7eb;border-radius:6px;padding:12px}
     .cs-info-card{background:#f9fafb;border:1px solid #e5e7eb;border-radius:6px;padding:14px;margin-top:14px}
-    .cs-table{width:100%;border-collapse:collapse;margin-top:8px}
-    .cs-table th,.cs-table td{padding:9px 10px;text-align:left;vertical-align:top}
-    .cs-table th{font-weight:700;color:#111827;background:#f8fafc;border-top:1px solid #e2e8f0;border-bottom:1px solid #e2e8f0;font-size:11px}
-    .cs-table td{border-bottom:1px solid #f1f5f9;font-size:11px}
-    .cs-table tr:hover td{background:#fafafa}
-    .cs-num{text-align:right;white-space:nowrap}
-    .cs-total-table{width:100%;margin-top:10px;border-collapse:collapse}
-    .cs-total-table td{padding:5px 10px}
-    .cs-total-table .cs-label{text-align:right;color:#4b5563;font-size:12px}
-    .cs-total-table .cs-value{text-align:right;font-weight:600;font-size:12px;width:150px}
-    .cs-card-compact{padding:8px 12px}
+    .cs-card-compact{padding:8px 14px}
     .cs-mb-0{margin-bottom:0}
-    .cs-stack-tight > * + *{margin-top:3px}
+    .cs-stack-tight > * + *{margin-top:2px}
 
+    /* Tables */
+    .cs-table{width:100%;border-collapse:collapse}
+    .cs-table th,.cs-table td{padding:8px 10px;text-align:left;vertical-align:top}
+    .cs-table th{font-weight:700;color:#111827;border-bottom:1px solid #e5e7eb;background:#f8fafc;font-size:11px}
+    .cs-table td{border-bottom:1px solid #f1f5f9;font-size:11.5px}
+    .cs-num{text-align:right;white-space:nowrap}
+    .cs-muted{color:#6b7280}
+
+    .cs-total-table{width:100%;margin-top:8px;border-collapse:collapse}
+    .cs-total-table td{padding:4px 0}
+    .cs-total-table .cs-label{text-align:right;color:#374151;font-size:11.5px}
+    .cs-total-table .cs-value{text-align:right;font-weight:600;font-size:11.5px;padding-left:16px}
+
+    /* Currency Icons */
+    .cs-sar-icon{display:inline-block;width:12px;height:12px;vertical-align:middle;margin-right:2px}
+    .cs-sar-icon-lg{display:inline-block;width:15px;height:15px;vertical-align:middle;margin-right:3px}
+
+    /* Print */
     @media print{
       body{background:#fff;font-size:11px}
-      .cs-container{box-shadow:none;margin:0;padding:12px;max-width:100%}
+      .cs-container{box-shadow:none;margin:0;padding:16px;max-width:100%}
       .cs-no-print{display:none !important}
     }
   </style>
@@ -44,23 +59,24 @@
     <!-- Header -->
     <div class="cs-flex cs-justify-between cs-align-start cs-mb-6">
       <div>
-        <img src="data:image/png;base64,{{logoBase64}}" alt="{{brandName}} Logo" style="height: 54px; width: auto; margin-bottom: 6px; display: block;">
+        <img src="data:image/png;base64,{{logoBase64}}" alt="Musafirin Logo" style="height: 56px; width: auto; margin-bottom: 6px; display: block;">
         <p class="cs-text-xs cs-text-gray-500 cs-mb-0">{{brandTagline}}</p>
       </div>
       <div class="cs-text-right">
-        <div class="cs-badge">INVOICE</div>
-        <p class="cs-font-bold cs-text-xl cs-mb-1" style="color:#111827">#{{invoiceNo}}</p>
+        <div class="cs-badge cs-badge-info">INVOICE</div>
+        <p class="cs-font-bold cs-text-lg cs-mb-1" style="color:#111827">#{{invoiceNo}}</p>
         <p class="cs-text-xs cs-text-gray-500 cs-mb-1">Tanggal: <span class="cs-font-semibold cs-text-gray-700">{{invoiceDate}}</span></p>
-        <p class="cs-text-xs cs-text-gray-500 cs-mb-0">Jatuh Tempo: <span class="cs-font-semibold cs-text-gray-700">{{dueDate}}</span></p>
+        <p class="cs-text-xs cs-text-gray-600 cs-mb-0"><span class="cs-font-semibold">Jatuh Tempo:</span> {{dueDate}}</p>
       </div>
     </div>
 
-    <!-- Client & Invoice Details -->
-    <div class="cs-flex cs-justify-between cs-align-start cs-mb-4" style="gap: 16px;">
-      <div style="flex: 1;">
-        <p class="cs-font-bold cs-text-xs cs-text-gray-500 uppercase cs-mb-1" style="letter-spacing:0.5px">Ditujukan Kepada:</p>
+    <!-- Client & Invoice Info Cards -->
+    <div class="cs-flex cs-justify-between cs-align-start cs-mb-3" style="gap: 16px;">
+      <!-- Ditujukan Kepada -->
+      <div style="flex: 1.1;">
+        <p class="cs-font-semibold cs-text-gray-800 cs-mb-1">Ditujukan Kepada</p>
         <div class="cs-card cs-card-compact cs-stack-tight">
-          <p class="cs-font-bold cs-text-base cs-text-gray-800 cs-mb-0">{{client.name}}</p>
+          <p class="cs-font-bold cs-text-sm cs-text-gray-900 cs-mb-0">{{client.name}}</p>
           {{#if client.email}}
           <p class="cs-text-xs cs-text-gray-600 cs-mb-0">Email: {{client.email}}</p>
           {{/if}}
@@ -73,30 +89,43 @@
         </div>
       </div>
 
-      <div style="flex: 1;" class="cs-text-right">
-        <p class="cs-font-bold cs-text-xs cs-text-gray-500 uppercase cs-mb-1" style="letter-spacing:0.5px">Informasi Tagihan:</p>
+      <!-- Informasi Tagihan -->
+      <div style="flex: 0.9;" class="cs-text-right">
+        <p class="cs-font-semibold cs-text-gray-800 cs-mb-1">Informasi Tagihan</p>
         <div class="cs-card cs-card-compact cs-stack-tight">
-          {{#if title}}
-          <p class="cs-font-bold cs-text-sm cs-text-gray-800 cs-mb-0">{{title}}</p>
-          {{else}}
-          <p class="cs-font-bold cs-text-sm cs-text-gray-800 cs-mb-0">Tagihan Layanan</p>
-          {{/if}}
-          <p class="cs-text-xs cs-text-gray-600 cs-mb-0">Mata Uang: <span class="cs-font-bold text-zinc-800">{{currency}}</span></p>
-          <p class="cs-text-xs cs-text-gray-600 cs-mb-0">Status: <span class="cs-font-semibold uppercase">{{status}}</span></p>
+          <p class="cs-font-bold cs-text-sm cs-text-gray-900 cs-mb-0">{{title}}</p>
+          <div class="cs-flex cs-justify-between cs-align-center cs-mt-1">
+            <span class="cs-text-xs cs-text-gray-600">Status Pembayaran:</span>
+            {{#if isPaidFull}}
+            <span class="cs-badge cs-badge-success">LUNAS</span>
+            {{else if isPartial}}
+            <span class="cs-badge cs-badge-warning">SEBAGIAN</span>
+            {{else}}
+            <span class="cs-badge cs-badge-warning">MENUNGGU PEMBAYARAN</span>
+            {{/if}}
+          </div>
+          <div class="cs-flex cs-justify-between cs-align-center">
+            <span class="cs-text-xs cs-text-gray-600">Mata Uang:</span>
+            <span class="cs-font-semibold cs-text-gray-800">
+              <img src="data:image/svg+xml;base64,{{saudiRiyalSVGBase64}}" alt="SAR" class="cs-sar-icon-lg">
+              SAR
+            </span>
+          </div>
         </div>
       </div>
     </div>
 
-    <!-- Items Table -->
-    <div class="cs-mb-4">
+    <!-- Rincian Layanan Details Table -->
+    <div class="cs-mb-3">
+      <h2 class="cs-text-lg cs-font-bold cs-text-gray-800 cs-mb-2">Rincian Layanan & Biaya</h2>
       <table class="cs-table">
         <thead>
           <tr>
             <th style="width: 6%; text-align: center;">No.</th>
             <th style="width: 50%;">Deskripsi Layanan / Item</th>
-            <th style="width: 14%; text-align: center;">Jumlah (Qty)</th>
-            <th style="width: 15%;" class="cs-num">Harga ({{currency}})</th>
-            <th style="width: 15%;" class="cs-num">Total ({{currency}})</th>
+            <th style="width: 12%; text-align: center;">Qty</th>
+            <th style="width: 16%;" class="cs-num">Harga Satuan</th>
+            <th style="width: 16%;" class="cs-num">Total Harga</th>
           </tr>
         </thead>
         <tbody>
@@ -104,14 +133,22 @@
           <tr>
             <td style="text-align: center; color: #6b7280;">{{this.no}}</td>
             <td>
-              <div class="cs-font-semibold cs-text-gray-800">{{this.description}}</div>
+              <div class="cs-font-semibold cs-text-gray-900">{{this.description}}</div>
               {{#if this.notes}}
               <div class="cs-text-xs cs-text-gray-500 cs-mt-1">{{this.notes}}</div>
               {{/if}}
             </td>
             <td style="text-align: center;">{{this.quantity}}</td>
-            <td class="cs-num">{{this.unitPriceFormatted}}</td>
-            <td class="cs-num cs-font-semibold">{{this.subtotalFormatted}}</td>
+            <td class="cs-num">
+              <img src="data:image/svg+xml;base64,{{@root.saudiRiyalSVGBase64}}" alt="SAR" class="cs-sar-icon">
+              {{this.unitPriceFormatted}}
+            </td>
+            <td class="cs-num">
+              <div class="cs-font-semibold">
+                <img src="data:image/svg+xml;base64,{{@root.saudiRiyalSVGBase64}}" alt="SAR" class="cs-sar-icon">
+                {{this.subtotalFormatted}}
+              </div>
+            </td>
           </tr>
           {{/each}}
         </tbody>
@@ -120,43 +157,139 @@
       <!-- Totals Table -->
       <table class="cs-total-table">
         <tr>
-          <td class="cs-label">Subtotal</td>
-          <td class="cs-value">{{subtotalFormatted}}</td>
+          <td class="cs-label" style="width:80%">Subtotal</td>
+          <td class="cs-value" style="width:20%">
+            <img src="data:image/svg+xml;base64,{{saudiRiyalSVGBase64}}" alt="SAR" class="cs-sar-icon">
+            {{subtotal}}
+          </td>
         </tr>
-        <tr style="border-top: 1px solid #e2e8f0; border-bottom: 2px solid #0f172a;">
-          <td class="cs-label cs-font-bold cs-text-base" style="color: #0f172a;">Total Tagihan</td>
-          <td class="cs-value cs-font-bold cs-text-base" style="color: #0f172a;">{{grandTotalFormatted}}</td>
+        <tr>
+          <td class="cs-label" style="font-weight:700">Grand Total</td>
+          <td class="cs-value" style="font-weight:700">
+            <img src="data:image/svg+xml;base64,{{saudiRiyalSVGBase64}}" alt="SAR" class="cs-sar-icon">
+            {{grandTotal}}
+          </td>
         </tr>
+        {{#if hasExchangeRate}}
+        <tr>
+          <td class="cs-label" style="font-weight:700; color:#1a56db">Total (IDR)</td>
+          <td class="cs-value" style="font-weight:700; color:#1a56db">
+            {{grandTotalIdr}}
+          </td>
+        </tr>
+        {{/if}}
+        <tr>
+          <td class="cs-label">Terbayar</td>
+          <td class="cs-value">
+            <img src="data:image/svg+xml;base64,{{saudiRiyalSVGBase64}}" alt="SAR" class="cs-sar-icon">
+            {{paidAmount}}
+          </td>
+        </tr>
+        <tr>
+          <td class="cs-label">Sisa Tagihan</td>
+          <td class="cs-value">
+            <img src="data:image/svg+xml;base64,{{saudiRiyalSVGBase64}}" alt="SAR" class="cs-sar-icon">
+            {{balanceDue}}
+          </td>
+        </tr>
+        {{#if hasExchangeRate}}
+        <tr>
+          <td class="cs-label" style="color:#1a56db">Sisa Tagihan (IDR)</td>
+          <td class="cs-value" style="color:#1a56db">
+            {{balanceDueIdr}}
+          </td>
+        </tr>
+        {{/if}}
       </table>
+    </div>
+
+    <!-- Dinamis Termin & Jadwal Pembayaran -->
+    <div class="cs-info-card">
+      <h3 class="cs-text-lg cs-font-bold cs-text-gray-800 cs-mb-2">Jadwal & Riwayat Termin Pembayaran</h3>
+      <table class="cs-table" style="background:#fff;border:1px solid #e5e7eb;border-radius:6px;overflow:hidden">
+        <thead>
+          <tr>
+            <th style="width: 25%;">Termin / Pembayaran</th>
+            <th style="width: 17%;">Tanggal / Jatuh Tempo</th>
+            <th style="width: 20%;">Metode / Referensi</th>
+            <th style="width: 13%;" class="cs-num">Nominal (SAR)</th>
+            {{#if hasExchangeRate}}
+            <th style="width: 15%;" class="cs-num">Nominal (IDR)</th>
+            {{/if}}
+            <th style="width: 10%; text-align: center;">Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          {{#each paymentSchedule}}
+          <tr>
+            <td>
+              <div class="cs-font-semibold cs-text-gray-900">{{this.terminLabel}}</div>
+            </td>
+            <td>
+              <div class="cs-text-xs cs-text-gray-700">{{this.date}}</div>
+            </td>
+            <td>
+              <div class="cs-text-xs cs-font-semibold cs-text-gray-800">{{this.method}}</div>
+              {{#if this.reference}}
+              <div class="cs-text-xs cs-text-gray-500">Ref: {{this.reference}}</div>
+              {{/if}}
+            </td>
+            <td class="cs-num cs-font-semibold">
+              <img src="data:image/svg+xml;base64,{{@root.saudiRiyalSVGBase64}}" alt="SAR" class="cs-sar-icon">
+              {{this.amountFormatted}}
+            </td>
+            {{#if @root.hasExchangeRate}}
+            <td class="cs-num cs-font-semibold" style="color: #1a56db;">
+              {{this.amountIdr}}
+            </td>
+            {{/if}}
+            <td style="text-align: center;">
+              {{#if this.isPaid}}
+              <span class="cs-badge cs-badge-success">Lunas</span>
+              {{else}}
+              <span class="cs-badge cs-badge-warning">Menunggu</span>
+              {{/if}}
+            </td>
+          </tr>
+          {{/each}}
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Payment Instruction -->
+    <div class="cs-info-card">
+      <h3 class="cs-text-lg cs-font-bold cs-text-gray-800 cs-mb-2">Tata Cara Pembayaran</h3>
+      <div class="cs-text-gray-600 cs-text-sm">
+        <p class="cs-mb-1">1. Transfer ke: <span class="cs-font-semibold">{{bank.bankName}} ({{bank.bankCountry}})</span></p>
+        <p class="cs-mb-1">Atas Nama: <span class="cs-font-semibold">{{bank.accountName}}</span> | No. Rek: <span class="cs-font-semibold">{{bank.accountNumberOrIBAN}}</span></p>
+        <p class="cs-mb-1">2. Kirim konfirmasi pembayaran ke email <span class="cs-font-semibold">{{billingContact.email}}</span> atau WhatsApp <span class="cs-font-semibold">{{billingContact.phone}}</span> dengan nomor invoice <span class="cs-font-semibold">#{{invoiceNo}}</span>.</p>
+        <p class="cs-mb-1">3. Biaya transfer bank ditanggung oleh pembayar.</p>
+        <p class="cs-mb-0">Note: Kurs SAR update tiap hari mengikuti: https://www.bca.co.id/id/informasi/kurs. Bank Notes - Jual SAR{{#if hasExchangeRate}} (1 SAR = Rp {{exchangeRateValue}}){{/if}}</p>
+      </div>
     </div>
 
     {{#if notes}}
     <!-- Additional Notes -->
-    <div class="cs-card cs-card-compact cs-mb-4">
-      <p class="cs-font-bold cs-text-xs cs-text-gray-700 cs-mb-1">Catatan Tambahan:</p>
-      <p class="cs-text-xs cs-text-gray-600 cs-mb-0" style="white-space: pre-line;">{{notes}}</p>
+    <div class="cs-info-card">
+      <h3 class="cs-text-lg cs-font-bold cs-text-gray-800 cs-mb-2">Catatan Tambahan</h3>
+      <div class="cs-text-gray-600 cs-text-sm" style="white-space: pre-line;">{{notes}}</div>
     </div>
     {{/if}}
 
-    <!-- Payment Instructions -->
+    <!-- Terms & Conditions -->
     <div class="cs-info-card">
-      <h3 class="cs-font-bold cs-text-sm cs-text-gray-800 cs-mb-2">Tata Cara & Informasi Pembayaran</h3>
-      <div class="cs-text-gray-600 cs-text-xs">
-        <p class="cs-mb-1">1. Pembayaran dapat ditransfer ke rekening resmi kami:</p>
-        <p class="cs-mb-1" style="padding-left: 12px;">
-          Bank: <span class="cs-font-bold cs-text-gray-800">{{bank.bankName}} ({{bank.bankCountry}})</span><br/>
-          Atas Nama: <span class="cs-font-bold cs-text-gray-800">{{bank.accountName}}</span><br/>
-          Nomor Rekening / IBAN: <span class="cs-font-bold cs-text-gray-800">{{bank.accountNumberOrIBAN}}</span>
-        </p>
-        <p class="cs-mb-1">2. Mohon sertakan nomor invoice <strong>#{{invoiceNo}}</strong> pada berita transfer.</p>
-        <p class="cs-mb-0">3. Konfirmasikan bukti transfer ke WhatsApp <strong>+966 539 101 812</strong> atau email <strong>finance@musafirin.co</strong>.</p>
+      <h3 class="cs-text-lg cs-font-bold cs-text-gray-800 cs-mb-2">Ketentuan Pemesanan</h3>
+      <div class="cs-text-gray-600 cs-text-sm">
+        <p class="cs-mb-1">• Pemesanan <span class="cs-font-semibold">terkonfirmasi</span> setelah pembayaran uang muka / termin disetujui sesuai kesepakatan.</p>
+        <p class="cs-mb-1">• <span class="cs-font-semibold">Pembatalan & Perubahan:</span> Mengikuti ketentuan dan kebijakan layanan terkait yang telah disepakati.</p>
+        <p class="cs-mb-0">• Pelunasan wajib diselesaikan paling lambat pada tanggal jatuh tempo yang tertera pada invoice.</p>
       </div>
     </div>
 
     <!-- Footer -->
     <div class="cs-divider"></div>
     <div class="cs-flex cs-justify-between cs-align-center">
-      <p class="cs-text-xs cs-text-gray-500 cs-mb-0">Terima kasih atas kerja sama dan kepercayaan Anda bersama {{brandName}}.</p>
+      <p class="cs-text-sm cs-text-gray-500 cs-mb-0">Terima kasih atas kerja sama dan kepercayaan Anda bersama {{brandName}}.</p>
       <button class="cs-no-print" onclick="window.print()" style="border:1px solid #e5e7eb;background:#fff;border-radius:6px;padding:6px 12px;font-size:11px;font-weight:600;cursor:pointer">Cetak / Print</button>
     </div>
   </div>

@@ -78,6 +78,46 @@ export async function ensureTablesExist() {
       );
     `;
 
+    // 2b. manual_invoice_payments
+    await client`
+      CREATE TABLE IF NOT EXISTS manual_invoice_payments (
+        id SERIAL PRIMARY KEY,
+        manual_invoice_id INTEGER NOT NULL REFERENCES manual_invoices(id) ON DELETE CASCADE,
+        amount NUMERIC(10, 2) NOT NULL,
+        currency VARCHAR(3) NOT NULL DEFAULT 'SAR',
+        method VARCHAR(50),
+        reference_number VARCHAR(100),
+        paid_at TIMESTAMP NOT NULL DEFAULT NOW(),
+        status deposit_transaction_status NOT NULL DEFAULT 'completed',
+        meta JSONB,
+        created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+        updated_at TIMESTAMP NOT NULL DEFAULT NOW()
+      );
+    `;
+
+    // 2c. manual_invoice_receipts
+    await client`
+      CREATE TABLE IF NOT EXISTS manual_invoice_receipts (
+        id SERIAL PRIMARY KEY,
+        manual_invoice_id INTEGER NOT NULL REFERENCES manual_invoices(id) ON DELETE CASCADE,
+        payment_id INTEGER REFERENCES manual_invoice_payments(id) ON DELETE SET NULL,
+        number VARCHAR(50) NOT NULL UNIQUE,
+        total_amount NUMERIC(10, 2) NOT NULL,
+        paid_amount NUMERIC(10, 2) NOT NULL,
+        balance_due NUMERIC(10, 2) NOT NULL,
+        currency VARCHAR(3) NOT NULL DEFAULT 'SAR',
+        issue_date TIMESTAMP NOT NULL DEFAULT NOW(),
+        payer_name VARCHAR(255) NOT NULL,
+        payer_email VARCHAR(255),
+        payer_phone VARCHAR(50),
+        payer_address TEXT,
+        pdf_url TEXT,
+        meta JSONB,
+        created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+        updated_at TIMESTAMP NOT NULL DEFAULT NOW()
+      );
+    `;
+
     // 3. custom_la_expenses
     await client`
       CREATE TABLE IF NOT EXISTS custom_la_expenses (
