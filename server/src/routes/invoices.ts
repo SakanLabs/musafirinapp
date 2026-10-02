@@ -1638,6 +1638,7 @@ invoiceRoutes.post('/:bookingId/generate', requireAdminOrFinance, async (c) => {
 invoiceRoutes.get('/by-number/:number', async (c) => {
   try {
     const invoiceNumber = c.req.param('number');
+    const force = c.req.query('force') === 'true';
 
     if (!invoiceNumber) {
       return c.json({ error: 'Invoice number is required' }, 400);
@@ -1655,15 +1656,15 @@ invoiceRoutes.get('/by-number/:number', async (c) => {
       pdfUrl = invoice[0]!.pdfUrl;
       const fn = pdfUrl ? pdfUrl.split('/').slice(-2).join('/') : '';
       const exists = fn ? await checkFileExistsInMinio(fn) : false;
-      if (!exists) {
+      if (!exists || force) {
         const inv = invoice[0]!;
         const [order] = await db.select().from(serviceOrders).where(eq(serviceOrders.id, inv.serviceOrderId)).limit(1);
         const [client] = order?.clientId ? await db.select().from(clients).where(eq(clients.id, order.clientId)).limit(1) : [null];
         if (order) {
           const { generateServiceOrderInvoicePDF } = await import('../utils/pdf');
-          const pdfBuffer = await generateServiceOrderInvoicePDF(inv, order, client || {}, inv.dueDate || new Date());
+          const pdfBuffer = await generateServiceOrderInvoicePDF(inv, order, client || {}, inv.dueDate || new Date(), inv.issueDate);
           pdfUrl = await uploadToMinio(`service-order-invoices/${invoiceNumber}.pdf`, pdfBuffer, 'application/pdf');
-          await db.update(serviceOrderInvoices).set({ pdfUrl }).where(eq(serviceOrderInvoices.id, inv.id));
+          await db.update(serviceOrderInvoices).set({ pdfUrl, updatedAt: new Date() }).where(eq(serviceOrderInvoices.id, inv.id));
         }
       }
     } else if (invoiceNumber.startsWith('LA-INV-')) {

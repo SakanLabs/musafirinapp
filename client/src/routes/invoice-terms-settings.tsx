@@ -95,6 +95,13 @@ const CATEGORIES: CategoryMeta[] = [
     icon: UserCheck,
     desc: 'Invoice penugasan bimbingan ibadah dan muthowif',
     badgeText: 'muthowif-invoice.html'
+  },
+  {
+    id: 'visa',
+    label: 'Visa Umrah',
+    icon: FileText,
+    desc: 'Invoice pengurusan visa umrah & siskopatuh jamaah',
+    badgeText: 'invoice-visa.html'
   }
 ]
 

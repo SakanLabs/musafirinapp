@@ -364,8 +364,10 @@ serviceOrderRoutes.post('/:id/generate-invoice', requireAdminOrFinance, async (c
     try {
       // Create invoice object for PDF generation
       const invoiceForPDF = {
+        id: insertedInvoice!.id,
         number: invoiceNumber,
         amount: parseFloat(serviceOrder.totalPriceSAR),
+        paidAmount: 0,
         currency: 'SAR',
         status: 'draft' as const,
         pdfUrl: null,
@@ -582,6 +584,7 @@ serviceOrderRoutes.post('/:id/regenerate-invoice', requireAdminOrFinance, async 
     try {
       // Create invoice object for PDF generation
       const invoiceForPDF = {
+        id: targetInvoice.id,
         number: targetInvoice.number,
         amount: parseFloat(targetInvoice.amount),
         paidAmount: targetInvoice.paidAmount,
@@ -1043,8 +1046,10 @@ serviceOrderRoutes.post('/:id/pay', requireAdminOrFinance, async (c) => {
       // Background attempt to generate invoice PDF
       try {
         const invoiceForPDF = {
+          id: invoice.id,
           number: invoiceNumber,
           amount: parseFloat(order.totalPriceSAR),
+          paidAmount: invoice.paidAmount,
           currency: 'SAR',
           status: 'draft' as const,
           pdfUrl: null,

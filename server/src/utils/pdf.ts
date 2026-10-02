@@ -656,72 +656,184 @@ export async function generateServiceOrderInvoicePDF(
   customDueDate: Date | string,
   customInvoiceDate?: Date | string
 ): Promise<Buffer> {
-  const browser = await launchBrowser();
-
-  const page = await browser.newPage();
+  let page;
+  try {
+    const browser = await launchBrowser();
+    page = await browser.newPage();
+  } catch (err) {
+    console.warn('Browser crashed, restarting for service order invoice PDF...');
+    if (browserInstance) {
+      try { await browserInstance.close(); } catch (e) {}
+      browserInstance = null;
+    }
+    const browser = await launchBrowser();
+    page = await browser.newPage();
+  }
 
   try {
-    // Load template directly
-    const { readFileSync } = await import('fs');
-    const { join } = await import('path');
     const templatePath = getTemplatePath('invoice-visa.html');
-    let template = readFileSync(templatePath, 'utf-8');
+    const templateSource = fs.readFileSync(templatePath, 'utf8');
+    const template = Handlebars.compile(templateSource);
 
-    // Load logo base64
-    const logoPath = join(process.cwd(), '..', 'logomusafirin.png');
-    let logoBase64 = '';
-    try {
-      const logoBuffer = readFileSync(logoPath);
-      logoBase64 = logoBuffer.toString('base64');
-    } catch (error) {
-      console.warn('Logo file not found, using empty logo');
-    }
-
-    // Load Saudi Riyal SVG icon base64 using the correct implementation
+    // Get Logo base64 and Saudi Riyal SVG icon base64
+    const logoBase64 = TemplateHelpers.getLogoBase64();
     const saudiRiyalSVGBase64 = TemplateHelpers.getSaudiRiyalSVGBase64();
 
     // Calculate amounts
-    const totalAmount = parseFloat(serviceOrder.totalAmount || invoice.amount || '0');
+    const totalAmount = parseFloat(serviceOrder.totalAmount || serviceOrder.totalPriceSAR || invoice.amount || '0') || 0;
     const subtotal = totalAmount;
     const discount = 0;
     const grandTotal = subtotal - discount;
-    const paidAmount = parseFloat(invoice.paidAmount != null ? invoice.paidAmount.toString() : '0') || 0;
-    const balanceDue = Math.max(0, grandTotal - paidAmount);
 
-    // Create service order item
-    const totalPeople = serviceOrder.totalPeople || 1;
-    const serviceOrderItem = {
-      name: `Visa Umroh`,
-      pax: totalPeople,
-      unitPrice: totalAmount / totalPeople,
-      lineTotal: totalAmount
+    // Fetch payments associated with this invoice if available
+    let paidAmount = parseFloat(invoice.paidAmount != null ? invoice.paidAmount.toString() : '0') || 0;
+    let paymentsList: any[] = [];
+    if (invoice.id) {
+      try {
+        const { db } = await import('../db');
+        const { serviceOrderInvoicePayments } = await import('../db/schema');
+        const { eq, asc } = await import('drizzle-orm');
+        const pRows = await db
+          .select()
+          .from(serviceOrderInvoicePayments)
+          .where(eq(serviceOrderInvoicePayments.invoiceId, invoice.id))
+          .orderBy(asc(serviceOrderInvoicePayments.paidAt));
+        if (pRows && pRows.length > 0) {
+          paymentsList = pRows.map(p => ({
+            date: p.paidAt ? new Date(p.paidAt).toLocaleDateString('en-GB') : '-',
+            method: p.paymentMethod === 'deposit' ? 'Saldo Deposit' : 'Transfer Bank',
+            transactionId: p.referenceNumber || '-',
+            amount: parseFloat(p.amount || '0').toFixed(2),
+          }));
+          const totalFromPayments = pRows.reduce((sum, p) => sum + (parseFloat(p.amount || '0') || 0), 0);
+          if (totalFromPayments > paidAmount) {
+            paidAmount = totalFromPayments;
+          }
+        }
+      } catch (err) {
+        console.warn('Could not query payments for service order invoice PDF:', err);
+      }
+    }
+
+    const balanceDue = Math.max(0, grandTotal - paidAmount);
+    const isPaidFull = balanceDue <= 0.001 && grandTotal > 0;
+    const isPartial = paidAmount > 0 && !isPaidFull;
+
+    // Fetch live SAR to IDR rate
+    let hasExchangeRate = false;
+    let grandTotalIdr = '';
+    let balanceDueIdr = '';
+    let exchangeRateValue = '';
+    let exchangeRateSource = 'BCA Bank Notes - Jual';
+    try {
+      const { getCurrentSarToIdrRate, formatIdr } = await import('../services/ExchangeRateService');
+      const rateData = await getCurrentSarToIdrRate();
+      const rate = rateData.rate;
+      grandTotalIdr = formatIdr(Math.round(grandTotal * rate));
+      balanceDueIdr = formatIdr(Math.round(balanceDue * rate));
+      exchangeRateValue = new Intl.NumberFormat('id-ID').format(rate);
+      hasExchangeRate = true;
+    } catch (err) {
+      console.warn('Could not fetch exchange rate for visa invoice IDR display:', err);
+    }
+
+    // Dynamic terms configuration from InvoiceTermsService
+    let termsTitle = 'Ketentuan Visa';
+    let termsHtml = '';
+    let termsList: string[] = [];
+    try {
+      const { InvoiceTermsService } = await import('../services/InvoiceTermsService');
+      const termsConfig = await InvoiceTermsService.getByType('visa');
+      termsTitle = termsConfig.title || 'Ketentuan Visa';
+      termsHtml = termsConfig.termsHtml;
+      termsList = termsConfig.terms;
+    } catch (err) {
+      console.warn('Could not fetch dynamic invoice terms for visa:', err);
+    }
+
+    // Product name and items
+    const productType = serviceOrder.productType || 'visa_umrah';
+    let productName = 'Visa Umrah';
+    if (productType === 'siskopatuh') {
+      productName = 'Siskopatuh';
+    } else if (productType.includes('visa')) {
+      productName = 'Visa Umrah';
+    } else {
+      productName = String(productType);
+    }
+
+    const totalPeople = parseInt(serviceOrder.totalPeople) || 1;
+    const unitPrice = totalPeople > 0 ? (totalAmount / totalPeople) : totalAmount;
+
+    const items = [
+      {
+        no: 1,
+        name: productName,
+        description: serviceOrder.servicePackage ? `Paket: ${serviceOrder.servicePackage}` : 'Penerbitan Visa Umrah Elektronik',
+        notes: serviceOrder.groupLeaderName ? `Penanggung Jawab Grup: ${serviceOrder.groupLeaderName}` : '',
+        pax: totalPeople,
+        unitPrice: unitPrice.toFixed(2),
+        lineTotal: totalAmount.toFixed(2)
+      }
+    ];
+
+    // Format dates (DD/MM/YYYY)
+    const formatDate = (date: any) => {
+      if (!date) return '-';
+      const d = typeof date === 'string' ? new Date(date) : date;
+      return d.toLocaleDateString('en-GB');
     };
 
-    // Prepare data for template matching the expected structure
     const templateData = {
-      // Invoice header data
+      // Header
       invoiceNo: invoice.number,
-      invoiceDate: new Date(customInvoiceDate || new Date()).toLocaleDateString('en-GB'),
-      dueDate: new Date(customDueDate).toLocaleDateString('en-GB'),
+      invoiceDate: formatDate(customInvoiceDate || invoice.issueDate || invoice.createdAt || new Date()),
+      dueDate: formatDate(customDueDate || invoice.dueDate || new Date()),
 
-      // Client data
-      client: {
-        name: client.name || 'N/A',
-        email: client.email || 'N/A',
-        phone: client.phone || 'N/A'
+      // Provider
+      company: {
+        name: 'PT Thalhah Insan Rabbani',
+        brand: 'Musafirin of Baitullah',
+        email: 'billing@musafirin.com',
+        phone: '+6285218300910'
       },
 
-      // Items array
-      items: [serviceOrderItem],
+      // Client
+      client: {
+        name: client.name || 'Pelanggan',
+        company: client.company || '',
+        email: client.email || '-',
+        phone: client.phone || '-',
+        address: client.address || ''
+      },
 
-      // Financial data
+      // Service Order summary
+      orderNo: serviceOrder.number || '-',
+      productName,
+      groupLeaderName: serviceOrder.groupLeaderName || '',
+      totalPeople,
+      isPaidFull,
+      isPartial,
+
+      // Items & Totals
+      items,
       subtotal: subtotal.toFixed(2),
       discount: discount.toFixed(2),
       grandTotal: grandTotal.toFixed(2),
       paidAmount: paidAmount.toFixed(2),
       balanceDue: balanceDue.toFixed(2),
 
-      // Bank information
+      // Exchange Rate (SAR to IDR)
+      hasExchangeRate,
+      grandTotalIdr,
+      balanceDueIdr,
+      exchangeRateValue,
+      exchangeRateSource,
+
+      // Payments history
+      payments: paymentsList,
+
+      // Bank Details
       bank: {
         bankName: 'Bank Syariah Indonesia',
         bankCountry: 'Indonesia',
@@ -729,7 +841,7 @@ export async function generateServiceOrderInvoicePDF(
         accountNumberOrIBAN: '7254459741'
       },
 
-      // Contact information
+      // Contact info
       billingContact: {
         email: 'billing@musafirin.com',
         phone: '+6285218300910'
@@ -737,89 +849,35 @@ export async function generateServiceOrderInvoicePDF(
 
       // Brand
       brandName: 'Musafirin',
+      brandTagline: 'We are musafirin of Baitullah',
 
-      // Base64 encoded images
-      logoBase64: logoBase64,
-      saudiRiyalSVGBase64: saudiRiyalSVGBase64
+      // Dynamic Terms
+      termsTitle,
+      termsHtml,
+      termsList,
+
+      // Assets
+      logoBase64,
+      saudiRiyalSVGBase64
     };
 
-    // Replace template variables
-    let renderedHtml = template
-      // Invoice header
-      .replace(/\{\{invoiceNo\}\}/g, templateData.invoiceNo)
-      .replace(/\{\{invoiceDate\}\}/g, templateData.invoiceDate)
-      .replace(/\{\{dueDate\}\}/g, templateData.dueDate)
-
-      // Client information
-      .replace(/\{\{client\.name\}\}/g, templateData.client.name)
-      .replace(/\{\{client\.email\}\}/g, templateData.client.email)
-      .replace(/\{\{client\.phone\}\}/g, templateData.client.phone)
-
-      // Financial totals
-      .replace(/\{\{subtotal\}\}/g, templateData.subtotal)
-      .replace(/\{\{discount\}\}/g, templateData.discount)
-      .replace(/\{\{grandTotal\}\}/g, templateData.grandTotal)
-      .replace(/\{\{paidAmount\}\}/g, templateData.paidAmount)
-      .replace(/\{\{balanceDue\}\}/g, templateData.balanceDue)
-
-      // Bank information
-      .replace(/\{\{bank\.bankName\}\}/g, templateData.bank.bankName)
-      .replace(/\{\{bank\.bankCountry\}\}/g, templateData.bank.bankCountry)
-      .replace(/\{\{bank\.accountName\}\}/g, templateData.bank.accountName)
-      .replace(/\{\{bank\.accountNumberOrIBAN\}\}/g, templateData.bank.accountNumberOrIBAN)
-
-      // Contact information
-      .replace(/\{\{billingContact\.email\}\}/g, templateData.billingContact.email)
-      .replace(/\{\{billingContact\.phone\}\}/g, templateData.billingContact.phone)
-
-      // Brand
-      .replace(/\{\{brandName\}\}/g, templateData.brandName)
-
-      // Images
-      .replace(/\{\{logoBase64\}\}/g, templateData.logoBase64)
-      .replace(/\{\{saudiRiyalSVGBase64\}\}/g, templateData.saudiRiyalSVGBase64);
-
-    // Handle items loop
-    const itemsHtml = templateData.items.map(item => `
-      <tr>
-        <td>
-          <div class="cs-font-semibold">Visa Umroh</div>
-        </td>
-        <td class="cs-text-center">${item.pax}</td>
-        <td class="cs-num">
-          <img src="data:image/svg+xml;base64,${templateData.saudiRiyalSVGBase64}" class="cs-sar-icon" alt="SAR" />
-          ${item.unitPrice.toFixed(2)}
-        </td>
-        <td class="cs-num">
-          <div class="cs-font-semibold">
-            <img src="data:image/svg+xml;base64,${templateData.saudiRiyalSVGBase64}" class="cs-sar-icon" alt="SAR" />
-            ${item.lineTotal.toFixed(2)}
-          </div>
-        </td>
-      </tr>
-    `).join('');
-
-    // Replace the items loop
-    renderedHtml = renderedHtml.replace(/\{\{#each items\}\}[\s\S]*?\{\{\/each\}\}/g, itemsHtml);
-
+    const renderedHtml = template(templateData);
     await page.setContent(renderedHtml);
 
     const pdf = await page.pdf({
       format: 'A4',
       printBackground: true,
       margin: {
-        top: '20px',
-        right: '20px',
-        bottom: '20px',
-        left: '20px'
+        top: '8mm',
+        right: '10mm',
+        bottom: '8mm',
+        left: '10mm'
       }
     });
 
-    await page.close();
     return Buffer.from(pdf);
-  } catch (error) {
+  } finally {
     await page.close();
-    throw error;
   }
 }
 
@@ -850,14 +908,7 @@ export async function generateTransportationInvoicePDF(
     const template = Handlebars.compile(templateHtml);
 
     // Load logo base64
-    const logoPath = join(process.cwd(), '..', 'logomusafirin.png');
-    let logoBase64 = '';
-    try {
-      const logoBuffer = readFileSync(logoPath);
-      logoBase64 = logoBuffer.toString('base64');
-    } catch (error) {
-      console.warn('Logo file not found, using empty logo');
-    }
+    const logoBase64 = TemplateHelpers.getLogoBase64();
 
     // Load Saudi Riyal SVG icon base64
     const saudiRiyalSVGBase64 = TemplateHelpers.getSaudiRiyalSVGBase64();
@@ -977,14 +1028,7 @@ export async function generateTransportationReceiptPDF(
     const template = Handlebars.compile(templateHtml);
 
     // Load logo base64
-    const logoPath = join(process.cwd(), '..', 'logomusafirin.png');
-    let logoBase64 = '';
-    try {
-      const logoBuffer = readFileSync(logoPath);
-      logoBase64 = logoBuffer.toString('base64');
-    } catch (error) {
-      console.warn('Logo file not found, using empty logo');
-    }
+    const logoBase64 = TemplateHelpers.getLogoBase64();
 
     // Load Saudi Riyal SVG icon base64
     const saudiRiyalSVGBase64 = TemplateHelpers.getSaudiRiyalSVGBase64();
@@ -1127,14 +1171,7 @@ export async function generateTransportationVoucherPDF(
     }
     const template = Handlebars.compile(templateHtml);
 
-    const logoPath = join(process.cwd(), '..', 'logomusafirin.png');
-    let logoBase64 = '';
-    try {
-      const logoBuffer = readFileSync(logoPath);
-      logoBase64 = logoBuffer.toString('base64');
-    } catch (error) {
-      console.warn('Logo file not found');
-    }
+    const logoBase64 = TemplateHelpers.getLogoBase64();
 
     const formatDate = (date: any) => {
       if (!date) return '';

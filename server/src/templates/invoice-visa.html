@@ -7,108 +7,308 @@
   <meta name="author" content="Musafirin" />
   <title>Invoice Visa Umrah {{invoiceNo}}</title>
   <style>
-    /* ====== Base (selaras dengan invoice hotel) ====== */
-    body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif,'Apple Color Emoji','Segoe UI Emoji','Segoe UI Symbol';line-height:1.3;color:#374151;background:#f9fafb;font-size:12px}
-    .cs-container{max-width:800px;margin:20px auto;padding:20px;background:#fff;box-shadow:0 10px 15px -3px rgba(0,0,0,.1),0 4px 6px -2px rgba(0,0,0,.05);border-radius:8px}
-    .cs-flex{display:flex}.cs-justify-between{justify-content:space-between}.cs-align-start{align-items:flex-start}.cs-align-center{align-items:center}
-    .cs-text-right{text-align:right}.cs-text-center{text-align:center}
-    .cs-mb-1{margin-bottom:3px}.cs-mb-2{margin-bottom:6px}.cs-mb-4{margin-bottom:12px}.cs-mb-6{margin-bottom:16px}.cs-mb-8{margin-bottom:20px}.cs-mt-8{margin-top:20px}
-    .cs-font-bold{font-weight:700}.cs-font-semibold{font-weight:600}
-    .cs-text-sm{font-size:11px}.cs-text-lg{font-size:16px}.cs-text-xl{font-size:18px}.cs-text-2xl{font-size:20px}.cs-text-3xl{font-size:24px}
-    .cs-text-gray-500{color:#6b7280}.cs-text-gray-600{color:#4b5563}.cs-text-gray-800{color:#1f2937}
-    .cs-logo{font-size:24px;font-weight:800;color:#0ea5e9;letter-spacing:-.5px}
-    .cs-badge{display:inline-block;padding:2px 6px;border-radius:999px;background:#eef2ff;color:#3730a3;font-weight:600;font-size:11px}
-    .cs-divider{height:1px;background:#e5e7eb;margin:16px 0}
-    .cs-list{margin:0;padding:0;list-style:none}
-    .cs-list li{margin:0 0 4px 0}
-
-    .cs-card{background:#f9fafb;border:1px solid #e5e7eb;border-radius:6px;padding:12px}
-    .cs-info-card{background:#f9fafb;border:1px solid #e5e7eb;border-radius:6px;padding:16px;margin-top:16px}
-
-    .cs-table{width:100%;border-collapse:collapse}
-    .cs-table th,.cs-table td{padding:8px 0;text-align:left;vertical-align:top}
-    .cs-table th{font-weight:700;color:#111827;border-bottom:1px solid #e5e7eb}
-    .cs-table td{border-bottom:1px solid #f1f5f9}
-    .cs-num{text-align:right;white-space:nowrap}
-    .cs-muted{color:#6b7280}
-
-    .cs-total-table{width:100%;margin-top:8px;border-collapse:collapse}
-    .cs-total-table td{padding:4px 0}
-    .cs-total-table .cs-label{text-align:right;color:#374151}
-    .cs-total-table .cs-value{text-align:right;font-weight:600}
-
-    .cs-card-compact { padding: 0 16px; }
-    .cs-mb-0 { margin-bottom: 0; }
-    .cs-stack-tight > * + * { margin-top: 2px; }
-
+    /* ====== Base Design System (Selaras dengan seluruh invoice Musafirin) ====== */
+    @page {
+      size: A4;
+      margin: 0;
+    }
+    *, *::before, *::after { box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+      line-height: 1.32;
+      color: #374151;
+      background: #f9fafb;
+      font-size: 11px;
+      margin: 0;
+      padding: 0;
+    }
+    .cs-container {
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 14px 16px;
+      background: #fff;
+      box-shadow: 0 4px 6px -1px rgba(0,0,0,0.07), 0 2px 4px -1px rgba(0,0,0,0.04);
+      border-radius: 6px;
+    }
+    .cs-flex { display: flex; }
+    .cs-justify-between { justify-content: space-between; }
+    .cs-align-start { align-items: flex-start; }
+    .cs-align-center { align-items: center; }
+    .cs-text-right { text-align: right; }
+    .cs-text-center { text-align: center; }
+    
+    .cs-mb-0 { margin-bottom: 0 !important; }
+    .cs-mb-1 { margin-bottom: 2px; }
+    .cs-mb-2 { margin-bottom: 5px; }
+    .cs-mb-3 { margin-bottom: 8px; }
+    .cs-mb-4 { margin-bottom: 10px; }
+    .cs-mb-6 { margin-bottom: 14px; }
+    .cs-mt-1 { margin-top: 2px; }
+    .cs-mt-2 { margin-top: 4px; }
+    
+    .cs-font-bold { font-weight: 700; }
+    .cs-font-semibold { font-weight: 600; }
+    
+    .cs-text-xs { font-size: 10px; }
+    .cs-text-sm { font-size: 10.5px; }
+    .cs-text-base { font-size: 11.5px; }
+    .cs-text-lg { font-size: 14px; }
+    .cs-text-xl { font-size: 17px; }
+    
+    .cs-text-gray-400 { color: #9ca3af; }
+    .cs-text-gray-500 { color: #6b7280; }
+    .cs-text-gray-600 { color: #4b5563; }
+    .cs-text-gray-700 { color: #374151; }
+    .cs-text-gray-800 { color: #1f2937; }
+    .cs-text-gray-900 { color: #111827; }
+    
+    .cs-badge {
+      display: inline-block;
+      padding: 2.5px 7px;
+      border-radius: 999px;
+      font-weight: 700;
+      font-size: 9.5px;
+      letter-spacing: 0.5px;
+      text-transform: uppercase;
+    }
+    .cs-badge-info {
+      background: #eff6ff;
+      color: #1d4ed8;
+      border: 1px solid #bfdbfe;
+    }
+    .cs-badge-success {
+      background: #ecfdf5;
+      color: #047857;
+      border: 1px solid #a7f3d0;
+    }
+    .cs-badge-warning {
+      background: #fffbeb;
+      color: #b45309;
+      border: 1px solid #fde68a;
+    }
+    
+    .cs-divider {
+      height: 1px;
+      background: #e5e7eb;
+      margin: 10px 0;
+    }
+    
+    .cs-card {
+      background: #f9fafb;
+      border: 1px solid #e5e7eb;
+      border-radius: 6px;
+      padding: 8px 12px;
+    }
+    .cs-card-compact { padding: 6px 10px; }
+    .cs-stack-tight > * + * { margin-top: 1.5px; }
+    
+    .cs-info-card {
+      background: #f9fafb;
+      border: 1px solid #e5e7eb;
+      border-radius: 6px;
+      padding: 8px 12px;
+      margin-top: 8px;
+    }
+    
+    /* Table styles */
+    .cs-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 3px;
+    }
+    .cs-table th, .cs-table td {
+      padding: 5px 8px;
+      text-align: left;
+      vertical-align: top;
+    }
+    .cs-table th {
+      font-weight: 700;
+      font-size: 10.5px;
+      color: #111827;
+      background: #f8fafc;
+      border-top: 1px solid #e2e8f0;
+      border-bottom: 1px solid #cbd5e1;
+    }
+    .cs-table td {
+      border-bottom: 1px solid #f1f5f9;
+      font-size: 11px;
+    }
+    .cs-num {
+      text-align: right;
+      white-space: nowrap;
+    }
+    
+    /* Totals table */
+    .cs-total-table {
+      width: 100%;
+      margin-top: 4px;
+      border-collapse: collapse;
+    }
+    .cs-total-table td {
+      padding: 3px 8px;
+      font-size: 11px;
+    }
+    .cs-total-table .cs-label {
+      text-align: right;
+      color: #374151;
+    }
+    .cs-total-table .cs-value {
+      text-align: right;
+      font-weight: 600;
+      white-space: nowrap;
+    }
+    
     /* SAR Icon */
-    .cs-sar-icon{display:inline-block;width:12px;height:12px;vertical-align:middle;margin-right:2px}
-    .cs-sar-icon-lg{display:inline-block;width:16px;height:16px;vertical-align:middle;margin-right:3px}
-
-    @media print{
-      body{background:#fff;font-size:11px}
-      .cs-container{box-shadow:none;margin:0;padding:16px}
-      .cs-no-print{display:none !important}
+    .cs-sar-icon {
+      display: inline-block;
+      width: 11px;
+      height: 11px;
+      vertical-align: middle;
+      margin-right: 2px;
+      position: relative;
+      top: -1px;
+    }
+    .cs-sar-icon-lg {
+      display: inline-block;
+      width: 13px;
+      height: 13px;
+      vertical-align: middle;
+      margin-right: 3px;
+      position: relative;
+      top: -1px;
+    }
+    
+    @media print {
+      body {
+        background: #fff;
+        font-size: 10.5px;
+      }
+      .cs-container {
+        box-shadow: none;
+        margin: 0;
+        padding: 0;
+        max-width: 100%;
+      }
+      .cs-no-print {
+        display: none !important;
+      }
     }
   </style>
 </head>
 <body>
   <div class="cs-container">
-    <!-- Header -->
-    <div class="cs-flex cs-justify-between cs-align-start cs-mb-6">
+    <!-- Header: Logo & Invoice Identifiers -->
+    <div class="cs-flex cs-justify-between cs-align-start cs-mb-4">
       <div>
-        <img src="data:image/png;base64,{{logoBase64}}" alt="Musafirin Logo" style="height:60px;width:auto;margin-bottom:8px;">
-        <!-- <p class="cs-text-sm cs-text-gray-500">Visa Umrah Invoice</p> -->
+        <img src="data:image/png;base64,{{logoBase64}}" alt="Musafirin Logo" style="height: 54px; width: auto; margin-bottom: 4px; display: block;">
+        <p class="cs-text-xs cs-text-gray-500 cs-mb-0">{{brandTagline}}</p>
       </div>
       <div class="cs-text-right">
-        <div class="cs-badge">Invoice</div>
-        <p class="cs-font-semibold cs-text-lg">#{{invoiceNo}}</p>
-        <p class="cs-text-gray-500">{{invoiceDate}}</p>
-        <p class="cs-text-gray-600"><span class="cs-font-semibold">Jatuh Tempo:</span> {{dueDate}}</p>
+        <div class="cs-badge cs-badge-info">INVOICE</div>
+        <p class="cs-font-bold cs-text-lg cs-mb-1 cs-mt-1" style="color: #111827;">#{{invoiceNo}}</p>
+        <p class="cs-text-xs cs-text-gray-500 cs-mb-1">Tanggal: <span class="cs-font-semibold cs-text-gray-700">{{invoiceDate}}</span></p>
+        <p class="cs-text-xs cs-text-gray-600 cs-mb-0"><span class="cs-font-semibold">Jatuh Tempo:</span> {{dueDate}}</p>
       </div>
     </div>
 
-    <!-- Provider & Client -->
-    <div class="cs-flex cs-justify-between cs-align-start cs-mb-2">
-
-      <!-- Client -->
-      <div style="width:44%" class="cs-text-right">
-        <p class="cs-font-semibold cs-text-gray-800 cs-mb-1">Pemesan</p>
+    <!-- Provider & Client Cards -->
+    <div class="cs-flex cs-justify-between cs-align-start cs-mb-3" style="gap: 14px;">
+      <!-- Diterbitkan Oleh (Provider) -->
+      <div style="flex: 1;">
+        <p class="cs-font-semibold cs-text-gray-800 cs-text-xs cs-mb-1">Diterbitkan Oleh</p>
         <div class="cs-card cs-card-compact cs-stack-tight">
-          <p class="cs-font-semibold cs-mb-0">{{client.name}}</p>
-          <p class="cs-text-sm cs-text-gray-600">{{client.email}} <span class="cs-text-gray-500"> | </span> {{client.phone}}</p>
+          <p class="cs-font-bold cs-text-sm cs-text-gray-900 cs-mb-0">{{company.name}}</p>
+          <p class="cs-text-xs cs-text-gray-600 cs-mb-0">{{company.brand}}</p>
+          <p class="cs-text-xs cs-text-gray-600 cs-mb-0">Email: {{billingContact.email}}</p>
+          <p class="cs-text-xs cs-text-gray-600 cs-mb-0">WhatsApp / Telp: {{billingContact.phone}}</p>
+        </div>
+      </div>
+
+      <!-- Ditujukan Kepada / Pemesan (Client) -->
+      <div style="flex: 1;" class="cs-text-right">
+        <p class="cs-font-semibold cs-text-gray-800 cs-text-xs cs-mb-1">Ditujukan Kepada</p>
+        <div class="cs-card cs-card-compact cs-stack-tight">
+          <p class="cs-font-bold cs-text-sm cs-text-gray-900 cs-mb-0">{{client.name}}</p>
+          {{#if client.company}}
+          <p class="cs-text-xs cs-text-gray-600 cs-mb-0">{{client.company}}</p>
+          {{/if}}
+          <p class="cs-text-xs cs-text-gray-600 cs-mb-0">{{client.email}}{{#if client.phone}} <span class="cs-text-gray-400">|</span> {{client.phone}}{{/if}}</p>
+          {{#if client.address}}
+          <p class="cs-text-xs cs-text-gray-600 cs-mb-0">{{client.address}}</p>
+          {{/if}}
         </div>
       </div>
     </div>
 
-    <!-- Items (Intinya: Item & Jumlah Orang) -->
-    <div class="cs-mb-2">
-      <h2 class="cs-text-lg cs-font-bold cs-text-gray-800 cs-mb-2">Rincian Biaya Visa</h2>
+    <!-- Service Order Summary Info Bar -->
+    <div class="cs-card cs-flex cs-justify-between cs-align-center cs-mb-3" style="flex-wrap: wrap; gap: 8px; background: #f8fafc; border: 1px solid #e2e8f0; padding: 7px 12px;">
+      <div>
+        <p class="cs-text-xs cs-text-gray-500 cs-mb-0">Nomor Service Order</p>
+        <p class="cs-font-semibold cs-text-gray-900 cs-mb-0">{{orderNo}}</p>
+      </div>
+      <div>
+        <p class="cs-text-xs cs-text-gray-500 cs-mb-0">Layanan</p>
+        <p class="cs-font-semibold cs-text-gray-900 cs-mb-0">{{productName}}</p>
+      </div>
+      {{#if groupLeaderName}}
+      <div>
+        <p class="cs-text-xs cs-text-gray-500 cs-mb-0">Penanggung Jawab Grup</p>
+        <p class="cs-font-semibold cs-text-gray-900 cs-mb-0">{{groupLeaderName}}</p>
+      </div>
+      {{/if}}
+      <div>
+        <p class="cs-text-xs cs-text-gray-500 cs-mb-0">Jumlah Jamaah</p>
+        <p class="cs-font-semibold cs-text-gray-900 cs-mb-0">{{totalPeople}} Pax</p>
+      </div>
+      <div>
+        <p class="cs-text-xs cs-text-gray-500 cs-mb-0">Status Tagihan</p>
+        <div class="cs-mt-1">
+          {{#if isPaidFull}}
+          <span class="cs-badge cs-badge-success">LUNAS</span>
+          {{else if isPartial}}
+          <span class="cs-badge cs-badge-warning">SEBAGIAN</span>
+          {{else}}
+          <span class="cs-badge cs-badge-info">MENUNGGU PEMBAYARAN</span>
+          {{/if}}
+        </div>
+      </div>
+    </div>
+
+    <!-- Rincian Biaya Visa Table -->
+    <div class="cs-mb-3">
+      <h2 class="cs-text-base cs-font-bold cs-text-gray-900 cs-mb-1">Rincian Biaya Visa</h2>
       <table class="cs-table">
         <thead>
           <tr>
-            <th style="width:50%">Item</th>
-            <th style="width:15%" class="cs-text-center">Pax</th>
-            <th style="width:17.5%" class="cs-num">Harga/Pax</th>
-            <th style="width:17.5%" class="cs-num">Total</th>
+            <th style="width: 6%; text-align: center;">No.</th>
+            <th style="width: 48%;">Item / Deskripsi Layanan</th>
+            <th style="width: 14%; text-align: center;">Pax</th>
+            <th style="width: 16%;" class="cs-num">Harga / Pax</th>
+            <th style="width: 16%;" class="cs-num">Total</th>
           </tr>
         </thead>
         <tbody>
           {{#each items}}
-          <!-- item: { name, pax, unitPrice, lineTotal } -->
           <tr>
+            <td style="text-align: center; color: #6b7280;">{{this.no}}</td>
             <td>
-              <div class="cs-font-semibold">Visa Umroh</div>
+              <div class="cs-font-semibold cs-text-gray-900">{{this.name}}</div>
+              {{#if this.description}}
+              <div class="cs-text-xs cs-text-gray-500 cs-mt-1">{{this.description}}</div>
+              {{/if}}
+              {{#if this.notes}}
+              <div class="cs-text-xs cs-text-gray-500 cs-mt-1">{{this.notes}}</div>
+              {{/if}}
             </td>
-            <td class="cs-text-center">{{pax}}</td>
+            <td class="cs-text-center">{{this.pax}} Pax</td>
             <td class="cs-num">
               <img src="data:image/svg+xml;base64,{{@root.saudiRiyalSVGBase64}}" alt="SAR" class="cs-sar-icon">
-              {{unitPrice}}
+              {{this.unitPrice}}
             </td>
             <td class="cs-num">
               <div class="cs-font-semibold">
                 <img src="data:image/svg+xml;base64,{{@root.saudiRiyalSVGBase64}}" alt="SAR" class="cs-sar-icon">
-                {{lineTotal}}
+                {{this.lineTotal}}
               </div>
             </td>
           </tr>
@@ -116,24 +316,24 @@
         </tbody>
       </table>
 
-      <!-- Totals -->
+      <!-- Totals Table -->
       <table class="cs-total-table">
         <tr>
-          <td class="cs-label" style="width:84%">Subtotal</td>
-          <td class="cs-value" style="width:16%">
+          <td class="cs-label" style="width: 80%;">Subtotal</td>
+          <td class="cs-value" style="width: 20%;">
             <img src="data:image/svg+xml;base64,{{saudiRiyalSVGBase64}}" alt="SAR" class="cs-sar-icon"> {{subtotal}}
           </td>
         </tr>
         <tr>
-          <td class="cs-label" style="font-weight:700">Grand Total</td>
-          <td class="cs-value" style="font-weight:700">
+          <td class="cs-label" style="font-weight: 700; color: #111827;">Grand Total</td>
+          <td class="cs-value" style="font-weight: 700; color: #111827;">
             <img src="data:image/svg+xml;base64,{{saudiRiyalSVGBase64}}" alt="SAR" class="cs-sar-icon"> {{grandTotal}}
           </td>
         </tr>
         {{#if hasExchangeRate}}
         <tr>
-          <td class="cs-label" style="font-weight:700; color:#1a56db">Total (IDR)</td>
-          <td class="cs-value" style="font-weight:700; color:#1a56db">
+          <td class="cs-label" style="font-weight: 700; color: #1a56db;">Total (IDR)</td>
+          <td class="cs-value" style="font-weight: 700; color: #1a56db;">
             {{grandTotalIdr}}
           </td>
         </tr>
@@ -145,50 +345,89 @@
           </td>
         </tr>
         <tr>
-          <td class="cs-label">Sisa Tagihan</td>
-          <td class="cs-value">
+          <td class="cs-label" style="font-weight: 700;">Sisa Tagihan</td>
+          <td class="cs-value" style="font-weight: 700;">
             <img src="data:image/svg+xml;base64,{{saudiRiyalSVGBase64}}" alt="SAR" class="cs-sar-icon"> {{balanceDue}}
           </td>
         </tr>
         {{#if hasExchangeRate}}
         <tr>
-          <td class="cs-label" style="color:#1a56db">Sisa Tagihan (IDR)</td>
-          <td class="cs-value" style="color:#1a56db">
+          <td class="cs-label" style="color: #1a56db; font-weight: 700;">Sisa Tagihan (IDR)</td>
+          <td class="cs-value" style="color: #1a56db; font-weight: 700;">
             {{balanceDueIdr}}
           </td>
         </tr>
+        {{#if exchangeRateValue}}
+        <tr>
+          <td colspan="2" style="text-align: right; font-size: 10px; color: #6b7280; padding-top: 2px;">
+            *Kurs referensi SAR ke IDR: 1 SAR = Rp {{exchangeRateValue}} ({{exchangeRateSource}})
+          </td>
+        </tr>
+        {{/if}}
         {{/if}}
       </table>
     </div>
 
-    <!-- Instruksi Pembayaran -->
+    <!-- Riwayat Pembayaran (Opsional jika sudah ada pembayaran) -->
+    {{#if payments.length}}
+    <div class="cs-mb-3">
+      <h3 class="cs-text-sm cs-font-bold cs-text-gray-800 cs-mb-1">Riwayat Pembayaran</h3>
+      <table class="cs-table">
+        <thead>
+          <tr>
+            <th style="width: 25%;">Tanggal</th>
+            <th style="width: 25%;">Metode</th>
+            <th style="width: 25%;">No. Referensi</th>
+            <th style="width: 25%;" class="cs-num">Jumlah Terbayar</th>
+          </tr>
+        </thead>
+        <tbody>
+          {{#each payments}}
+          <tr>
+            <td class="cs-text-gray-600">{{this.date}}</td>
+            <td class="cs-font-semibold">{{this.method}}</td>
+            <td class="cs-text-gray-600">{{this.transactionId}}</td>
+            <td class="cs-num">
+              <img src="data:image/svg+xml;base64,{{@root.saudiRiyalSVGBase64}}" alt="SAR" class="cs-sar-icon">
+              {{this.amount}}
+            </td>
+          </tr>
+          {{/each}}
+        </tbody>
+      </table>
+    </div>
+    {{/if}}
+
+    <!-- Tata Cara Pembayaran -->
     <div class="cs-info-card">
-      <h3 class="cs-text-lg cs-font-bold cs-text-gray-800 cs-mb-2">Tata Cara Pembayaran</h3>
-      <div class="cs-text-gray-600 cs-text-sm">
-        <p class="cs-mb-1">1. Transfer ke: <span class="cs-font-semibold">{{bank.bankName}} ({{bank.bankCountry}})</span></p>
-        <p class="cs-mb-1">Atas Nama: <span class="cs-font-semibold">{{bank.accountName}}</span> | No. Rek/IBAN: <span class="cs-font-semibold">{{bank.accountNumberOrIBAN}}</span></p>
-        <p class="cs-mb-1">2. Kirim bukti ke {{billingContact.email}} / WA {{billingContact.phone}} dengan nomor invoice.</p>
-        <p>3. Biaya bank ditanggung pembayar. Kurs SAR harian mengikuti Bank Notes - Jual (contoh referensi: BCA).</p>
+      <h3 class="cs-text-sm cs-font-bold cs-text-gray-800 cs-mb-1">Tata Cara Pembayaran</h3>
+      <div class="cs-text-gray-600 cs-text-xs">
+        <p class="cs-mb-1">1. Transfer ke: <span class="cs-font-semibold cs-text-gray-800">{{bank.bankName}} ({{bank.bankCountry}})</span></p>
+        <p class="cs-mb-1">Atas Nama: <span class="cs-font-semibold cs-text-gray-800">{{bank.accountName}}</span> | No. Rek: <span class="cs-font-semibold cs-text-gray-800">{{bank.accountNumberOrIBAN}}</span></p>
+        <p class="cs-mb-1">2. Kirim bukti transfer ke <span class="cs-font-semibold">{{billingContact.email}}</span> atau WhatsApp <span class="cs-font-semibold">{{billingContact.phone}}</span> dengan nomor invoice <span class="cs-font-semibold">#{{invoiceNo}}</span>.</p>
+        <p class="cs-mb-0">3. Biaya transfer bank ditanggung pembayar. Kurs SAR harian mengikuti Bank Notes - Jual (referensi: BCA).</p>
       </div>
     </div>
 
-    <!-- Syarat & Ketentuan Visa -->
+    <!-- Syarat & Ketentuan Visa (Dinamis dari Pengaturan Syarat Invoice) -->
     <div class="cs-info-card">
-      <h3 class="cs-text-lg cs-font-bold cs-text-gray-800 cs-mb-2">Ketentuan Visa</h3>
-      <div class="cs-text-gray-600 cs-text-sm">
-        <p class="cs-mb-1">• Pemesanan <span class="cs-font-semibold">terkonfirmasi</span> setelah pembayaran sesuai jadwal.</p>
-        <p class="cs-mb-1">• <span class="cs-font-semibold">Non-Refundable:</span> Biaya visa/services yang sudah diproses tidak dapat dibatalkan atau dikembalikan.</p>
-        <p class="cs-mb-1">• Estimasi terbit menyesuaikan antrian & kebijakan otoritas; keterlambatan di luar kendali kami.</p>
-        <p class="cs-mb-1">• Pastikan paspor & dokumen sesuai persyaratan; kesalahan data menjadi tanggung jawab pemohon.</p>
-        <p>• Perubahan kebijakan/peraturan dapat terjadi tanpa pemberitahuan sebelumnya.</p>
+      <h3 class="cs-text-sm cs-font-bold cs-text-gray-800 cs-mb-1">{{termsTitle}}</h3>
+      <div class="cs-text-gray-600 cs-text-xs">
+        {{#if termsHtml}}
+          {{{termsHtml}}}
+        {{else}}
+          {{#each termsList}}
+            <p class="cs-mb-1">• {{this}}</p>
+          {{/each}}
+        {{/if}}
       </div>
     </div>
 
     <!-- Footer -->
     <div class="cs-divider"></div>
     <div class="cs-flex cs-justify-between cs-align-center">
-      <p class="cs-text-sm cs-text-gray-500">Terima kasih telah mempercayakan pengurusan visa kepada {{brandName}}.</p>
-      <button class="cs-no-print" onclick="window.print()" style="border:1px solid #e5e7eb;background:#fff;border-radius:6px;padding:6px 10px;cursor:pointer">Cetak</button>
+      <p class="cs-text-xs cs-text-gray-500 cs-mb-0">Terima kasih telah mempercayakan pengurusan visa kepada {{brandName}}.</p>
+      <button class="cs-no-print" onclick="window.print()" style="border: 1px solid #d1d5db; background: #fff; border-radius: 4px; padding: 4px 8px; font-size: 11px; cursor: pointer; color: #374151;">Cetak / Simpan PDF</button>
     </div>
   </div>
 </body>

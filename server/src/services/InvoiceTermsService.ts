@@ -74,6 +74,20 @@ export const DEFAULT_INVOICE_TERMS: Record<string, DefaultInvoiceTermConfig> = {
       'Perubahan jadwal mohon dikonfirmasikan paling lambat 24 jam sebelum waktu pelaksanaan kegiatan.',
       'Biaya akomodasi atau transportasi tambahan di luar paket menjadi tanggungan pihak pemesan.'
     ]
+  },
+  visa: {
+    type: 'visa',
+    name: 'Invoice Visa Umrah',
+    title: 'Ketentuan Visa',
+    checkInTime: '16:00',
+    checkOutTime: '12:00',
+    terms: [
+      'Pemesanan terkonfirmasi setelah pembayaran sesuai jadwal.',
+      'Non-Refundable: Biaya visa/services yang sudah diproses tidak dapat dibatalkan atau dikembalikan.',
+      'Estimasi terbit menyesuaikan antrian & kebijakan otoritas; keterlambatan di luar kendali kami.',
+      'Pastikan paspor & dokumen sesuai persyaratan; kesalahan data menjadi tanggung jawab pemohon.',
+      'Perubahan kebijakan/peraturan dapat terjadi tanpa pemberitahuan sebelumnya.'
+    ]
   }
 };
 
