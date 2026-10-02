@@ -441,10 +441,44 @@ export async function ensureTablesExist() {
               "Perubahan jadwal mohon dikonfirmasikan paling lambat 24 jam sebelum waktu pelaksanaan kegiatan.",
               "Biaya akomodasi atau transportasi tambahan di luar paket menjadi tanggungan pihak pemesan."
             ])}::jsonb
+          ),
+          (
+            'visa',
+            'Invoice Visa Umrah',
+            'Ketentuan Visa',
+            '16:00',
+            '12:00',
+            ${JSON.stringify([
+              "Pemesanan terkonfirmasi setelah pembayaran sesuai jadwal.",
+              "Non-Refundable: Biaya visa/services yang sudah diproses tidak dapat dibatalkan atau dikembalikan.",
+              "Estimasi terbit menyesuaikan antrian & kebijakan otoritas; keterlambatan di luar kendali kami.",
+              "Pastikan paspor & dokumen sesuai persyaratan; kesalahan data menjadi tanggung jawab pemohon.",
+              "Perubahan kebijakan/peraturan dapat terjadi tanpa pemberitahuan sebelumnya."
+            ])}::jsonb
           )
         ON CONFLICT (type) DO NOTHING;
       `;
       console.log('[DB Bootstrap] Seeded default invoice terms and conditions settings');
+    } else {
+      // Ensure visa exists if table was already populated
+      await client`
+        INSERT INTO invoice_terms_settings (type, name, title, check_in_time, check_out_time, terms)
+        VALUES (
+          'visa',
+          'Invoice Visa Umrah',
+          'Ketentuan Visa',
+          '16:00',
+          '12:00',
+          ${JSON.stringify([
+            "Pemesanan terkonfirmasi setelah pembayaran sesuai jadwal.",
+            "Non-Refundable: Biaya visa/services yang sudah diproses tidak dapat dibatalkan atau dikembalikan.",
+            "Estimasi terbit menyesuaikan antrian & kebijakan otoritas; keterlambatan di luar kendali kami.",
+            "Pastikan paspor & dokumen sesuai persyaratan; kesalahan data menjadi tanggung jawab pemohon.",
+            "Perubahan kebijakan/peraturan dapat terjadi tanpa pemberitahuan sebelumnya."
+          ])}::jsonb
+        )
+        ON CONFLICT (type) DO NOTHING;
+      `;
     }
 
     console.log('[DB Bootstrap] Schema check & auto-sync verified successfully');
