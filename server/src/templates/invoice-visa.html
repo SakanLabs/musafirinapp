@@ -158,24 +158,10 @@
       white-space: nowrap;
     }
     
-    /* SAR Icon */
-    .cs-sar-icon {
-      display: inline-block;
-      width: 11px;
-      height: 11px;
-      vertical-align: middle;
+    /* Currency symbol */
+    .cs-currency {
+      font-weight: 600;
       margin-right: 2px;
-      position: relative;
-      top: -1px;
-    }
-    .cs-sar-icon-lg {
-      display: inline-block;
-      width: 13px;
-      height: 13px;
-      vertical-align: middle;
-      margin-right: 3px;
-      position: relative;
-      top: -1px;
     }
     
     @media print {
@@ -302,13 +288,11 @@
             </td>
             <td class="cs-text-center">{{this.pax}} Pax</td>
             <td class="cs-num">
-              <img src="data:image/svg+xml;base64,{{@root.saudiRiyalSVGBase64}}" alt="SAR" class="cs-sar-icon">
-              {{this.unitPrice}}
+              <span class="cs-currency">$</span>{{this.unitPrice}}
             </td>
             <td class="cs-num">
               <div class="cs-font-semibold">
-                <img src="data:image/svg+xml;base64,{{@root.saudiRiyalSVGBase64}}" alt="SAR" class="cs-sar-icon">
-                {{this.lineTotal}}
+                <span class="cs-currency">$</span>{{this.lineTotal}}
               </div>
             </td>
           </tr>
@@ -321,13 +305,13 @@
         <tr>
           <td class="cs-label" style="width: 80%;">Subtotal</td>
           <td class="cs-value" style="width: 20%;">
-            <img src="data:image/svg+xml;base64,{{saudiRiyalSVGBase64}}" alt="SAR" class="cs-sar-icon"> {{subtotal}}
+            <span class="cs-currency">$</span>{{subtotal}}
           </td>
         </tr>
         <tr>
           <td class="cs-label" style="font-weight: 700; color: #111827;">Grand Total</td>
           <td class="cs-value" style="font-weight: 700; color: #111827;">
-            <img src="data:image/svg+xml;base64,{{saudiRiyalSVGBase64}}" alt="SAR" class="cs-sar-icon"> {{grandTotal}}
+            <span class="cs-currency">$</span>{{grandTotal}}
           </td>
         </tr>
         {{#if hasExchangeRate}}
@@ -341,13 +325,13 @@
         <tr>
           <td class="cs-label">Terbayar</td>
           <td class="cs-value">
-            <img src="data:image/svg+xml;base64,{{saudiRiyalSVGBase64}}" alt="SAR" class="cs-sar-icon"> {{paidAmount}}
+            <span class="cs-currency">$</span>{{paidAmount}}
           </td>
         </tr>
         <tr>
           <td class="cs-label" style="font-weight: 700;">Sisa Tagihan</td>
           <td class="cs-value" style="font-weight: 700;">
-            <img src="data:image/svg+xml;base64,{{saudiRiyalSVGBase64}}" alt="SAR" class="cs-sar-icon"> {{balanceDue}}
+            <span class="cs-currency">$</span>{{balanceDue}}
           </td>
         </tr>
         {{#if hasExchangeRate}}
@@ -360,7 +344,7 @@
         {{#if exchangeRateValue}}
         <tr>
           <td colspan="2" style="text-align: right; font-size: 10px; color: #6b7280; padding-top: 2px;">
-            *Kurs referensi SAR ke IDR: 1 SAR = Rp {{exchangeRateValue}} ({{exchangeRateSource}})
+            *Kurs referensi USD ke IDR: 1 USD = Rp {{exchangeRateValue}} ({{exchangeRateSource}})
           </td>
         </tr>
         {{/if}}
@@ -388,8 +372,7 @@
             <td class="cs-font-semibold">{{this.method}}</td>
             <td class="cs-text-gray-600">{{this.transactionId}}</td>
             <td class="cs-num">
-              <img src="data:image/svg+xml;base64,{{@root.saudiRiyalSVGBase64}}" alt="SAR" class="cs-sar-icon">
-              {{this.amount}}
+              <span class="cs-currency">$</span>{{this.amount}}
             </td>
           </tr>
           {{/each}}
@@ -405,7 +388,7 @@
         <p class="cs-mb-1">1. Transfer ke: <span class="cs-font-semibold cs-text-gray-800">{{bank.bankName}} ({{bank.bankCountry}})</span></p>
         <p class="cs-mb-1">Atas Nama: <span class="cs-font-semibold cs-text-gray-800">{{bank.accountName}}</span> | No. Rek: <span class="cs-font-semibold cs-text-gray-800">{{bank.accountNumberOrIBAN}}</span></p>
         <p class="cs-mb-1">2. Kirim bukti transfer ke <span class="cs-font-semibold">{{billingContact.email}}</span> atau WhatsApp <span class="cs-font-semibold">{{billingContact.phone}}</span> dengan nomor invoice <span class="cs-font-semibold">#{{invoiceNo}}</span>.</p>
-        <p class="cs-mb-0">3. Biaya transfer bank ditanggung pembayar. Kurs SAR harian mengikuti Bank Notes - Jual (referensi: BCA).</p>
+        <p class="cs-mb-0">3. Biaya transfer bank ditanggung pembayar. Kurs USD harian mengikuti Bank Notes - Jual (referensi: BCA).</p>
       </div>
     </div>
 

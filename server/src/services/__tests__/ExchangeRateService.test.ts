@@ -1,7 +1,7 @@
 /**
  * ExchangeRateService Tests
  *
- * Tests the BCA SAR→IDR exchange rate parser, validator,
+ * Tests the BCA SAR→IDR and USD→IDR exchange rate parser, validator,
  * conversion logic, and failure handling.
  *
  * Run with: bun test server/src/services/__tests__/ExchangeRateService.test.ts
@@ -10,7 +10,16 @@
 import { describe, test, expect } from 'bun:test';
 import { _testing } from '../ExchangeRateService';
 
-const { parseSarRateFromHtml, parseBcaTimestamp, validateRate, MIN_REASONABLE_RATE, MAX_REASONABLE_RATE } = _testing;
+const {
+  parseSarRateFromHtml,
+  parseUsdRateFromHtml,
+  parseBcaTimestamp,
+  validateRate,
+  MIN_REASONABLE_RATE,
+  MAX_REASONABLE_RATE,
+  MIN_REASONABLE_RATE_USD,
+  MAX_REASONABLE_RATE_USD,
+} = _testing;
 
 // ─── Representative BCA HTML snippets ───────────────────────────────
 
@@ -124,6 +133,41 @@ describe('parseSarRateFromHtml', () => {
   });
 });
 
+// ─── USD Parser Tests ───────────────────────────────────────────────
+
+describe('parseUsdRateFromHtml', () => {
+  test('extracts USD Bank Notes Sell correctly', () => {
+    const result = parseUsdRateFromHtml(SAMPLE_BCA_HTML);
+    
+    expect(result.currency).toBe('USD');
+    expect(result.bankNotesSell).toBe(18075.00);
+  });
+
+  test('extracts all USD rate values correctly', () => {
+    const result = parseUsdRateFromHtml(SAMPLE_BCA_HTML);
+    
+    // Sell values: eRate=17999.00, TTCounter=18075.00, BankNotes=18075.00
+    expect(result.eRateSell).toBe(17999.00);
+    expect(result.ttCounterSell).toBe(18075.00);
+    expect(result.bankNotesSell).toBe(18075.00);
+    
+    // Buy values: eRate=17909.00, TTCounter=17795.00, BankNotes=17795.00
+    expect(result.eRateBuy).toBe(17909.00);
+    expect(result.ttCounterBuy).toBe(17795.00);
+    expect(result.bankNotesBuy).toBe(17795.00);
+  });
+
+  test('throws when USD row is missing', () => {
+    const noUsdHtml = `
+    <div class="a-dropdown-content">
+      <a data-value-buy="4751.48-4724.55-4689.00"
+         data-value-sell="4812.87-4830.43-4839.00"
+         data-text=SAR>SAR</a>
+    </div>`;
+    expect(() => parseUsdRateFromHtml(noUsdHtml)).toThrow('USD currency row not found');
+  });
+});
+
 // ─── Validation Tests ───────────────────────────────────────────────
 
 describe('validateRate', () => {
@@ -131,6 +175,17 @@ describe('validateRate', () => {
     expect(validateRate(4839).valid).toBe(true);
     expect(validateRate(4500).valid).toBe(true);
     expect(validateRate(5200).valid).toBe(true);
+  });
+
+  test('accepts reasonable USD→IDR rate with USD-specific bounds', () => {
+    expect(validateRate(16000, MIN_REASONABLE_RATE_USD, MAX_REASONABLE_RATE_USD).valid).toBe(true);
+    expect(validateRate(18075, MIN_REASONABLE_RATE_USD, MAX_REASONABLE_RATE_USD).valid).toBe(true);
+  });
+
+  test('rejects SAR-range rate when using USD bounds', () => {
+    const result = validateRate(4839, MIN_REASONABLE_RATE_USD, MAX_REASONABLE_RATE_USD);
+    expect(result.valid).toBe(false);
+    expect(result.reason).toContain('below minimum');
   });
 
   test('rejects zero rate', () => {

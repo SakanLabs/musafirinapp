@@ -701,7 +701,7 @@ export async function generateServiceOrderInvoicePDF(
         if (pRows && pRows.length > 0) {
           paymentsList = pRows.map(p => ({
             date: p.paidAt ? new Date(p.paidAt).toLocaleDateString('en-GB') : '-',
-            method: p.paymentMethod === 'deposit' ? 'Saldo Deposit' : 'Transfer Bank',
+            method: p.method === 'deposit' ? 'Saldo Deposit' : 'Transfer Bank',
             transactionId: p.referenceNumber || '-',
             amount: parseFloat(p.amount || '0').toFixed(2),
           }));
@@ -719,22 +719,22 @@ export async function generateServiceOrderInvoicePDF(
     const isPaidFull = balanceDue <= 0.001 && grandTotal > 0;
     const isPartial = paidAmount > 0 && !isPaidFull;
 
-    // Fetch live SAR to IDR rate
+    // Fetch live USD to IDR rate (visa uses USD, not SAR)
     let hasExchangeRate = false;
     let grandTotalIdr = '';
     let balanceDueIdr = '';
     let exchangeRateValue = '';
     let exchangeRateSource = 'BCA Bank Notes - Jual';
     try {
-      const { getCurrentSarToIdrRate, formatIdr } = await import('../services/ExchangeRateService');
-      const rateData = await getCurrentSarToIdrRate();
+      const { getCurrentUsdToIdrRate, formatIdr } = await import('../services/ExchangeRateService');
+      const rateData = await getCurrentUsdToIdrRate();
       const rate = rateData.rate;
       grandTotalIdr = formatIdr(Math.round(grandTotal * rate));
       balanceDueIdr = formatIdr(Math.round(balanceDue * rate));
       exchangeRateValue = new Intl.NumberFormat('id-ID').format(rate);
       hasExchangeRate = true;
     } catch (err) {
-      console.warn('Could not fetch exchange rate for visa invoice IDR display:', err);
+      console.warn('Could not fetch USD exchange rate for visa invoice IDR display:', err);
     }
 
     // Dynamic terms configuration from InvoiceTermsService

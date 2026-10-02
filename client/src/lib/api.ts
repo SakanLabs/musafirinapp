@@ -308,12 +308,19 @@ export const API_ENDPOINTS = {
   TRANSPORTATION_INVOICE: (id: string | number) => `/api/transportation/${id}/invoice`,
   TRANSPORTATION_RECEIPT: (id: string | number) => `/api/transportation/${id}/receipt`,
 
-  // Exchange Rates
+  // Exchange Rates — SAR
   EXCHANGE_RATE_SAR_IDR: '/api/exchange-rates/SAR-IDR',
   EXCHANGE_RATE_SAR_IDR_CONVERT: (amount: number) => `/api/exchange-rates/SAR-IDR/convert?amount=${amount}`,
   EXCHANGE_RATE_SAR_IDR_REFRESH: '/api/exchange-rates/SAR-IDR/refresh',
   EXCHANGE_RATE_SAR_IDR_MANUAL: '/api/exchange-rates/SAR-IDR/manual',
   EXCHANGE_RATE_SAR_IDR_STATUS: '/api/exchange-rates/SAR-IDR/status',
+
+  // Exchange Rates — USD
+  EXCHANGE_RATE_USD_IDR: '/api/exchange-rates/USD-IDR',
+  EXCHANGE_RATE_USD_IDR_CONVERT: (amount: number) => `/api/exchange-rates/USD-IDR/convert?amount=${amount}`,
+  EXCHANGE_RATE_USD_IDR_REFRESH: '/api/exchange-rates/USD-IDR/refresh',
+  EXCHANGE_RATE_USD_IDR_MANUAL: '/api/exchange-rates/USD-IDR/manual',
+  EXCHANGE_RATE_USD_IDR_STATUS: '/api/exchange-rates/USD-IDR/status',
 
   // Invoice Terms Settings
   INVOICE_TERMS_SETTINGS: '/api/invoice-terms-settings',
