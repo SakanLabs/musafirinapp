@@ -481,6 +481,47 @@ export async function ensureTablesExist() {
       `;
     }
 
+    // 12. notification_logs table & voucher columns
+    await client`
+      CREATE TABLE IF NOT EXISTS notification_logs (
+        id SERIAL PRIMARY KEY,
+        booking_id INTEGER NOT NULL REFERENCES bookings(id) ON DELETE CASCADE,
+        client_id INTEGER REFERENCES clients(id) ON DELETE SET NULL,
+        type VARCHAR(50) NOT NULL,
+        channel VARCHAR(20) NOT NULL,
+        recipient VARCHAR(255) NOT NULL,
+        status VARCHAR(20) NOT NULL DEFAULT 'pending',
+        reference_id VARCHAR(100),
+        provider_message_id TEXT,
+        error_message TEXT,
+        retry_count INTEGER NOT NULL DEFAULT 0,
+        sent_at TIMESTAMP,
+        failed_at TIMESTAMP,
+        metadata JSONB,
+        created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+        updated_at TIMESTAMP NOT NULL DEFAULT NOW()
+      );
+    `;
+
+    await client`
+      ALTER TABLE vouchers ADD COLUMN IF NOT EXISTS sent_at TIMESTAMP;
+    `;
+    await client`
+      ALTER TABLE vouchers ADD COLUMN IF NOT EXISTS sent_by TEXT;
+    `;
+
+    // Indexes for fast arrival queries & notification lookups
+    await client`
+      CREATE INDEX IF NOT EXISTS idx_bookings_check_in ON bookings(check_in);
+    `;
+    await client`
+      CREATE INDEX IF NOT EXISTS idx_bookings_booking_status ON bookings(booking_status);
+    `;
+    await client`
+      CREATE INDEX IF NOT EXISTS idx_notification_logs_lookup 
+      ON notification_logs(booking_id, type, channel, reference_id);
+    `;
+
     console.log('[DB Bootstrap] Schema check & auto-sync verified successfully');
   } catch (err) {
     console.error('[DB Bootstrap] Warning: Schema auto-sync encountered an issue:', err);

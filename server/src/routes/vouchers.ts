@@ -5,6 +5,7 @@ import { vouchers, bookings, clients, bookingItems, muthowifVouchers, muthowifBo
 import { requireAdmin } from '../middleware/auth';
 import { generateVoucherNumber, generateVoucherPDF, generateQRCode, uploadToMinio } from '../utils/pdf';
 import type { NewVoucher } from '../db/schema';
+import { notificationService } from '../services/NotificationService';
 
 const voucherRoutes = new Hono();
 
@@ -209,6 +210,8 @@ voucherRoutes.post('/:bookingId/generate', requireAdmin, async (c) => {
       guestName: resolvedGuestName,
       qrUrl: qrData,
       pdfUrl: null,
+      sentAt: null,
+      sentBy: null,
       createdAt: new Date(),
     };
 
@@ -433,4 +436,34 @@ voucherRoutes.post('/hotel/:bookingId/generate', async (c) => {
   }
 });
 
+// POST /api/vouchers/:bookingId/send - Explicitly send voucher to client via Email and/or WhatsApp
+voucherRoutes.post('/:bookingId/send', requireAdmin, async (c) => {
+  try {
+    const bookingIdParam = c.req.param('bookingId');
+    const bookingId = parseInt(bookingIdParam, 10);
+    if (isNaN(bookingId)) {
+      return c.json({ error: 'Invalid booking ID' }, 400);
+    }
+
+    const body = await c.req.json().catch(() => ({}));
+    const { channels, forceResend } = body;
+
+    const result = await notificationService.sendVoucher({
+      bookingId,
+      channels: channels && channels.length > 0 ? channels : ['email', 'whatsapp'],
+      forceResend: Boolean(forceResend),
+    });
+
+    return c.json({
+      success: true,
+      data: result,
+      message: 'Voucher dispatch completed',
+    });
+  } catch (error: any) {
+    console.error('Error sending voucher:', error);
+    return c.json({ error: error?.message || 'Failed to send voucher' }, 500);
+  }
+});
+
 export default voucherRoutes;
+

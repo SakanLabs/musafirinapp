@@ -51,6 +51,7 @@ import { useBooking, useGenerateInvoice, useGenerateVoucher, useRegenerateVouche
 import { useReceiptsByBooking, useGenerateReceipt } from "@/lib/queries/receipts"
 import { useCheckInvoiceExists } from "@/lib/queries/invoices"
 import { useCheckVoucherExists } from "@/lib/queries/vouchers"
+import { BookingNotificationCard } from "@/components/bookings/BookingNotificationCard"
 
 function parseBookingPayments(meta: unknown) {
   if (!meta || typeof meta !== "object") return []
@@ -771,6 +772,18 @@ function BookingDetailPage() {
                 </div>
               </CardContent>
             </Card>
+
+            {/* Client Notifications Card (Email & WhatsApp) */}
+            <BookingNotificationCard
+              bookingId={booking.id}
+              bookingCode={booking.code}
+              clientName={booking.clientName || ''}
+              clientEmail={booking.clientEmail || ''}
+              clientPhone={booking.clientPhone || ''}
+              hasVoucher={Boolean(existingVoucher)}
+              voucherNumber={existingVoucher?.number}
+              paymentStatus={booking.paymentStatus}
+            />
 
             {/* Timestamps Card */}
             <Card className="border border-[#e5e7eb] rounded-xl shadow-[0_1px_2px_rgba(0,0,0,0.04)] bg-white overflow-hidden">

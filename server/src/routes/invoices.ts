@@ -8,6 +8,7 @@ import { TemplateHelpers } from '../utils/template';
 import type { NewInvoice, NewDepositTransaction, NewInvoicePayment, NewManualInvoicePayment, NewManualInvoiceReceipt } from '../db/schema';
 import { ReceiptService } from '../services/ReceiptService';
 import { getCurrentSarToIdrRate } from '../services/ExchangeRateService';
+import { notificationService } from '../services/NotificationService';
 
 const invoiceRoutes = new Hono();
 const receiptService = new ReceiptService();
@@ -2432,6 +2433,17 @@ invoiceRoutes.post('/:invoiceId/pay', requireAdminOrFinance, async (c) => {
 
       return detail[0]!;
     });
+
+    // Auto-trigger client payment confirmation notification (non-blocking)
+    if (updated.bookingId) {
+      const meta = (updated.bookingMeta as Record<string, any>) || {};
+      notificationService.sendPaymentConfirmation({
+        bookingId: updated.bookingId,
+        paymentId: referenceNumber || undefined,
+        method,
+        remainingBalance: meta?.remainingBalance,
+      }).catch((err) => console.error('[NotificationService] Error in auto payment confirmation for invoice:', err));
+    }
 
     return c.json({
       success: true,

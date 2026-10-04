@@ -36,6 +36,7 @@ import muthowifBookingsRoutes from "./routes/muthowifBookings";
 import agentRequestRoutes from "./routes/agentRequests";
 import exchangeRateRoutes from "./routes/exchangeRates";
 import invoiceSettingsRoutes from "./routes/invoiceSettings";
+import notificationRoutes from "./routes/notifications";
 import { ensureTablesExist } from "./db/bootstrap";
 import { initExchangeRateService } from "./services/ExchangeRateService";
 
@@ -110,6 +111,7 @@ export const app = new Hono()
   .route("/api/agent-requests", agentRequestRoutes)
   .route("/api/exchange-rates", exchangeRateRoutes)
   .route("/api/invoice-terms-settings", invoiceSettingsRoutes)
+  .route("/api/notifications", notificationRoutes)
   .get("/", (c) => {
     return c.text("Hello Hono!");
   })
