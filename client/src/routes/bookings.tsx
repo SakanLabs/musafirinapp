@@ -67,9 +67,10 @@ function BookingsPage() {
   const [paymentStatusFilter, setPaymentStatusFilter] = useState("all")
   const [cityFilter, setCityFilter] = useState("all")
   const [dateFilter, setDateFilter] = useState("")
+  const [includePast, setIncludePast] = useState(false)
 
-  // Fetch bookings using TanStack Query
-  const { data: bookings = [], isLoading, error } = useBookings()
+  // Fetch bookings using TanStack Query (hiding past bookings by default)
+  const { data: bookings = [], isLoading, error } = useBookings(undefined, undefined, includePast)
   const createBookingMutation = useCreateBooking()
 
   // Available unique cities
@@ -87,7 +88,8 @@ function BookingsPage() {
     bookingStatusFilter !== "all" ||
     paymentStatusFilter !== "all" ||
     cityFilter !== "all" ||
-    dateFilter
+    dateFilter ||
+    includePast
   )
 
   const clearFilters = () => {
@@ -96,6 +98,7 @@ function BookingsPage() {
     setPaymentStatusFilter("all")
     setCityFilter("all")
     setDateFilter("")
+    setIncludePast(false)
   }
 
   // Filtered bookings
@@ -561,6 +564,20 @@ function BookingsPage() {
                   className="h-10 px-3 border border-[#e5e7eb] rounded-lg bg-white text-xs font-medium text-zinc-700 focus-visible:ring-0 focus-visible:border-[#111111] shadow-none"
                 />
               </div>
+
+              {/* Toggle Past Bookings Checkbox */}
+              <label 
+                className="flex items-center gap-2 h-10 px-3 border border-[#e5e7eb] rounded-lg bg-white text-xs font-medium text-zinc-700 cursor-pointer hover:bg-zinc-50 transition-colors select-none"
+                title="Tampilkan juga pemesanan dengan tanggal check-in yang sudah lewat"
+              >
+                <input
+                  type="checkbox"
+                  checked={includePast}
+                  onChange={(e) => setIncludePast(e.target.checked)}
+                  className="h-4 w-4 rounded border-zinc-300 text-[#111111] focus:ring-0 cursor-pointer accent-[#111111]"
+                />
+                <span className="whitespace-nowrap">Tampilkan booking yang sudah lewat</span>
+              </label>
 
               {/* Reset Filter Button */}
               {hasActiveFilters && (

@@ -1,12 +1,14 @@
 import { Hono } from 'hono';
 import { eq, desc, sql, inArray } from 'drizzle-orm';
 import { db } from '../db';
-import { bookings, bookingItems, bookingItemPricingPeriods, clients, clientDeposits, depositTransactions, invoices, invoicePayments, receipts, vouchers, operationalCosts } from '../db/schema';
+import { bookings, bookingItems, bookingItemPricingPeriods, clients, clientDeposits, depositTransactions, invoices, invoicePayments, receipts, vouchers, operationalCosts, notificationLogs } from '../db/schema';
 import { requireAdmin } from '../middleware/auth';
 import { generateBookingCode } from '../utils/pdf';
 import type { NewBooking, NewBookingItem, NewBookingItemPricingPeriod, NewClient, NewDepositTransaction, NewInvoicePayment } from '../db/schema';
 import { ReceiptService } from '../services/ReceiptService';
 import { notifyAdminNewBooking } from '../lib/notification';
+import { getOperationalDateString, getOperationalTodayBoundaries, getArrivalWindowBoundaries, getDaysUntilArrival } from '../lib/date';
+import { notificationService } from '../services/NotificationService';
 
 const bookingRoutes = new Hono();
 const receiptService = new ReceiptService();
@@ -16,6 +18,7 @@ bookingRoutes.get('/', requireAdmin, async (c) => {
   try {
     const unlinked = c.req.query('unlinked') === 'true';
     const clientId = c.req.query('clientId');
+    const includePast = c.req.query('includePast') === 'true';
     
     // Build where conditions
     const conditions = [];
@@ -24,6 +27,11 @@ bookingRoutes.get('/', requireAdmin, async (c) => {
     }
     if (clientId) {
       conditions.push(eq(bookings.clientId, parseInt(clientId)));
+    }
+    if (!includePast) {
+      const { todayStr } = getOperationalTodayBoundaries();
+      // By default hide bookings where check-in date has already passed in Asia/Riyadh
+      conditions.push(sql`DATE(${bookings.checkIn}) >= ${todayStr}::date`);
     }
     
     // Query bookings table using Drizzle
@@ -119,6 +127,274 @@ bookingRoutes.get('/', requireAdmin, async (c) => {
   } catch (error) {
     console.error('Error fetching bookings:', error);
     return c.json({ error: 'Failed to fetch bookings' }, 500);
+  }
+});
+
+// GET /api/bookings/arrivals - Upcoming arrivals for operations staff (Next 14 days default)
+bookingRoutes.get('/arrivals', requireAdmin, async (c) => {
+  try {
+    const { startStr: defaultStart, endStr: defaultEnd } = getArrivalWindowBoundaries(14);
+    const from = c.req.query('from') || defaultStart;
+    const to = c.req.query('to') || defaultEnd;
+    const city = c.req.query('city');
+    const hotel = c.req.query('hotel');
+    const paymentStatus = c.req.query('paymentStatus');
+    const voucherStatus = c.req.query('voucherStatus');
+    const search = c.req.query('search');
+
+    const conditions = [
+      sql`DATE(${bookings.checkIn}) >= ${from}::date`,
+      sql`DATE(${bookings.checkIn}) <= ${to}::date`,
+      sql`${bookings.bookingStatus} != 'cancelled'`,
+    ];
+
+    if (city && city !== 'all') {
+      conditions.push(eq(bookings.city, city as any));
+    }
+    if (paymentStatus && paymentStatus !== 'all') {
+      conditions.push(eq(bookings.paymentStatus, paymentStatus as any));
+    }
+
+    const whereClause = sql`${conditions.reduce((acc, cond, i) => i === 0 ? cond : sql`${acc} AND ${cond}`, sql``)}`;
+
+    const rows = await db
+      .select({
+        id: bookings.id,
+        code: bookings.code,
+        clientId: bookings.clientId,
+        hotelName: bookings.hotelName,
+        city: bookings.city,
+        checkIn: bookings.checkIn,
+        checkOut: bookings.checkOut,
+        totalAmount: bookings.totalAmount,
+        paymentStatus: bookings.paymentStatus,
+        bookingStatus: bookings.bookingStatus,
+        hotelConfirmationNo: bookings.hotelConfirmationNo,
+        meta: bookings.meta,
+        clientName: clients.name,
+        clientEmail: clients.email,
+        clientPhone: clients.phone,
+      })
+      .from(bookings)
+      .leftJoin(clients, eq(bookings.clientId, clients.id))
+      .where(whereClause)
+      .orderBy(bookings.checkIn, bookings.city, bookings.hotelName, bookings.id);
+
+    const bookingIds = rows.map((r) => r.id);
+
+    // Eager-load items, vouchers, notification logs to avoid N+1 queries
+    let itemsByBookingId: Record<number, any[]> = {};
+    let vouchersByBookingId: Record<number, any> = {};
+    let latestLogsByBookingId: Record<number, Record<string, any>> = {};
+
+    if (bookingIds.length > 0) {
+      const [items, vList, logs] = await Promise.all([
+        db.select().from(bookingItems).where(inArray(bookingItems.bookingId, bookingIds)),
+        db.select().from(vouchers).where(inArray(vouchers.bookingId, bookingIds)),
+        db.select().from(notificationLogs).where(inArray(notificationLogs.bookingId, bookingIds)).orderBy(desc(notificationLogs.createdAt)),
+      ]);
+
+      items.forEach((it) => {
+        const bucket = itemsByBookingId[it.bookingId] ?? [];
+        bucket.push(it);
+        itemsByBookingId[it.bookingId] = bucket;
+      });
+
+      vList.forEach((v) => {
+        vouchersByBookingId[v.bookingId] = v;
+      });
+
+      logs.forEach((log) => {
+        const bookingLogs = latestLogsByBookingId[log.bookingId] ?? {};
+        const key = `${log.type}_${log.channel}`;
+        if (!bookingLogs[key]) {
+          bookingLogs[key] = log;
+        }
+        latestLogsByBookingId[log.bookingId] = bookingLogs;
+      });
+    }
+
+    const todayStr = getOperationalDateString();
+
+    let arrivals = rows.map((b) => {
+      const meta = (b.meta as Record<string, any>) || {};
+      const guestName = (typeof meta.guestName === 'string' && meta.guestName.trim()) ? meta.guestName.trim() : (b.clientName ?? '');
+      const guestEmail = (typeof meta.guestEmail === 'string' && meta.guestEmail.trim()) ? meta.guestEmail.trim() : (b.clientEmail ?? '');
+      const guestPhone = (typeof meta.guestPhone === 'string' && meta.guestPhone.trim()) ? meta.guestPhone.trim() : (b.clientPhone ?? '');
+      const notes = meta.specialRequests || meta.notes || '';
+
+      const items = itemsByBookingId[b.id] || [];
+      const totalRooms = items.reduce((sum, item) => sum + (item.roomCount || 0), 0);
+      const roomSummary = items.map((item) => `${item.roomCount}x ${item.roomType}`).join(', ') || 'Standard Room';
+      const pax = meta.numberOfGuests || (totalRooms > 0 ? totalRooms * 2 : 2);
+
+      const voucher = vouchersByBookingId[b.id] || null;
+      const bLogs = latestLogsByBookingId[b.id] || {};
+      const hasSentVoucherLog = bLogs['voucher_email']?.status === 'sent' || bLogs['voucher_whatsapp']?.status === 'sent';
+
+      let computedVoucherStatus: 'sent' | 'ready_not_sent' | 'not_ready' = 'not_ready';
+      if (voucher) {
+        if (voucher.sentAt || hasSentVoucherLog) {
+          computedVoucherStatus = 'sent';
+        } else {
+          computedVoucherStatus = 'ready_not_sent';
+        }
+      }
+
+      const daysUntilArrival = getDaysUntilArrival(b.checkIn, todayStr);
+      const isHcnMissing = !b.hotelConfirmationNo || b.hotelConfirmationNo.trim() === '';
+      const isHcnUrgent = daysUntilArrival >= 0 && daysUntilArrival <= 3 && isHcnMissing;
+      const isUrgent = daysUntilArrival >= 0 && daysUntilArrival <= 3 && (b.paymentStatus !== 'paid' || computedVoucherStatus !== 'sent' || isHcnMissing);
+
+      return {
+        id: b.id,
+        code: b.code,
+        clientId: b.clientId,
+        clientName: b.clientName || 'Direct Customer',
+        clientEmail: b.clientEmail || '',
+        clientPhone: b.clientPhone || '',
+        guestName,
+        guestEmail,
+        guestPhone,
+        hotelName: b.hotelName,
+        city: b.city,
+        checkIn: b.checkIn,
+        checkOut: b.checkOut,
+        totalAmount: b.totalAmount,
+        paymentStatus: b.paymentStatus,
+        hotelConfirmationNo: b.hotelConfirmationNo || null,
+        notes,
+        totalRooms,
+        roomSummary,
+        pax,
+        daysUntilArrival,
+        urgency: isUrgent ? 'critical' : (daysUntilArrival <= 3 ? 'warning' : 'normal'),
+        isHcnMissing,
+        isHcnUrgent,
+        voucherStatus: computedVoucherStatus,
+        voucherNumber: voucher?.number || null,
+        voucherPdfUrl: voucher?.pdfUrl || null,
+        voucherSentAt: voucher?.sentAt || null,
+        notificationSummary: {
+          paymentEmail: bLogs['payment_confirmation_email']?.status || 'none',
+          paymentWhatsApp: bLogs['payment_confirmation_whatsapp']?.status || 'none',
+          voucherEmail: bLogs['voucher_email']?.status || 'none',
+          voucherWhatsApp: bLogs['voucher_whatsapp']?.status || 'none',
+        },
+      };
+    });
+
+    // In-memory filters
+    if (hotel && hotel.trim()) {
+      const q = hotel.toLowerCase();
+      arrivals = arrivals.filter((a) => a.hotelName.toLowerCase().includes(q));
+    }
+
+    if (voucherStatus && voucherStatus !== 'all') {
+      arrivals = arrivals.filter((a) => a.voucherStatus === voucherStatus);
+    }
+
+    if (search && search.trim()) {
+      const q = search.toLowerCase();
+      arrivals = arrivals.filter((a) =>
+        a.code.toLowerCase().includes(q) ||
+        a.guestName.toLowerCase().includes(q) ||
+        a.clientName.toLowerCase().includes(q) ||
+        (a.hotelConfirmationNo && a.hotelConfirmationNo.toLowerCase().includes(q)) ||
+        (a.guestPhone && a.guestPhone.includes(q)) ||
+        a.hotelName.toLowerCase().includes(q)
+      );
+    }
+
+    // Operational summary calculations
+    const summary = {
+      totalArrivals: arrivals.length,
+      todayArrivals: arrivals.filter((a) => a.daysUntilArrival === 0).length,
+      next3DaysArrivals: arrivals.filter((a) => a.daysUntilArrival >= 0 && a.daysUntilArrival <= 3).length,
+      missingHcnCount: arrivals.filter((a) => a.isHcnMissing).length,
+      urgentMissingHcnCount: arrivals.filter((a) => a.isHcnUrgent).length,
+      voucherNotSentCount: arrivals.filter((a) => a.voucherStatus !== 'sent').length,
+      paymentIncompleteCount: arrivals.filter((a) => a.paymentStatus !== 'paid').length,
+      windowPeriod: {
+        from,
+        to,
+        printedAt: new Date().toISOString(),
+      },
+    };
+
+    return c.json({
+      success: true,
+      data: arrivals,
+      summary,
+    });
+  } catch (error) {
+    console.error('Error fetching upcoming arrivals:', error);
+    return c.json({ error: 'Failed to fetch upcoming arrivals' }, 500);
+  }
+});
+
+// GET /api/bookings/:id/notifications - Get all notification delivery logs for a booking
+bookingRoutes.get('/:id/notifications', requireAdmin, async (c) => {
+  try {
+    const idParam = c.req.param('id').replace(/["']/g, '');
+    const bookingId = parseInt(idParam, 10);
+    if (isNaN(bookingId)) {
+      return c.json({ error: 'Invalid booking ID' }, 400);
+    }
+
+    const logs = await notificationService.getBookingNotifications(bookingId);
+    return c.json({
+      success: true,
+      data: logs,
+    });
+  } catch (error) {
+    console.error('Error fetching notification logs:', error);
+    return c.json({ error: 'Failed to fetch notification logs' }, 500);
+  }
+});
+
+// POST /api/bookings/:id/notifications/send - Send or resend transactional notifications
+bookingRoutes.post('/:id/notifications/send', requireAdmin, async (c) => {
+  try {
+    const idParam = c.req.param('id').replace(/["']/g, '');
+    const bookingId = parseInt(idParam, 10);
+    if (isNaN(bookingId)) {
+      return c.json({ error: 'Invalid booking ID' }, 400);
+    }
+
+    const body = await c.req.json();
+    const { type, channels, forceResend } = body;
+
+    if (!type || !['payment_confirmation', 'voucher'].includes(type)) {
+      return c.json({ error: "Invalid notification type. Must be 'payment_confirmation' or 'voucher'" }, 400);
+    }
+
+    if (type === 'payment_confirmation') {
+      const result = await notificationService.sendPaymentConfirmation({
+        bookingId,
+        channels: channels && channels.length > 0 ? channels : ['email', 'whatsapp'],
+        forceResend: Boolean(forceResend),
+      });
+      return c.json({
+        success: true,
+        data: result,
+        message: 'Payment confirmation dispatch completed',
+      });
+    } else {
+      const result = await notificationService.sendVoucher({
+        bookingId,
+        channels: channels && channels.length > 0 ? channels : ['email', 'whatsapp'],
+        forceResend: Boolean(forceResend),
+      });
+      return c.json({
+        success: true,
+        data: result,
+        message: 'Voucher notification dispatch completed',
+      });
+    }
+  } catch (error: any) {
+    console.error('Error sending notification:', error);
+    return c.json({ error: error?.message || 'Failed to send notification' }, 500);
   }
 });
 
@@ -1350,8 +1626,17 @@ bookingRoutes.post('/:id/pay', requireAdmin, async (c) => {
         .where(eq(bookings.id, bookingId))
         .limit(1);
 
-      return { booking: result[0]!, receipt: generatedReceipt };
+      return { booking: result[0]!, receipt: generatedReceipt, paidThisTxn, currentTerminLabel };
     });
+
+    // Auto-trigger client notification (non-blocking)
+    notificationService.sendPaymentConfirmation({
+      bookingId,
+      amount: updated.paidThisTxn,
+      method,
+      terminLabel: updated.currentTerminLabel,
+      remainingBalance: (updated.booking.meta as Record<string, any>)?.remainingBalance,
+    }).catch((err) => console.error('[NotificationService] Error in auto payment confirmation for booking:', err));
 
     return c.json({
       success: true,

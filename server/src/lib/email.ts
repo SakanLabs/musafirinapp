@@ -1,13 +1,27 @@
 import nodemailer from "nodemailer";
 
+export interface EmailAttachment {
+  filename: string;
+  path?: string;
+  content?: string | Buffer;
+  contentType?: string;
+}
+
 export interface SendEmailParams {
   to: string;
   subject: string;
   text: string;
   html: string;
+  attachments?: EmailAttachment[];
 }
 
-export async function sendEmail({ to, subject, text, html }: SendEmailParams): Promise<void> {
+export interface SendEmailResult {
+  success: boolean;
+  messageId?: string;
+  error?: string;
+}
+
+export async function sendEmail({ to, subject, text, html, attachments }: SendEmailParams): Promise<SendEmailResult> {
   const host = process.env.SMTP_HOST;
   const portStr = process.env.SMTP_PORT;
   const port = portStr ? parseInt(portStr, 10) : 587;
@@ -27,18 +41,26 @@ export async function sendEmail({ to, subject, text, html }: SendEmailParams): P
         },
       });
 
-      await transporter.sendMail({
+      const info = await transporter.sendMail({
         from,
         to,
         subject,
         text,
         html,
+        attachments,
       });
 
-      console.log(`[Email] Successfully sent email to ${to}`);
-      return;
-    } catch (error) {
+      console.log(`[Email] Successfully sent email to ${to} (MessageId: ${info.messageId})`);
+      return {
+        success: true,
+        messageId: info.messageId,
+      };
+    } catch (error: any) {
       console.error(`[Email] Failed to send email via SMTP to ${to}:`, error);
+      return {
+        success: false,
+        error: error?.message || 'Failed to send email via SMTP',
+      };
     }
   }
 
@@ -48,9 +70,17 @@ export async function sendEmail({ to, subject, text, html }: SendEmailParams): P
   console.log("==================================================");
   console.log(`To:      ${to}`);
   console.log(`Subject: ${subject}`);
+  if (attachments && attachments.length > 0) {
+    console.log(`Attachments: ${attachments.map(a => a.filename).join(', ')}`);
+  }
   console.log("--------------------------------------------------");
   console.log("Body (Text):");
   console.log(text);
   console.log("--------------------------------------------------");
   console.log("==================================================\n");
+
+  return {
+    success: true,
+    messageId: `dev-fallback-${Date.now()}`,
+  };
 }

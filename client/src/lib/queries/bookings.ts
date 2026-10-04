@@ -110,11 +110,16 @@ export const bookingKeys = {
 };
 
 // Get all bookings
-export function useBookings(clientId?: number, unlinked?: boolean) {
+export function useBookings(clientId?: number, unlinked?: boolean, includePast?: boolean) {
   return useQuery({
-    queryKey: bookingKeys.lists(),
+    queryKey: [...bookingKeys.lists(), { clientId, unlinked, includePast }],
     queryFn: async () => {
-      const response = await apiClient.get<{success: boolean, data: Booking[]}>(API_ENDPOINTS.BOOKINGS);
+      const params = new URLSearchParams();
+      if (clientId) params.append('clientId', clientId.toString());
+      if (unlinked) params.append('unlinked', 'true');
+      if (includePast) params.append('includePast', 'true');
+      const qs = params.toString() ? `?${params.toString()}` : '';
+      const response = await apiClient.get<{success: boolean, data: Booking[]}>(`${API_ENDPOINTS.BOOKINGS}${qs}`);
       return response.data;
     },
     staleTime: 5 * 60 * 1000, // 5 minutes

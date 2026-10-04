@@ -10,6 +10,7 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as VouchersRouteImport } from './routes/vouchers'
+import { Route as UpcomingArrivalsRouteImport } from './routes/upcoming-arrivals'
 import { Route as TransportationBookingsRouteImport } from './routes/transportation-bookings'
 import { Route as StoreRouteImport } from './routes/store'
 import { Route as ServiceOrdersRouteImport } from './routes/service-orders'
@@ -99,6 +100,11 @@ import { Route as AgentRequestRequestIdRouteImport } from './routes/agent/reques
 const VouchersRoute = VouchersRouteImport.update({
   id: '/vouchers',
   path: '/vouchers',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const UpcomingArrivalsRoute = UpcomingArrivalsRouteImport.update({
+  id: '/upcoming-arrivals',
+  path: '/upcoming-arrivals',
   getParentRoute: () => rootRouteImport,
 } as any)
 const TransportationBookingsRoute = TransportationBookingsRouteImport.update({
@@ -584,6 +590,7 @@ export interface FileRoutesByFullPath {
   '/service-orders': typeof ServiceOrdersRouteWithChildren
   '/store': typeof StoreRouteWithChildren
   '/transportation-bookings': typeof TransportationBookingsRoute
+  '/upcoming-arrivals': typeof UpcomingArrivalsRoute
   '/vouchers': typeof VouchersRouteWithChildren
   '/custom-la-quotation': typeof CustomLaQuotationRoute
   '/agent-request-admin-detail/$id': typeof AgentRequestAdminDetailIdRoute
@@ -670,6 +677,7 @@ export interface FileRoutesByTo {
   '/reset-password': typeof ResetPasswordRoute
   '/service-orders': typeof ServiceOrdersRouteWithChildren
   '/transportation-bookings': typeof TransportationBookingsRoute
+  '/upcoming-arrivals': typeof UpcomingArrivalsRoute
   '/custom-la-quotation': typeof CustomLaQuotationRoute
   '/agent-request-admin-detail/$id': typeof AgentRequestAdminDetailIdRoute
   '/agent/create-request': typeof AgentCreateRequestRoute
@@ -758,6 +766,7 @@ export interface FileRoutesById {
   '/service-orders': typeof ServiceOrdersRouteWithChildren
   '/store': typeof StoreRouteWithChildren
   '/transportation-bookings': typeof TransportationBookingsRoute
+  '/upcoming-arrivals': typeof UpcomingArrivalsRoute
   '/vouchers': typeof VouchersRouteWithChildren
   '/custom-la-quotation/': typeof CustomLaQuotationRoute
   '/agent-request-admin-detail/$id': typeof AgentRequestAdminDetailIdRoute
@@ -848,6 +857,7 @@ export interface FileRouteTypes {
     | '/service-orders'
     | '/store'
     | '/transportation-bookings'
+    | '/upcoming-arrivals'
     | '/vouchers'
     | '/custom-la-quotation'
     | '/agent-request-admin-detail/$id'
@@ -934,6 +944,7 @@ export interface FileRouteTypes {
     | '/reset-password'
     | '/service-orders'
     | '/transportation-bookings'
+    | '/upcoming-arrivals'
     | '/custom-la-quotation'
     | '/agent-request-admin-detail/$id'
     | '/agent/create-request'
@@ -1021,6 +1032,7 @@ export interface FileRouteTypes {
     | '/service-orders'
     | '/store'
     | '/transportation-bookings'
+    | '/upcoming-arrivals'
     | '/vouchers'
     | '/custom-la-quotation/'
     | '/agent-request-admin-detail/$id'
@@ -1110,6 +1122,7 @@ export interface RootRouteChildren {
   ServiceOrdersRoute: typeof ServiceOrdersRouteWithChildren
   StoreRoute: typeof StoreRouteWithChildren
   TransportationBookingsRoute: typeof TransportationBookingsRoute
+  UpcomingArrivalsRoute: typeof UpcomingArrivalsRoute
   VouchersRoute: typeof VouchersRouteWithChildren
   CustomLaQuotationRoute: typeof CustomLaQuotationRoute
   AgentRequestAdminDetailIdRoute: typeof AgentRequestAdminDetailIdRoute
@@ -1140,6 +1153,13 @@ declare module '@tanstack/react-router' {
       path: '/vouchers'
       fullPath: '/vouchers'
       preLoaderRoute: typeof VouchersRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/upcoming-arrivals': {
+      id: '/upcoming-arrivals'
+      path: '/upcoming-arrivals'
+      fullPath: '/upcoming-arrivals'
+      preLoaderRoute: typeof UpcomingArrivalsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/transportation-bookings': {
@@ -1902,6 +1922,7 @@ const rootRouteChildren: RootRouteChildren = {
   ServiceOrdersRoute: ServiceOrdersRouteWithChildren,
   StoreRoute: StoreRouteWithChildren,
   TransportationBookingsRoute: TransportationBookingsRoute,
+  UpcomingArrivalsRoute: UpcomingArrivalsRoute,
   VouchersRoute: VouchersRouteWithChildren,
   CustomLaQuotationRoute: CustomLaQuotationRoute,
   AgentRequestAdminDetailIdRoute: AgentRequestAdminDetailIdRoute,

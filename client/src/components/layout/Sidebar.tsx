@@ -4,6 +4,7 @@ import { authService, UserRole } from '@/lib/auth'
 import {
   LayoutDashboard,
   Calendar,
+  CalendarCheck,
   FileText,
   Ticket,
   Menu,
@@ -59,6 +60,12 @@ const navigationSections = [
         href: '/bookings',
         icon: Calendar,
         roles: ['admin', 'owner']
+      },
+      {
+        name: 'Upcoming Arrivals',
+        href: '/upcoming-arrivals',
+        icon: CalendarCheck,
+        roles: ['admin', 'owner', 'finance']
       },
       {
         name: 'Clients',

@@ -199,6 +199,8 @@ export const vouchers = pgTable('vouchers', {
   guestName: varchar('guest_name', { length: 255 }).notNull(),
   qrUrl: text('qr_url'),
   pdfUrl: text('pdf_url'),
+  sentAt: timestamp('sent_at'),
+  sentBy: text('sent_by'),
   createdAt: timestamp('created_at').defaultNow().notNull(),
 });
 
@@ -1404,3 +1406,37 @@ export const invoiceTermsSettings = pgTable('invoice_terms_settings', {
 
 export type InvoiceTermsSetting = typeof invoiceTermsSettings.$inferSelect;
 export type NewInvoiceTermsSetting = typeof invoiceTermsSettings.$inferInsert;
+
+// Client Notification Logs — Records outbound Email & WhatsApp delivery attempts and statuses
+export const notificationLogs = pgTable('notification_logs', {
+  id: serial('id').primaryKey(),
+  bookingId: integer('booking_id').notNull().references(() => bookings.id, { onDelete: 'cascade' }),
+  clientId: integer('client_id').references(() => clients.id, { onDelete: 'set null' }),
+  type: varchar('type', { length: 50 }).notNull(), // 'payment_confirmation' | 'voucher'
+  channel: varchar('channel', { length: 20 }).notNull(), // 'email' | 'whatsapp'
+  recipient: varchar('recipient', { length: 255 }).notNull(), // email address or phone number
+  status: varchar('status', { length: 20 }).default('pending').notNull(), // 'pending' | 'sent' | 'failed'
+  referenceId: varchar('reference_id', { length: 100 }), // paymentId, voucherNumber, etc. for idempotency
+  providerMessageId: text('provider_message_id'),
+  errorMessage: text('error_message'),
+  retryCount: integer('retry_count').default(0).notNull(),
+  sentAt: timestamp('sent_at'),
+  failedAt: timestamp('failed_at'),
+  metadata: jsonb('metadata'), // Extra details: payment amount, termin, pdf url, etc.
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+});
+
+export const notificationLogsRelations = relations(notificationLogs, ({ one }) => ({
+  booking: one(bookings, {
+    fields: [notificationLogs.bookingId],
+    references: [bookings.id],
+  }),
+  client: one(clients, {
+    fields: [notificationLogs.clientId],
+    references: [clients.id],
+  }),
+}));
+
+export type NotificationLog = typeof notificationLogs.$inferSelect;
+export type NewNotificationLog = typeof notificationLogs.$inferInsert;
