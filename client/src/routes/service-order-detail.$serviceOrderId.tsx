@@ -102,6 +102,8 @@ function ServiceOrderDetailPage() {
     referenceNumber?: string;
     description?: string;
     autoGenerateReceipt: boolean;
+    sendEmail?: boolean;
+    sendWhatsApp?: boolean;
   }) => {
     const result = await payServiceOrder.mutateAsync({
       serviceOrderId,
@@ -110,6 +112,8 @@ function ServiceOrderDetailPage() {
       referenceNumber: data.referenceNumber,
       description: data.description,
       autoGenerateReceipt: data.autoGenerateReceipt,
+      sendEmail: data.sendEmail,
+      sendWhatsApp: data.sendWhatsApp,
     })
     toast.success('Pembayaran berhasil dicatat!')
     if (result.data?.receipt?.number) {
@@ -118,7 +122,7 @@ function ServiceOrderDetailPage() {
   }
 
   const handleDeletePayment = async (paymentId: number, amount: number) => {
-    if (!window.confirm(`Yakin ingin membatalkan/menghapus pembayaran sebesar ${formatCurrency(amount, 'SAR')} ini? Sisa tagihan dan status akan diperbarui otomatis.`)) {
+    if (!window.confirm(`Yakin ingin membatalkan/menghapus pembayaran sebesar ${formatCurrency(amount, billingSummary?.currency || serviceOrder?.currency || 'USD')} ini? Sisa tagihan dan status akan diperbarui otomatis.`)) {
       return
     }
     try {
@@ -177,20 +181,24 @@ Total: ${serviceOrder.totalPriceUSD ? formatCurrency(serviceOrder.totalPriceUSD,
     window.open(whatsappUrl, '_blank')
   }
 
-  const handleInvoiceSubmit = async (dueDate: string) => {
+  const handleInvoiceSubmit = async (dueDate: string, options?: { sendEmail?: boolean; sendWhatsApp?: boolean }) => {
     if (!serviceOrder) return
 
     try {
       if (isRegenerateMode) {
         await regenerateInvoice.mutateAsync({
           serviceOrderId,
-          customDueDate: dueDate
+          customDueDate: dueDate,
+          sendEmail: options?.sendEmail,
+          sendWhatsApp: options?.sendWhatsApp,
         })
         toast.success('Invoice regenerated successfully!')
       } else {
         await generateInvoice.mutateAsync({
           serviceOrderId,
-          customDueDate: dueDate
+          customDueDate: dueDate,
+          sendEmail: options?.sendEmail,
+          sendWhatsApp: options?.sendWhatsApp,
         })
         toast.success('Invoice generated successfully!')
       }
@@ -774,17 +782,17 @@ Total: ${serviceOrder.totalPriceUSD ? formatCurrency(serviceOrder.totalPriceUSD,
               <div className="space-y-1">
                 <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-500">Total Tagihan</span>
                 <p className="text-xl font-bold font-mono text-zinc-900">
-                  {formatCurrency(billingSummary?.totalAmount || serviceOrder.totalPriceSAR, 'SAR')}
+                  {formatCurrency(billingSummary?.totalAmount || serviceOrder.totalPriceUSD, billingSummary?.currency || serviceOrder.currency || 'USD')}
                 </p>
                 <p className="text-[11px] font-mono text-zinc-400">
-                  {formatCurrency(serviceOrder.totalPriceUSD, 'USD')} (USD)
+                  {serviceOrder.totalPeople} Jamaah ({formatCurrency(serviceOrder.unitPriceUSD, 'USD')}/pax)
                 </p>
               </div>
 
               <div className="space-y-1 border-t md:border-t-0 md:border-l border-zinc-200/60 pt-3 md:pt-0 md:pl-4">
                 <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-500">Telah Dibayar</span>
                 <p className="text-xl font-bold font-mono text-emerald-600">
-                  {formatCurrency(billingSummary?.paidAmount || 0, 'SAR')}
+                  {formatCurrency(billingSummary?.paidAmount || 0, billingSummary?.currency || serviceOrder.currency || 'USD')}
                 </p>
                 <div className="flex items-center gap-1.5 text-[11px] text-emerald-700 font-medium">
                   <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
@@ -797,7 +805,7 @@ Total: ${serviceOrder.totalPriceUSD ? formatCurrency(serviceOrder.totalPriceUSD,
                 <p className={`text-xl font-bold font-mono ${
                   (billingSummary?.remainingBalance || 0) === 0 ? 'text-emerald-600' : 'text-rose-600'
                 }`}>
-                  {formatCurrency(billingSummary?.remainingBalance ?? serviceOrder.totalPriceSAR, 'SAR')}
+                  {formatCurrency(billingSummary?.remainingBalance ?? serviceOrder.totalPriceUSD, billingSummary?.currency || serviceOrder.currency || 'USD')}
                 </p>
                 <p className="text-[11px] text-zinc-400">
                   {(billingSummary?.remainingBalance || 0) === 0 ? 'Semua tagihan lunas' : 'Menunggu pelunasan'}
@@ -876,7 +884,7 @@ Total: ${serviceOrder.totalPriceUSD ? formatCurrency(serviceOrder.totalPriceUSD,
                               )}
                             </td>
                             <td className="py-3 px-4 text-right font-mono font-bold text-emerald-600 text-sm">
-                              {formatCurrency(p.amount, p.currency || 'SAR')}
+                              {formatCurrency(p.amount, p.currency || billingSummary?.currency || serviceOrder.currency || 'USD')}
                             </td>
                             <td className="py-3 px-4 text-right">
                               <div className="flex items-center justify-end space-x-2">
@@ -940,11 +948,7 @@ Total: ${serviceOrder.totalPriceUSD ? formatCurrency(serviceOrder.totalPriceUSD,
             </div>
             <div>
               <label className="text-[10px] font-semibold uppercase tracking-wider text-gray-400 block mb-0.5">Total Price (USD)</label>
-              <p className="text-lg font-bold text-emerald-600 font-mono">{formatCurrency(serviceOrder.totalPriceUSD, 'USD')}</p>
-            </div>
-            <div>
-              <label className="text-[10px] font-semibold uppercase tracking-wider text-gray-400 block mb-0.5">Total Price (SAR)</label>
-              <p className="text-lg font-bold text-blue-600 font-mono">{formatCurrency(serviceOrder.totalPriceSAR, 'SAR')}</p>
+              <p className="text-lg font-bold text-blue-600 font-mono">{formatCurrency(serviceOrder.totalPriceUSD, 'USD')}</p>
             </div>
           </CardContent>
         </Card>
@@ -989,10 +993,10 @@ Total: ${serviceOrder.totalPriceUSD ? formatCurrency(serviceOrder.totalPriceUSD,
         isOpen={isPaymentModalOpen}
         onClose={() => setIsPaymentModalOpen(false)}
         orderNumber={serviceOrder.number}
-        totalAmount={billingSummary?.totalAmount || parseFloat(serviceOrder.totalPriceSAR)}
+        totalAmount={billingSummary?.totalAmount || parseFloat(serviceOrder.totalPriceUSD)}
         paidAmount={billingSummary?.paidAmount || 0}
-        remainingBalance={billingSummary?.remainingBalance ?? parseFloat(serviceOrder.totalPriceSAR)}
-        currency={billingSummary?.currency || 'SAR'}
+        remainingBalance={billingSummary?.remainingBalance ?? parseFloat(serviceOrder.totalPriceUSD)}
+        currency={billingSummary?.currency || serviceOrder.currency || 'USD'}
         clientName={serviceOrder.clientName || serviceOrder.groupLeaderName}
         clientDepositBalance={billingSummary?.clientDepositBalance || 0}
         onSubmit={handleRecordPayment}

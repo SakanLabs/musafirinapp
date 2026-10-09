@@ -19,7 +19,7 @@ import type {
   NewTransportationVoucher
 } from '../db/schema';
 import { generateTransportationInvoicePDF, generateTransportationReceiptPDF, generateTransportationVoucherPDF, uploadToMinio } from '../utils/pdf';
-
+import { notificationService } from '../services/NotificationService';
 
 const transportationApp = new Hono();
 
@@ -431,6 +431,26 @@ transportationApp.post('/:id/invoice', requireAdminOrFinance, async (c) => {
       await db.update(transportationInvoices).set({ pdfUrl }).where(eq(transportationInvoices.id, createdInvoice!.id));
     } catch (pdfError) {
       console.error('Failed to generate/upload PDF, but invoice was created in DB:', pdfError);
+    }
+
+    // Optional client invoice notification
+    const invoiceChannels: ('email' | 'whatsapp')[] = [];
+    if (body.sendEmail) invoiceChannels.push('email');
+    if (body.sendWhatsApp) invoiceChannels.push('whatsapp');
+
+    if (invoiceChannels.length > 0) {
+      notificationService.sendInvoice({
+        clientId: bookingData.clientId || undefined,
+        invoiceNumber,
+        recipientName: clientData?.name || bookingData.customerName || 'Pelanggan Musafirin',
+        recipientEmail: clientData?.email || undefined,
+        recipientPhone: clientData?.phone || bookingData.customerPhone || undefined,
+        totalAmount: bookingData.totalAmount || '0',
+        currency: bookingData.currency || 'SAR',
+        dueDate: customDueDate,
+        issueDate: customInvoiceDate,
+        channels: invoiceChannels,
+      }).catch((err) => console.error('[NotificationService] Error sending transportation invoice notification:', err));
     }
 
     return c.json(createdInvoice, 201);

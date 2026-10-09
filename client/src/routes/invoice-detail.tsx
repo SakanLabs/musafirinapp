@@ -12,7 +12,7 @@ import { useInvoice, usePayInvoice, type Invoice } from "@/lib/queries/invoices"
 import { useReceiptsByBooking, useGenerateReceipt } from "@/lib/queries/receipts";
 import { useRegenerateInvoice } from "@/lib/queries/bookings";
 import { authService } from "@/lib/auth";
-import { FileText, Download, Banknote, CalendarDays, Loader2, Info, MessageCircle, ArrowLeft, RefreshCw, Receipt, Edit } from "lucide-react";
+import { FileText, Download, Banknote, CalendarDays, Loader2, Info, MessageCircle, Mail, ArrowLeft, RefreshCw, Receipt, Edit } from "lucide-react";
 import { useNavigate } from "@tanstack/react-router";
 
 export const Route = createFileRoute("/invoice-detail")({
@@ -134,6 +134,8 @@ function InvoiceDetailPage() {
     amount: "",
     referenceNumber: "",
     description: "",
+    sendEmail: false,
+    sendWhatsApp: false,
   });
 
   // Admin check
@@ -203,12 +205,16 @@ function InvoiceDetailPage() {
         amount: amt,
         referenceNumber: payForm.referenceNumber || undefined,
         description: payForm.description || undefined,
+        sendEmail: payForm.sendEmail,
+        sendWhatsApp: payForm.sendWhatsApp,
       });
       setPayForm({
         method: "cash",
         amount: "",
         referenceNumber: "",
         description: "",
+        sendEmail: false,
+        sendWhatsApp: false,
       });
       toast.success("Payment recorded successfully");
     } catch (err) {
@@ -570,6 +576,39 @@ function InvoiceDetailPage() {
                     placeholder="Optional description"
                     className="h-10 px-3 border border-[#e5e7eb] rounded-lg bg-white text-sm font-medium text-zinc-950 focus:border-[#111111] focus:ring-1 focus:ring-[#111111] shadow-none"
                   />
+                </div>
+
+                {/* Notification delivery checkboxes */}
+                <div className="bg-zinc-50 border border-zinc-200/80 rounded-lg p-3 space-y-2">
+                  <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-500 block">
+                    Kirim Konfirmasi Pembayaran (Opsional)
+                  </label>
+                  <div className="space-y-1.5">
+                    <label className="flex items-center space-x-2.5 cursor-pointer text-xs font-medium text-zinc-700 hover:text-zinc-950">
+                      <input
+                        type="checkbox"
+                        checked={payForm.sendEmail}
+                        onChange={(e) => setPayForm((prev) => ({ ...prev, sendEmail: e.target.checked }))}
+                        className="h-4 w-4 rounded border-gray-300 text-zinc-900 focus:ring-zinc-900 cursor-pointer"
+                      />
+                      <span className="flex items-center gap-1.5">
+                        <Mail className="h-3.5 w-3.5 text-zinc-400" />
+                        <span>Kirim konfirmasi via <strong>Email</strong></span>
+                      </span>
+                    </label>
+                    <label className="flex items-center space-x-2.5 cursor-pointer text-xs font-medium text-zinc-700 hover:text-zinc-950">
+                      <input
+                        type="checkbox"
+                        checked={payForm.sendWhatsApp}
+                        onChange={(e) => setPayForm((prev) => ({ ...prev, sendWhatsApp: e.target.checked }))}
+                        className="h-4 w-4 rounded border-gray-300 text-zinc-900 focus:ring-zinc-900 cursor-pointer"
+                      />
+                      <span className="flex items-center gap-1.5">
+                        <MessageCircle className="h-3.5 w-3.5 text-emerald-600" />
+                        <span>Kirim konfirmasi via <strong>WhatsApp</strong></span>
+                      </span>
+                    </label>
+                  </div>
                 </div>
 
                 <div className="flex justify-end pt-2">

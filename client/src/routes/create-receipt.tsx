@@ -10,7 +10,7 @@ import { Card } from '@/components/ui/card';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from 'sonner';
-import { Loader2, Receipt } from 'lucide-react';
+import { Loader2, Receipt, Mail, MessageCircle } from 'lucide-react';
 import { authService } from '@/lib/auth';
 import { formatCurrency } from '@/lib/utils';
 import { Textarea } from '@/components/ui/textarea';
@@ -41,6 +41,8 @@ const formSchema = z.object({
     method: z.enum(['bank_transfer', 'deposit', 'cash']),
     referenceNumber: z.string().optional(),
     description: z.string().optional(),
+    sendEmail: z.boolean().optional(),
+    sendWhatsApp: z.boolean().optional(),
 });
 
 type FormValues = z.infer<typeof formSchema>;
@@ -66,6 +68,8 @@ function CreateReceiptPage() {
             method: 'bank_transfer',
             referenceNumber: '',
             description: '',
+            sendEmail: false,
+            sendWhatsApp: false,
         },
     });
 
@@ -99,6 +103,8 @@ function CreateReceiptPage() {
                     amount: values.amount,
                     referenceNumber: values.referenceNumber,
                     description: values.description,
+                    sendEmail: values.sendEmail,
+                    sendWhatsApp: values.sendWhatsApp,
                 });
             } else if (invoice.number.startsWith('TI-')) {
                 await apiClient.post(API_ENDPOINTS.TRANSPORTATION_RECEIPT(invoice.bookingId), {
@@ -302,6 +308,51 @@ function CreateReceiptPage() {
                                         </FormItem>
                                     )}
                                 />
+
+                                {/* Notification Delivery Options */}
+                                <div className="md:col-span-2 bg-zinc-50 border border-zinc-200/80 rounded-lg p-3 space-y-2">
+                                    <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-500 block">
+                                        Kirim Konfirmasi Pembayaran (Opsional)
+                                    </label>
+                                    <div className="space-y-1.5">
+                                        <FormField
+                                            control={form.control}
+                                            name="sendEmail"
+                                            render={({ field }: { field: any }) => (
+                                                <label className="flex items-center space-x-2.5 cursor-pointer text-xs font-medium text-zinc-700 hover:text-zinc-950">
+                                                    <input
+                                                        type="checkbox"
+                                                        checked={field.value || false}
+                                                        onChange={field.onChange}
+                                                        className="h-4 w-4 rounded border-gray-300 text-zinc-900 focus:ring-zinc-900 cursor-pointer"
+                                                    />
+                                                    <span className="flex items-center gap-1.5">
+                                                        <Mail className="h-3.5 w-3.5 text-zinc-400" />
+                                                        <span>Kirim konfirmasi via <strong>Email</strong></span>
+                                                    </span>
+                                                </label>
+                                            )}
+                                        />
+                                        <FormField
+                                            control={form.control}
+                                            name="sendWhatsApp"
+                                            render={({ field }: { field: any }) => (
+                                                <label className="flex items-center space-x-2.5 cursor-pointer text-xs font-medium text-zinc-700 hover:text-zinc-950">
+                                                    <input
+                                                        type="checkbox"
+                                                        checked={field.value || false}
+                                                        onChange={field.onChange}
+                                                        className="h-4 w-4 rounded border-gray-300 text-zinc-900 focus:ring-zinc-900 cursor-pointer"
+                                                    />
+                                                    <span className="flex items-center gap-1.5">
+                                                        <MessageCircle className="h-3.5 w-3.5 text-emerald-600" />
+                                                        <span>Kirim konfirmasi via <strong>WhatsApp</strong></span>
+                                                    </span>
+                                                </label>
+                                            )}
+                                        />
+                                    </div>
+                                </div>
                             </div>
 
                             <div className="flex justify-end items-center space-x-2.5 pt-4 border-t border-zinc-100 mt-2">

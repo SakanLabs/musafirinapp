@@ -364,7 +364,7 @@ export async function generateServiceOrderReceiptPDF(
 
     const receiptDateStr = formatDate(receiptReq.issueDate || receiptReq.createdAt || new Date());
 
-    const totalInvoiceNum = parseFloat(receiptReq.totalAmount || invoiceReq?.amount || serviceOrderReq.totalPriceSAR || '0');
+    const totalInvoiceNum = parseFloat(receiptReq.totalAmount || invoiceReq?.amount || serviceOrderReq.totalPriceUSD || serviceOrderReq.totalAmount || serviceOrderReq.totalPriceSAR || '0');
     const currentPaymentNum = parseFloat(receiptReq.paidAmount || '0');
     const balanceDueNum = parseFloat(receiptReq.balanceDue || '0');
 
@@ -679,8 +679,8 @@ export async function generateServiceOrderInvoicePDF(
     const logoBase64 = TemplateHelpers.getLogoBase64();
     const saudiRiyalSVGBase64 = TemplateHelpers.getSaudiRiyalSVGBase64();
 
-    // Calculate amounts
-    const totalAmount = parseFloat(serviceOrder.totalAmount || serviceOrder.totalPriceSAR || invoice.amount || '0') || 0;
+    // Calculate amounts in original USD
+    const totalAmount = parseFloat(serviceOrder.totalPriceUSD || serviceOrder.totalAmount || invoice.amount || '0') || 0;
     const subtotal = totalAmount;
     const discount = 0;
     const grandTotal = subtotal - discount;
@@ -763,7 +763,7 @@ export async function generateServiceOrderInvoicePDF(
     }
 
     const totalPeople = parseInt(serviceOrder.totalPeople) || 1;
-    const unitPrice = totalPeople > 0 ? (totalAmount / totalPeople) : totalAmount;
+    const unitPrice = serviceOrder.unitPriceUSD ? parseFloat(serviceOrder.unitPriceUSD) : (totalPeople > 0 ? (totalAmount / totalPeople) : totalAmount);
 
     const items = [
       {
@@ -868,10 +868,10 @@ export async function generateServiceOrderInvoicePDF(
       format: 'A4',
       printBackground: true,
       margin: {
-        top: '8mm',
-        right: '10mm',
-        bottom: '8mm',
-        left: '10mm'
+        top: '20px',
+        right: '20px',
+        bottom: '20px',
+        left: '20px'
       }
     });
 
@@ -1721,7 +1721,14 @@ export async function generateManualInvoicePDF(
       accountNumberOrIBAN: '7254459741'
     };
 
-    const currency = manualInvoice.currency || 'SAR';
+    const currency = (manualInvoice.currency || 'SAR').toUpperCase();
+    const isSar = currency === 'SAR';
+    const isUsd = currency === 'USD';
+    const isIdr = currency === 'IDR';
+    let currencySymbol = 'SAR';
+    if (isUsd) currencySymbol = '$';
+    else if (isIdr) currencySymbol = 'Rp';
+
     const subtotal = parseFloat(manualInvoice.amount) || 0;
 
     // Fetch payments associated with this manual invoice
@@ -1746,22 +1753,51 @@ export async function generateManualInvoicePDF(
     const isPaidFull = balanceDue <= 0.001 && subtotal > 0;
     const isPartial = paidAmount > 0 && !isPaidFull;
 
-    // Fetch live SAR to IDR rate
+    // Number formatting helper depending on currency
+    const formatAmount = (val: number | string | null | undefined): string => {
+      const num = typeof val === 'string' ? parseFloat(val) : Number(val || 0);
+      const valid = isNaN(num) ? 0 : num;
+      if (isIdr) {
+        return new Intl.NumberFormat('id-ID', { minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(Math.round(valid));
+      }
+      return new Intl.NumberFormat('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(valid);
+    };
+
+    // Fetch exchange rate to IDR only if foreign currency (SAR or USD)
     let hasExchangeRate = false;
     let grandTotalIdr = '';
     let balanceDueIdr = '';
     let exchangeRateValue = '';
     let exchangeRate = 0;
-    try {
-      const { getCurrentSarToIdrRate, formatIdr } = await import('../services/ExchangeRateService');
-      const rateData = await getCurrentSarToIdrRate();
-      exchangeRate = rateData.rate;
-      grandTotalIdr = formatIdr(Math.round(subtotal * exchangeRate));
-      balanceDueIdr = formatIdr(Math.round(balanceDue * exchangeRate));
-      exchangeRateValue = new Intl.NumberFormat('id-ID').format(exchangeRate);
-      hasExchangeRate = true;
-    } catch (err) {
-      console.warn('Failed to fetch exchange rate for manual invoice PDF:', err);
+    let exchangeRateSource = 'BCA Bank Notes - Jual';
+
+    if (isSar) {
+      try {
+        const { getCurrentSarToIdrRate, formatIdr } = await import('../services/ExchangeRateService');
+        const rateData = await getCurrentSarToIdrRate();
+        exchangeRate = rateData.rate;
+        grandTotalIdr = formatIdr(Math.round(subtotal * exchangeRate));
+        balanceDueIdr = formatIdr(Math.round(balanceDue * exchangeRate));
+        exchangeRateValue = new Intl.NumberFormat('id-ID').format(exchangeRate);
+        hasExchangeRate = true;
+      } catch (err) {
+        console.warn('Failed to fetch SAR exchange rate for manual invoice PDF:', err);
+      }
+    } else if (isUsd) {
+      try {
+        const { getCurrentUsdToIdrRate, formatIdr } = await import('../services/ExchangeRateService');
+        const rateData = await getCurrentUsdToIdrRate();
+        exchangeRate = rateData.rate;
+        grandTotalIdr = formatIdr(Math.round(subtotal * exchangeRate));
+        balanceDueIdr = formatIdr(Math.round(balanceDue * exchangeRate));
+        exchangeRateValue = new Intl.NumberFormat('id-ID').format(exchangeRate);
+        hasExchangeRate = true;
+      } catch (err) {
+        console.warn('Failed to fetch USD exchange rate for manual invoice PDF:', err);
+      }
+    } else {
+      // IDR - Already in Rupiah, no secondary conversion needed
+      hasExchangeRate = false;
     }
 
     // Build dynamic payment schedule (termin pembayaran) based on configured paymentTerms or default 3-term policy (60% / 20% / 20%)
@@ -1846,8 +1882,8 @@ export async function generateManualInvoicePDF(
           date: TemplateHelpers.formatDate(p.paidAt || p.createdAt || new Date()),
           method: (p.method || 'Bank Transfer').toUpperCase(),
           reference: p.referenceNumber || p.meta?.referenceNumber || '',
-          amountFormatted: TemplateHelpers.formatCurrency(pAmount),
-          amountIdr: termIdrText,
+          amountFormatted: formatAmount(pAmount),
+          amountIdr: isIdr ? '' : termIdrText,
           isPaid: true,
           statusText: 'Lunas',
         });
@@ -1876,8 +1912,8 @@ export async function generateManualInvoicePDF(
             date: TemplateHelpers.formatDate(term.dueDate || manualInvoice.dueDate || new Date()),
             method: 'Menunggu Pembayaran',
             reference: '',
-            amountFormatted: TemplateHelpers.formatCurrency(termAllocated),
-            amountIdr: pendingIdrText,
+            amountFormatted: formatAmount(termAllocated),
+            amountIdr: isIdr ? '' : pendingIdrText,
             isPaid: false,
             statusText: 'Menunggu',
           });
@@ -1904,8 +1940,8 @@ export async function generateManualInvoicePDF(
           date: TemplateHelpers.formatDate(p.paidAt || p.createdAt || new Date()),
           method: (p.method || 'Bank Transfer').toUpperCase(),
           reference: p.referenceNumber || p.meta?.referenceNumber || '',
-          amountFormatted: TemplateHelpers.formatCurrency(pAmount),
-          amountIdr: extraIdrText,
+          amountFormatted: formatAmount(pAmount),
+          amountIdr: isIdr ? '' : extraIdrText,
           isPaid: true,
           statusText: 'Lunas',
         });
@@ -1916,8 +1952,8 @@ export async function generateManualInvoicePDF(
       no: idx + 1,
       description: item.description,
       quantity: item.quantity,
-      unitPriceFormatted: TemplateHelpers.formatCurrency(item.unitPrice),
-      subtotalFormatted: TemplateHelpers.formatCurrency(item.subtotal),
+      unitPriceFormatted: formatAmount(item.unitPrice),
+      subtotalFormatted: formatAmount(item.subtotal),
       notes: item.notes || ''
     }));
 
@@ -1940,15 +1976,20 @@ export async function generateManualInvoicePDF(
         address: manualInvoice.clientAddress || ''
       },
       currency,
+      currencySymbol,
+      isSar,
+      isUsd,
+      isIdr,
       items,
-      subtotal: TemplateHelpers.formatCurrency(subtotal),
-      grandTotal: TemplateHelpers.formatCurrency(subtotal),
-      paidAmount: TemplateHelpers.formatCurrency(paidAmount),
-      balanceDue: TemplateHelpers.formatCurrency(balanceDue),
+      subtotal: formatAmount(subtotal),
+      grandTotal: formatAmount(subtotal),
+      paidAmount: formatAmount(paidAmount),
+      balanceDue: formatAmount(balanceDue),
       hasExchangeRate,
       grandTotalIdr,
       balanceDueIdr,
       exchangeRateValue,
+      exchangeRateSource,
       paymentSchedule,
       notes: manualInvoice.notes || '',
       bank: defaultBank,

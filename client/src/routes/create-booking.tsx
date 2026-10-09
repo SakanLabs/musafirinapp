@@ -64,6 +64,7 @@ function CreateBookingPage() {
     totalAmount: 0,
     totalHotelCost: 0,
     specialRequests: "",
+    source: "",
     paymentMethod: "",
     paymentAmount: 0,
   })
@@ -340,6 +341,7 @@ function CreateBookingPage() {
         numberOfGuests: formData.numberOfGuests,
         totalAmount: totalAmount,
         specialRequests: formData.specialRequests || undefined,
+        source: formData.source ? formData.source.trim() : undefined,
         paymentMethod: formData.paymentMethod ? (formData.paymentMethod as 'bank_transfer' | 'deposit' | 'cash') : undefined,
         paymentAmount: formData.paymentMethod ? formData.paymentAmount : undefined,
         // Legacy fields for backward compatibility
@@ -760,6 +762,19 @@ function CreateBookingPage() {
               {errors.city && (
                 <p className="text-red-500 text-xs mt-1">{errors.city}</p>
               )}
+            </div>
+
+            <div className="md:col-span-2 space-y-1.5">
+              <div className="flex items-center justify-between">
+                <label className="block text-xs font-semibold text-gray-500">Sumber Pemesanan Hotel (Source)</label>
+                <span className="text-[11px] text-gray-400 font-normal">Asal/vendor pemesanan hotel (free text)</span>
+              </div>
+              <Input
+                value={formData.source}
+                onChange={(e) => handleInputChange('source', e.target.value)}
+                placeholder="Contoh: Agoda, Expedia, Direct Hotel, Vendor Lokal..."
+                className="h-9 border-[#e5e7eb] rounded focus-visible:ring-[#111111] bg-white text-xs"
+              />
             </div>
           </div>
         </Card>

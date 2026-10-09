@@ -12,6 +12,7 @@ interface UpdateBookingStatusModalProps {
     paymentStatus?: Booking['paymentStatus']
     bookingStatus?: Booking['bookingStatus']
     hotelConfirmationNo?: string
+    source?: string
   }) => void
   isLoading: boolean
   booking: Booking
@@ -27,6 +28,7 @@ export function UpdateBookingStatusModal({
   const [paymentStatus, setPaymentStatus] = useState<Booking['paymentStatus']>(booking.paymentStatus)
   const [bookingStatus, setBookingStatus] = useState<Booking['bookingStatus']>(booking.bookingStatus)
   const [hotelConfirmationNo, setHotelConfirmationNo] = useState(booking.hotelConfirmationNo || '')
+  const [source, setSource] = useState(booking.source || '')
   const [showHcnField, setShowHcnField] = useState(false)
 
   // Reset form when modal opens
@@ -35,6 +37,7 @@ export function UpdateBookingStatusModal({
       setPaymentStatus(booking.paymentStatus)
       setBookingStatus(booking.bookingStatus)
       setHotelConfirmationNo(booking.hotelConfirmationNo || '')
+      setSource(booking.source || '')
       setShowHcnField(booking.bookingStatus === 'confirmed')
     }
   }, [isOpen, booking])
@@ -51,6 +54,7 @@ export function UpdateBookingStatusModal({
       paymentStatus?: Booking['paymentStatus']
       bookingStatus?: Booking['bookingStatus']
       hotelConfirmationNo?: string
+      source?: string
     } = {}
 
     // Only include changed fields
@@ -63,6 +67,9 @@ export function UpdateBookingStatusModal({
     if (showHcnField && hotelConfirmationNo !== booking.hotelConfirmationNo) {
       updateData.hotelConfirmationNo = hotelConfirmationNo
     }
+    if (source !== (booking.source || '')) {
+      updateData.source = source
+    }
 
     onSubmit(updateData)
   }
@@ -70,7 +77,8 @@ export function UpdateBookingStatusModal({
   const hasChanges = 
     paymentStatus !== booking.paymentStatus ||
     bookingStatus !== booking.bookingStatus ||
-    (showHcnField && hotelConfirmationNo !== booking.hotelConfirmationNo)
+    (showHcnField && hotelConfirmationNo !== booking.hotelConfirmationNo) ||
+    source !== (booking.source || '')
 
   const footer = (
     <>
@@ -152,6 +160,22 @@ export function UpdateBookingStatusModal({
             </p>
           </div>
         )}
+
+        <div className="space-y-2">
+          <label htmlFor="bookingSource" className="block text-sm font-medium text-gray-700">
+            Sumber Pemesanan Hotel (Source)
+          </label>
+          <Input
+            id="bookingSource"
+            value={source}
+            onChange={(e) => setSource(e.target.value)}
+            placeholder="Contoh: Agoda, Expedia, Direct Hotel, Vendor Lokal..."
+            maxLength={255}
+          />
+          <p className="text-xs text-gray-500">
+            Catatan asal/vendor pemesanan hotel (free text)
+          </p>
+        </div>
       </form>
     </Modal>
   )

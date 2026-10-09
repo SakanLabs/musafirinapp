@@ -99,6 +99,8 @@ export interface PayInvoiceData {
   amount: number;
   referenceNumber?: string;
   description?: string;
+  sendEmail?: boolean;
+  sendWhatsApp?: boolean;
 }
 
 export function usePayInvoice() {
@@ -106,12 +108,21 @@ export function usePayInvoice() {
 
   return useMutation({
     mutationFn: async (data: PayInvoiceData) => {
-      const payload: { method: PayInvoiceData['method']; amount: number; referenceNumber?: string; description?: string } = {
+      const payload: {
+        method: PayInvoiceData['method'];
+        amount: number;
+        referenceNumber?: string;
+        description?: string;
+        sendEmail?: boolean;
+        sendWhatsApp?: boolean;
+      } = {
         method: data.method,
         amount: data.amount,
       };
       if (data.referenceNumber) payload.referenceNumber = data.referenceNumber;
       if (data.description) payload.description = data.description;
+      if (data.sendEmail !== undefined) payload.sendEmail = data.sendEmail;
+      if (data.sendWhatsApp !== undefined) payload.sendWhatsApp = data.sendWhatsApp;
 
       const response = await apiClient.post<{ success: boolean; data: Invoice }>(
         API_ENDPOINTS.INVOICE_PAY(data.id),
@@ -367,6 +378,8 @@ export interface PayManualInvoiceData {
   autoGenerateReceipt?: boolean;
   idrAmount?: number;
   exchangeRate?: number;
+  sendEmail?: boolean;
+  sendWhatsApp?: boolean;
 }
 
 export function usePayManualInvoice() {
@@ -390,6 +403,8 @@ export function usePayManualInvoice() {
         autoGenerateReceipt: data.autoGenerateReceipt !== false,
         idrAmount: data.idrAmount,
         exchangeRate: data.exchangeRate,
+        sendEmail: data.sendEmail,
+        sendWhatsApp: data.sendWhatsApp,
       });
       return response;
     },

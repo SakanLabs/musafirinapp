@@ -282,6 +282,29 @@ invoiceRoutes.get('/booking/:bookingId', requireAdminOrFinance, async (c) => {
       // We don't fail the request, we just return the invoice with pdfUrl: null
     }
 
+    // Optional client invoice notification
+    const sendEmailQuery = c.req.query('sendEmail') === 'true';
+    const sendWhatsAppQuery = c.req.query('sendWhatsApp') === 'true';
+    const invoiceChannels: ('email' | 'whatsapp')[] = [];
+    if (sendEmailQuery) invoiceChannels.push('email');
+    if (sendWhatsAppQuery) invoiceChannels.push('whatsapp');
+
+    if (invoiceChannels.length > 0) {
+      notificationService.sendInvoice({
+        bookingId: bookingData.id,
+        clientId: bookingData.clientId || undefined,
+        invoiceNumber,
+        recipientName: bookingData.clientName || 'Pelanggan Musafirin',
+        recipientEmail: bookingData.clientEmail || undefined,
+        recipientPhone: bookingData.clientPhone || undefined,
+        totalAmount: (Number(bookingData.totalAmount) || 0) + extraTotal,
+        currency: 'SAR',
+        dueDate: customDueDate,
+        issueDate: new Date(),
+        channels: invoiceChannels,
+      }).catch((err) => console.error('[NotificationService] Error sending invoice notification:', err));
+    }
+
     return c.json({
       success: true,
       data: insertedInvoice,
@@ -1623,6 +1646,27 @@ invoiceRoutes.post('/:bookingId/generate', requireAdminOrFinance, async (c) => {
       // Proceed returning the insertedInvoice with null pdfUrl
     }
 
+    // Optional client invoice notification
+    const invoiceChannels: ('email' | 'whatsapp')[] = [];
+    if (body.sendEmail) invoiceChannels.push('email');
+    if (body.sendWhatsApp) invoiceChannels.push('whatsapp');
+
+    if (invoiceChannels.length > 0) {
+      notificationService.sendInvoice({
+        bookingId: bookingData.id,
+        clientId: bookingData.clientId || undefined,
+        invoiceNumber,
+        recipientName: bookingData.clientName || 'Pelanggan Musafirin',
+        recipientEmail: bookingData.clientEmail || undefined,
+        recipientPhone: bookingData.clientPhone || undefined,
+        totalAmount: (Number(bookingData.totalAmount) || 0) + extraTotal,
+        currency: 'SAR',
+        dueDate: customDueDate,
+        issueDate: customInvoiceDate,
+        channels: invoiceChannels,
+      }).catch((err) => console.error('[NotificationService] Error sending invoice notification:', err));
+    }
+
     return c.json({
       success: true,
       data: insertedInvoice,
@@ -2075,6 +2119,29 @@ invoiceRoutes.post('/:invoiceId/pay', requireAdminOrFinance, async (c) => {
           }
         }
 
+        // Optional payment confirmation notification
+        const manualPayChannels: ('email' | 'whatsapp')[] = [];
+        if (body?.sendEmail) manualPayChannels.push('email');
+        if (body?.sendWhatsApp) manualPayChannels.push('whatsapp');
+
+        if (manualPayChannels.length > 0) {
+          notificationService.sendPaymentConfirmation({
+            orderCode: manualInv.number,
+            orderTitle: manualInv.title || 'Invoice Manual',
+            paymentId: result.payment.referenceNumber ?? undefined,
+            amount: result.effectivePayAmount,
+            currency: manualInv.currency || 'SAR',
+            method,
+            terminLabel: result.terminLabel,
+            remainingBalance: result.newRemaining,
+            recipientName: manualInv.clientName || 'Pelanggan Musafirin',
+            recipientEmail: manualInv.clientEmail || undefined,
+            recipientPhone: manualInv.clientPhone || undefined,
+            paymentStatus: result.isPaidFull ? 'paid' : 'partial',
+            channels: manualPayChannels,
+          }).catch((err) => console.error('[NotificationService] Error in manual invoice payment confirmation:', err));
+        }
+
         const allPayments = await db
           .select()
           .from(manualInvoicePayments)
@@ -2434,15 +2501,20 @@ invoiceRoutes.post('/:invoiceId/pay', requireAdminOrFinance, async (c) => {
       return detail[0]!;
     });
 
-    // Auto-trigger client payment confirmation notification (non-blocking)
-    if (updated.bookingId) {
+    // Optional client payment confirmation notification (non-blocking)
+    const payChannels: ('email' | 'whatsapp')[] = [];
+    if (body?.sendEmail) payChannels.push('email');
+    if (body?.sendWhatsApp) payChannels.push('whatsapp');
+
+    if (payChannels.length > 0 && updated.bookingId) {
       const meta = (updated.bookingMeta as Record<string, any>) || {};
       notificationService.sendPaymentConfirmation({
         bookingId: updated.bookingId,
         paymentId: referenceNumber || undefined,
         method,
         remainingBalance: meta?.remainingBalance,
-      }).catch((err) => console.error('[NotificationService] Error in auto payment confirmation for invoice:', err));
+        channels: payChannels,
+      }).catch((err) => console.error('[NotificationService] Error in payment confirmation for invoice:', err));
     }
 
     return c.json({

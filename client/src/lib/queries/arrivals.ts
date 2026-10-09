@@ -18,6 +18,7 @@ export interface ArrivalItem {
   totalAmount: string | number;
   paymentStatus: 'paid' | 'partial' | 'unpaid' | 'overdue';
   hotelConfirmationNo: string | null;
+  source: string | null;
   notes: string;
   totalRooms: number;
   roomSummary: string;

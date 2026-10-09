@@ -236,7 +236,7 @@ function ServiceOrderDetailPage() {
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label className="text-sm font-medium text-gray-500">Unit Price (USD)</label>
                 <p className="text-lg font-semibold">{formatCurrency(serviceOrder.unitPriceUSD, 'USD')}</p>
@@ -244,10 +244,6 @@ function ServiceOrderDetailPage() {
               <div>
                 <label className="text-sm font-medium text-gray-500">Total Price (USD)</label>
                 <p className="text-lg font-semibold text-green-600">{formatCurrency(serviceOrder.totalPriceUSD, 'USD')}</p>
-              </div>
-              <div>
-                <label className="text-sm font-medium text-gray-500">Total Price (SAR)</label>
-                <p className="text-lg font-semibold text-blue-600">{formatCurrency(serviceOrder.totalPriceSAR, 'SAR')}</p>
               </div>
             </div>
           </CardContent>

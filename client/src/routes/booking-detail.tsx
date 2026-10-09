@@ -39,7 +39,8 @@ import {
   Wallet,
   Banknote,
   Download,
-  ExternalLink
+  ExternalLink,
+  MessageCircle
 } from "lucide-react"
 import { SARCurrency } from "@/components/ui/sar-currency"
 import { authService } from "@/lib/auth"
@@ -143,7 +144,9 @@ function BookingDetailPage() {
     method: "bank_transfer" as "bank_transfer" | "deposit" | "cash",
     amount: "",
     referenceNumber: "",
-    description: ""
+    description: "",
+    sendEmail: false,
+    sendWhatsApp: false,
   })
 
   // PDF Preview State (for instant view modal)
@@ -204,7 +207,9 @@ function BookingDetailPage() {
       method: "bank_transfer",
       amount: remaining > 0 ? remaining.toString() : "",
       referenceNumber: "",
-      description: paid === 0 ? "Pembayaran Uang Muka (DP)" : `Pembayaran Termin ke-${payments.length + 1}`
+      description: paid === 0 ? "Pembayaran Uang Muka (DP)" : `Pembayaran Termin ke-${payments.length + 1}`,
+      sendEmail: false,
+      sendWhatsApp: false,
     })
     setIsPayModalOpen(true)
   }
@@ -223,7 +228,9 @@ function BookingDetailPage() {
         method: payForm.method,
         amount: amountNum,
         referenceNumber: payForm.referenceNumber.trim() || undefined,
-        description: payForm.description.trim() || undefined
+        description: payForm.description.trim() || undefined,
+        sendEmail: payForm.sendEmail,
+        sendWhatsApp: payForm.sendWhatsApp,
       })
       queryClient.invalidateQueries({ queryKey: ['bookings'] })
       queryClient.invalidateQueries({ queryKey: ['receipts'] })
@@ -250,11 +257,13 @@ function BookingDetailPage() {
     setIsDueDateModalOpen(true)
   }
 
-  const handleDueDateSubmit = async (dueDate: string) => {
+  const handleDueDateSubmit = async (dueDate: string, options?: { sendEmail?: boolean; sendWhatsApp?: boolean }) => {
     try {
       await generateInvoiceMutation.mutateAsync({
         bookingId: id,
-        dueDate
+        dueDate,
+        sendEmail: options?.sendEmail,
+        sendWhatsApp: options?.sendWhatsApp,
       })
 
       const message = existingInvoice
@@ -317,6 +326,7 @@ function BookingDetailPage() {
     paymentStatus?: "unpaid" | "partial" | "paid" | "overdue"
     bookingStatus?: "pending" | "confirmed" | "cancelled"
     hotelConfirmationNo?: string
+    source?: string
   }) => {
     try {
       await updateBookingStatusMutation.mutateAsync({
@@ -524,7 +534,7 @@ function BookingDetailPage() {
               </CardHeader>
               <CardContent className="p-4 md:p-6 space-y-6">
                 {/* Visual duration metadata */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 pb-6 border-b border-gray-100">
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-6 pb-6 border-b border-gray-100">
                   <div className="space-y-1">
                     <label className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider">Lodging Hotel</label>
                     <p className="text-sm font-bold text-[#111111] flex items-center gap-1.5">
@@ -539,6 +549,18 @@ function BookingDetailPage() {
                   <div className="space-y-1">
                     <label className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider">Catering / Meal Plan</label>
                     <p className="text-sm font-bold text-[#111111]">{booking.mealPlan}</p>
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider">Sumber Pemesanan (Source)</label>
+                    <p className="text-sm font-semibold text-[#111111]">
+                      {booking.source ? (
+                        <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold bg-zinc-100 text-zinc-800 border border-zinc-200">
+                          {booking.source}
+                        </span>
+                      ) : (
+                        <span className="text-xs text-gray-400 italic font-normal">Belum diisi</span>
+                      )}
+                    </p>
                   </div>
                 </div>
 
@@ -698,6 +720,14 @@ function BookingDetailPage() {
                     <label className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider">Hotel Confirmation No.</label>
                     <p className="mt-1 text-xs font-mono font-bold text-[#111111] bg-gray-50 border border-[#e5e7eb] px-3 py-2 rounded-lg text-center">
                       {booking.hotelConfirmationNo}
+                    </p>
+                  </div>
+                )}
+                {booking.source && (
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider">Sumber Pemesanan (Source)</label>
+                    <p className="mt-1 text-xs font-semibold text-[#111111] bg-gray-50 border border-[#e5e7eb] px-3 py-2 rounded-lg text-center">
+                      {booking.source}
                     </p>
                   </div>
                 )}
@@ -1346,6 +1376,39 @@ function BookingDetailPage() {
                 onChange={(e) => setPayForm({ ...payForm, description: e.target.value })}
                 className="h-9 border-[#e5e7eb] rounded-md text-xs font-medium focus-visible:ring-[#111111] shadow-none"
               />
+            </div>
+
+            {/* Notification delivery checkboxes */}
+            <div className="bg-zinc-50 border border-zinc-200/80 rounded-lg p-3 space-y-2">
+              <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-500 block">
+                Kirim Konfirmasi Pembayaran (Opsional)
+              </label>
+              <div className="space-y-1.5">
+                <label className="flex items-center space-x-2.5 cursor-pointer text-xs font-medium text-zinc-700 hover:text-zinc-950">
+                  <input
+                    type="checkbox"
+                    checked={payForm.sendEmail}
+                    onChange={(e) => setPayForm({ ...payForm, sendEmail: e.target.checked })}
+                    className="h-4 w-4 rounded border-gray-300 text-zinc-900 focus:ring-zinc-900 cursor-pointer"
+                  />
+                  <span className="flex items-center gap-1.5">
+                    <Mail className="h-3.5 w-3.5 text-zinc-400" />
+                    <span>Kirim konfirmasi via <strong>Email</strong></span>
+                  </span>
+                </label>
+                <label className="flex items-center space-x-2.5 cursor-pointer text-xs font-medium text-zinc-700 hover:text-zinc-950">
+                  <input
+                    type="checkbox"
+                    checked={payForm.sendWhatsApp}
+                    onChange={(e) => setPayForm({ ...payForm, sendWhatsApp: e.target.checked })}
+                    className="h-4 w-4 rounded border-gray-300 text-zinc-900 focus:ring-zinc-900 cursor-pointer"
+                  />
+                  <span className="flex items-center gap-1.5">
+                    <MessageCircle className="h-3.5 w-3.5 text-emerald-600" />
+                    <span>Kirim konfirmasi via <strong>WhatsApp</strong></span>
+                  </span>
+                </label>
+              </div>
             </div>
           </div>
 

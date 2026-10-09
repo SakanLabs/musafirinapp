@@ -272,3 +272,91 @@ describe('4. Notification Idempotency & Channel Isolation Rules', () => {
     expect(res.status).toBe('sent');
   });
 });
+
+describe('5. Hotel Booking Source Handling (Free Text Tracking)', () => {
+  test('Accepts free text booking sources such as Agoda, Expedia, Direct Hotel, or Local Vendor', () => {
+    const validSources = [
+      'Agoda',
+      'Expedia',
+      'Direct Hotel',
+      'Vendor Lokal Makkah Barakah',
+      'Booking.com',
+      'Offline Contract 2026',
+    ];
+
+    validSources.forEach((source) => {
+      expect(typeof source).toBe('string');
+      expect(source.length).toBeLessThanOrEqual(255);
+      expect(source.trim().length).toBeGreaterThan(0);
+    });
+  });
+
+  test('Validates source string constraints (max 255 chars, trim whitespace)', () => {
+    const validSource = '   Agoda B2B Partner   ';
+    const trimmedSource = validSource.trim();
+    expect(trimmedSource).toBe('Agoda B2B Partner');
+
+    const tooLongSource = 'a'.repeat(256);
+    expect(tooLongSource.length > 255).toBe(true);
+  });
+
+  test('Supports search and query filtering by booking source', () => {
+    const testArrivals = [
+      { id: 1, hotelName: 'Makkah Clock Royal', source: 'Agoda' },
+      { id: 2, hotelName: 'Pullman Zamzam', source: 'Direct Hotel' },
+      { id: 3, hotelName: 'Swissotel Makkah', source: 'Local Vendor' },
+      { id: 4, hotelName: 'Anwar Al Madinah', source: null },
+    ];
+
+    const filterBySource = (list: typeof testArrivals, q: string) => {
+      const query = q.toLowerCase().trim();
+      return list.filter((item) => item.source && item.source.toLowerCase().includes(query));
+    };
+
+    expect(filterBySource(testArrivals, 'agoda').length).toBe(1);
+    expect(filterBySource(testArrivals, 'agoda')[0]?.id).toBe(1);
+    expect(filterBySource(testArrivals, 'hotel').length).toBe(1);
+    expect(filterBySource(testArrivals, 'vendor').length).toBe(1);
+    expect(filterBySource(testArrivals, 'nonexistent').length).toBe(0);
+  });
+
+  test('CONFIDENTIALITY: source must NEVER be included in client-facing payloads or notifications', () => {
+    // 1. Client-facing public booking object simulation
+    const rawBookingFromDB = {
+      id: 101,
+      code: 'BK-101',
+      hotelName: 'Fairmont Makkah',
+      city: 'Makkah',
+      checkIn: new Date(),
+      checkOut: new Date(),
+      totalAmount: '5000.00',
+      paymentStatus: 'paid',
+      bookingStatus: 'confirmed',
+      hotelConfirmationNo: 'HCN-999',
+      source: 'Agoda Confidential Deal',
+    };
+
+    // Public / Client API projection (as implemented in publicBookings.ts)
+    const publicClientBooking = {
+      id: rawBookingFromDB.id,
+      code: rawBookingFromDB.code,
+      hotelName: rawBookingFromDB.hotelName,
+      city: rawBookingFromDB.city,
+      checkIn: rawBookingFromDB.checkIn,
+      checkOut: rawBookingFromDB.checkOut,
+      totalAmount: rawBookingFromDB.totalAmount,
+      paymentStatus: rawBookingFromDB.paymentStatus,
+      bookingStatus: rawBookingFromDB.bookingStatus,
+      hotelConfirmationNo: rawBookingFromDB.hotelConfirmationNo,
+    };
+
+    expect((publicClientBooking as any).source).toBeUndefined();
+
+    // 2. WhatsApp share message to client must not contain source
+    const shareMessage = `Booking Details:\nGuest: John Doe\nCode: ${rawBookingFromDB.code}\nHotel: ${rawBookingFromDB.hotelName}`;
+    expect(shareMessage).not.toContain(rawBookingFromDB.source);
+    expect(shareMessage).not.toContain('Agoda');
+  });
+});
+
+

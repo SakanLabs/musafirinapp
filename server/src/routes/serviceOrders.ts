@@ -6,6 +6,7 @@ import type { NewServiceOrder, NewServiceOrderInvoice, ServiceOrderInvoice, NewS
 import { requireAdmin, requireAdminOrFinance, requireFinance } from '../middleware/auth';
 import { generateServiceOrderNumber, generateServiceOrderInvoicePDF, generateServiceOrderInvoiceNumber, uploadToMinio, generateServiceOrderReceiptPDF } from '../utils/pdf';
 import { notifyAdminNewBooking } from '../lib/notification';
+import { notificationService } from '../services/NotificationService';
 
 const serviceOrderRoutes = new Hono();
 
@@ -347,8 +348,8 @@ serviceOrderRoutes.post('/:id/generate-invoice', requireAdminOrFinance, async (c
     const newInvoice: NewServiceOrderInvoice = {
       number: invoiceNumber,
       serviceOrderId: serviceOrderId,
-      amount: serviceOrder.totalPriceSAR,
-      currency: 'SAR',
+      amount: (serviceOrder.totalPriceUSD || serviceOrder.totalPriceSAR).toString(),
+      currency: serviceOrder.currency || 'USD',
       issueDate: issueDate,
       dueDate: dueDate,
       status: 'draft',
@@ -366,9 +367,9 @@ serviceOrderRoutes.post('/:id/generate-invoice', requireAdminOrFinance, async (c
       const invoiceForPDF = {
         id: insertedInvoice!.id,
         number: invoiceNumber,
-        amount: parseFloat(serviceOrder.totalPriceSAR),
+        amount: parseFloat(serviceOrder.totalPriceUSD || serviceOrder.totalPriceSAR),
         paidAmount: 0,
-        currency: 'SAR',
+        currency: serviceOrder.currency || 'USD',
         status: 'draft' as const,
         pdfUrl: null,
       };
@@ -379,7 +380,7 @@ serviceOrderRoutes.post('/:id/generate-invoice', requireAdminOrFinance, async (c
         number: serviceOrder.number,
         productType: serviceOrder.productType,
         status: serviceOrder.status,
-        totalAmount: parseFloat(serviceOrder.totalPriceSAR),
+        totalAmount: parseFloat(serviceOrder.totalPriceUSD || serviceOrder.totalPriceSAR),
         totalPeople: serviceOrder.totalPeople,
         createdAt: serviceOrder.createdAt,
       };
@@ -411,6 +412,30 @@ serviceOrderRoutes.post('/:id/generate-invoice', requireAdminOrFinance, async (c
     } catch (pdfError) {
       console.error('Failed to generate/upload PDF, but invoice was created in DB:', pdfError);
       // Proceed returning the insertedInvoice with null pdfUrl
+    }
+
+    // Optional client invoice notification
+    const invoiceChannels: ('email' | 'whatsapp')[] = [];
+    if (body.sendEmail) invoiceChannels.push('email');
+    if (body.sendWhatsApp) invoiceChannels.push('whatsapp');
+
+    if (invoiceChannels.length > 0) {
+      const recipientName = serviceOrder.clientName || serviceOrder.groupLeaderName || 'Pelanggan Musafirin';
+      const recipientPhone = serviceOrder.clientPhone || serviceOrder.groupLeaderPhone || undefined;
+      const recipientEmail = serviceOrder.clientEmail || undefined;
+
+      notificationService.sendInvoice({
+        clientId: serviceOrder.clientId || undefined,
+        invoiceNumber: insertedInvoice!.number,
+        recipientName,
+        recipientEmail,
+        recipientPhone,
+        totalAmount: insertedInvoice!.amount || serviceOrder.totalPriceUSD || serviceOrder.totalPriceSAR,
+        currency: insertedInvoice!.currency || serviceOrder.currency || 'USD',
+        dueDate,
+        issueDate,
+        channels: invoiceChannels,
+      }).catch((err) => console.error('[NotificationService] Error sending service order invoice notification:', err));
     }
 
     return c.json({
@@ -528,7 +553,7 @@ serviceOrderRoutes.post('/:id/regenerate-invoice', requireAdminOrFinance, async 
         .where(eq(serviceOrderInvoicePayments.invoiceId, existingInvoice.id));
 
       totalPaid = payments.reduce((acc, p) => acc + parseFloat(p.amount || '0'), 0);
-      const totalAmount = parseFloat(serviceOrder.totalPriceSAR || '0');
+      const totalAmount = parseFloat(serviceOrder.totalPriceUSD || serviceOrder.totalPriceSAR || '0');
 
       let invoiceStatus: 'draft' | 'sent' | 'partially_paid' | 'paid' | 'overdue' | 'cancelled' = existingInvoice.status;
       if (totalPaid >= totalAmount && totalAmount > 0) {
@@ -543,9 +568,10 @@ serviceOrderRoutes.post('/:id/regenerate-invoice', requireAdminOrFinance, async 
       const [updatedInvoice] = await db
         .update(serviceOrderInvoices)
         .set({
-          amount: serviceOrder.totalPriceSAR,
+          amount: (serviceOrder.totalPriceUSD || serviceOrder.totalPriceSAR).toString(),
           paidAmount: totalPaid.toFixed(2),
           status: invoiceStatus,
+          currency: serviceOrder.currency || existingInvoice.currency || 'USD',
           issueDate,
           dueDate,
           updatedAt: new Date(),
@@ -563,9 +589,9 @@ serviceOrderRoutes.post('/:id/regenerate-invoice', requireAdminOrFinance, async 
       const newInvoice: NewServiceOrderInvoice = {
         number: invoiceNumber,
         serviceOrderId: serviceOrderId,
-        amount: serviceOrder.totalPriceSAR,
+        amount: (serviceOrder.totalPriceUSD || serviceOrder.totalPriceSAR).toString(),
         paidAmount: '0.00',
-        currency: 'SAR',
+        currency: serviceOrder.currency || 'USD',
         issueDate: issueDate,
         dueDate: dueDate,
         status: 'draft',
@@ -588,7 +614,7 @@ serviceOrderRoutes.post('/:id/regenerate-invoice', requireAdminOrFinance, async 
         number: targetInvoice.number,
         amount: parseFloat(targetInvoice.amount),
         paidAmount: targetInvoice.paidAmount,
-        currency: targetInvoice.currency,
+        currency: targetInvoice.currency || serviceOrder.currency || 'USD',
         status: targetInvoice.status,
         pdfUrl: null,
       };
@@ -599,7 +625,7 @@ serviceOrderRoutes.post('/:id/regenerate-invoice', requireAdminOrFinance, async 
         number: serviceOrder.number,
         productType: serviceOrder.productType,
         status: serviceOrder.status,
-        totalAmount: parseFloat(serviceOrder.totalPriceSAR),
+        totalAmount: parseFloat(serviceOrder.totalPriceUSD || serviceOrder.totalPriceSAR),
         totalPeople: serviceOrder.totalPeople,
         createdAt: serviceOrder.createdAt,
       };
@@ -630,6 +656,31 @@ serviceOrderRoutes.post('/:id/regenerate-invoice', requireAdminOrFinance, async 
       targetInvoice.pdfUrl = pdfUrl;
     } catch (pdfError) {
       console.error('Failed to regenerate/upload PDF, but invoice was updated in DB:', pdfError);
+    }
+
+    // Optional client invoice notification
+    const bodyObj = await c.req.json().catch(() => ({}));
+    const invoiceChannels: ('email' | 'whatsapp')[] = [];
+    if (bodyObj.sendEmail) invoiceChannels.push('email');
+    if (bodyObj.sendWhatsApp) invoiceChannels.push('whatsapp');
+
+    if (invoiceChannels.length > 0) {
+      const recipientName = serviceOrder.clientName || serviceOrder.groupLeaderName || 'Pelanggan Musafirin';
+      const recipientPhone = serviceOrder.clientPhone || serviceOrder.groupLeaderPhone || undefined;
+      const recipientEmail = serviceOrder.clientEmail || undefined;
+
+      notificationService.sendInvoice({
+        clientId: serviceOrder.clientId || undefined,
+        invoiceNumber: targetInvoice.number,
+        recipientName,
+        recipientEmail,
+        recipientPhone,
+        totalAmount: targetInvoice.amount || serviceOrder.totalPriceUSD || serviceOrder.totalPriceSAR,
+        currency: targetInvoice.currency || serviceOrder.currency || 'USD',
+        dueDate: targetInvoice.dueDate,
+        issueDate: targetInvoice.issueDate,
+        channels: invoiceChannels,
+      }).catch((err) => console.error('[NotificationService] Error sending service order invoice notification:', err));
     }
 
     return c.json({
@@ -795,7 +846,7 @@ serviceOrderRoutes.post('/:id/receipt', requireAdminOrFinance, async (c) => {
     const receiptNumber = `SOR-${new Date().getFullYear()}-${String(Date.now()).slice(-6)}`;
 
     // Total should be from invoice if exists, else order
-    const totalDue = invoiceData ? Number(invoiceData.amount) : Number(orderReq.totalPriceSAR || 0);
+    const totalDue = invoiceData ? Number(invoiceData.amount) : Number(orderReq.totalPriceUSD || orderReq.totalPriceSAR || 0);
     const prevPaid = invoiceData ? Number(invoiceData.paidAmount || 0) : 0;
     // For this specific receipt, it prints the current payment amount
     const balanceDue = Math.max(0, totalDue - (prevPaid + paymentAmount));
@@ -806,7 +857,7 @@ serviceOrderRoutes.post('/:id/receipt', requireAdminOrFinance, async (c) => {
       totalAmount: totalDue.toString(),
       paidAmount: paymentAmount.toString(), // The receipt reflects THIS payment
       balanceDue: balanceDue.toString(),
-      currency: 'SAR',
+      currency: invoiceData?.currency || orderReq.currency || 'USD',
       payerName: clientReq.name || 'Unknown',
       pdfUrl: '', // To be filled after upload
     };
@@ -890,7 +941,7 @@ serviceOrderRoutes.get('/:id/billing', requireAdminOrFinance, async (c) => {
       .orderBy(desc(serviceOrderReceipts.createdAt));
 
     // Summary calculations
-    const totalAmount = invoice ? parseFloat(invoice.amount) : parseFloat(order.totalPriceSAR);
+    const totalAmount = invoice ? parseFloat(invoice.amount) : parseFloat(order.totalPriceUSD || order.totalPriceSAR || '0');
     const paidAmount = invoice ? parseFloat(invoice.paidAmount || '0') : 0;
     const remainingBalance = Math.max(0, totalAmount - paidAmount);
     const isOrderPaidFull = paidAmount >= totalAmount && totalAmount > 0;
@@ -965,7 +1016,7 @@ serviceOrderRoutes.get('/:id/billing', requireAdminOrFinance, async (c) => {
           paidAmount,
           remainingBalance,
           paymentStatus,
-          currency: 'SAR',
+          currency: invoice?.currency || order.currency || 'USD',
           clientDepositBalance: parseFloat(clientDepositBalance) || 0,
         },
       }
@@ -1032,9 +1083,9 @@ serviceOrderRoutes.post('/:id/pay', requireAdminOrFinance, async (c) => {
         .values({
           number: invoiceNumber,
           serviceOrderId: id,
-          amount: order.totalPriceSAR,
+          amount: (order.totalPriceUSD || order.totalPriceSAR).toString(),
           paidAmount: '0.00',
-          currency: 'SAR',
+          currency: order.currency || 'USD',
           issueDate,
           dueDate,
           status: 'draft',
@@ -1048,9 +1099,9 @@ serviceOrderRoutes.post('/:id/pay', requireAdminOrFinance, async (c) => {
         const invoiceForPDF = {
           id: invoice.id,
           number: invoiceNumber,
-          amount: parseFloat(order.totalPriceSAR),
+          amount: parseFloat(order.totalPriceUSD || order.totalPriceSAR),
           paidAmount: invoice.paidAmount,
-          currency: 'SAR',
+          currency: invoice.currency || order.currency || 'USD',
           status: 'draft' as const,
           pdfUrl: null,
         };
@@ -1155,7 +1206,7 @@ serviceOrderRoutes.post('/:id/pay', requireAdminOrFinance, async (c) => {
         .values({
           invoiceId: invoice!.id,
           amount: effectivePayAmount.toString(),
-          currency: 'SAR',
+          currency: invoice!.currency || order.currency || 'USD',
           method,
           referenceNumber: referenceNumber || (method === 'deposit' ? `DEP-${Date.now()}` : `PAY-${Date.now()}`),
           paidAt: new Date(),
@@ -1237,7 +1288,7 @@ serviceOrderRoutes.post('/:id/pay', requireAdminOrFinance, async (c) => {
           totalAmount: totalInvoiceAmount.toString(),
           paidAmount: paymentResult.effectivePayAmount.toString(),
           balanceDue: paymentResult.newRemaining.toString(),
-          currency: 'SAR',
+          currency: invoice.currency || order.currency || 'USD',
           payerName: client?.name || order.groupLeaderName || 'Unknown',
           pdfUrl: '',
           meta: {
@@ -1274,6 +1325,33 @@ serviceOrderRoutes.post('/:id/pay', requireAdminOrFinance, async (c) => {
       } catch (receiptErr) {
         console.error('Error auto-generating receipt PDF:', receiptErr);
       }
+    }
+
+    // Optional client payment confirmation notification
+    const payChannels: ('email' | 'whatsapp')[] = [];
+    if (body?.sendEmail) payChannels.push('email');
+    if (body?.sendWhatsApp) payChannels.push('whatsapp');
+
+    if (payChannels.length > 0) {
+      const recipientName = client?.name || order.groupLeaderName || 'Pelanggan Musafirin';
+      const recipientPhone = client?.phone || order.groupLeaderPhone || undefined;
+      const recipientEmail = client?.email || undefined;
+
+      notificationService.sendPaymentConfirmation({
+        orderCode: order.number,
+        orderTitle: `Visa Umrah (${order.productType || 'Layanan'})`,
+        paymentId: paymentResult.payment.referenceNumber ?? undefined,
+        amount: paymentResult.effectivePayAmount,
+        currency: invoice.currency || order.currency || 'USD',
+        method,
+        terminLabel: paymentResult.terminLabel,
+        remainingBalance: paymentResult.newRemaining,
+        recipientName,
+        recipientEmail,
+        recipientPhone,
+        paymentStatus: paymentResult.isPaidFull ? 'paid' : 'partial',
+        channels: payChannels,
+      }).catch((err) => console.error('[NotificationService] Error sending SO payment confirmation:', err));
     }
 
     return c.json({

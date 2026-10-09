@@ -56,6 +56,7 @@ function BookingsPage() {
     checkInDate: "",
     checkOutDate: "",
     roomType: "",
+    source: "",
     numberOfGuests: 1,
     totalAmount: 0,
     specialRequests: ""
@@ -122,9 +123,10 @@ function BookingsPage() {
         const hotelMatch = booking.hotelName ? booking.hotelName.toLowerCase().includes(q) : false
         const cityMatch = booking.city ? booking.city.toLowerCase().includes(q) : false
         const confirmMatch = booking.hotelConfirmationNo ? booking.hotelConfirmationNo.toLowerCase().includes(q) : false
+        const sourceMatch = booking.source ? booking.source.toLowerCase().includes(q) : false
         const roomTypeMatch = booking.items?.some(item => item.roomType?.toLowerCase().includes(q)) || false
 
-        if (!idMatch && !codeMatch && !guestMatch && !guestEmailMatch && !guestPhoneMatch && !clientMatch && !emailMatch && !phoneMatch && !hotelMatch && !cityMatch && !confirmMatch && !roomTypeMatch) {
+        if (!idMatch && !codeMatch && !guestMatch && !guestEmailMatch && !guestPhoneMatch && !clientMatch && !emailMatch && !phoneMatch && !hotelMatch && !cityMatch && !confirmMatch && !sourceMatch && !roomTypeMatch) {
           return false
         }
       }
@@ -219,7 +221,14 @@ function BookingsPage() {
             <Building className="h-3 w-3 text-gray-400 shrink-0" />
             {booking.hotelName}
           </div>
-          <div className="text-[10px] text-gray-400 mt-0.5">{booking.city}</div>
+          <div className="flex items-center gap-1.5 mt-0.5">
+            <span className="text-[10px] text-gray-400">{booking.city}</span>
+            {booking.source && (
+              <span className="inline-flex items-center px-1.5 py-0.2 text-[9px] font-medium bg-zinc-100 text-zinc-600 rounded border border-zinc-200" title={`Sumber: ${booking.source}`}>
+                via {booking.source}
+              </span>
+            )}
+          </div>
         </div>
       )
     },
@@ -381,6 +390,7 @@ function BookingsPage() {
         numberOfGuests: formData.numberOfGuests,
         totalAmount: formData.totalAmount,
         specialRequests: formData.specialRequests || undefined,
+        source: formData.source || undefined,
         // Legacy fields for backward compatibility
         roomType: formData.roomType
       }
@@ -397,6 +407,7 @@ function BookingsPage() {
         checkInDate: "",
         checkOutDate: "",
         roomType: "",
+        source: "",
         numberOfGuests: 1,
         totalAmount: 0,
         specialRequests: ""

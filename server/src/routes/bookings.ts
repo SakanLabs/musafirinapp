@@ -49,6 +49,7 @@ bookingRoutes.get('/', requireAdmin, async (c) => {
         bookingStatus: bookings.bookingStatus,
         mealPlan: bookings.mealPlan,
         hotelConfirmationNo: bookings.hotelConfirmationNo,
+        source: bookings.source,
         createdAt: bookings.createdAt,
         updatedAt: bookings.updatedAt,
         meta: bookings.meta,
@@ -113,6 +114,7 @@ bookingRoutes.get('/', requireAdmin, async (c) => {
         bookingStatus: booking.bookingStatus,
         mealPlan: booking.mealPlan,
         hotelConfirmationNo: booking.hotelConfirmationNo,
+        source: booking.source,
         createdAt: booking.createdAt,
         updatedAt: booking.updatedAt,
         meta: booking.meta,
@@ -170,6 +172,7 @@ bookingRoutes.get('/arrivals', requireAdmin, async (c) => {
         paymentStatus: bookings.paymentStatus,
         bookingStatus: bookings.bookingStatus,
         hotelConfirmationNo: bookings.hotelConfirmationNo,
+        source: bookings.source,
         meta: bookings.meta,
         clientName: clients.name,
         clientEmail: clients.email,
@@ -263,6 +266,7 @@ bookingRoutes.get('/arrivals', requireAdmin, async (c) => {
         totalAmount: b.totalAmount,
         paymentStatus: b.paymentStatus,
         hotelConfirmationNo: b.hotelConfirmationNo || null,
+        source: b.source || null,
         notes,
         totalRooms,
         roomSummary,
@@ -301,6 +305,7 @@ bookingRoutes.get('/arrivals', requireAdmin, async (c) => {
         a.guestName.toLowerCase().includes(q) ||
         a.clientName.toLowerCase().includes(q) ||
         (a.hotelConfirmationNo && a.hotelConfirmationNo.toLowerCase().includes(q)) ||
+        (a.source && a.source.toLowerCase().includes(q)) ||
         (a.guestPhone && a.guestPhone.includes(q)) ||
         a.hotelName.toLowerCase().includes(q)
       );
@@ -423,6 +428,7 @@ bookingRoutes.get('/:id', requireAdmin, async (c) => {
         bookingStatus: bookings.bookingStatus,
         mealPlan: bookings.mealPlan,
         hotelConfirmationNo: bookings.hotelConfirmationNo,
+        source: bookings.source,
         meta: bookings.meta,
         createdAt: bookings.createdAt,
         updatedAt: bookings.updatedAt,
@@ -494,6 +500,7 @@ bookingRoutes.get('/:id', requireAdmin, async (c) => {
       bookingStatus: bookingData.bookingStatus,
       mealPlan: bookingData.mealPlan,
       hotelConfirmationNo: bookingData.hotelConfirmationNo,
+      source: bookingData.source,
       meta: bookingData.meta,
       createdAt: bookingData.createdAt,
       updatedAt: bookingData.updatedAt,
@@ -725,6 +732,8 @@ bookingRoutes.post('/', requireAdmin, async (c) => {
         totalAmount: totalAmount.toString(),
         paymentStatus,
         bookingStatus: booking.bookingStatus || 'pending',
+        hotelConfirmationNo: booking.hotelConfirmationNo || null,
+        source: booking.source || body.source || null,
         meta: bookingMeta,
       };
 
@@ -996,6 +1005,7 @@ bookingRoutes.put('/:id', requireAdmin, async (c) => {
 
     if (hotelName) updatePayload.hotelName = hotelName;
     if (city) updatePayload.city = city;
+    if (body.source !== undefined) updatePayload.source = body.source ? body.source.trim() : null;
 
     const [updatedBooking] = await db
       .update(bookings)
@@ -1144,7 +1154,7 @@ bookingRoutes.patch('/:id', requireAdmin, async (c) => {
     const idParam = c.req.param('id').replace(/["']/g, '');
     const bookingId = parseInt(idParam);
     const body = await c.req.json();
-    const { paymentStatus, bookingStatus, hotelConfirmationNo } = body;
+    const { paymentStatus, bookingStatus, hotelConfirmationNo, source } = body;
 
     if (!bookingId || isNaN(bookingId)) {
       return c.json({ error: 'Invalid booking ID' }, 400);
@@ -1169,6 +1179,14 @@ bookingRoutes.patch('/:id', requireAdmin, async (c) => {
 
     if (hotelConfirmationNo && hotelConfirmationNo.length > 100) {
       return c.json({ error: 'Hotel confirmation number must be 100 characters or less' }, 400);
+    }
+
+    if (source !== undefined && source !== null && typeof source !== 'string') {
+      return c.json({ error: 'Source must be a string' }, 400);
+    }
+
+    if (source && source.length > 255) {
+      return c.json({ error: 'Source must be 255 characters or less' }, 400);
     }
 
     // Check if booking exists
@@ -1197,6 +1215,10 @@ bookingRoutes.patch('/:id', requireAdmin, async (c) => {
 
     if (hotelConfirmationNo !== undefined) {
       updateData.hotelConfirmationNo = hotelConfirmationNo;
+    }
+
+    if (source !== undefined) {
+      updateData.source = source ? source.trim() : null;
     }
 
     const [updatedBooking] = await db
@@ -1629,14 +1651,21 @@ bookingRoutes.post('/:id/pay', requireAdmin, async (c) => {
       return { booking: result[0]!, receipt: generatedReceipt, paidThisTxn, currentTerminLabel };
     });
 
-    // Auto-trigger client notification (non-blocking)
-    notificationService.sendPaymentConfirmation({
-      bookingId,
-      amount: updated.paidThisTxn,
-      method,
-      terminLabel: updated.currentTerminLabel,
-      remainingBalance: (updated.booking.meta as Record<string, any>)?.remainingBalance,
-    }).catch((err) => console.error('[NotificationService] Error in auto payment confirmation for booking:', err));
+    // Optional client notification (non-blocking)
+    const payChannels: ('email' | 'whatsapp')[] = [];
+    if (body?.sendEmail) payChannels.push('email');
+    if (body?.sendWhatsApp) payChannels.push('whatsapp');
+
+    if (payChannels.length > 0) {
+      notificationService.sendPaymentConfirmation({
+        bookingId,
+        amount: updated.paidThisTxn,
+        method,
+        terminLabel: updated.currentTerminLabel,
+        remainingBalance: (updated.booking.meta as Record<string, any>)?.remainingBalance,
+        channels: payChannels,
+      }).catch((err) => console.error('[NotificationService] Error in payment confirmation for booking:', err));
+    }
 
     return c.json({
       success: true,

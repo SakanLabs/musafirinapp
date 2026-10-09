@@ -509,6 +509,9 @@ export async function ensureTablesExist() {
     await client`
       ALTER TABLE vouchers ADD COLUMN IF NOT EXISTS sent_by TEXT;
     `;
+    await client`
+      ALTER TABLE bookings ADD COLUMN IF NOT EXISTS source VARCHAR(255);
+    `;
 
     // Indexes for fast arrival queries & notification lookups
     await client`

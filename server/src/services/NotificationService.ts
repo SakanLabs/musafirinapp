@@ -20,17 +20,25 @@ import { sendEmail } from '../lib/email';
 import { sendWhatsAppMessage, normalizePhoneNumber } from '../lib/whatsapp';
 import { formatOperationalDate } from '../lib/date';
 
-export type NotificationType = 'payment_confirmation' | 'voucher';
+export type NotificationType = 'payment_confirmation' | 'voucher' | 'invoice';
 export type NotificationChannel = 'email' | 'whatsapp';
 
 export interface SendPaymentConfirmationParams {
-  bookingId: number;
-  paymentId?: string | number;
+  bookingId?: number;
+  orderCode?: string;
+  orderTitle?: string;
+  paymentId?: string | number | null;
   amount?: string | number;
   currency?: string;
   method?: string;
   terminLabel?: string;
   remainingBalance?: number;
+  recipientName?: string;
+  recipientEmail?: string;
+  recipientPhone?: string;
+  paymentStatus?: string;
+  checkIn?: Date | string;
+  checkOut?: Date | string;
   channels?: NotificationChannel[];
   forceResend?: boolean;
   sentBy?: string;
@@ -40,6 +48,23 @@ export interface SendVoucherParams {
   bookingId: number;
   voucherId?: number;
   voucherNumber?: string;
+  channels?: NotificationChannel[];
+  forceResend?: boolean;
+  sentBy?: string;
+}
+
+export interface SendInvoiceParams {
+  bookingId?: number;
+  clientId?: number;
+  invoiceNumber: string;
+  recipientName: string;
+  recipientEmail?: string;
+  recipientPhone?: string;
+  totalAmount: number | string;
+  currency?: string;
+  dueDate: Date | string;
+  issueDate?: Date | string;
+  downloadUrl?: string;
   channels?: NotificationChannel[];
   forceResend?: boolean;
   sentBy?: string;
@@ -55,7 +80,14 @@ export interface ChannelSendResult {
 }
 
 export interface NotificationDispatchResult {
-  bookingId: number;
+  bookingId?: number;
+  type: NotificationType;
+  results: ChannelSendResult[];
+}
+
+export interface InvoiceNotificationDispatchResult {
+  bookingId?: number;
+  invoiceNumber: string;
   type: NotificationType;
   results: ChannelSendResult[];
 }
@@ -76,47 +108,67 @@ export class NotificationService {
     const { bookingId, forceResend = false } = params;
     const channels = params.channels || ['email', 'whatsapp'];
 
-    // 1. Fetch booking, client, and payment info
-    const bookingRows = await db
-      .select({
-        id: bookings.id,
-        code: bookings.code,
-        hotelName: bookings.hotelName,
-        city: bookings.city,
-        checkIn: bookings.checkIn,
-        checkOut: bookings.checkOut,
-        totalAmount: bookings.totalAmount,
-        paymentStatus: bookings.paymentStatus,
-        meta: bookings.meta,
-        clientName: clients.name,
-        clientEmail: clients.email,
-        clientPhone: clients.phone,
-      })
-      .from(bookings)
-      .leftJoin(clients, eq(bookings.clientId, clients.id))
-      .where(eq(bookings.id, bookingId))
-      .limit(1);
+    let bookingCode = params.orderCode || 'ORDER';
+    let hotelName = params.orderTitle || 'Layanan Musafirin';
+    let city = '';
+    let formattedCheckIn = params.checkIn ? formatOperationalDate(params.checkIn, 'long') : '-';
+    let formattedCheckOut = params.checkOut ? formatOperationalDate(params.checkOut, 'long') : '-';
+    let paymentStatus = params.paymentStatus || 'paid';
+    let recipientName = params.recipientName || 'Pelanggan Musafirin';
+    let recipientEmail = params.recipientEmail || '';
+    let recipientPhone = params.recipientPhone || '';
+    let paymentAmount = params.amount ?? 0;
+    let currency = params.currency || 'SAR';
+    let method = params.method || 'Transfer Bank';
+    let terminLabel = params.terminLabel || 'Pembayaran';
+    let remainingBalance = params.remainingBalance ?? 0;
+    let referenceId = String(params.paymentId || `PAY-${bookingCode}-${Date.now()}`);
 
-    if (bookingRows.length === 0) {
-      throw new Error(`Booking #${bookingId} not found`);
+    // 1. Fetch booking info if bookingId is provided
+    if (bookingId) {
+      const bookingRows = await db
+        .select({
+          id: bookings.id,
+          code: bookings.code,
+          hotelName: bookings.hotelName,
+          city: bookings.city,
+          checkIn: bookings.checkIn,
+          checkOut: bookings.checkOut,
+          totalAmount: bookings.totalAmount,
+          paymentStatus: bookings.paymentStatus,
+          meta: bookings.meta,
+          clientName: clients.name,
+          clientEmail: clients.email,
+          clientPhone: clients.phone,
+        })
+        .from(bookings)
+        .leftJoin(clients, eq(bookings.clientId, clients.id))
+        .where(eq(bookings.id, bookingId))
+        .limit(1);
+
+      if (bookingRows.length > 0) {
+        const booking = bookingRows[0]!;
+        const meta = (booking.meta as Record<string, any>) || {};
+        const payments = Array.isArray(meta.payments) ? meta.payments : [];
+        const latestPayment = payments.length > 0 ? payments[payments.length - 1] : null;
+
+        bookingCode = booking.code;
+        hotelName = booking.hotelName;
+        city = booking.city;
+        paymentStatus = booking.paymentStatus;
+        recipientName = booking.clientName || meta.guestName || recipientName;
+        recipientEmail = booking.clientEmail || meta.guestEmail || recipientEmail;
+        recipientPhone = booking.clientPhone || meta.guestPhone || recipientPhone;
+        paymentAmount = params.amount ?? (latestPayment?.amount || booking.totalAmount);
+        currency = params.currency || 'SAR';
+        method = params.method || latestPayment?.method || method;
+        terminLabel = params.terminLabel || latestPayment?.terminLabel || (booking.paymentStatus === 'paid' ? 'Lunas Penuh' : 'Pembayaran');
+        remainingBalance = params.remainingBalance ?? (typeof meta.remainingBalance === 'number' ? meta.remainingBalance : 0);
+        referenceId = String(params.paymentId || latestPayment?.reference || `PAY-${booking.code}-${payments.length || 1}`);
+        formattedCheckIn = formatOperationalDate(booking.checkIn, 'long');
+        formattedCheckOut = formatOperationalDate(booking.checkOut, 'long');
+      }
     }
-
-    const booking = bookingRows[0]!;
-    const meta = (booking.meta as Record<string, any>) || {};
-    const payments = Array.isArray(meta.payments) ? meta.payments : [];
-
-    // Identify current/latest payment details
-    const latestPayment = payments.length > 0 ? payments[payments.length - 1] : null;
-    const paymentAmount = params.amount ?? (latestPayment?.amount || booking.totalAmount);
-    const currency = params.currency || 'SAR';
-    const method = params.method || latestPayment?.method || 'Transfer Bank';
-    const terminLabel = params.terminLabel || latestPayment?.terminLabel || (booking.paymentStatus === 'paid' ? 'Lunas Penuh' : 'Pembayaran');
-    const remainingBalance = params.remainingBalance ?? (typeof meta.remainingBalance === 'number' ? meta.remainingBalance : 0);
-    const referenceId = String(params.paymentId || latestPayment?.reference || `PAY-${booking.code}-${payments.length || 1}`);
-
-    const recipientName = booking.clientName || meta.guestName || 'Pelanggan Musafirin';
-    const recipientEmail = booking.clientEmail || meta.guestEmail || '';
-    const recipientPhone = booking.clientPhone || meta.guestPhone || '';
 
     const results: ChannelSendResult[] = [];
 
@@ -125,8 +177,6 @@ export class NotificationService {
       ? paymentAmount.toLocaleString('id-ID', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
       : String(paymentAmount);
     const formattedRemaining = remainingBalance.toLocaleString('id-ID', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-    const formattedCheckIn = formatOperationalDate(booking.checkIn, 'long');
-    const formattedCheckOut = formatOperationalDate(booking.checkOut, 'long');
 
     // 2. Process each channel independently
     for (const channel of channels) {
@@ -141,28 +191,30 @@ export class NotificationService {
           continue;
         }
 
-        // Idempotency check
-        const isDuplicate = await this.checkDuplicate('payment_confirmation', bookingId, 'email', referenceId);
-        if (isDuplicate && !forceResend) {
-          console.log(`[NotificationService] Payment email skipped (already sent) for booking #${booking.code}`);
-          results.push({
-            channel: 'email',
-            status: 'skipped',
-            recipient: recipientEmail,
-            skippedReason: 'Notifikasi email sudah pernah dikirim untuk pembayaran ini',
-          });
-          continue;
+        // Idempotency check if bookingId present
+        if (bookingId) {
+          const isDuplicate = await this.checkDuplicate('payment_confirmation', bookingId, 'email', referenceId);
+          if (isDuplicate && !forceResend) {
+            console.log(`[NotificationService] Payment email skipped (already sent) for ${bookingCode}`);
+            results.push({
+              channel: 'email',
+              status: 'skipped',
+              recipient: recipientEmail,
+              skippedReason: 'Notifikasi email sudah pernah dikirim untuk pembayaran ini',
+            });
+            continue;
+          }
         }
 
         // Prepare email content
-        const subject = `Konfirmasi Pembayaran — Booking ${booking.code}`;
+        const subject = `Konfirmasi Pembayaran — ${bookingCode}`;
         const textMessage = `Assalamu'alaikum Bapak/Ibu ${recipientName},\n\n` +
-          `Pembayaran untuk booking ${booking.code} (${booking.hotelName}) telah kami terima dan konfirmasi.\n\n` +
+          `Pembayaran untuk ${bookingCode} (${hotelName}) telah kami terima dan konfirmasi.\n\n` +
           `Rincian Pembayaran:\n` +
-          `• Kode Booking: ${booking.code}\n` +
-          `• Hotel: ${booking.hotelName}, ${booking.city}\n` +
+          `• Kode: ${bookingCode}\n` +
+          `• Layanan/Hotel: ${hotelName}${city ? ` (${city})` : ''}\n` +
           `• Jadwal: ${formattedCheckIn} s.d. ${formattedCheckOut}\n` +
-          `• Status Pembayaran: ${booking.paymentStatus.toUpperCase()} (${terminLabel})\n` +
+          `• Status Pembayaran: ${paymentStatus.toUpperCase()} (${terminLabel})\n` +
           `• Jumlah Diterima: ${currency} ${formattedAmount}\n` +
           `• Sisa Pembayaran: ${currency} ${formattedRemaining}\n` +
           `• Metode: ${method}\n\n` +
@@ -192,15 +244,15 @@ export class NotificationService {
 
                 <table style="width: 100%; border-collapse: collapse; margin-top: 20px; font-size: 13px;">
                   <tr style="border-bottom: 1px solid #f1f5f9;">
-                    <td style="padding: 10px 0; color: #6b7280; font-weight: 500;">Kode Booking</td>
-                    <td style="padding: 10px 0; color: #111827; font-weight: 700; text-align: right;">${booking.code}</td>
+                    <td style="padding: 10px 0; color: #6b7280; font-weight: 500;">Kode / Nomor</td>
+                    <td style="padding: 10px 0; color: #111827; font-weight: 700; text-align: right;">${bookingCode}</td>
                   </tr>
                   <tr style="border-bottom: 1px solid #f1f5f9;">
-                    <td style="padding: 10px 0; color: #6b7280; font-weight: 500;">Hotel & Kota</td>
-                    <td style="padding: 10px 0; color: #111827; font-weight: 600; text-align: right;">${booking.hotelName} (${booking.city})</td>
+                    <td style="padding: 10px 0; color: #6b7280; font-weight: 500;">Layanan</td>
+                    <td style="padding: 10px 0; color: #111827; font-weight: 600; text-align: right;">${hotelName}${city ? ` (${city})` : ''}</td>
                   </tr>
                   <tr style="border-bottom: 1px solid #f1f5f9;">
-                    <td style="padding: 10px 0; color: #6b7280; font-weight: 500;">Jadwal Menginap</td>
+                    <td style="padding: 10px 0; color: #6b7280; font-weight: 500;">Jadwal</td>
                     <td style="padding: 10px 0; color: #111827; font-weight: 500; text-align: right;">${formattedCheckIn} &ndash; ${formattedCheckOut}</td>
                   </tr>
                   <tr style="border-bottom: 1px solid #f1f5f9;">
@@ -209,8 +261,8 @@ export class NotificationService {
                   </tr>
                   <tr style="border-bottom: 1px solid #f1f5f9;">
                     <td style="padding: 10px 0; color: #6b7280; font-weight: 500;">Status Pembayaran</td>
-                    <td style="padding: 10px 0; color: ${booking.paymentStatus === 'paid' ? '#059669' : '#d97706'}; font-weight: 700; text-align: right; text-transform: uppercase;">
-                      ${booking.paymentStatus}
+                    <td style="padding: 10px 0; color: ${paymentStatus === 'paid' ? '#059669' : '#d97706'}; font-weight: 700; text-align: right; text-transform: uppercase;">
+                      ${paymentStatus}
                     </td>
                   </tr>
                   <tr>
@@ -229,15 +281,18 @@ export class NotificationService {
           </html>
         `;
 
-        const logId = await this.recordPendingLog({
-          bookingId,
-          clientId: null,
-          type: 'payment_confirmation',
-          channel: 'email',
-          recipient: recipientEmail,
-          referenceId,
-          metadata: { amount: paymentAmount, currency, terminLabel },
-        });
+        let logId: number | null = null;
+        if (bookingId) {
+          logId = await this.recordPendingLog({
+            bookingId,
+            clientId: null,
+            type: 'payment_confirmation',
+            channel: 'email',
+            recipient: recipientEmail,
+            referenceId,
+            metadata: { amount: paymentAmount, currency, terminLabel },
+          });
+        }
 
         try {
           const emailRes = await sendEmail({
@@ -248,7 +303,7 @@ export class NotificationService {
           });
 
           if (emailRes.success) {
-            await this.markLogSent(logId, emailRes.messageId);
+            if (logId) await this.markLogSent(logId, emailRes.messageId);
             results.push({
               channel: 'email',
               status: 'sent',
@@ -256,7 +311,7 @@ export class NotificationService {
               providerMessageId: emailRes.messageId,
             });
           } else {
-            await this.markLogFailed(logId, emailRes.error || 'SMTP delivery failed');
+            if (logId) await this.markLogFailed(logId, emailRes.error || 'SMTP delivery failed');
             results.push({
               channel: 'email',
               status: 'failed',
@@ -265,7 +320,7 @@ export class NotificationService {
             });
           }
         } catch (err: any) {
-          await this.markLogFailed(logId, err?.message || 'Unexpected email error');
+          if (logId) await this.markLogFailed(logId, err?.message || 'Unexpected email error');
           results.push({
             channel: 'email',
             status: 'failed',
@@ -287,46 +342,51 @@ export class NotificationService {
           continue;
         }
 
-        // Idempotency check
-        const isDuplicate = await this.checkDuplicate('payment_confirmation', bookingId, 'whatsapp', referenceId);
-        if (isDuplicate && !forceResend) {
-          console.log(`[NotificationService] Payment WhatsApp skipped (already sent) for booking #${booking.code}`);
-          results.push({
-            channel: 'whatsapp',
-            status: 'skipped',
-            recipient: cleanPhone,
-            skippedReason: 'Notifikasi WhatsApp sudah pernah dikirim untuk pembayaran ini',
-          });
-          continue;
+        // Idempotency check if bookingId present
+        if (bookingId) {
+          const isDuplicate = await this.checkDuplicate('payment_confirmation', bookingId, 'whatsapp', referenceId);
+          if (isDuplicate && !forceResend) {
+            console.log(`[NotificationService] Payment WhatsApp skipped (already sent) for ${bookingCode}`);
+            results.push({
+              channel: 'whatsapp',
+              status: 'skipped',
+              recipient: cleanPhone,
+              skippedReason: 'Notifikasi WhatsApp sudah pernah dikirim untuk pembayaran ini',
+            });
+            continue;
+          }
         }
 
         const waText =
           `Assalamu'alaikum Bapak/Ibu *${recipientName}*,\n\n` +
-          `Pembayaran untuk booking *${booking.code}* telah kami terima dan konfirmasi.\n\n` +
+          `Pembayaran untuk *${bookingCode}* telah kami terima dan konfirmasi.\n\n` +
           `📋 *Detail Pembayaran:*\n` +
-          `• Kode Booking: \`${booking.code}\`\n` +
-          `• Hotel: *${booking.hotelName} (${booking.city})*\n` +
+          `• Kode: \`${bookingCode}\`\n` +
+          `• Layanan/Hotel: *${hotelName}${city ? ` (${city})` : ''}*\n` +
           `• Jadwal: ${formattedCheckIn} s.d. ${formattedCheckOut}\n` +
           `• Jumlah Diterima: *${currency} ${formattedAmount}*\n` +
           `• Keterangan: *${terminLabel}*\n` +
-          `• Status: *${booking.paymentStatus.toUpperCase()}*\n` +
+          `• Status: *${paymentStatus.toUpperCase()}*\n` +
           `• Sisa Tagihan: *${currency} ${formattedRemaining}*\n\n` +
           `Terima kasih telah mempercayakan perjalanan ibadah Anda kepada Musafirin.`;
 
-        const logId = await this.recordPendingLog({
-          bookingId,
-          clientId: null,
-          type: 'payment_confirmation',
-          channel: 'whatsapp',
-          recipient: cleanPhone,
-          referenceId,
-          metadata: { amount: paymentAmount, currency, terminLabel },
-        });
+        let logId: number | null = null;
+        if (bookingId) {
+          logId = await this.recordPendingLog({
+            bookingId,
+            clientId: null,
+            type: 'payment_confirmation',
+            channel: 'whatsapp',
+            recipient: cleanPhone,
+            referenceId,
+            metadata: { amount: paymentAmount, currency, terminLabel },
+          });
+        }
 
         try {
           const waRes = await sendWhatsAppMessage(cleanPhone, waText);
           if (waRes.success) {
-            await this.markLogSent(logId, waRes.messageId);
+            if (logId) await this.markLogSent(logId, waRes.messageId);
             results.push({
               channel: 'whatsapp',
               status: 'sent',
@@ -334,7 +394,7 @@ export class NotificationService {
               providerMessageId: waRes.messageId,
             });
           } else {
-            await this.markLogFailed(logId, waRes.error || 'WhatsApp delivery failed');
+            if (logId) await this.markLogFailed(logId, waRes.error || 'WhatsApp delivery failed');
             results.push({
               channel: 'whatsapp',
               status: 'failed',
@@ -343,7 +403,7 @@ export class NotificationService {
             });
           }
         } catch (err: any) {
-          await this.markLogFailed(logId, err?.message || 'Unexpected WhatsApp error');
+          if (logId) await this.markLogFailed(logId, err?.message || 'Unexpected WhatsApp error');
           results.push({
             channel: 'whatsapp',
             status: 'failed',
@@ -675,6 +735,271 @@ export class NotificationService {
   }
 
   /**
+   * Mengirim notifikasi Invoice ke Klien (Email & WhatsApp)
+   */
+  async sendInvoice(params: SendInvoiceParams): Promise<InvoiceNotificationDispatchResult> {
+    const {
+      bookingId,
+      clientId,
+      invoiceNumber,
+      recipientName,
+      recipientEmail = '',
+      recipientPhone = '',
+      totalAmount,
+      currency = 'SAR',
+      dueDate,
+      issueDate,
+      downloadUrl,
+      forceResend = false,
+    } = params;
+    const channels = params.channels || ['email', 'whatsapp'];
+
+    const formattedAmount = typeof totalAmount === 'number'
+      ? totalAmount.toLocaleString('id-ID', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+      : String(totalAmount);
+    const formattedDueDate = formatOperationalDate(dueDate, 'long');
+    const formattedIssueDate = issueDate ? formatOperationalDate(issueDate, 'long') : formatOperationalDate(new Date(), 'long');
+    const invoicePdfUrl = downloadUrl || `${this.getBaseUrl()}/api/invoices/by-number/${invoiceNumber}`;
+
+    const results: ChannelSendResult[] = [];
+
+    for (const channel of channels) {
+      if (channel === 'email') {
+        if (!recipientEmail || !recipientEmail.includes('@')) {
+          results.push({
+            channel: 'email',
+            status: 'failed',
+            recipient: recipientEmail || '(email tidak tersedia)',
+            errorMessage: 'Alamat email klien tidak valid atau belum diisi',
+          });
+          continue;
+        }
+
+        // Idempotency check if bookingId available
+        if (bookingId) {
+          const isDuplicate = await this.checkDuplicate('invoice', bookingId, 'email', invoiceNumber);
+          if (isDuplicate && !forceResend) {
+            console.log(`[NotificationService] Invoice email skipped (already sent) for ${invoiceNumber}`);
+            results.push({
+              channel: 'email',
+              status: 'skipped',
+              recipient: recipientEmail,
+              skippedReason: 'Invoice sudah pernah dikirim via email',
+            });
+            continue;
+          }
+        }
+
+        const subject = `Tagihan Invoice ${invoiceNumber} — Musafirin`;
+        const textMessage =
+          `Assalamu'alaikum Bapak/Ibu ${recipientName},\n\n` +
+          `Berikut adalah rincian tagihan Invoice resmi dari Musafirin:\n\n` +
+          `Rincian Tagihan:\n` +
+          `• No. Invoice: ${invoiceNumber}\n` +
+          `• Tanggal Terbit: ${formattedIssueDate}\n` +
+          `• Jatuh Tempo: ${formattedDueDate}\n` +
+          `• Total Tagihan: ${currency} ${formattedAmount}\n\n` +
+          `Dokumen invoice resmi dapat diunduh melalui tautan berikut:\n${invoicePdfUrl}\n\n` +
+          `Mohon untuk melakukan pembayaran sebelum tanggal jatuh tempo.\n` +
+          `Terima kasih telah mempercayakan perjalanan Anda kepada Musafirin.`;
+
+        const htmlMessage = `
+          <!DOCTYPE html>
+          <html>
+          <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background-color: #f8fafc; padding: 24px; margin: 0;">
+            <div style="max-width: 600px; margin: 0 auto; background: #ffffff; border-radius: 12px; border: 1px solid #e2e8f0; overflow: hidden; box-shadow: 0 4px 12px rgba(0,0,0,0.05);">
+              <div style="background: #111111; padding: 28px; text-align: center; color: #ffffff;">
+                <h1 style="margin: 0; font-size: 20px; font-weight: 700; letter-spacing: -0.02em;">MUSAFIRIN</h1>
+                <p style="margin: 6px 0 0; font-size: 13px; color: #9ca3af;">Tagihan Invoice Resmi</p>
+              </div>
+
+              <div style="padding: 28px;">
+                <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 18px; margin-bottom: 24px; text-align: center;">
+                  <span style="display: inline-block; font-size: 11px; font-weight: 700; text-transform: uppercase; color: #475569; letter-spacing: 0.05em;">Total Tagihan Invoice</span>
+                  <div style="font-size: 26px; font-weight: 800; color: #0f172a; margin-top: 4px;">${currency} ${formattedAmount}</div>
+                  <div style="font-size: 12px; color: #e11d48; margin-top: 4px; font-weight: 600;">Jatuh Tempo: ${formattedDueDate}</div>
+                </div>
+
+                <p style="font-size: 14px; color: #374151; line-height: 1.6; margin-top: 0;">
+                  Assalamu'alaikum <strong>${recipientName}</strong>,<br/>
+                  Invoice tagihan resmi Anda telah diterbitkan. Berikut rincian ringkasan invoice:
+                </p>
+
+                <table style="width: 100%; border-collapse: collapse; margin-top: 20px; font-size: 13px;">
+                  <tr style="border-bottom: 1px solid #f1f5f9;">
+                    <td style="padding: 10px 0; color: #6b7280; font-weight: 500;">Nomor Invoice</td>
+                    <td style="padding: 10px 0; color: #111827; font-weight: 700; text-align: right; font-family: monospace;">${invoiceNumber}</td>
+                  </tr>
+                  <tr style="border-bottom: 1px solid #f1f5f9;">
+                    <td style="padding: 10px 0; color: #6b7280; font-weight: 500;">Tanggal Terbit</td>
+                    <td style="padding: 10px 0; color: #111827; font-weight: 600; text-align: right;">${formattedIssueDate}</td>
+                  </tr>
+                  <tr style="border-bottom: 1px solid #f1f5f9;">
+                    <td style="padding: 10px 0; color: #6b7280; font-weight: 500;">Jatuh Tempo</td>
+                    <td style="padding: 10px 0; color: #e11d48; font-weight: 700; text-align: right;">${formattedDueDate}</td>
+                  </tr>
+                  <tr>
+                    <td style="padding: 10px 0; color: #6b7280; font-weight: 500;">Total Tagihan</td>
+                    <td style="padding: 10px 0; color: #111827; font-weight: 800; text-align: right;">${currency} ${formattedAmount}</td>
+                  </tr>
+                </table>
+
+                <div style="text-align: center; margin: 32px 0 20px 0;">
+                  <a href="${invoicePdfUrl}" style="background-color: #111111; color: #ffffff; padding: 12px 28px; border-radius: 6px; text-decoration: none; font-weight: 600; display: inline-block; font-size: 14px;">
+                    Unduh Dokumen Invoice (PDF) &rarr;
+                  </a>
+                </div>
+
+                <div style="margin-top: 28px; padding-top: 20px; border-top: 1px solid #e5e7eb; text-align: center; color: #6b7280; font-size: 12px; line-height: 1.5;">
+                  Silakan lakukan pembayaran sebelum tanggal jatuh tempo.<br/>
+                  Terima kasih atas kerja sama dan kepercayaannya kepada <strong>Musafirin</strong>.
+                </div>
+              </div>
+            </div>
+          </body>
+          </html>
+        `;
+
+        let logId: number | null = null;
+        if (bookingId) {
+          logId = await this.recordPendingLog({
+            bookingId,
+            clientId: clientId || null,
+            type: 'invoice',
+            channel: 'email',
+            recipient: recipientEmail,
+            referenceId: invoiceNumber,
+            metadata: { invoiceNumber, totalAmount, currency, dueDate },
+          });
+        }
+
+        try {
+          const emailRes = await sendEmail({
+            to: recipientEmail,
+            subject,
+            text: textMessage,
+            html: htmlMessage,
+          });
+
+          if (emailRes.success) {
+            if (logId) await this.markLogSent(logId, emailRes.messageId);
+            results.push({
+              channel: 'email',
+              status: 'sent',
+              recipient: recipientEmail,
+              providerMessageId: emailRes.messageId,
+            });
+          } else {
+            if (logId) await this.markLogFailed(logId, emailRes.error || 'SMTP delivery failed');
+            results.push({
+              channel: 'email',
+              status: 'failed',
+              recipient: recipientEmail,
+              errorMessage: emailRes.error || 'Gagal mengirim email',
+            });
+          }
+        } catch (err: any) {
+          if (logId) await this.markLogFailed(logId, err?.message || 'Unexpected email error');
+          results.push({
+            channel: 'email',
+            status: 'failed',
+            recipient: recipientEmail,
+            errorMessage: err?.message || 'Unexpected email error',
+          });
+        }
+      }
+
+      if (channel === 'whatsapp') {
+        const cleanPhone = normalizePhoneNumber(recipientPhone);
+        if (!cleanPhone) {
+          results.push({
+            channel: 'whatsapp',
+            status: 'failed',
+            recipient: recipientPhone || '(nomor telepon tidak tersedia)',
+            errorMessage: 'Nomor telepon klien tidak valid atau belum diisi',
+          });
+          continue;
+        }
+
+        if (bookingId) {
+          const isDuplicate = await this.checkDuplicate('invoice', bookingId, 'whatsapp', invoiceNumber);
+          if (isDuplicate && !forceResend) {
+            console.log(`[NotificationService] Invoice WhatsApp skipped (already sent) for ${invoiceNumber}`);
+            results.push({
+              channel: 'whatsapp',
+              status: 'skipped',
+              recipient: cleanPhone,
+              skippedReason: 'Invoice sudah pernah dikirim via WhatsApp',
+            });
+            continue;
+          }
+        }
+
+        const waText =
+          `Assalamu'alaikum Bapak/Ibu *${recipientName}*,\n\n` +
+          `Berikut adalah rincian tagihan Invoice resmi dari Musafirin:\n\n` +
+          `📄 *Detail Tagihan Invoice:*\n` +
+          `• No. Invoice: \`${invoiceNumber}\`\n` +
+          `• Tanggal Terbit: ${formattedIssueDate}\n` +
+          `• Jatuh Tempo: *${formattedDueDate}*\n` +
+          `• Total Tagihan: *${currency} ${formattedAmount}*\n\n` +
+          `🔗 *Unduh Dokumen Invoice (PDF):*\n${invoicePdfUrl}\n\n` +
+          `Mohon untuk melakukan konfirmasi atau pembayaran sebelum tanggal jatuh tempo.\n` +
+          `Terima kasih telah mempercayakan perjalanan ibadah Anda kepada Musafirin.`;
+
+        let logId: number | null = null;
+        if (bookingId) {
+          logId = await this.recordPendingLog({
+            bookingId,
+            clientId: clientId || null,
+            type: 'invoice',
+            channel: 'whatsapp',
+            recipient: cleanPhone,
+            referenceId: invoiceNumber,
+            metadata: { invoiceNumber, totalAmount, currency, dueDate },
+          });
+        }
+
+        try {
+          const waRes = await sendWhatsAppMessage(cleanPhone, waText);
+          if (waRes.success) {
+            if (logId) await this.markLogSent(logId, waRes.messageId);
+            results.push({
+              channel: 'whatsapp',
+              status: 'sent',
+              recipient: cleanPhone,
+              providerMessageId: waRes.messageId,
+            });
+          } else {
+            if (logId) await this.markLogFailed(logId, waRes.error || 'WhatsApp delivery failed');
+            results.push({
+              channel: 'whatsapp',
+              status: 'failed',
+              recipient: cleanPhone,
+              errorMessage: waRes.error || 'Gagal mengirim WhatsApp',
+            });
+          }
+        } catch (err: any) {
+          if (logId) await this.markLogFailed(logId, err?.message || 'Unexpected WhatsApp error');
+          results.push({
+            channel: 'whatsapp',
+            status: 'failed',
+            recipient: cleanPhone,
+            errorMessage: err?.message || 'Unexpected WhatsApp error',
+          });
+        }
+      }
+    }
+
+    return {
+      bookingId,
+      invoiceNumber,
+      type: 'invoice',
+      results,
+    };
+  }
+
+  /**
    * Retry specific failed notification by its log ID
    */
   async retryNotification(logId: number, sentBy?: string): Promise<ChannelSendResult> {
@@ -702,6 +1027,22 @@ export class NotificationService {
     } else if (log.type === 'voucher') {
       const res = await this.sendVoucher({
         bookingId: log.bookingId,
+        channels: [log.channel as NotificationChannel],
+        forceResend: true,
+        sentBy,
+      });
+      return res.results[0] || { channel: log.channel as NotificationChannel, status: 'failed', recipient: log.recipient, errorMessage: 'Retry failed' };
+    } else if (log.type === 'invoice') {
+      const meta = (log.metadata as Record<string, any>) || {};
+      const res = await this.sendInvoice({
+        bookingId: log.bookingId,
+        invoiceNumber: log.referenceId || String(meta.invoiceNumber || ''),
+        recipientName: 'Pelanggan Musafirin',
+        recipientEmail: log.channel === 'email' ? log.recipient : undefined,
+        recipientPhone: log.channel === 'whatsapp' ? log.recipient : undefined,
+        totalAmount: meta.totalAmount || 0,
+        currency: meta.currency || 'SAR',
+        dueDate: meta.dueDate || new Date(),
         channels: [log.channel as NotificationChannel],
         forceResend: true,
         sentBy,
