@@ -42,7 +42,7 @@ import {
 } from "@/lib/queries/invoices"
 import { ManualInvoicePaymentModal, type PaymentMethod } from "@/components/modals/ManualInvoicePaymentModal"
 import { CalendarClock } from "lucide-react"
-import { fetchExchangeRate, formatSarWithIdr, formatIdr } from "@/lib/exchange-rate"
+import { fetchExchangeRate, fetchUsdExchangeRate, formatSarWithIdr, formatIdr } from "@/lib/exchange-rate"
 import { toast } from "sonner"
 
 export const Route = createFileRoute("/create-manual-invoice")({
@@ -96,13 +96,22 @@ function CreateManualInvoicePage() {
   const payManualInvoiceMutation = usePayManualInvoice()
   const deletePaymentMutation = useDeleteManualInvoicePayment()
 
-  // Exchange rate for SAR to IDR conversion display
-  const { data: exchangeRateData } = useQuery({
+  // Exchange rate for SAR and USD to IDR conversion display
+  const { data: sarExchangeRateData } = useQuery({
     queryKey: ['exchangeRate'],
     queryFn: fetchExchangeRate,
     staleTime: 5 * 60 * 1000,
   })
-  const currentRate = exchangeRateData?.data?.rate || null
+  const { data: usdExchangeRateData } = useQuery({
+    queryKey: ['usdExchangeRate'],
+    queryFn: fetchUsdExchangeRate,
+    staleTime: 5 * 60 * 1000,
+  })
+  const currentRate = currency === 'SAR'
+    ? (sarExchangeRateData?.data?.rate || null)
+    : currency === 'USD'
+    ? (usdExchangeRateData?.data?.rate || null)
+    : null
 
   // Form State
   const [selectedClientId, setSelectedClientId] = useState<string>("")
@@ -457,6 +466,8 @@ function CreateManualInvoicePage() {
     referenceNumber?: string;
     description?: string;
     autoGenerateReceipt: boolean;
+    sendEmail?: boolean;
+    sendWhatsApp?: boolean;
     idrAmount?: number;
     exchangeRate?: number;
   }) => {
@@ -469,6 +480,8 @@ function CreateManualInvoicePage() {
         referenceNumber: data.referenceNumber,
         description: data.description,
         autoGenerateReceipt: data.autoGenerateReceipt,
+        sendEmail: data.sendEmail,
+        sendWhatsApp: data.sendWhatsApp,
         idrAmount: data.idrAmount,
         exchangeRate: data.exchangeRate,
       })
@@ -727,7 +740,7 @@ function CreateManualInvoicePage() {
                   <p className="text-xl font-bold font-mono text-zinc-900">
                     {formatCurrency(totalInvoiceAmount, currency)}
                   </p>
-                  {currency === 'SAR' && currentRate ? (
+                  {(currency === 'SAR' || currency === 'USD') && currentRate ? (
                     <p className="text-[11px] font-mono text-zinc-400">
                       ≈ {formatIdr(Math.round(totalInvoiceAmount * currentRate))}
                     </p>
@@ -819,7 +832,7 @@ function CreateManualInvoicePage() {
                                       </span>
                                     )}
                                   </div>
-                                ) : currentRate && (p.currency || currency) === 'SAR' ? (
+                                ) : currentRate && ((p.currency || currency) === 'SAR' || (p.currency || currency) === 'USD') ? (
                                   <div className="text-[11px] font-mono text-zinc-400">
                                     ≈ {formatIdr(Math.round(parseFloat(p.amount) * currentRate))}
                                   </div>
@@ -1250,7 +1263,7 @@ function CreateManualInvoicePage() {
               {/* Terms Table / Rows */}
               <div className="space-y-3">
                 {paymentTerms.map((term, index) => {
-                  const estIdr = currency === 'SAR' && currentRate ? Math.round(term.amount * currentRate) : null;
+                  const estIdr = (currency === 'SAR' || currency === 'USD') && currentRate ? Math.round(term.amount * currentRate) : null;
                   return (
                     <div
                       key={index}
@@ -1278,7 +1291,7 @@ function CreateManualInvoicePage() {
                       </div>
 
                       <div className="grid grid-cols-1 md:grid-cols-12 gap-2.5 items-end">
-                        <div className="md:col-span-3">
+                        <div className={currency === 'IDR' ? "md:col-span-5" : "md:col-span-3"}>
                           <label className="block text-[10px] font-bold text-zinc-400 uppercase tracking-wider mb-1">
                             Label Termin
                           </label>
@@ -1308,7 +1321,7 @@ function CreateManualInvoicePage() {
                           </div>
                         </div>
 
-                        <div className="md:col-span-2">
+                        <div className={currency === 'IDR' ? "md:col-span-3" : "md:col-span-2"}>
                           <label className="block text-[10px] font-bold text-zinc-400 uppercase tracking-wider mb-1">
                             Nominal ({currency})
                           </label>
@@ -1322,32 +1335,34 @@ function CreateManualInvoicePage() {
                           />
                         </div>
 
-                        <div className="md:col-span-3">
-                          <label className="block text-[10px] font-bold text-zinc-400 uppercase tracking-wider mb-1">
-                            Nominal Terkunci (IDR)
-                          </label>
-                          <div className="relative">
-                            <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-[10px] font-bold text-zinc-400">
-                              Rp
-                            </span>
-                            <Input
-                              type="number"
-                              placeholder={estIdr ? String(estIdr) : "Opsional"}
-                              value={term.idrAmount || ""}
-                              onChange={(e) => handleUpdateTerm(index, "idrAmount", e.target.value)}
-                              className="h-9 pl-7 pr-2 border border-[#e5e7eb] rounded-md bg-white text-xs font-semibold text-zinc-950 focus:border-[#111111] shadow-none font-mono"
-                            />
+                        {currency !== 'IDR' && (
+                          <div className="md:col-span-3">
+                            <label className="block text-[10px] font-bold text-zinc-400 uppercase tracking-wider mb-1">
+                              Nominal Terkunci (IDR)
+                            </label>
+                            <div className="relative">
+                              <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-[10px] font-bold text-zinc-400">
+                                Rp
+                              </span>
+                              <Input
+                                type="number"
+                                placeholder={estIdr ? String(estIdr) : "Opsional"}
+                                value={term.idrAmount || ""}
+                                onChange={(e) => handleUpdateTerm(index, "idrAmount", e.target.value)}
+                                className="h-9 pl-7 pr-2 border border-[#e5e7eb] rounded-md bg-white text-xs font-semibold text-zinc-950 focus:border-[#111111] shadow-none font-mono"
+                              />
+                            </div>
+                            {term.idrAmount ? (
+                              <span className="block text-[10px] font-mono text-blue-600 font-semibold mt-0.5">
+                                🔒 Terkunci: {formatIdr(term.idrAmount)}
+                              </span>
+                            ) : estIdr ? (
+                              <span className="block text-[10px] font-mono text-zinc-400 mt-0.5">
+                                Est: {formatIdr(estIdr)}
+                              </span>
+                            ) : null}
                           </div>
-                          {term.idrAmount ? (
-                            <span className="block text-[10px] font-mono text-blue-600 font-semibold mt-0.5">
-                              🔒 Terkunci: {formatIdr(term.idrAmount)}
-                            </span>
-                          ) : estIdr ? (
-                            <span className="block text-[10px] font-mono text-zinc-400 mt-0.5">
-                              Est: {formatIdr(estIdr)}
-                            </span>
-                          ) : null}
-                        </div>
+                        )}
 
                         <div className="md:col-span-2">
                           <label className="block text-[10px] font-bold text-zinc-400 uppercase tracking-wider mb-1">
@@ -1424,7 +1439,7 @@ function CreateManualInvoicePage() {
                       <span className="font-extrabold text-[#111111] text-lg block">
                         {formatCurrency(grandTotal, currency)}
                       </span>
-                      {currency === 'SAR' && currentRate ? (
+                      {(currency === 'SAR' || currency === 'USD') && currentRate ? (
                         <span className="text-[11px] font-mono text-zinc-500 block">
                           ≈ {formatIdr(Math.round(grandTotal * currentRate))}
                         </span>
@@ -1542,7 +1557,7 @@ function CreateManualInvoicePage() {
                 </div>
               </div>
 
-              {currency === 'SAR' && (
+              {(currency === 'SAR' || currency === 'USD') && (
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 p-3 bg-zinc-50 rounded-xl border border-zinc-200">
                   <div>
                     <Label className="text-[10px] font-bold text-zinc-600 uppercase tracking-wider">
@@ -1576,7 +1591,7 @@ function CreateManualInvoicePage() {
 
                   <div>
                     <Label className="text-[10px] font-bold text-zinc-600 uppercase tracking-wider">
-                      Kurs (IDR / SAR)
+                      Kurs (IDR / {currency})
                     </Label>
                     <div className="relative mt-1">
                       <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-xs font-bold text-zinc-400">
@@ -1585,7 +1600,7 @@ function CreateManualInvoicePage() {
                       <Input
                         type="number"
                         step="0.01"
-                        placeholder="Contoh: 4733.24"
+                        placeholder={currency === 'USD' ? "Contoh: 16500" : "Contoh: 4733.24"}
                         value={editPayRate}
                         onChange={(e) => {
                           setEditPayRate(e.target.value);

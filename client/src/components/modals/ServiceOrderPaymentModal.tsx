@@ -5,7 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { formatCurrency } from '@/lib/utils';
-import { CreditCard, Wallet, Banknote, Building2, CheckCircle2, AlertCircle, Loader2 } from 'lucide-react';
+import { CreditCard, Wallet, Banknote, Building2, CheckCircle2, AlertCircle, Loader2, Mail, MessageCircle } from 'lucide-react';
 
 export type PaymentMethod = 'bank_transfer' | 'deposit' | 'cash';
 
@@ -25,6 +25,8 @@ interface ServiceOrderPaymentModalProps {
     referenceNumber?: string;
     description?: string;
     autoGenerateReceipt: boolean;
+    sendEmail?: boolean;
+    sendWhatsApp?: boolean;
   }) => Promise<void>;
   isLoading?: boolean;
 }
@@ -47,6 +49,8 @@ export function ServiceOrderPaymentModal({
   const [referenceNumber, setReferenceNumber] = useState('');
   const [description, setDescription] = useState('');
   const [autoGenerateReceipt, setAutoGenerateReceipt] = useState(true);
+  const [sendEmail, setSendEmail] = useState(false);
+  const [sendWhatsApp, setSendWhatsApp] = useState(false);
   const [error, setError] = useState('');
 
   useEffect(() => {
@@ -56,6 +60,8 @@ export function ServiceOrderPaymentModal({
       setReferenceNumber('');
       setDescription(paidAmount === 0 ? 'Pembayaran Uang Muka (DP)' : 'Pembayaran Termin');
       setAutoGenerateReceipt(true);
+      setSendEmail(false);
+      setSendWhatsApp(false);
       setError('');
     }
   }, [isOpen, remainingBalance, paidAmount]);
@@ -91,6 +97,8 @@ export function ServiceOrderPaymentModal({
         referenceNumber: referenceNumber.trim() || undefined,
         description: description.trim() || undefined,
         autoGenerateReceipt,
+        sendEmail,
+        sendWhatsApp,
       });
       onClose();
     } catch (err: any) {
@@ -324,6 +332,39 @@ export function ServiceOrderPaymentModal({
           <Label htmlFor="auto-receipt" className="text-xs text-zinc-700 font-medium cursor-pointer">
             Otomatis terbitkan Kwitansi PDF untuk pembayaran ini
           </Label>
+        </div>
+
+        {/* Notification Delivery Options */}
+        <div className="bg-zinc-50 border border-zinc-200/80 rounded-lg p-3 space-y-2">
+          <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-500 block">
+            Kirim Konfirmasi Pembayaran (Opsional)
+          </label>
+          <div className="space-y-1.5">
+            <label className="flex items-center space-x-2.5 cursor-pointer text-xs font-medium text-zinc-700 hover:text-zinc-950">
+              <input
+                type="checkbox"
+                checked={sendEmail}
+                onChange={(e) => setSendEmail(e.target.checked)}
+                className="h-4 w-4 rounded border-gray-300 text-zinc-900 focus:ring-zinc-900 cursor-pointer"
+              />
+              <span className="flex items-center gap-1.5">
+                <Mail className="h-3.5 w-3.5 text-zinc-400" />
+                <span>Kirim konfirmasi via <strong>Email</strong></span>
+              </span>
+            </label>
+            <label className="flex items-center space-x-2.5 cursor-pointer text-xs font-medium text-zinc-700 hover:text-zinc-950">
+              <input
+                type="checkbox"
+                checked={sendWhatsApp}
+                onChange={(e) => setSendWhatsApp(e.target.checked)}
+                className="h-4 w-4 rounded border-gray-300 text-zinc-900 focus:ring-zinc-900 cursor-pointer"
+              />
+              <span className="flex items-center gap-1.5">
+                <MessageCircle className="h-3.5 w-3.5 text-emerald-600" />
+                <span>Kirim konfirmasi via <strong>WhatsApp</strong></span>
+              </span>
+            </label>
+          </div>
         </div>
 
         {/* Error message */}

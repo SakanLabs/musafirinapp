@@ -54,6 +54,7 @@ function EditBookingPage() {
     mealPlan: 'Room Only' as 'Breakfast' | 'Half Board' | 'Full Board' | 'Room Only',
     numberOfGuests: 1,
     specialRequests: '',
+    source: '',
     totalAmount: 0,
     status: 'pending' as 'pending' | 'confirmed' | 'cancelled'
   })
@@ -80,6 +81,7 @@ function EditBookingPage() {
         mealPlan: booking.mealPlan,
         numberOfGuests: (booking.meta?.numberOfGuests as number) || 1,
         specialRequests: (booking.meta?.specialRequests as string) || '',
+        source: (booking.source as string) || '',
         totalAmount: booking.totalAmount || 0,
         status: booking.bookingStatus || 'pending'
       })
@@ -307,6 +309,7 @@ function EditBookingPage() {
         totalAmount: formData.totalAmount,
         status: formData.status,
         specialRequests: formData.specialRequests,
+        source: formData.source ? formData.source.trim() : undefined,
         rooms: rooms.map(room => ({
           ...room,
           pricingPeriods: room.pricingPeriods || []
@@ -469,6 +472,16 @@ function EditBookingPage() {
                       placeholder="Enter city"
                       required
                     />
+                  </div>
+
+                  <div className="md:col-span-2">
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Sumber Pemesanan Hotel (Source)</label>
+                    <Input
+                      value={formData.source}
+                      onChange={(e) => handleInputChange('source', e.target.value)}
+                      placeholder="Contoh: Agoda, Expedia, Direct Hotel, Vendor Lokal..."
+                    />
+                    <p className="text-xs text-muted-foreground mt-1">Asal booking hotel (free text)</p>
                   </div>
                 </div>
 

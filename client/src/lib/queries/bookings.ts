@@ -31,6 +31,7 @@ export interface Booking {
   paymentStatus: 'unpaid' | 'partial' | 'paid' | 'overdue';
   bookingStatus: 'pending' | 'confirmed' | 'cancelled';
   hotelConfirmationNo?: string;
+  source?: string | null;
   customLaRequestId?: number;
   meta?: Record<string, unknown>;
   createdAt: string;
@@ -70,6 +71,7 @@ export interface CreateBookingData {
   numberOfGuests: number;
   totalAmount: number;
   specialRequests?: string;
+  source?: string;
   paymentMethod?: 'bank_transfer' | 'deposit' | 'cash';
   paymentAmount?: number;
   // Legacy fields for backward compatibility
@@ -98,6 +100,7 @@ export interface UpdateBookingData {
   totalHotelCost?: number;
   hotelName?: string;
   city?: string;
+  source?: string;
 }
 
 // Query keys
@@ -244,18 +247,21 @@ export function useUpdateBookingStatus() {
       id, 
       paymentStatus, 
       bookingStatus, 
-      hotelConfirmationNo 
+      hotelConfirmationNo,
+      source
     }: { 
       id: string; 
       paymentStatus?: Booking['paymentStatus']; 
       bookingStatus?: Booking['bookingStatus'];
       hotelConfirmationNo?: string;
+      source?: string;
     }) => {
-      const updateData: Partial<Pick<Booking, 'paymentStatus' | 'bookingStatus' | 'hotelConfirmationNo'>> = {};
+      const updateData: Partial<Pick<Booking, 'paymentStatus' | 'bookingStatus' | 'hotelConfirmationNo' | 'source'>> = {};
       
       if (paymentStatus) updateData.paymentStatus = paymentStatus;
       if (bookingStatus) updateData.bookingStatus = bookingStatus;
       if (hotelConfirmationNo !== undefined) updateData.hotelConfirmationNo = hotelConfirmationNo;
+      if (source !== undefined) updateData.source = source;
       
       const response = await apiClient.patch<{success: boolean, data: Booking}>(API_ENDPOINTS.BOOKING_BY_ID(id), updateData);
       return response.data;
@@ -290,14 +296,26 @@ export function useDeleteBooking() {
 // Generate invoice for booking (automatically replaces existing invoice)
 export function useGenerateInvoice() {
   return useMutation({
-    mutationFn: async ({ bookingId, dueDate }: { bookingId: string; dueDate: string }) => {
+    mutationFn: async ({
+      bookingId,
+      dueDate,
+      sendEmail,
+      sendWhatsApp
+    }: {
+      bookingId: string;
+      dueDate: string;
+      sendEmail?: boolean;
+      sendWhatsApp?: boolean;
+    }) => {
       const response = await apiClient.post<{
         success: boolean;
         message: string;
         data: { number?: string; id: string };
         downloadUrl: string;
       }>(API_ENDPOINTS.GENERATE_INVOICE(bookingId), {
-        dueDate
+        dueDate,
+        sendEmail,
+        sendWhatsApp,
       });
       
       // Auto-download the PDF if invoice number is available
@@ -368,6 +386,8 @@ export interface PayBookingData {
   amount: number;
   referenceNumber?: string;
   description?: string;
+  sendEmail?: boolean;
+  sendWhatsApp?: boolean;
 }
 
 export function usePayBooking() {
@@ -375,12 +395,21 @@ export function usePayBooking() {
 
   return useMutation({
     mutationFn: async (data: PayBookingData) => {
-      const payload: { method: PayBookingData['method']; amount: number; referenceNumber?: string; description?: string } = {
+      const payload: {
+        method: PayBookingData['method'];
+        amount: number;
+        referenceNumber?: string;
+        description?: string;
+        sendEmail?: boolean;
+        sendWhatsApp?: boolean;
+      } = {
         method: data.method,
         amount: data.amount,
       };
       if (data.referenceNumber) payload.referenceNumber = data.referenceNumber;
       if (data.description) payload.description = data.description;
+      if (data.sendEmail !== undefined) payload.sendEmail = data.sendEmail;
+      if (data.sendWhatsApp !== undefined) payload.sendWhatsApp = data.sendWhatsApp;
 
       const response = await apiClient.post<{ success: boolean; data: Booking }>(
         API_ENDPOINTS.BOOKING_PAY(data.id),

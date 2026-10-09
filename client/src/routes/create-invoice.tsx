@@ -12,7 +12,9 @@ import {
   User,
   Building,
   Plus,
-  Trash
+  Trash,
+  Mail,
+  MessageCircle
 } from "lucide-react"
 import { authService } from "@/lib/auth"
 import { formatCurrency, formatDate } from "@/lib/utils"
@@ -65,6 +67,8 @@ function CreateInvoicePage() {
   const [selectedTransportationIdsMulti, setSelectedTransportationIdsMulti] = useState<string[]>([])
   const [selectedServiceOrderIdsMulti, setSelectedServiceOrderIdsMulti] = useState<string[]>([])
   const [dueDate, setDueDate] = useState<string>(new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0])
+  const [sendEmail, setSendEmail] = useState(false)
+  const [sendWhatsApp, setSendWhatsApp] = useState(false)
   const [isAddingClient, setIsAddingClient] = useState(false)
   const [newClient, setNewClient] = useState<NewClientForm>({ name: "", email: "", phone: "" })
   const [newItem, setNewItem] = useState<NewServiceItemForm>({ serviceType: 'visa_umrah', description: '', quantity: 1, unitPrice: 0 })
@@ -278,16 +282,18 @@ function CreateInvoicePage() {
         if (createItemsPromises.length > 0) {
           await Promise.allSettled(createItemsPromises)
         }
-        await generateInvoice({ bookingId: selectedBookingId, dueDate })
+        await generateInvoice({ bookingId: selectedBookingId, dueDate, sendEmail, sendWhatsApp })
       } else if (sourceType === 'transportation') {
         if (!selectedTransportationId) return
         await generateTransportationInvoice({
           bookingId: selectedTransportationId,
           dueDate: dueDate || new Date().toISOString().split('T')[0],
+          sendEmail,
+          sendWhatsApp,
         })
       } else if (sourceType === 'service_order') {
         if (!selectedServiceOrderId) return
-        await generateServiceOrderInvoice({ serviceOrderId: selectedServiceOrderId, customDueDate: dueDate })
+        await generateServiceOrderInvoice({ serviceOrderId: selectedServiceOrderId, customDueDate: dueDate, sendEmail, sendWhatsApp })
       } else if (sourceType === 'muthowif') {
         if (!selectedMuthowifBookingId) return
         const mb = muthowifOptions.find((m: any) => m.id.toString() === selectedMuthowifBookingId)
@@ -677,6 +683,39 @@ function CreateInvoicePage() {
               <div className="md:col-span-2 space-y-1">
                 <label className="block text-[10px] font-bold text-zinc-400 uppercase tracking-wider">Informasi Nilai</label>
                 <p className="text-xs text-zinc-500">Invoice akan diterbitkan dalam mata uang default SAR. Nilai total akhir akan diakumulasikan otomatis dari seluruh layanan terkait.</p>
+              </div>
+
+              {/* Notification options */}
+              <div className="md:col-span-2 border-t border-gray-100 pt-4 mt-2">
+                <label className="block text-[10px] font-bold text-zinc-400 uppercase tracking-wider mb-2">
+                  Opsi Pengiriman Notifikasi Klien (Opsional)
+                </label>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 bg-zinc-50 border border-zinc-200/80 rounded-lg p-3">
+                  <label className="flex items-center space-x-2.5 cursor-pointer text-xs font-medium text-zinc-700 hover:text-zinc-950">
+                    <input
+                      type="checkbox"
+                      checked={sendEmail}
+                      onChange={(e) => setSendEmail(e.target.checked)}
+                      className="h-4 w-4 rounded border-gray-300 text-zinc-900 focus:ring-zinc-900 cursor-pointer"
+                    />
+                    <span className="flex items-center gap-1.5">
+                      <Mail className="h-3.5 w-3.5 text-zinc-400" />
+                      <span>Kirim invoice via <strong>Email</strong></span>
+                    </span>
+                  </label>
+                  <label className="flex items-center space-x-2.5 cursor-pointer text-xs font-medium text-zinc-700 hover:text-zinc-950">
+                    <input
+                      type="checkbox"
+                      checked={sendWhatsApp}
+                      onChange={(e) => setSendWhatsApp(e.target.checked)}
+                      className="h-4 w-4 rounded border-gray-300 text-zinc-900 focus:ring-zinc-900 cursor-pointer"
+                    />
+                    <span className="flex items-center gap-1.5">
+                      <MessageCircle className="h-3.5 w-3.5 text-emerald-600" />
+                      <span>Kirim invoice via <strong>WhatsApp</strong></span>
+                    </span>
+                  </label>
+                </div>
               </div>
             </div>
           </div>

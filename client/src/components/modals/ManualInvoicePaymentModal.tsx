@@ -5,8 +5,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { formatCurrency } from '@/lib/utils';
-import { CreditCard, Wallet, Banknote, Building2, CheckCircle2, AlertCircle, Loader2 } from 'lucide-react';
-import { fetchExchangeRate } from '@/lib/exchange-rate';
+import { CreditCard, Wallet, Banknote, Building2, CheckCircle2, AlertCircle, Loader2, Mail, MessageCircle } from 'lucide-react';
+import { fetchExchangeRate, fetchUsdExchangeRate } from '@/lib/exchange-rate';
 
 export type PaymentMethod = 'bank_transfer' | 'deposit' | 'cash';
 
@@ -37,6 +37,8 @@ interface ManualInvoicePaymentModalProps {
     referenceNumber?: string;
     description?: string;
     autoGenerateReceipt: boolean;
+    sendEmail?: boolean;
+    sendWhatsApp?: boolean;
     idrAmount?: number;
     exchangeRate?: number;
   }) => Promise<void>;
@@ -65,6 +67,8 @@ export function ManualInvoicePaymentModal({
   const [referenceNumber, setReferenceNumber] = useState('');
   const [description, setDescription] = useState('');
   const [autoGenerateReceipt, setAutoGenerateReceipt] = useState(true);
+  const [sendEmail, setSendEmail] = useState(false);
+  const [sendWhatsApp, setSendWhatsApp] = useState(false);
   const [error, setError] = useState('');
 
   const scheduledTerm = paymentTerms && paymentTerms.length > existingPaymentsCount
@@ -76,46 +80,65 @@ export function ManualInvoicePaymentModal({
       setMethod('bank_transfer');
       setReferenceNumber('');
       setAutoGenerateReceipt(true);
+      setSendEmail(false);
+      setSendWhatsApp(false);
       setError('');
 
-      // Fetch live rate as fallback
-      fetchExchangeRate().then(rateObj => {
-        const liveRate = rateObj?.rate && rateObj.rate > 0 ? Math.round(rateObj.rate) : 4805;
+      const curr = (currency || 'SAR').toUpperCase();
+      if (curr === 'IDR') {
+        setExchangeRate('');
+        setIdrAmount('');
         if (scheduledTerm) {
           const suggested = Math.min(remainingBalance, scheduledTerm.amount || 0);
           setAmount(suggested > 0 ? String(suggested) : '');
           setDescription(scheduledTerm.label || (paidAmount === 0 ? 'Pembayaran Uang Muka (DP)' : 'Pembayaran Pelunasan'));
-          
-          if (scheduledTerm.idrAmount && scheduledTerm.idrAmount > 0) {
-            setIdrAmount(String(scheduledTerm.idrAmount));
-            if (scheduledTerm.exchangeRate) {
-              setExchangeRate(String(scheduledTerm.exchangeRate));
-            } else if (suggested > 0) {
-              setExchangeRate(String(Math.round((scheduledTerm.idrAmount / suggested) * 100) / 100));
-            }
-          } else {
-            setExchangeRate(String(liveRate));
-            if (suggested > 0) {
-              setIdrAmount(String(Math.round(suggested * liveRate)));
-            } else {
-              setIdrAmount('');
-            }
-          }
         } else {
           setAmount('');
           setDescription(paidAmount === 0 ? 'Pembayaran Uang Muka (DP)' : 'Pembayaran Pelunasan');
-          setExchangeRate(String(liveRate));
-          setIdrAmount('');
         }
-      }).catch(() => {
-        if (scheduledTerm) {
-          const suggested = Math.min(remainingBalance, scheduledTerm.amount || 0);
-          setAmount(suggested > 0 ? String(suggested) : '');
-          setDescription(scheduledTerm.label || (paidAmount === 0 ? 'Pembayaran Uang Muka (DP)' : 'Pembayaran Pelunasan'));
-        }
-      });
+      } else {
+        const ratePromise = curr === 'USD' ? fetchUsdExchangeRate() : fetchExchangeRate();
+        ratePromise.then(rateRes => {
+          const fetchedRate = (rateRes as any)?.data?.rate || (rateRes as any)?.rate;
+          const defaultRate = curr === 'USD' ? 16500 : 4805;
+          const liveRate = fetchedRate && fetchedRate > 0 ? Math.round(fetchedRate) : defaultRate;
+
+          if (scheduledTerm) {
+            const suggested = Math.min(remainingBalance, scheduledTerm.amount || 0);
+            setAmount(suggested > 0 ? String(suggested) : '');
+            setDescription(scheduledTerm.label || (paidAmount === 0 ? 'Pembayaran Uang Muka (DP)' : 'Pembayaran Pelunasan'));
+            
+            if (scheduledTerm.idrAmount && scheduledTerm.idrAmount > 0) {
+              setIdrAmount(String(scheduledTerm.idrAmount));
+              if (scheduledTerm.exchangeRate) {
+                setExchangeRate(String(scheduledTerm.exchangeRate));
+              } else if (suggested > 0) {
+                setExchangeRate(String(Math.round((scheduledTerm.idrAmount / suggested) * 100) / 100));
+              }
+            } else {
+              setExchangeRate(String(liveRate));
+              if (suggested > 0) {
+                setIdrAmount(String(Math.round(suggested * liveRate)));
+              } else {
+                setIdrAmount('');
+              }
+            }
+          } else {
+            setAmount('');
+            setDescription(paidAmount === 0 ? 'Pembayaran Uang Muka (DP)' : 'Pembayaran Pelunasan');
+            setExchangeRate(String(liveRate));
+            setIdrAmount('');
+          }
+        }).catch(() => {
+          if (scheduledTerm) {
+            const suggested = Math.min(remainingBalance, scheduledTerm.amount || 0);
+            setAmount(suggested > 0 ? String(suggested) : '');
+            setDescription(scheduledTerm.label || (paidAmount === 0 ? 'Pembayaran Uang Muka (DP)' : 'Pembayaran Pelunasan'));
+          }
+        });
+      }
     }
-  }, [isOpen, remainingBalance, paidAmount, scheduledTerm]);
+  }, [isOpen, remainingBalance, paidAmount, scheduledTerm, currency]);
 
   const numAmount = parseFloat(amount) || 0;
   const isDepositInsufficient = method === 'deposit' && numAmount > clientDepositBalance;
@@ -178,6 +201,8 @@ export function ManualInvoicePaymentModal({
         referenceNumber: referenceNumber.trim() || undefined,
         description: description.trim() || undefined,
         autoGenerateReceipt,
+        sendEmail,
+        sendWhatsApp,
         idrAmount: parseFloat(idrAmount) || undefined,
         exchangeRate: parseFloat(exchangeRate) || undefined,
       });
@@ -366,7 +391,7 @@ export function ManualInvoicePaymentModal({
         </div>
 
         {/* Locked IDR and Exchange Rate Inputs */}
-        {currency === 'SAR' && (
+        {(currency === 'SAR' || currency === 'USD') && (
           <div className="p-3.5 rounded-xl bg-zinc-50 border border-zinc-200/90 space-y-2.5">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
@@ -398,9 +423,9 @@ export function ManualInvoicePaymentModal({
               <div>
                 <div className="flex items-center justify-between mb-1">
                   <Label className="text-[10px] uppercase font-bold text-zinc-600 tracking-wider">
-                    Kurs Pembayaran (IDR / SAR)
+                    Kurs Pembayaran (IDR / {currency})
                   </Label>
-                  <span className="text-[10px] text-zinc-400 font-mono">1 SAR =</span>
+                  <span className="text-[10px] text-zinc-400 font-mono">1 {currency} =</span>
                 </div>
                 <div className="relative">
                   <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-xs font-bold text-zinc-400">
@@ -409,7 +434,7 @@ export function ManualInvoicePaymentModal({
                   <Input
                     type="number"
                     step="0.01"
-                    placeholder="Contoh: 4733.24"
+                    placeholder={currency === 'USD' ? "Contoh: 16500" : "Contoh: 4733.24"}
                     value={exchangeRate}
                     onChange={(e) => handleRateChange(e.target.value)}
                     className="pl-9 h-9 text-xs font-mono font-bold bg-white"
@@ -417,7 +442,7 @@ export function ManualInvoicePaymentModal({
                 </div>
                 {exchangeRate && !isNaN(parseFloat(exchangeRate)) && (
                   <span className="text-[10px] text-zinc-400 block mt-1">
-                    1 SAR = Rp {new Intl.NumberFormat('id-ID', { maximumFractionDigits: 2 }).format(parseFloat(exchangeRate))}
+                    1 {currency} = Rp {new Intl.NumberFormat('id-ID', { maximumFractionDigits: 2 }).format(parseFloat(exchangeRate))}
                   </span>
                 )}
               </div>
@@ -488,6 +513,39 @@ export function ManualInvoicePaymentModal({
           <label htmlFor="autoGenerateReceipt" className="text-xs text-zinc-700 font-medium cursor-pointer">
             Terbitkan Kwitansi Resmi (PDF) otomatis untuk pembayaran ini
           </label>
+        </div>
+
+        {/* Notification Delivery Options */}
+        <div className="bg-zinc-50 border border-zinc-200/80 rounded-lg p-3 space-y-2">
+          <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-500 block">
+            Kirim Konfirmasi Pembayaran (Opsional)
+          </label>
+          <div className="space-y-1.5">
+            <label className="flex items-center space-x-2.5 cursor-pointer text-xs font-medium text-zinc-700 hover:text-zinc-950">
+              <input
+                type="checkbox"
+                checked={sendEmail}
+                onChange={(e) => setSendEmail(e.target.checked)}
+                className="h-4 w-4 rounded border-gray-300 text-zinc-900 focus:ring-zinc-900 cursor-pointer"
+              />
+              <span className="flex items-center gap-1.5">
+                <Mail className="h-3.5 w-3.5 text-zinc-400" />
+                <span>Kirim konfirmasi via <strong>Email</strong></span>
+              </span>
+            </label>
+            <label className="flex items-center space-x-2.5 cursor-pointer text-xs font-medium text-zinc-700 hover:text-zinc-950">
+              <input
+                type="checkbox"
+                checked={sendWhatsApp}
+                onChange={(e) => setSendWhatsApp(e.target.checked)}
+                className="h-4 w-4 rounded border-gray-300 text-zinc-900 focus:ring-zinc-900 cursor-pointer"
+              />
+              <span className="flex items-center gap-1.5">
+                <MessageCircle className="h-3.5 w-3.5 text-emerald-600" />
+                <span>Kirim konfirmasi via <strong>WhatsApp</strong></span>
+              </span>
+            </label>
+          </div>
         </div>
 
         {/* Error message */}

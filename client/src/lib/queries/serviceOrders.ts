@@ -185,10 +185,12 @@ export function useUpsertChecklist(id: string | number) {
 export function useGenerateServiceOrderInvoice() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async ({ serviceOrderId, customDueDate, customInvoiceDate }: { 
+    mutationFn: async ({ serviceOrderId, customDueDate, customInvoiceDate, sendEmail, sendWhatsApp }: { 
       serviceOrderId: string | number; 
       customDueDate: string; 
       customInvoiceDate?: string; 
+      sendEmail?: boolean;
+      sendWhatsApp?: boolean;
     }) => {
       const response = await apiClient.post<{
         success: boolean;
@@ -197,7 +199,9 @@ export function useGenerateServiceOrderInvoice() {
         downloadUrl: string;
       }>(API_ENDPOINTS.SERVICE_ORDER_GENERATE_INVOICE(serviceOrderId), {
         customDueDate,
-        customInvoiceDate
+        customInvoiceDate,
+        sendEmail,
+        sendWhatsApp,
       });
       
       // Auto-download the PDF if invoice number is available
@@ -252,10 +256,12 @@ export function useServiceOrderInvoice(serviceOrderId: string | number) {
 export function useRegenerateServiceOrderInvoice() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async ({ serviceOrderId, customDueDate, customInvoiceDate }: { 
+    mutationFn: async ({ serviceOrderId, customDueDate, customInvoiceDate, sendEmail, sendWhatsApp }: { 
       serviceOrderId: string | number; 
       customDueDate: string; 
       customInvoiceDate?: string; 
+      sendEmail?: boolean;
+      sendWhatsApp?: boolean;
     }) => {
       const response = await apiClient.post<{
         success: boolean;
@@ -264,7 +270,9 @@ export function useRegenerateServiceOrderInvoice() {
         downloadUrl: string;
       }>(API_ENDPOINTS.SERVICE_ORDER_REGENERATE_INVOICE(serviceOrderId), {
         customDueDate,
-        customInvoiceDate
+        customInvoiceDate,
+        sendEmail,
+        sendWhatsApp,
       });
       
       // Auto-download the PDF if invoice number is available
@@ -376,6 +384,8 @@ export interface PayServiceOrderData {
   referenceNumber?: string;
   description?: string;
   autoGenerateReceipt?: boolean;
+  sendEmail?: boolean;
+  sendWhatsApp?: boolean;
 }
 
 // Get billing, payment records, and receipts for service order
@@ -408,6 +418,8 @@ export function usePayServiceOrder() {
         referenceNumber: data.referenceNumber,
         description: data.description,
         autoGenerateReceipt: data.autoGenerateReceipt !== false,
+        sendEmail: data.sendEmail,
+        sendWhatsApp: data.sendWhatsApp,
       });
       return response.data;
     },

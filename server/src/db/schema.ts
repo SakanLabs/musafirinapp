@@ -140,6 +140,7 @@ export const bookings = pgTable('bookings', {
   paymentStatus: paymentStatusEnum('payment_status').default('unpaid').notNull(),
   bookingStatus: bookingStatusEnum('booking_status').default('pending').notNull(),
   hotelConfirmationNo: varchar('hotel_confirmation_no', { length: 100 }),
+  source: varchar('source', { length: 255 }), // Sumber pemesanan hotel (free text e.g. Agoda, Expedia, Direct Hotel, etc.)
   customLaRequestId: integer('custom_la_request_id').references(() => customLaRequests.id, { onDelete: 'set null' }), // Added for LA integration
   meta: jsonb('meta'),
   createdAt: timestamp('created_at').defaultNow().notNull(),

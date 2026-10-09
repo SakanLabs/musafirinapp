@@ -167,7 +167,7 @@ export function useGenerateTransportationInvoice() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (data: { bookingId: string | number, dueDate: string, forceRegenerate?: boolean, invoiceDate?: string }) => {
+    mutationFn: async (data: { bookingId: string | number, dueDate: string, forceRegenerate?: boolean, invoiceDate?: string, sendEmail?: boolean, sendWhatsApp?: boolean }) => {
       const response = await apiClient.post<{
         id: number;
         number: string;

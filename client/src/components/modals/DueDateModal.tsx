@@ -2,12 +2,12 @@ import { useState } from 'react';
 import { Modal } from '@/components/ui/modal';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Calendar, AlertCircle } from 'lucide-react';
+import { Calendar, AlertCircle, Mail, MessageCircle } from 'lucide-react';
 
 interface DueDateModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSubmit: (dueDate: string) => void;
+  onSubmit: (dueDate: string, options?: { sendEmail?: boolean; sendWhatsApp?: boolean }) => void;
   isLoading?: boolean;
 }
 
@@ -23,6 +23,8 @@ export function DueDateModal({
     date.setDate(date.getDate() + 7);
     return date.toISOString().split('T')[0];
   });
+  const [sendEmail, setSendEmail] = useState(false);
+  const [sendWhatsApp, setSendWhatsApp] = useState(false);
   const [error, setError] = useState('');
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -44,7 +46,7 @@ export function DueDateModal({
     }
 
     setError('');
-    onSubmit(dueDate);
+    onSubmit(dueDate, { sendEmail, sendWhatsApp });
   };
 
   const handleClose = () => {
@@ -103,10 +105,42 @@ export function DueDateModal({
           )}
         </div>
         
-        <div className="bg-zinc-50 border border-zinc-100 p-3 rounded-lg">
-          <p className="text-xs text-zinc-600 leading-relaxed">
-            <strong>Note:</strong> The invoice will be generated with the selected due date. 
-            You can change this later if needed.
+        {/* Notification Delivery Options */}
+        <div className="bg-zinc-50 border border-zinc-200/80 rounded-lg p-3 space-y-2.5">
+          <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-500 block">
+            Kirim Otomatis ke Klien (Opsional)
+          </label>
+          <div className="space-y-2">
+            <label className="flex items-center space-x-2.5 cursor-pointer text-xs font-medium text-zinc-700 hover:text-zinc-950">
+              <input
+                type="checkbox"
+                checked={sendEmail}
+                onChange={(e) => setSendEmail(e.target.checked)}
+                className="h-4 w-4 rounded border-gray-300 text-zinc-900 focus:ring-zinc-900 cursor-pointer"
+              />
+              <span className="flex items-center gap-1.5">
+                <Mail className="h-3.5 w-3.5 text-zinc-400" />
+                <span>Kirim invoice via <strong>Email</strong></span>
+              </span>
+            </label>
+            <label className="flex items-center space-x-2.5 cursor-pointer text-xs font-medium text-zinc-700 hover:text-zinc-950">
+              <input
+                type="checkbox"
+                checked={sendWhatsApp}
+                onChange={(e) => setSendWhatsApp(e.target.checked)}
+                className="h-4 w-4 rounded border-gray-300 text-zinc-900 focus:ring-zinc-900 cursor-pointer"
+              />
+              <span className="flex items-center gap-1.5">
+                <MessageCircle className="h-3.5 w-3.5 text-emerald-600" />
+                <span>Kirim invoice via <strong>WhatsApp</strong></span>
+              </span>
+            </label>
+          </div>
+        </div>
+
+        <div className="bg-zinc-50/60 border border-zinc-100 p-2.5 rounded-lg">
+          <p className="text-[11px] text-zinc-500 leading-relaxed">
+            Invoice akan diterbitkan dengan tanggal jatuh tempo yang dipilih dan langsung tersimpan di sistem.
           </p>
         </div>
       </form>

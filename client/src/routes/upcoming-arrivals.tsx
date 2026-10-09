@@ -534,9 +534,14 @@ function UpcomingArrivalsPage() {
 
                         {/* 4. Hotel & Kamar */}
                         <td className="py-3 px-4 align-top">
-                          <div className="font-semibold text-zinc-900 print:text-black flex items-center gap-1">
+                          <div className="font-semibold text-zinc-900 print:text-black flex items-center gap-1.5 flex-wrap">
                             <Building className="h-3.5 w-3.5 text-zinc-400 print:hidden shrink-0" />
                             <span>{arrival.hotelName}</span>
+                            {arrival.source && (
+                              <span className="inline-flex items-center px-1.5 py-0.2 text-[9px] font-medium bg-zinc-100 text-zinc-700 rounded border border-zinc-200 print:hidden">
+                                via {arrival.source}
+                              </span>
+                            )}
                           </div>
                           <div className="text-[11px] text-zinc-500 mt-0.5">
                             {arrival.city} &bull; {arrival.roomSummary}

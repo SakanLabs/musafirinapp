@@ -89,14 +89,16 @@ function TransportationBookingDetailPage() {
     setIsDueDateModalOpen(true);
   };
 
-  const handleDueDateSubmit = async (dueDate: string) => {
+  const handleDueDateSubmit = async (dueDate: string, options?: { sendEmail?: boolean; sendWhatsApp?: boolean }) => {
     if (!transportationBooking) return;
 
     try {
       const result = await generateInvoiceMutation.mutateAsync({
         bookingId: transportationBookingId,
         dueDate,
-        forceRegenerate: !!existingInvoice
+        forceRegenerate: !!existingInvoice,
+        sendEmail: options?.sendEmail,
+        sendWhatsApp: options?.sendWhatsApp,
       });
       setIsDueDateModalOpen(false);
 

@@ -107,8 +107,16 @@
           <div class="cs-flex cs-justify-between cs-align-center">
             <span class="cs-text-xs cs-text-gray-600">Mata Uang:</span>
             <span class="cs-font-semibold cs-text-gray-800">
+              {{#if isSar}}
               <img src="data:image/svg+xml;base64,{{saudiRiyalSVGBase64}}" alt="SAR" class="cs-sar-icon-lg">
               SAR
+              {{else if isUsd}}
+              <span class="cs-currency" style="font-size: 13px;">$</span> USD
+              {{else if isIdr}}
+              <span class="cs-currency" style="font-size: 12px;">Rp</span> IDR
+              {{else}}
+              {{currency}}
+              {{/if}}
             </span>
           </div>
         </div>
@@ -140,12 +148,28 @@
             </td>
             <td style="text-align: center;">{{this.quantity}}</td>
             <td class="cs-num">
+              {{#if @root.isSar}}
               <img src="data:image/svg+xml;base64,{{@root.saudiRiyalSVGBase64}}" alt="SAR" class="cs-sar-icon">
+              {{else if @root.isUsd}}
+              <span class="cs-currency">$</span>
+              {{else if @root.isIdr}}
+              <span class="cs-currency">Rp</span>
+              {{else}}
+              <span class="cs-currency">{{@root.currency}}</span>
+              {{/if}}
               {{this.unitPriceFormatted}}
             </td>
             <td class="cs-num">
               <div class="cs-font-semibold">
+                {{#if @root.isSar}}
                 <img src="data:image/svg+xml;base64,{{@root.saudiRiyalSVGBase64}}" alt="SAR" class="cs-sar-icon">
+                {{else if @root.isUsd}}
+                <span class="cs-currency">$</span>
+                {{else if @root.isIdr}}
+                <span class="cs-currency">Rp</span>
+                {{else}}
+                <span class="cs-currency">{{@root.currency}}</span>
+                {{/if}}
                 {{this.subtotalFormatted}}
               </div>
             </td>
@@ -159,14 +183,30 @@
         <tr>
           <td class="cs-label" style="width:80%">Subtotal</td>
           <td class="cs-value" style="width:20%">
+            {{#if isSar}}
             <img src="data:image/svg+xml;base64,{{saudiRiyalSVGBase64}}" alt="SAR" class="cs-sar-icon">
+            {{else if isUsd}}
+            <span class="cs-currency">$</span>
+            {{else if isIdr}}
+            <span class="cs-currency">Rp</span>
+            {{else}}
+            <span class="cs-currency">{{currency}}</span>
+            {{/if}}
             {{subtotal}}
           </td>
         </tr>
         <tr>
           <td class="cs-label" style="font-weight:700">Grand Total</td>
           <td class="cs-value" style="font-weight:700">
+            {{#if isSar}}
             <img src="data:image/svg+xml;base64,{{saudiRiyalSVGBase64}}" alt="SAR" class="cs-sar-icon">
+            {{else if isUsd}}
+            <span class="cs-currency">$</span>
+            {{else if isIdr}}
+            <span class="cs-currency">Rp</span>
+            {{else}}
+            <span class="cs-currency">{{currency}}</span>
+            {{/if}}
             {{grandTotal}}
           </td>
         </tr>
@@ -181,14 +221,30 @@
         <tr>
           <td class="cs-label">Terbayar</td>
           <td class="cs-value">
+            {{#if isSar}}
             <img src="data:image/svg+xml;base64,{{saudiRiyalSVGBase64}}" alt="SAR" class="cs-sar-icon">
+            {{else if isUsd}}
+            <span class="cs-currency">$</span>
+            {{else if isIdr}}
+            <span class="cs-currency">Rp</span>
+            {{else}}
+            <span class="cs-currency">{{currency}}</span>
+            {{/if}}
             {{paidAmount}}
           </td>
         </tr>
         <tr>
           <td class="cs-label">Sisa Tagihan</td>
           <td class="cs-value">
+            {{#if isSar}}
             <img src="data:image/svg+xml;base64,{{saudiRiyalSVGBase64}}" alt="SAR" class="cs-sar-icon">
+            {{else if isUsd}}
+            <span class="cs-currency">$</span>
+            {{else if isIdr}}
+            <span class="cs-currency">Rp</span>
+            {{else}}
+            <span class="cs-currency">{{currency}}</span>
+            {{/if}}
             {{balanceDue}}
           </td>
         </tr>
@@ -212,7 +268,7 @@
             <th style="width: 25%;">Termin / Pembayaran</th>
             <th style="width: 17%;">Tanggal / Jatuh Tempo</th>
             <th style="width: 20%;">Metode / Referensi</th>
-            <th style="width: 13%;" class="cs-num">Nominal (SAR)</th>
+            <th style="width: 13%;" class="cs-num">Nominal ({{currency}})</th>
             {{#if hasExchangeRate}}
             <th style="width: 15%;" class="cs-num">Nominal (IDR)</th>
             {{/if}}
@@ -235,7 +291,15 @@
               {{/if}}
             </td>
             <td class="cs-num cs-font-semibold">
+              {{#if @root.isSar}}
               <img src="data:image/svg+xml;base64,{{@root.saudiRiyalSVGBase64}}" alt="SAR" class="cs-sar-icon">
+              {{else if @root.isUsd}}
+              <span class="cs-currency">$</span>
+              {{else if @root.isIdr}}
+              <span class="cs-currency">Rp</span>
+              {{else}}
+              <span class="cs-currency">{{@root.currency}}</span>
+              {{/if}}
               {{this.amountFormatted}}
             </td>
             {{#if @root.hasExchangeRate}}
@@ -264,7 +328,9 @@
         <p class="cs-mb-1">Atas Nama: <span class="cs-font-semibold">{{bank.accountName}}</span> | No. Rek: <span class="cs-font-semibold">{{bank.accountNumberOrIBAN}}</span></p>
         <p class="cs-mb-1">2. Kirim konfirmasi pembayaran ke email <span class="cs-font-semibold">{{billingContact.email}}</span> atau WhatsApp <span class="cs-font-semibold">{{billingContact.phone}}</span> dengan nomor invoice <span class="cs-font-semibold">#{{invoiceNo}}</span>.</p>
         <p class="cs-mb-1">3. Biaya transfer bank ditanggung oleh pembayar.</p>
-        <p class="cs-mb-0">Note: Kurs SAR update tiap hari mengikuti: https://www.bca.co.id/id/informasi/kurs. Bank Notes - Jual SAR{{#if hasExchangeRate}} (1 SAR = Rp {{exchangeRateValue}}){{/if}}</p>
+        {{#if hasExchangeRate}}
+        <p class="cs-mb-0">Note: Kurs {{currency}} update tiap hari mengikuti referensi Bank Notes - Jual (1 {{currency}} = Rp {{exchangeRateValue}}).</p>
+        {{/if}}
       </div>
     </div>
 
