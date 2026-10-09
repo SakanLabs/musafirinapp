@@ -13,7 +13,7 @@ export function formatCurrency(amount: number | string, currency: string = 'SAR'
   
   if (currency === 'SAR') {
     // Format SAR with custom symbol
-    return formatSAR(numAmount);
+    return `SAR ${formatSAR(numAmount)}`;
   }
   
   if (currency === 'IDR') {

@@ -632,69 +632,35 @@ export function normalizePaymentTerms(
   totalAmount: number,
   issueDate: Date,
   dueDate: Date
-): ManualInvoicePaymentTerm[] {
-  if (Array.isArray(rawTerms) && rawTerms.length > 0) {
-    return rawTerms.map((t: any, idx: number) => {
-      const termNumber = parseInt(t.termNumber) || idx + 1;
-      const percentage = Math.max(0, parseFloat(t.percentage) || 0);
-      const rawAmt = parseFloat(t.amount);
-      const amount = !isNaN(rawAmt) && rawAmt > 0
-        ? Math.round(rawAmt * 100) / 100
-        : Math.round((percentage / 100) * totalAmount * 100) / 100;
-      const label = (t.label || '').trim() || (idx === 0 ? 'Termin #1 (Uang Muka / DP)' : (idx === rawTerms.length - 1 ? `Termin #${termNumber} (Pelunasan)` : `Termin #${termNumber}`));
-      const termDueDate = t.dueDate ? (new Date(t.dueDate).toISOString().split('T')[0] || '') : (dueDate.toISOString().split('T')[0] || '');
-      const rawIdr = parseFloat(t.idrAmount);
-      const idrAmount = !isNaN(rawIdr) && rawIdr > 0 ? Math.round(rawIdr) : undefined;
-      const rawRate = parseFloat(t.exchangeRate);
-      const exchangeRate = !isNaN(rawRate) && rawRate > 0 ? Math.round(rawRate * 100) / 100 : undefined;
-      return {
-        termNumber,
-        label,
-        percentage: percentage || (totalAmount > 0 ? Math.round((amount / totalAmount) * 1000) / 10 : 0),
-        amount,
-        dueDate: termDueDate,
-        notes: (t.notes || '').trim() || undefined,
-        idrAmount,
-        exchangeRate,
-      };
-    });
+): ManualInvoicePaymentTerm[] | null {
+  if (!Array.isArray(rawTerms) || rawTerms.length === 0) {
+    return null;
   }
 
-  // Default Policy: 3 Termin (60%, 20%, 20%)
-  const term1Amount = Math.round(totalAmount * 0.60 * 100) / 100;
-  const term2Amount = Math.round(totalAmount * 0.20 * 100) / 100;
-  const term3Amount = Math.round((totalAmount - term1Amount - term2Amount) * 100) / 100;
-
-  const issueDateStr = issueDate.toISOString().split('T')[0] || '';
-  const dueDateStr = dueDate.toISOString().split('T')[0] || '';
-
-  const diffTime = Math.max(0, dueDate.getTime() - issueDate.getTime());
-  const midDate = new Date(issueDate.getTime() + Math.round(diffTime * 0.5));
-  const midDateStr = midDate.toISOString().split('T')[0] || '';
-
-  return [
-    {
-      termNumber: 1,
-      label: 'Termin #1 (Uang Muka / DP)',
-      percentage: 60,
-      amount: term1Amount,
-      dueDate: issueDateStr,
-    },
-    {
-      termNumber: 2,
-      label: 'Termin #2',
-      percentage: 20,
-      amount: term2Amount,
-      dueDate: midDateStr,
-    },
-    {
-      termNumber: 3,
-      label: 'Termin #3 (Pelunasan)',
-      percentage: 20,
-      amount: term3Amount,
-      dueDate: dueDateStr,
-    },
-  ];
+  return rawTerms.map((t: any, idx: number) => {
+    const termNumber = parseInt(t.termNumber) || idx + 1;
+    const percentage = Math.max(0, parseFloat(t.percentage) || 0);
+    const rawAmt = parseFloat(t.amount);
+    const amount = !isNaN(rawAmt) && rawAmt > 0
+      ? Math.round(rawAmt * 100) / 100
+      : Math.round((percentage / 100) * totalAmount * 100) / 100;
+    const label = (t.label || '').trim() || (idx === 0 ? 'Termin #1 (Uang Muka / DP)' : (idx === rawTerms.length - 1 ? `Termin #${termNumber} (Pelunasan)` : `Termin #${termNumber}`));
+    const termDueDate = t.dueDate ? (new Date(t.dueDate).toISOString().split('T')[0] || '') : (dueDate.toISOString().split('T')[0] || '');
+    const rawIdr = parseFloat(t.idrAmount);
+    const idrAmount = !isNaN(rawIdr) && rawIdr > 0 ? Math.round(rawIdr) : undefined;
+    const rawRate = parseFloat(t.exchangeRate);
+    const exchangeRate = !isNaN(rawRate) && rawRate > 0 ? Math.round(rawRate * 100) / 100 : undefined;
+    return {
+      termNumber,
+      label,
+      percentage: percentage || (totalAmount > 0 ? Math.round((amount / totalAmount) * 1000) / 10 : 0),
+      amount,
+      dueDate: termDueDate,
+      notes: (t.notes || '').trim() || undefined,
+      idrAmount,
+      exchangeRate,
+    };
+  });
 }
 
 // POST /api/invoices/manual - Create manual invoice without booking
@@ -852,7 +818,7 @@ invoiceRoutes.get('/manual/:id', requireAdminOrFinance, async (c) => {
 
     const effectivePaymentTerms = (invoice.paymentTerms && Array.isArray(invoice.paymentTerms) && invoice.paymentTerms.length > 0)
       ? invoice.paymentTerms
-      : normalizePaymentTerms(null, totalAmount, invoice.issueDate || new Date(), invoice.dueDate || new Date());
+      : null;
 
     return c.json({
       success: true,

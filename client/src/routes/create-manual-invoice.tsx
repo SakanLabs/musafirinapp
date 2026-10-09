@@ -42,6 +42,8 @@ import {
 } from "@/lib/queries/invoices"
 import { ManualInvoicePaymentModal, type PaymentMethod } from "@/components/modals/ManualInvoicePaymentModal"
 import { CalendarClock } from "lucide-react"
+import { Checkbox } from "@/components/ui/checkbox"
+import { SaudiRiyalIcon } from "@/components/ui/sar-currency"
 import { fetchExchangeRate, fetchUsdExchangeRate, formatSarWithIdr, formatIdr } from "@/lib/exchange-rate"
 import { toast } from "sonner"
 
@@ -65,6 +67,44 @@ export const Route = createFileRoute("/create-manual-invoice")({
   },
   component: CreateManualInvoicePage
 })
+
+export function CurrencyIcon({ currency, className }: { currency: string; className?: string }) {
+  if (currency === 'SAR') {
+    return <SaudiRiyalIcon className={className || "inline-block h-3.5 w-3.5 text-current align-middle"} />;
+  }
+  if (currency === 'USD') {
+    return <span className={className ? `font-bold text-current ${className}` : "font-bold text-current"}>$</span>;
+  }
+  if (currency === 'IDR') {
+    return <span className={className ? `font-bold text-xs text-current ${className}` : "font-bold text-xs text-current"}>Rp</span>;
+  }
+  return <span className={className ? `font-bold text-current ${className}` : "font-bold text-current"}>{currency}</span>;
+}
+
+export function CurrencyValue({
+  amount,
+  currency,
+  className,
+  iconClassName
+}: {
+  amount: number | string;
+  currency: string;
+  className?: string;
+  iconClassName?: string;
+}) {
+  const num = typeof amount === 'string' ? parseFloat(amount) : Number(amount || 0);
+  const valid = isNaN(num) ? 0 : num;
+  const formatted = currency === 'IDR'
+    ? new Intl.NumberFormat('id-ID', { minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(Math.round(valid))
+    : new Intl.NumberFormat('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(valid);
+
+  return (
+    <span className={`inline-flex items-center gap-1 ${className || ''}`}>
+      <CurrencyIcon currency={currency} className={iconClassName} />
+      <span>{formatted}</span>
+    </span>
+  );
+}
 
 function getInvoiceStatusColor(status?: string) {
   switch (status?.toLowerCase()) {
@@ -96,6 +136,22 @@ function CreateManualInvoicePage() {
   const payManualInvoiceMutation = usePayManualInvoice()
   const deletePaymentMutation = useDeleteManualInvoicePayment()
 
+  // Form State
+  const [selectedClientId, setSelectedClientId] = useState<string>("")
+  const [clientName, setClientName] = useState<string>("")
+  const [clientEmail, setClientEmail] = useState<string>("")
+  const [clientPhone, setClientPhone] = useState<string>("")
+  const [clientAddress, setClientAddress] = useState<string>("")
+  const [isNewClientMode, setIsNewClientMode] = useState<boolean>(false)
+
+  const [title, setTitle] = useState<string>("")
+  const [currency, setCurrency] = useState<string>("SAR")
+  const [issueDate, setIssueDate] = useState<string>(new Date().toISOString().split('T')[0])
+  const [dueDate, setDueDate] = useState<string>(
+    new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
+  )
+  const [notes, setNotes] = useState<string>("")
+
   // Exchange rate for SAR and USD to IDR conversion display
   const { data: sarExchangeRateData } = useQuery({
     queryKey: ['exchangeRate'],
@@ -113,28 +169,13 @@ function CreateManualInvoicePage() {
     ? (usdExchangeRateData?.data?.rate || null)
     : null
 
-  // Form State
-  const [selectedClientId, setSelectedClientId] = useState<string>("")
-  const [clientName, setClientName] = useState<string>("")
-  const [clientEmail, setClientEmail] = useState<string>("")
-  const [clientPhone, setClientPhone] = useState<string>("")
-  const [clientAddress, setClientAddress] = useState<string>("")
-  const [isNewClientMode, setIsNewClientMode] = useState<boolean>(false)
-
-  const [title, setTitle] = useState<string>("")
-  const [currency, setCurrency] = useState<string>("SAR")
-  const [issueDate, setIssueDate] = useState<string>(new Date().toISOString().split('T')[0])
-  const [dueDate, setDueDate] = useState<string>(
-    new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
-  )
-  const [notes, setNotes] = useState<string>("")
-
   // Line items state
   const [items, setItems] = useState<CreateManualInvoiceItem[]>([
     { description: "", quantity: 1, unitPrice: 0, notes: "" }
   ])
 
-  // Payment Terms Schedule State (Policy Default: 3 termin: 60% - 20% - 20%)
+  // Payment Terms Schedule State (Optional)
+  const [hasPaymentTerms, setHasPaymentTerms] = useState<boolean>(false)
   const [paymentTerms, setPaymentTerms] = useState<ManualInvoicePaymentTerm[]>([
     { termNumber: 1, label: "Termin #1 (Uang Muka / DP)", percentage: 60, amount: 0, dueDate: new Date().toISOString().split('T')[0] },
     { termNumber: 2, label: "Termin #2", percentage: 20, amount: 0, dueDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0] },
@@ -171,6 +212,7 @@ function CreateManualInvoicePage() {
         })))
       }
       if (Array.isArray(invoiceData.paymentTerms) && invoiceData.paymentTerms.length > 0) {
+        setHasPaymentTerms(true)
         setPaymentTerms(invoiceData.paymentTerms.map((t: any, idx: number) => ({
           termNumber: t.termNumber || idx + 1,
           label: t.label || `Termin #${idx + 1}`,
@@ -182,49 +224,8 @@ function CreateManualInvoicePage() {
           exchangeRate: t.exchangeRate ? Number(t.exchangeRate) : undefined,
         })))
         setIsTermsManuallyCustomized(true)
-      } else if (Array.isArray(invoiceData.payments) && invoiceData.payments.length > 0) {
-        // Build initial terms honoring already recorded payments!
-        const totalAmt = parseFloat(invoiceData.amount) || 0;
-        const terms: any[] = [];
-        let totalPaidSoFar = 0;
-        invoiceData.payments.forEach((p: any, pIdx: number) => {
-          const pAmt = parseFloat(p.amount) || 0;
-          totalPaidSoFar += pAmt;
-          const pPct = totalAmt > 0 ? Math.round((pAmt / totalAmt) * 1000) / 10 : 0;
-          terms.push({
-            termNumber: pIdx + 1,
-            label: p.meta?.terminLabel || (pIdx === 0 ? "Termin #1 (Uang Muka / DP)" : `Termin #${pIdx + 1}`),
-            percentage: pPct,
-            amount: pAmt,
-            dueDate: p.paidAt ? new Date(p.paidAt).toISOString().split('T')[0] : (invoiceData.issueDate ? new Date(invoiceData.issueDate).toISOString().split('T')[0] : ""),
-            notes: p.meta?.description || "",
-            idrAmount: p.meta?.idrAmount ? Number(p.meta.idrAmount) : undefined,
-            exchangeRate: p.meta?.exchangeRate ? Number(p.meta.exchangeRate) : undefined,
-          });
-        });
-        const remAmt = Math.max(0, totalAmt - totalPaidSoFar);
-        const remPct = Math.max(0, Math.round((100 - terms.reduce((s, t) => s + t.percentage, 0)) * 10) / 10);
-        if (remAmt > 0) {
-          const nextTermNum = terms.length + 1;
-          const halfRem = Math.round(remAmt * 0.5 * 100) / 100;
-          const halfPct = Math.round(remPct * 0.5 * 10) / 10;
-          terms.push({
-            termNumber: nextTermNum,
-            label: `Termin #${nextTermNum}`,
-            percentage: halfPct,
-            amount: halfRem,
-            dueDate: invoiceData.dueDate ? new Date(invoiceData.dueDate).toISOString().split('T')[0] : "",
-          });
-          terms.push({
-            termNumber: nextTermNum + 1,
-            label: `Termin #${nextTermNum + 1} (Pelunasan)`,
-            percentage: Math.round((remPct - halfPct) * 10) / 10,
-            amount: Math.round((remAmt - halfRem) * 100) / 100,
-            dueDate: invoiceData.dueDate ? new Date(invoiceData.dueDate).toISOString().split('T')[0] : "",
-          });
-        }
-        setPaymentTerms(terms);
-        setIsTermsManuallyCustomized(true);
+      } else {
+        setHasPaymentTerms(false)
       }
     }
   }, [invoiceData])
@@ -280,7 +281,7 @@ function CreateManualInvoicePage() {
 
   // Auto-calculate payment term amounts when grandTotal or dates change
   useEffect(() => {
-    if (!isTermsManuallyCustomized && (!invoiceData?.paymentTerms || invoiceData.paymentTerms.length === 0)) {
+    if (hasPaymentTerms && !isTermsManuallyCustomized && (!invoiceData?.paymentTerms || invoiceData.paymentTerms.length === 0)) {
       setPaymentTerms(prev => {
         const t1Amt = Math.round(grandTotal * ((prev[0]?.percentage || 60) / 100) * 100) / 100
         const t2Amt = Math.round(grandTotal * ((prev[1]?.percentage || 20) / 100) * 100) / 100
@@ -292,7 +293,7 @@ function CreateManualInvoicePage() {
         ]
       })
     }
-  }, [grandTotal, issueDate, dueDate, isTermsManuallyCustomized, invoiceData?.paymentTerms])
+  }, [hasPaymentTerms, grandTotal, issueDate, dueDate, isTermsManuallyCustomized, invoiceData?.paymentTerms])
 
   // Payment terms action handlers
   const handleApplyPreset = (preset: '3_terms' | '2_terms' | 'full') => {
@@ -564,6 +565,18 @@ function CreateManualInvoicePage() {
       }
     }
 
+    if (hasPaymentTerms) {
+      if (paymentTerms.length === 0) {
+        toast.error("Tambahkan minimal 1 termin pembayaran atau nonaktifkan opsi termin")
+        return
+      }
+      const totalPct = Math.round(paymentTerms.reduce((sum, t) => sum + (Number(t.percentage) || 0), 0) * 10) / 10
+      if (Math.abs(totalPct - 100) > 0.5) {
+        toast.error(`Total alokasi termin harus berjumlah 100% (saat ini ${totalPct}%)`)
+        return
+      }
+    }
+
     const payload = {
       clientId: selectedClientId ? parseInt(selectedClientId) : null,
       clientName: trimmedName,
@@ -582,7 +595,7 @@ function CreateManualInvoicePage() {
         total: (Number(item.quantity) || 1) * (Number(item.unitPrice) || 0),
         notes: item.notes?.trim() || undefined
       })),
-      paymentTerms: paymentTerms.map((t, idx) => ({
+      paymentTerms: hasPaymentTerms ? paymentTerms.map((t, idx) => ({
         termNumber: idx + 1,
         label: t.label.trim() || `Termin #${idx + 1}`,
         percentage: Number(t.percentage) || 0,
@@ -591,7 +604,7 @@ function CreateManualInvoicePage() {
         notes: t.notes?.trim() || undefined,
         idrAmount: t.idrAmount ? Number(t.idrAmount) : undefined,
         exchangeRate: t.exchangeRate ? Number(t.exchangeRate) : undefined,
-      }))
+      })) : null
     }
 
     try {
@@ -737,9 +750,9 @@ function CreateManualInvoicePage() {
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4 p-4 bg-zinc-50/70 rounded-xl border border-zinc-200/70">
                 <div className="space-y-1">
                   <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-500">Total Tagihan</span>
-                  <p className="text-xl font-bold font-mono text-zinc-900">
-                    {formatCurrency(totalInvoiceAmount, currency)}
-                  </p>
+                  <div className="text-xl font-bold font-mono text-zinc-900">
+                    <CurrencyValue amount={totalInvoiceAmount} currency={currency} iconClassName="h-4 w-4" />
+                  </div>
                   {(currency === 'SAR' || currency === 'USD') && currentRate ? (
                     <p className="text-[11px] font-mono text-zinc-400">
                       ≈ {formatIdr(Math.round(totalInvoiceAmount * currentRate))}
@@ -749,9 +762,9 @@ function CreateManualInvoicePage() {
 
                 <div className="space-y-1 border-t md:border-t-0 md:border-l border-zinc-200/60 pt-3 md:pt-0 md:pl-4">
                   <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-500">Telah Dibayar</span>
-                  <p className="text-xl font-bold font-mono text-emerald-600">
-                    {formatCurrency(paidInvoiceAmount, currency)}
-                  </p>
+                  <div className="text-xl font-bold font-mono text-emerald-600">
+                    <CurrencyValue amount={paidInvoiceAmount} currency={currency} iconClassName="h-4 w-4 text-emerald-600" />
+                  </div>
                   <div className="flex items-center gap-1.5 text-[11px] text-emerald-700 font-medium">
                     <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
                     <span>{paymentPercent}% Terbayar</span>
@@ -760,9 +773,9 @@ function CreateManualInvoicePage() {
 
                 <div className="space-y-1 border-t md:border-t-0 md:border-l border-zinc-200/60 pt-3 md:pt-0 md:pl-4">
                   <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-500">Sisa Tagihan</span>
-                  <p className={`text-xl font-bold font-mono ${remainingInvoiceBalance === 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
-                    {formatCurrency(remainingInvoiceBalance, currency)}
-                  </p>
+                  <div className={`text-xl font-bold font-mono ${remainingInvoiceBalance === 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
+                    <CurrencyValue amount={remainingInvoiceBalance} currency={currency} iconClassName={`h-4 w-4 ${remainingInvoiceBalance === 0 ? 'text-emerald-600' : 'text-rose-600'}`} />
+                  </div>
                   <p className="text-[11px] text-zinc-400">
                     {remainingInvoiceBalance === 0 ? 'Semua tagihan lunas' : 'Menunggu pelunasan'}
                   </p>
@@ -821,7 +834,7 @@ function CreateManualInvoicePage() {
                               </td>
                               <td className="py-3 px-4 text-right">
                                 <div className="font-mono font-bold text-emerald-600">
-                                  {formatCurrency(p.amount, p.currency || currency)}
+                                  <CurrencyValue amount={p.amount} currency={p.currency || currency} iconClassName="h-3 w-3" />
                                 </div>
                                 {p.meta?.idrAmount ? (
                                   <div className="text-[11px] font-mono font-semibold text-blue-700">
@@ -1014,17 +1027,21 @@ function CreateManualInvoicePage() {
 
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <div>
-                    <label className="block text-[10px] font-bold text-zinc-400 uppercase tracking-wider mb-1.5">
-                      Mata Uang
+                    <label className="block text-[10px] font-bold text-zinc-400 uppercase tracking-wider mb-1.5 flex items-center justify-between">
+                      <span>Mata Uang</span>
+                      <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-zinc-700 bg-zinc-100 px-2 py-0.5 rounded">
+                        <CurrencyIcon currency={currency} className="h-3 w-3" />
+                        <span>{currency}</span>
+                      </span>
                     </label>
                     <select
                       value={currency}
                       onChange={(e) => setCurrency(e.target.value)}
                       className="w-full h-10 px-3 border border-[#e5e7eb] rounded-lg bg-white text-sm font-medium text-zinc-950 focus:outline-none focus:border-[#111111] focus:ring-1 focus:ring-[#111111]"
                     >
-                      <option value="SAR">SAR (Saudi Riyal)</option>
-                      <option value="IDR">IDR (Indonesian Rupiah)</option>
-                      <option value="USD">USD (US Dollar)</option>
+                      <option value="SAR">SAR - Saudi Riyal (🇸🇦)</option>
+                      <option value="IDR">IDR - Rupiah Indonesia (🇮🇩)</option>
+                      <option value="USD">USD - US Dollar (🇺🇸)</option>
                     </select>
                   </div>
                   <div>
@@ -1154,7 +1171,7 @@ function CreateManualInvoicePage() {
                             Subtotal
                           </label>
                           <div className="h-9 px-3 border border-zinc-200 rounded-md bg-zinc-100 flex items-center justify-end text-xs font-bold text-zinc-900">
-                            {formatCurrency(subtotal, currency)}
+                            <CurrencyValue amount={subtotal} currency={currency} iconClassName="h-3.5 w-3.5" />
                           </div>
                         </div>
                       </div>
@@ -1176,210 +1193,243 @@ function CreateManualInvoicePage() {
             {/* Payment Schedule (Termin) Card */}
             <div className="border border-[#e5e7eb] rounded-xl bg-white shadow-none p-5 space-y-4">
               <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 pb-3 border-b border-gray-100">
-                <div className="flex items-center space-x-2">
-                  <CalendarClock className="h-4.5 w-4.5 text-zinc-700" />
+                <div className="flex items-center space-x-3">
+                  <Checkbox
+                    id="hasPaymentTerms"
+                    checked={hasPaymentTerms}
+                    onCheckedChange={(checked) => {
+                      const isChecked = !!checked;
+                      setHasPaymentTerms(isChecked);
+                      if (isChecked && (!paymentTerms || paymentTerms.length === 0)) {
+                        handleApplyPreset('3_terms');
+                      }
+                    }}
+                    className="h-4.5 w-4.5 data-[state=checked]:bg-[#111111] data-[state=checked]:border-[#111111]"
+                  />
                   <div>
-                    <h3 className="text-sm font-bold text-[#111111] uppercase tracking-wider">
-                      Jadwal & Termin Pembayaran
-                    </h3>
+                    <Label
+                      htmlFor="hasPaymentTerms"
+                      className="text-sm font-bold text-[#111111] uppercase tracking-wider cursor-pointer select-none flex items-center gap-1.5"
+                    >
+                      <CalendarClock className="h-4 w-4 text-zinc-700" />
+                      <span>Jadwal & Termin Pembayaran</span>
+                      <span className="text-[10px] font-semibold normal-case px-1.5 py-0.5 rounded bg-zinc-100 text-zinc-600">
+                        Opsional
+                      </span>
+                    </Label>
                     <p className="text-[11px] text-zinc-400">
-                      Pengaturan termin fleksibel (Default: Termin 1 60%, Termin 2 20%, Termin 3 20%)
+                      {hasPaymentTerms
+                        ? "Pembayaran dibagi menjadi beberapa tahap/termin (Uang Muka/DP, Termin ke-2, Pelunasan)."
+                        : "Centang untuk mengaktifkan skema termin bertahap pada invoice dan PDF."}
                     </p>
                   </div>
                 </div>
 
                 {/* Quick Presets */}
-                <div className="flex flex-wrap items-center gap-1.5">
-                  <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider mr-1">Preset:</span>
-                  <button
-                    type="button"
-                    onClick={() => handleApplyPreset('3_terms')}
-                    className="px-2.5 py-1 text-[11px] font-semibold rounded-md border border-zinc-200 bg-zinc-50 hover:bg-zinc-100 text-zinc-800 transition-colors"
-                  >
-                    3 Termin (60/20/20)
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => handleApplyPreset('2_terms')}
-                    className="px-2.5 py-1 text-[11px] font-semibold rounded-md border border-zinc-200 bg-zinc-50 hover:bg-zinc-100 text-zinc-800 transition-colors"
-                  >
-                    2 Termin (50/50)
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => handleApplyPreset('full')}
-                    className="px-2.5 py-1 text-[11px] font-semibold rounded-md border border-zinc-200 bg-zinc-50 hover:bg-zinc-100 text-zinc-800 transition-colors"
-                  >
-                    1x Lunas
-                  </button>
-                  <button
-                    type="button"
-                    onClick={handleAddTerm}
-                    className="px-2.5 py-1 text-[11px] font-semibold rounded-md border border-blue-200 bg-blue-50 hover:bg-blue-100 text-blue-700 transition-colors flex items-center gap-1"
-                  >
-                    <Plus className="w-3 h-3" /> Tambah Termin
-                  </button>
-                </div>
+                {hasPaymentTerms && (
+                  <div className="flex flex-wrap items-center gap-1.5 pl-7 md:pl-0">
+                    <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider mr-1">Preset:</span>
+                    <button
+                      type="button"
+                      onClick={() => handleApplyPreset('3_terms')}
+                      className="px-2.5 py-1 text-[11px] font-semibold rounded-md border border-zinc-200 bg-zinc-50 hover:bg-zinc-100 text-zinc-800 transition-colors"
+                    >
+                      3 Termin (60/20/20)
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleApplyPreset('2_terms')}
+                      className="px-2.5 py-1 text-[11px] font-semibold rounded-md border border-zinc-200 bg-zinc-50 hover:bg-zinc-100 text-zinc-800 transition-colors"
+                    >
+                      2 Termin (50/50)
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleApplyPreset('full')}
+                      className="px-2.5 py-1 text-[11px] font-semibold rounded-md border border-zinc-200 bg-zinc-50 hover:bg-zinc-100 text-zinc-800 transition-colors"
+                    >
+                      1x Lunas
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleAddTerm}
+                      className="px-2.5 py-1 text-[11px] font-semibold rounded-md border border-blue-200 bg-blue-50 hover:bg-blue-100 text-blue-700 transition-colors flex items-center gap-1"
+                    >
+                      <Plus className="w-3 h-3" /> Tambah Termin
+                    </button>
+                  </div>
+                )}
               </div>
 
-              {/* Status & Validation Banner */}
-              {(() => {
-                const totalPct = Math.round(paymentTerms.reduce((sum, t) => sum + (Number(t.percentage) || 0), 0) * 10) / 10;
-                const isBalanced = Math.abs(totalPct - 100) < 0.1;
-                return (
-                  <div className={`p-3 rounded-lg flex items-center justify-between text-xs ${
-                    isBalanced 
-                      ? 'bg-emerald-50/80 border border-emerald-200 text-emerald-800' 
-                      : 'bg-amber-50 border border-amber-200 text-amber-900'
-                  }`}>
-                    <div className="flex items-center gap-2">
-                      {isBalanced ? (
-                        <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
-                      ) : (
-                        <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0" />
-                      )}
-                      <div>
-                        <span className="font-bold">Total Alokasi Termin: {totalPct}%</span>
-                        {!isBalanced && (
-                          <span className="ml-1 text-[11px] text-amber-700">
-                            (Kurang/Lebih {Math.round((100 - totalPct) * 10) / 10}%. Total termin harus berjumlah 100%)
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                    {!isBalanced && paymentTerms.length > 0 && (
-                      <button
-                        type="button"
-                        onClick={handleAutoBalanceTerms}
-                        className="text-[11px] font-bold text-amber-800 bg-amber-100 hover:bg-amber-200 px-2 py-1 rounded transition-colors"
-                      >
-                        Seimbangkan Otomatis
-                      </button>
-                    )}
-                  </div>
-                );
-              })()}
-
-              {/* Terms Table / Rows */}
-              <div className="space-y-3">
-                {paymentTerms.map((term, index) => {
-                  const estIdr = (currency === 'SAR' || currency === 'USD') && currentRate ? Math.round(term.amount * currentRate) : null;
-                  return (
-                    <div
-                      key={index}
-                      className="border border-zinc-200/80 rounded-lg p-3 bg-zinc-50/50 hover:bg-white hover:border-zinc-300 transition-all space-y-2.5"
-                    >
-                      <div className="flex items-center justify-between">
+              {hasPaymentTerms ? (
+                <>
+                  {/* Status & Validation Banner */}
+                  {(() => {
+                    const totalPct = Math.round(paymentTerms.reduce((sum, t) => sum + (Number(t.percentage) || 0), 0) * 10) / 10;
+                    const isBalanced = Math.abs(totalPct - 100) < 0.1;
+                    return (
+                      <div className={`p-3 rounded-lg flex items-center justify-between text-xs ${
+                        isBalanced 
+                          ? 'bg-emerald-50/80 border border-emerald-200 text-emerald-800' 
+                          : 'bg-amber-50 border border-amber-200 text-amber-900'
+                      }`}>
                         <div className="flex items-center gap-2">
-                          <span className="px-2 py-0.5 rounded text-[11px] font-bold bg-[#111111] text-white">
-                            Termin #{term.termNumber || index + 1}
-                          </span>
-                          <span className="text-xs font-semibold text-zinc-700">
-                            {index === 0 ? "Uang Muka / Termin Pertama" : index === paymentTerms.length - 1 ? "Pelunasan Akhir" : `Termin Ke-${index + 1}`}
-                          </span>
+                          {isBalanced ? (
+                            <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                          ) : (
+                            <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0" />
+                          )}
+                          <div>
+                            <span className="font-bold">Total Alokasi Termin: {totalPct}%</span>
+                            {!isBalanced && (
+                              <span className="ml-1 text-[11px] text-amber-700">
+                                (Kurang/Lebih {Math.round((100 - totalPct) * 10) / 10}%. Total termin harus berjumlah 100%)
+                              </span>
+                            )}
+                          </div>
                         </div>
-                        {paymentTerms.length > 1 && (
+                        {!isBalanced && paymentTerms.length > 0 && (
                           <button
                             type="button"
-                            onClick={() => handleRemoveTerm(index)}
-                            className="text-zinc-400 hover:text-rose-600 transition-colors p-1"
-                            title="Hapus termin ini"
+                            onClick={handleAutoBalanceTerms}
+                            className="text-[11px] font-bold text-amber-800 bg-amber-100 hover:bg-amber-200 px-2 py-1 rounded transition-colors"
                           >
-                            <Trash2 className="w-3.5 h-3.5" />
+                            Seimbangkan Otomatis
                           </button>
                         )}
                       </div>
+                    );
+                  })()}
 
-                      <div className="grid grid-cols-1 md:grid-cols-12 gap-2.5 items-end">
-                        <div className={currency === 'IDR' ? "md:col-span-5" : "md:col-span-3"}>
-                          <label className="block text-[10px] font-bold text-zinc-400 uppercase tracking-wider mb-1">
-                            Label Termin
-                          </label>
-                          <Input
-                            placeholder={`Contoh: Termin #${index + 1}`}
-                            value={term.label}
-                            onChange={(e) => handleUpdateTerm(index, "label", e.target.value)}
-                            className="h-9 px-3 border border-[#e5e7eb] rounded-md bg-white text-xs font-medium text-zinc-950 focus:border-[#111111] shadow-none"
-                          />
-                        </div>
-
-                        <div className="md:col-span-2">
-                          <label className="block text-[10px] font-bold text-zinc-400 uppercase tracking-wider mb-1">
-                            Porsi (%)
-                          </label>
-                          <div className="relative">
-                            <Input
-                              type="number"
-                              min="0"
-                              max="100"
-                              step="0.5"
-                              value={term.percentage}
-                              onChange={(e) => handleUpdateTerm(index, "percentage", e.target.value)}
-                              className="h-9 px-3 pr-7 border border-[#e5e7eb] rounded-md bg-white text-xs font-medium text-zinc-950 focus:border-[#111111] shadow-none text-right font-mono"
-                            />
-                            <span className="absolute right-2.5 top-2.5 text-xs text-zinc-400 pointer-events-none">%</span>
-                          </div>
-                        </div>
-
-                        <div className={currency === 'IDR' ? "md:col-span-3" : "md:col-span-2"}>
-                          <label className="block text-[10px] font-bold text-zinc-400 uppercase tracking-wider mb-1">
-                            Nominal ({currency})
-                          </label>
-                          <Input
-                            type="number"
-                            min="0"
-                            step="0.01"
-                            value={term.amount}
-                            onChange={(e) => handleUpdateTerm(index, "amount", e.target.value)}
-                            className="h-9 px-3 border border-[#e5e7eb] rounded-md bg-white text-xs font-bold text-zinc-950 focus:border-[#111111] shadow-none text-right font-mono"
-                          />
-                        </div>
-
-                        {currency !== 'IDR' && (
-                          <div className="md:col-span-3">
-                            <label className="block text-[10px] font-bold text-zinc-400 uppercase tracking-wider mb-1">
-                              Nominal Terkunci (IDR)
-                            </label>
-                            <div className="relative">
-                              <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-[10px] font-bold text-zinc-400">
-                                Rp
+                  {/* Terms Table / Rows */}
+                  <div className="space-y-3">
+                    {paymentTerms.map((term, index) => {
+                      const estIdr = (currency === 'SAR' || currency === 'USD') && currentRate ? Math.round(term.amount * currentRate) : null;
+                      return (
+                        <div
+                          key={index}
+                          className="border border-zinc-200/80 rounded-lg p-3 bg-zinc-50/50 hover:bg-white hover:border-zinc-300 transition-all space-y-2.5"
+                        >
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                              <span className="px-2 py-0.5 rounded text-[11px] font-bold bg-[#111111] text-white">
+                                Termin #{term.termNumber || index + 1}
                               </span>
+                              <span className="text-xs font-semibold text-zinc-700">
+                                {index === 0 ? "Uang Muka / Termin Pertama" : index === paymentTerms.length - 1 ? "Pelunasan Akhir" : `Termin Ke-${index + 1}`}
+                              </span>
+                            </div>
+                            {paymentTerms.length > 1 && (
+                              <button
+                                type="button"
+                                onClick={() => handleRemoveTerm(index)}
+                                className="text-zinc-400 hover:text-rose-600 transition-colors p-1"
+                                title="Hapus termin ini"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            )}
+                          </div>
+
+                          <div className="grid grid-cols-1 md:grid-cols-12 gap-2.5 items-end">
+                            <div className={currency === 'IDR' ? "md:col-span-5" : "md:col-span-3"}>
+                              <label className="block text-[10px] font-bold text-zinc-400 uppercase tracking-wider mb-1">
+                                Label Termin
+                              </label>
                               <Input
-                                type="number"
-                                placeholder={estIdr ? String(estIdr) : "Opsional"}
-                                value={term.idrAmount || ""}
-                                onChange={(e) => handleUpdateTerm(index, "idrAmount", e.target.value)}
-                                className="h-9 pl-7 pr-2 border border-[#e5e7eb] rounded-md bg-white text-xs font-semibold text-zinc-950 focus:border-[#111111] shadow-none font-mono"
+                                placeholder={`Contoh: Termin #${index + 1}`}
+                                value={term.label}
+                                onChange={(e) => handleUpdateTerm(index, "label", e.target.value)}
+                                className="h-9 px-3 border border-[#e5e7eb] rounded-md bg-white text-xs font-medium text-zinc-950 focus:border-[#111111] shadow-none"
                               />
                             </div>
-                            {term.idrAmount ? (
-                              <span className="block text-[10px] font-mono text-blue-600 font-semibold mt-0.5">
-                                🔒 Terkunci: {formatIdr(term.idrAmount)}
-                              </span>
-                            ) : estIdr ? (
-                              <span className="block text-[10px] font-mono text-zinc-400 mt-0.5">
-                                Est: {formatIdr(estIdr)}
-                              </span>
-                            ) : null}
-                          </div>
-                        )}
 
-                        <div className="md:col-span-2">
-                          <label className="block text-[10px] font-bold text-zinc-400 uppercase tracking-wider mb-1">
-                            Jatuh Tempo
-                          </label>
-                          <Input
-                            type="date"
-                            value={term.dueDate || ""}
-                            onChange={(e) => handleUpdateTerm(index, "dueDate", e.target.value)}
-                            className="h-9 px-2 border border-[#e5e7eb] rounded-md bg-white text-xs font-medium text-zinc-950 focus:border-[#111111] shadow-none"
-                          />
+                            <div className="md:col-span-2">
+                              <label className="block text-[10px] font-bold text-zinc-400 uppercase tracking-wider mb-1">
+                                Porsi (%)
+                              </label>
+                              <div className="relative">
+                                <Input
+                                  type="number"
+                                  min="0"
+                                  max="100"
+                                  step="0.5"
+                                  value={term.percentage}
+                                  onChange={(e) => handleUpdateTerm(index, "percentage", e.target.value)}
+                                  className="h-9 px-3 pr-7 border border-[#e5e7eb] rounded-md bg-white text-xs font-medium text-zinc-950 focus:border-[#111111] shadow-none text-right font-mono"
+                                />
+                                <span className="absolute right-2.5 top-2.5 text-xs text-zinc-400 pointer-events-none">%</span>
+                              </div>
+                            </div>
+
+                            <div className={currency === 'IDR' ? "md:col-span-3" : "md:col-span-2"}>
+                              <label className="block text-[10px] font-bold text-zinc-400 uppercase tracking-wider mb-1">
+                                Nominal ({currency})
+                              </label>
+                              <Input
+                                type="number"
+                                min="0"
+                                step="0.01"
+                                value={term.amount}
+                                onChange={(e) => handleUpdateTerm(index, "amount", e.target.value)}
+                                className="h-9 px-3 border border-[#e5e7eb] rounded-md bg-white text-xs font-bold text-zinc-950 focus:border-[#111111] shadow-none text-right font-mono"
+                              />
+                            </div>
+
+                            {currency !== 'IDR' && (
+                              <div className="md:col-span-3">
+                                <label className="block text-[10px] font-bold text-zinc-400 uppercase tracking-wider mb-1">
+                                  Nominal Terkunci (IDR)
+                                </label>
+                                <div className="relative">
+                                  <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-[10px] font-bold text-zinc-400">
+                                    Rp
+                                  </span>
+                                  <Input
+                                    type="number"
+                                    placeholder={estIdr ? String(estIdr) : "Opsional"}
+                                    value={term.idrAmount || ""}
+                                    onChange={(e) => handleUpdateTerm(index, "idrAmount", e.target.value)}
+                                    className="h-9 pl-7 pr-2 border border-[#e5e7eb] rounded-md bg-white text-xs font-semibold text-zinc-950 focus:border-[#111111] shadow-none font-mono"
+                                  />
+                                </div>
+                                {term.idrAmount ? (
+                                  <span className="block text-[10px] font-mono text-blue-600 font-semibold mt-0.5">
+                                    🔒 Terkunci: {formatIdr(term.idrAmount)}
+                                  </span>
+                                ) : estIdr ? (
+                                  <span className="block text-[10px] font-mono text-zinc-400 mt-0.5">
+                                    Est: {formatIdr(estIdr)}
+                                  </span>
+                                ) : null}
+                              </div>
+                            )}
+
+                            <div className="md:col-span-2">
+                              <label className="block text-[10px] font-bold text-zinc-400 uppercase tracking-wider mb-1">
+                                Jatuh Tempo
+                              </label>
+                              <Input
+                                type="date"
+                                value={term.dueDate || ""}
+                                onChange={(e) => handleUpdateTerm(index, "dueDate", e.target.value)}
+                                className="h-9 px-2 border border-[#e5e7eb] rounded-md bg-white text-xs font-medium text-zinc-950 focus:border-[#111111] shadow-none"
+                              />
+                            </div>
+                          </div>
                         </div>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
+                      );
+                    })}
+                  </div>
+                </>
+              ) : (
+                <div className="text-xs text-zinc-500 bg-zinc-50/70 rounded-lg p-3.5 border border-dashed border-zinc-200 flex items-center gap-2.5">
+                  <Info className="w-4 h-4 text-zinc-400 shrink-0" />
+                  <span>
+                    Skema termin nonaktif. Invoice dan berkas PDF akan ditagihkan secara penuh 100% tanpa rincian jadwal termin bertahap.
+                  </span>
+                </div>
+              )}
             </div>
           </div>
 
@@ -1410,7 +1460,7 @@ function CreateManualInvoicePage() {
                 </div>
 
                 {/* Termin Breakdown */}
-                {paymentTerms.length > 0 && (
+                {hasPaymentTerms && paymentTerms.length > 0 && (
                   <div className="pt-3 border-t border-gray-100 space-y-1.5">
                     <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider block mb-1">
                       Alokasi Termin ({paymentTerms.length} Tahap)
@@ -1421,7 +1471,7 @@ function CreateManualInvoicePage() {
                           {t.label || `Termin #${idx + 1}`} ({t.percentage}%)
                         </span>
                         <span className="font-mono font-medium text-zinc-800">
-                          {formatCurrency(t.amount, currency)}
+                          <CurrencyValue amount={t.amount} currency={currency} iconClassName="h-3 w-3" />
                         </span>
                       </div>
                     ))}
@@ -1431,13 +1481,15 @@ function CreateManualInvoicePage() {
                 <div className="pt-4 border-t border-gray-100 space-y-2">
                   <div className="flex items-center justify-between text-sm">
                     <span className="font-bold text-zinc-700">Subtotal Item</span>
-                    <span className="font-semibold text-zinc-900">{formatCurrency(grandTotal, currency)}</span>
+                    <span className="font-semibold text-zinc-900">
+                      <CurrencyValue amount={grandTotal} currency={currency} iconClassName="h-3.5 w-3.5" />
+                    </span>
                   </div>
                   <div className="flex items-center justify-between text-base pt-2 border-t border-zinc-150">
                     <span className="font-extrabold text-[#111111]">Grand Total</span>
                     <div className="text-right">
                       <span className="font-extrabold text-[#111111] text-lg block">
-                        {formatCurrency(grandTotal, currency)}
+                        <CurrencyValue amount={grandTotal} currency={currency} iconClassName="h-4 w-4" />
                       </span>
                       {(currency === 'SAR' || currency === 'USD') && currentRate ? (
                         <span className="text-[11px] font-mono text-zinc-500 block">
@@ -1511,7 +1563,7 @@ function CreateManualInvoicePage() {
           clientDepositBalance={invoiceData.summary?.clientDepositBalance || 0}
           onSubmit={handleRecordPayment}
           isLoading={payManualInvoiceMutation.isPending}
-          paymentTerms={invoiceData.paymentTerms || paymentTerms}
+          paymentTerms={hasPaymentTerms ? (invoiceData.paymentTerms || paymentTerms) : undefined}
           existingPaymentsCount={invoiceData.payments?.length || 0}
         />
       )}
