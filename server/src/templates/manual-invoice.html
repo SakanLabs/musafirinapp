@@ -259,7 +259,8 @@
       </table>
     </div>
 
-    <!-- Dinamis Termin & Jadwal Pembayaran -->
+    <!-- Dinamis Termin & Jadwal Pembayaran (Opsional) -->
+    {{#if hasPaymentTerms}}
     <div class="cs-info-card">
       <h3 class="cs-text-lg cs-font-bold cs-text-gray-800 cs-mb-2">Jadwal & Riwayat Termin Pembayaran</h3>
       <table class="cs-table" style="background:#fff;border:1px solid #e5e7eb;border-radius:6px;overflow:hidden">
@@ -319,6 +320,7 @@
         </tbody>
       </table>
     </div>
+    {{/if}}
 
     <!-- Payment Instruction -->
     <div class="cs-info-card">
