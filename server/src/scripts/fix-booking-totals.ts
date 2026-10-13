@@ -166,12 +166,14 @@ async function run() {
         remainingBalance,
       };
 
+      const metaJson = JSON.stringify(updatedMeta);
+
       // 1. Update Booking
       await client`
         UPDATE bookings
         SET 
           total_amount = ${b.correctTotal.toFixed(2)},
-          meta = ${client.json(updatedMeta)},
+          meta = ${metaJson}::jsonb,
           updated_at = NOW()
         WHERE id = ${b.id};
       `;
