@@ -1922,7 +1922,7 @@ export async function generateManualInvoicePDF(
       description: item.description,
       quantity: item.quantity,
       unitPriceFormatted: formatAmount(item.unitPrice),
-      subtotalFormatted: formatAmount(item.subtotal),
+      subtotalFormatted: formatAmount(item.subtotal ?? item.total ?? (Number(item.unitPrice || 0) * Number(item.quantity || 1))),
       notes: item.notes || ''
     }));
 

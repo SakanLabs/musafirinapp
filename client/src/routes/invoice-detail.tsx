@@ -292,7 +292,7 @@ function InvoiceDetailPage() {
               <Download className="h-4 w-4 mr-2 text-zinc-500" />
               Download PDF
             </Button>
-            {invoice.number.startsWith('INV-MAN-') && (
+            {(invoice.number.startsWith('INV-MAN-') || invoice.number.startsWith('INV-MRG-')) && (
               <Button
                 variant="outline"
                 onClick={() => navigate({ to: `/create-manual-invoice?id=${invoice.id}` as any })}
@@ -302,7 +302,7 @@ function InvoiceDetailPage() {
                 Edit Invoice
               </Button>
             )}
-            {isAdmin && !invoice.number.startsWith('INV-MAN-') && (
+            {isAdmin && !invoice.number.startsWith('INV-MAN-') && !invoice.number.startsWith('INV-MRG-') && (
               <Button 
                 variant="outline" 
                 onClick={async () => {

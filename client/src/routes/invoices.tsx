@@ -15,12 +15,14 @@ import {
   MessageCircle,
   Edit,
   CreditCard,
-  SlidersHorizontal
+  SlidersHorizontal,
+  Layers
 } from "lucide-react"
 import { formatCurrency, formatDate } from "@/lib/utils"
 import { useInvoices, type Invoice, useBackfillInvoiceStatus, useDeleteInvoice } from "@/lib/queries/invoices"
 import { useEffect, useState } from "react"
 import { authService } from "@/lib/auth"
+import { MergeInvoiceModal } from "@/components/modals/MergeInvoiceModal"
 
 export const Route = createFileRoute("/invoices")({
   component: InvoicesPage
@@ -42,6 +44,23 @@ function InvoicesPage() {
 
   // Delete invoice mutation
   const { mutateAsync: deleteInvoice, isPending: isDeleting } = useDeleteInvoice()
+
+  // Merge Invoices selection state
+  const [isMergeMode, setIsMergeMode] = useState(false)
+  const [selectedInvoiceNumbers, setSelectedInvoiceNumbers] = useState<Set<string>>(new Set())
+  const [isMergeModalOpen, setIsMergeModalOpen] = useState(false)
+
+  const toggleInvoiceSelection = (invoiceNumber: string) => {
+    setSelectedInvoiceNumbers((prev) => {
+      const next = new Set(prev)
+      if (next.has(invoiceNumber)) {
+        next.delete(invoiceNumber)
+      } else {
+        next.add(invoiceNumber)
+      }
+      return next
+    })
+  }
 
   useEffect(() => {
     let mounted = true
@@ -81,6 +100,14 @@ function InvoicesPage() {
       key: 'bookingId',
       header: 'Booking ID',
       render: (invoice) => {
+        if (invoice.number.startsWith('INV-MRG-')) {
+          return (
+            <span className="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-medium bg-purple-50 text-purple-700 border border-purple-200">
+              Merged
+            </span>
+          );
+        }
+
         if (invoice.bookingCode === 'MANUAL' || invoice.number.startsWith('INV-MAN-')) {
           return (
             <span className="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-medium bg-zinc-100 text-zinc-600 border border-zinc-200">
@@ -171,12 +198,12 @@ function InvoicesPage() {
 
         return (
           <div className="flex items-center gap-1.5">
-            {invoice.number.startsWith('INV-MAN-') ? (
+            {invoice.number.startsWith('INV-MAN-') || invoice.number.startsWith('INV-MRG-') ? (
               <>
                 <Link
                   to={`/create-manual-invoice?id=${invoice.id}` as any}
                   className="h-8 w-8 rounded-md border border-[#e5e7eb] text-zinc-700 hover:bg-zinc-50 hover:text-black flex items-center justify-center transition-colors bg-white shadow-none"
-                  title="Edit & Pembayaran Invoice Manual"
+                  title="Detail & Pembayaran Invoice"
                 >
                   <Edit className="h-3.5 w-3.5" />
                 </Link>
@@ -259,6 +286,27 @@ function InvoicesPage() {
     }
   ];
 
+  const selectionColumn: Column<Invoice> = {
+    key: 'selection',
+    header: '',
+    render: (invoice) => (
+      <div className="flex items-center justify-center">
+        <input
+          type="checkbox"
+          checked={selectedInvoiceNumbers.has(invoice.number)}
+          onChange={(e) => {
+            e.stopPropagation();
+            toggleInvoiceSelection(invoice.number);
+          }}
+          className="h-4 w-4 rounded border-zinc-300 text-zinc-900 focus:ring-zinc-900 cursor-pointer"
+        />
+      </div>
+    ),
+    width: 'w-10',
+  };
+
+  const displayedColumns = isMergeMode ? [selectionColumn, ...invoiceColumns] : invoiceColumns;
+
   const getInvoiceStatusColor = (status: string) => {
     switch (status?.toLowerCase()) {
       case 'paid':
@@ -295,6 +343,25 @@ function InvoicesPage() {
           >
             <Filter className="h-4 w-4 mr-2" />
             Filter
+          </Button>
+          <Button
+            variant={isMergeMode ? "default" : "outline"}
+            onClick={() => {
+              if (isMergeMode) {
+                setIsMergeMode(false);
+                setSelectedInvoiceNumbers(new Set());
+              } else {
+                setIsMergeMode(true);
+              }
+            }}
+            className={isMergeMode
+              ? "h-9 px-3.5 bg-zinc-900 hover:bg-zinc-800 text-white flex items-center rounded-md font-semibold text-xs shadow-sm"
+              : "h-9 px-3.5 border-[#e5e7eb] text-zinc-700 hover:bg-gray-50 hover:text-black flex items-center rounded-md font-semibold text-xs bg-white shadow-none"
+            }
+            title="Gabungkan beberapa invoice menjadi 1 invoice"
+          >
+            <Layers className="h-3.5 w-3.5 mr-1.5" />
+            {isMergeMode ? 'Batal Merge' : 'Merge Invoices'}
           </Button>
           <Link to="/invoice-terms-settings">
             <Button
@@ -433,6 +500,63 @@ function InvoicesPage() {
         </div>
       </div>
 
+      {/* Merge Mode Action Bar */}
+      {isMergeMode && (
+        <div className="mb-5 bg-zinc-900 text-white rounded-xl p-3.5 px-5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-sm border border-zinc-800 animate-in fade-in duration-200">
+          <div className="flex items-center gap-3">
+            <div className="bg-white/10 p-2 rounded-lg">
+              <Layers className="h-5 w-5 text-white" />
+            </div>
+            <div>
+              <div className="text-sm font-bold flex items-center gap-2">
+                <span>Mode Pemilihan Invoice untuk Digabungkan</span>
+                <span className="bg-white/20 text-white text-xs px-2 py-0.5 rounded-full font-mono">
+                  {selectedInvoiceNumbers.size} dipilih
+                </span>
+              </div>
+              <p className="text-xs text-zinc-300 mt-0.5">
+                Centang minimal 2 invoice dari tabel di bawah untuk digabungkan menjadi satu invoice resmi.
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => {
+                if (selectedInvoiceNumbers.size === invoices.length) {
+                  setSelectedInvoiceNumbers(new Set());
+                } else {
+                  setSelectedInvoiceNumbers(new Set(invoices.map((i) => i.number)));
+                }
+              }}
+              className="text-xs bg-transparent text-white border-zinc-700 hover:bg-white/10 hover:text-white h-8"
+            >
+              {selectedInvoiceNumbers.size === invoices.length ? 'Batal Semua' : 'Pilih Semua'}
+            </Button>
+            <Button
+              size="sm"
+              disabled={selectedInvoiceNumbers.size < 2}
+              onClick={() => setIsMergeModalOpen(true)}
+              className="bg-white text-zinc-950 hover:bg-zinc-100 font-bold text-xs h-8 px-4 disabled:opacity-50 disabled:cursor-not-allowed shadow-sm"
+            >
+              Lanjutkan Merge ({selectedInvoiceNumbers.size})
+            </Button>
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={() => {
+                setIsMergeMode(false);
+                setSelectedInvoiceNumbers(new Set());
+              }}
+              className="text-xs text-zinc-400 hover:text-white hover:bg-white/10 h-8"
+            >
+              Batal
+            </Button>
+          </div>
+        </div>
+      )}
+
       {/* Invoices Table Container */}
       <div className="overflow-hidden border border-[#e5e7eb] rounded-xl bg-white shadow-none">
         <div className="px-6 py-4 border-b border-[#e5e7eb] bg-white">
@@ -450,12 +574,23 @@ function InvoicesPage() {
         ) : (
           <DataTable
             data={invoices}
-            columns={invoiceColumns}
+            columns={displayedColumns}
             emptyMessage="No invoices found"
             noCard={true}
           />
         )}
       </div>
+
+      {/* Merge Invoice Modal */}
+      <MergeInvoiceModal
+        isOpen={isMergeModalOpen}
+        onClose={() => setIsMergeModalOpen(false)}
+        selectedInvoices={invoices.filter((i) => selectedInvoiceNumbers.has(i.number))}
+        onSuccess={() => {
+          setIsMergeMode(false);
+          setSelectedInvoiceNumbers(new Set());
+        }}
+      />
     </PageLayout>
   )
 }

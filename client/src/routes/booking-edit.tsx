@@ -21,7 +21,7 @@ import { useState, useEffect } from "react"
 export const Route = createFileRoute("/booking-edit")({
   validateSearch: (search: Record<string, unknown>) => {
     return {
-      id: (search.id as string) || '',
+      id: ((search.id as string) || '').replace(/["']/g, ''),
     }
   },
   beforeLoad: async () => {
@@ -36,10 +36,11 @@ export const Route = createFileRoute("/booking-edit")({
 
 function EditBookingPage() {
   const { id } = Route.useSearch()
+  const cleanId = (id || '').replace(/["']/g, '')
   const navigate = useNavigate()
 
   // Fetch booking data using TanStack Query
-  const { data: booking, isLoading, error } = useBooking(id)
+  const { data: booking, isLoading, error } = useBooking(cleanId)
   const updateBookingMutation = useUpdateBooking()
 
   // Form state
@@ -64,31 +65,58 @@ function EditBookingPage() {
   const [hasPricingPeriods, setHasPricingPeriods] = useState(false)
   const [pricingPeriods, setPricingPeriods] = useState<PricingPeriod[]>([])
 
+  // Helper function to calculate nights
+  const calculateNights = (inDate?: string, outDate?: string) => {
+    const startStr = inDate !== undefined ? inDate : formData.checkInDate
+    const endStr = outDate !== undefined ? outDate : formData.checkOutDate
+    if (startStr && endStr) {
+      const checkIn = new Date(startStr)
+      const checkOut = new Date(endStr)
+      const diffTime = checkOut.getTime() - checkIn.getTime()
+      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
+      return diffDays > 0 ? diffDays : 1
+    }
+    return 1
+  }
+
+  // Calculate total amount
+  const updateTotalAmount = (
+    updatedRooms: CreateBookingRoomItem[],
+    inDate?: string,
+    outDate?: string
+  ) => {
+    const nights = calculateNights(inDate, outDate)
+    const totalAmount = updatedRooms.reduce((total, room) => {
+      // Prioritize room-level pricing periods over global flag
+      if (room.pricingPeriods && room.pricingPeriods.length > 0) {
+        // Use pricing periods calculation
+        const roomTotal = room.pricingPeriods.reduce((sum, period) => {
+          return sum + parseFloat(period.subtotal.toString())
+        }, 0)
+        return total + (roomTotal * room.roomCount)
+      } else {
+        // Use regular calculation: unitPrice * roomCount * nights
+        return total + (room.unitPrice * room.roomCount * nights)
+      }
+    }, 0)
+
+    setFormData(prev => ({ ...prev, totalAmount }))
+    return totalAmount
+  }
+
   // Initialize form data when booking data is loaded
   useEffect(() => {
     if (booking) {
       console.log('🔍 Booking data loaded:', booking)
       console.log('📦 Booking items:', booking.items)
 
-      setFormData({
-        guestName: (booking.meta?.guestName as string) || booking.guestName || booking.clientName || '',
-        guestEmail: (booking.meta?.guestEmail as string) || booking.guestEmail || booking.clientEmail || '',
-        guestPhone: (booking.meta?.guestPhone as string) || booking.guestPhone || booking.clientPhone || '',
-        hotelName: booking.hotelName || '',
-        city: booking.city || '',
-        checkInDate: booking.checkIn ? booking.checkIn.split('T')[0] : '',
-        checkOutDate: booking.checkOut ? booking.checkOut.split('T')[0] : '',
-        mealPlan: booking.mealPlan,
-        numberOfGuests: (booking.meta?.numberOfGuests as number) || 1,
-        specialRequests: (booking.meta?.specialRequests as string) || '',
-        source: (booking.source as string) || '',
-        totalAmount: booking.totalAmount || 0,
-        status: booking.bookingStatus || 'pending'
-      })
+      const checkInDate = booking.checkIn ? booking.checkIn.split('T')[0] : ''
+      const checkOutDate = booking.checkOut ? booking.checkOut.split('T')[0] : ''
 
       // Initialize rooms from booking items
+      let bookingRooms: CreateBookingRoomItem[] = []
       if (booking.items && booking.items.length > 0) {
-        const bookingRooms: CreateBookingRoomItem[] = booking.items.map(item => {
+        bookingRooms = booking.items.map(item => {
           console.log('🏨 Processing item:', item)
           console.log('💰 Has pricing periods?', item.hasPricingPeriods)
           console.log('📅 Pricing periods:', item.pricingPeriods)
@@ -123,9 +151,6 @@ function EditBookingPage() {
           console.log('📋 Setting global pricing periods:', bookingRooms[0].pricingPeriods)
           setPricingPeriods(bookingRooms[0].pricingPeriods)
         }
-
-        // Calculate total amount based on current rooms
-        setTimeout(() => updateTotalAmount(bookingRooms), 0)
       } else {
         console.log('⚠️ No items found, initializing default room')
         // If no items exist, initialize with a default room
@@ -135,8 +160,28 @@ function EditBookingPage() {
           unitPrice: 0,
           hotelCostPrice: 0
         }
-        setRooms([defaultRoom])
+        bookingRooms = [defaultRoom]
+        setRooms(bookingRooms)
       }
+
+      // Calculate total amount synchronously based on actual dates
+      const calculatedTotal = updateTotalAmount(bookingRooms, checkInDate, checkOutDate)
+
+      setFormData({
+        guestName: (booking.meta?.guestName as string) || booking.guestName || booking.clientName || '',
+        guestEmail: (booking.meta?.guestEmail as string) || booking.guestEmail || booking.clientEmail || '',
+        guestPhone: (booking.meta?.guestPhone as string) || booking.guestPhone || booking.clientPhone || '',
+        hotelName: booking.hotelName || '',
+        city: booking.city || '',
+        checkInDate,
+        checkOutDate,
+        mealPlan: booking.mealPlan,
+        numberOfGuests: (booking.meta?.numberOfGuests as number) || 1,
+        specialRequests: (booking.meta?.specialRequests as string) || '',
+        source: (booking.source as string) || '',
+        totalAmount: calculatedTotal > 0 ? calculatedTotal : (booking.totalAmount || 0),
+        status: booking.bookingStatus || 'pending'
+      })
     }
   }, [booking])
 
@@ -145,6 +190,12 @@ function EditBookingPage() {
       ...prev,
       [field]: value
     }))
+
+    if (field === 'checkInDate') {
+      updateTotalAmount(rooms, value as string, formData.checkOutDate)
+    } else if (field === 'checkOutDate') {
+      updateTotalAmount(rooms, formData.checkInDate, value as string)
+    }
   }
 
   // Helper functions for managing rooms
@@ -243,26 +294,6 @@ function EditBookingPage() {
     updateTotalAmount(updatedRooms)
   }
 
-  // Calculate total amount
-  const updateTotalAmount = (updatedRooms: CreateBookingRoomItem[]) => {
-    const totalAmount = updatedRooms.reduce((total, room) => {
-      // Prioritize room-level pricing periods over global flag
-      if (room.pricingPeriods && room.pricingPeriods.length > 0) {
-        // Use pricing periods calculation
-        const roomTotal = room.pricingPeriods.reduce((sum, period) => {
-          return sum + parseFloat(period.subtotal.toString());
-        }, 0);
-        return total + (roomTotal * room.roomCount);
-      } else {
-        // Use regular calculation
-        const nights = calculateNights();
-        return total + (room.unitPrice * room.roomCount * nights);
-      }
-    }, 0);
-
-    setFormData(prev => ({ ...prev, totalAmount }))
-  }
-
   // Toggle pricing periods
   const togglePricingPeriods = (enabled: boolean) => {
     setHasPricingPeriods(enabled)
@@ -294,9 +325,12 @@ function EditBookingPage() {
     if (!booking) return
 
     try {
-      // Use the new format that supports multiple rooms and pricing periods
+      const cleanBookingId = booking.id.toString().replace(/["']/g, '')
+      // Recalculate total amount to guarantee accuracy right before sending
+      const finalTotal = updateTotalAmount(rooms, formData.checkInDate, formData.checkOutDate)
+
       const bookingData: UpdateBookingData = {
-        id: booking.id.toString(),
+        id: cleanBookingId,
         guestName: formData.guestName,
         guestEmail: formData.guestEmail,
         guestPhone: formData.guestPhone,
@@ -306,7 +340,7 @@ function EditBookingPage() {
         checkOutDate: formData.checkOutDate,
         mealPlan: formData.mealPlan,
         numberOfGuests: formData.numberOfGuests,
-        totalAmount: formData.totalAmount,
+        totalAmount: finalTotal > 0 ? finalTotal : formData.totalAmount,
         status: formData.status,
         specialRequests: formData.specialRequests,
         source: formData.source ? formData.source.trim() : undefined,
@@ -318,24 +352,14 @@ function EditBookingPage() {
 
       await updateBookingMutation.mutateAsync(bookingData)
 
-      navigate({ to: "/booking-detail", search: { id: booking.id.toString() } })
+      navigate({ to: "/booking-detail", search: { id: cleanBookingId } })
     } catch (error) {
       console.error('Error updating booking:', error)
     }
   }
 
-  // Helper function to calculate nights
-  const calculateNights = () => {
-    if (formData.checkInDate && formData.checkOutDate) {
-      const checkIn = new Date(formData.checkInDate)
-      const checkOut = new Date(formData.checkOutDate)
-      return Math.ceil((checkOut.getTime() - checkIn.getTime()) / (1000 * 60 * 60 * 24))
-    }
-    return 1
-  }
-
   const handleCancel = () => {
-    navigate({ to: "/booking-detail", search: { id } })
+    navigate({ to: "/booking-detail", search: { id: cleanId } })
   }
 
   if (isLoading || updateBookingMutation.isPending) {
