@@ -663,6 +663,685 @@ export function normalizePaymentTerms(
   });
 }
 
+// ==============================
+// MERGE INVOICE ENDPOINTS
+// ==============================
+
+type InvoiceSourceType = 'hotel' | 'transportation' | 'service_order' | 'custom_la' | 'muthowif' | 'agent_request' | 'manual';
+
+interface MergeInvoiceSource {
+  id?: number;
+  type?: InvoiceSourceType;
+  number?: string;
+  description?: string;
+  quantity?: number;
+}
+
+// Helper: fetch invoice detail by type
+async function fetchInvoiceByTypeAndId(source: MergeInvoiceSource) {
+  const type = source.type || (source.number ? detectInvoiceType(source.number) : 'hotel');
+  switch (type) {
+    case 'hotel': {
+      const condition = source.number ? eq(invoices.number, source.number) : (source.id ? eq(invoices.id, source.id) : undefined);
+      if (!condition) return null;
+      const rows = await db
+        .select({
+          id: invoices.id,
+          number: invoices.number,
+          bookingId: invoices.bookingId,
+          amount: invoices.amount,
+          currency: invoices.currency,
+          issueDate: invoices.issueDate,
+          dueDate: invoices.dueDate,
+          status: invoices.status,
+          bookingCode: bookings.code,
+          clientName: clients.name,
+          clientEmail: clients.email,
+          hotelName: bookings.hotelName,
+          city: bookings.city,
+          quantity: sql<number>`COALESCE((SELECT SUM(bi.room_count) FROM booking_items bi WHERE bi.booking_id = ${invoices.bookingId}), 1)::integer`,
+        })
+        .from(invoices)
+        .leftJoin(bookings, eq(invoices.bookingId, bookings.id))
+        .leftJoin(clients, eq(bookings.clientId, clients.id))
+        .where(condition)
+        .limit(1);
+      return rows[0] ? { ...rows[0], type: 'hotel' as const } : null;
+    }
+    case 'transportation': {
+      const condition = source.number ? eq(transportationInvoices.number, source.number) : (source.id ? eq(transportationInvoices.id, source.id) : undefined);
+      if (!condition) return null;
+      const rows = await db
+        .select({
+          id: transportationInvoices.id,
+          number: transportationInvoices.number,
+          bookingId: transportationInvoices.transportationBookingId,
+          amount: transportationInvoices.amount,
+          currency: transportationInvoices.currency,
+          issueDate: transportationInvoices.issueDate,
+          dueDate: transportationInvoices.dueDate,
+          status: transportationInvoices.status,
+          bookingCode: transportationBookings.number,
+          clientName: clients.name,
+          clientEmail: clients.email,
+          hotelName: transportationBookings.customerName,
+          city: transportationBookings.status,
+          quantity: sql<number>`COALESCE((SELECT COUNT(*) FROM transportation_routes tr WHERE tr.transportation_booking_id = ${transportationInvoices.transportationBookingId}), 1)::integer`,
+        })
+        .from(transportationInvoices)
+        .leftJoin(transportationBookings, eq(transportationInvoices.transportationBookingId, transportationBookings.id))
+        .leftJoin(clients, eq(transportationBookings.clientId, clients.id))
+        .where(condition)
+        .limit(1);
+      return rows[0] ? { ...rows[0], type: 'transportation' as const } : null;
+    }
+    case 'service_order': {
+      const condition = source.number ? eq(serviceOrderInvoices.number, source.number) : (source.id ? eq(serviceOrderInvoices.id, source.id) : undefined);
+      if (!condition) return null;
+      const rows = await db
+        .select({
+          id: serviceOrderInvoices.id,
+          number: serviceOrderInvoices.number,
+          bookingId: serviceOrderInvoices.serviceOrderId,
+          amount: serviceOrderInvoices.amount,
+          currency: serviceOrderInvoices.currency,
+          issueDate: serviceOrderInvoices.issueDate,
+          dueDate: serviceOrderInvoices.dueDate,
+          status: serviceOrderInvoices.status,
+          bookingCode: serviceOrders.number,
+          clientName: clients.name,
+          clientEmail: clients.email,
+          productType: serviceOrders.productType,
+          totalPeople: serviceOrders.totalPeople,
+          servicePackage: serviceOrders.servicePackage,
+          groupLeaderName: serviceOrders.groupLeaderName,
+          hotelName: serviceOrders.productType,
+          city: serviceOrders.status,
+          quantity: sql<number>`COALESCE(${serviceOrders.totalPeople}, 1)::integer`,
+        })
+        .from(serviceOrderInvoices)
+        .leftJoin(serviceOrders, eq(serviceOrderInvoices.serviceOrderId, serviceOrders.id))
+        .leftJoin(clients, eq(serviceOrders.clientId, clients.id))
+        .where(condition)
+        .limit(1);
+      return rows[0] ? { ...rows[0], type: 'service_order' as const } : null;
+    }
+    case 'custom_la': {
+      const condition = source.number ? eq(customLaInvoices.number, source.number) : (source.id ? eq(customLaInvoices.id, source.id) : undefined);
+      if (!condition) return null;
+      const rows = await db
+        .select({
+          id: customLaInvoices.id,
+          number: customLaInvoices.number,
+          bookingId: customLaInvoices.customLaRequestId,
+          amount: customLaInvoices.amount,
+          currency: customLaInvoices.currency,
+          issueDate: customLaInvoices.issueDate,
+          dueDate: customLaInvoices.dueDate,
+          status: customLaInvoices.status,
+          bookingCode: customLaRequests.number,
+          clientName: clients.name,
+          clientEmail: clients.email,
+          travelName: customLaRequests.travelName,
+          hotelName: customLaRequests.travelName,
+          city: customLaRequests.status,
+          totalPax: customLaRequests.totalPax,
+          quantity: sql<number>`COALESCE(${customLaRequests.totalPax}, 1)::integer`,
+        })
+        .from(customLaInvoices)
+        .leftJoin(customLaRequests, eq(customLaInvoices.customLaRequestId, customLaRequests.id))
+        .leftJoin(clients, eq(customLaRequests.clientId, clients.id))
+        .where(condition)
+        .limit(1);
+      return rows[0] ? { ...rows[0], type: 'custom_la' as const } : null;
+    }
+    case 'muthowif': {
+      const condition = source.number ? eq(muthowifInvoices.number, source.number) : (source.id ? eq(muthowifInvoices.id, source.id) : undefined);
+      if (!condition) return null;
+      const rows = await db
+        .select({
+          id: muthowifInvoices.id,
+          number: muthowifInvoices.number,
+          bookingId: muthowifInvoices.muthowifBookingId,
+          amount: muthowifInvoices.amount,
+          currency: muthowifInvoices.currency,
+          issueDate: muthowifInvoices.issueDate,
+          dueDate: muthowifInvoices.dueDate,
+          status: muthowifInvoices.status,
+          bookingCode: muthowifBookings.number,
+          clientName: clients.name,
+          clientEmail: clients.email,
+          events: sql`${muthowifBookings.events}::text`,
+          hotelName: sql`${muthowifBookings.events}::text`,
+          city: muthowifBookings.status,
+          totalPax: muthowifBookings.totalPax,
+          quantity: sql<number>`COALESCE(${muthowifBookings.totalPax}, 1)::integer`,
+        })
+        .from(muthowifInvoices)
+        .leftJoin(muthowifBookings, eq(muthowifInvoices.muthowifBookingId, muthowifBookings.id))
+        .leftJoin(clients, eq(muthowifBookings.clientId, clients.id))
+        .where(condition)
+        .limit(1);
+      return rows[0] ? { ...rows[0], type: 'muthowif' as const } : null;
+    }
+    case 'agent_request': {
+      const condition = source.number ? eq(agentRequestInvoices.number, source.number) : (source.id ? eq(agentRequestInvoices.id, source.id) : undefined);
+      if (!condition) return null;
+      const rows = await db
+        .select({
+          id: agentRequestInvoices.id,
+          number: agentRequestInvoices.number,
+          bookingId: agentRequestInvoices.agentRequestId,
+          amount: agentRequestInvoices.amount,
+          currency: agentRequestInvoices.currency,
+          issueDate: agentRequestInvoices.issueDate,
+          dueDate: agentRequestInvoices.dueDate,
+          status: agentRequestInvoices.status,
+          bookingCode: agentRequests.requestNumber,
+          clientName: user.name,
+          clientEmail: user.email,
+          title: agentRequests.title,
+          serviceType: agentRequests.serviceType,
+          hotelName: agentRequests.title,
+          city: agentRequests.serviceType,
+          quantity: sql<number>`1::integer`,
+        })
+        .from(agentRequestInvoices)
+        .leftJoin(agentRequests, eq(agentRequestInvoices.agentRequestId, agentRequests.id))
+        .leftJoin(user, eq(agentRequests.agentId, user.id))
+        .where(condition)
+        .limit(1);
+      return rows[0] ? { ...rows[0], type: 'agent_request' as const } : null;
+    }
+    case 'manual': {
+      const condition = source.number ? eq(manualInvoices.number, source.number) : (source.id ? eq(manualInvoices.id, source.id) : undefined);
+      if (!condition) return null;
+      const rows = await db
+        .select({
+          id: manualInvoices.id,
+          number: manualInvoices.number,
+          bookingId: manualInvoices.id,
+          amount: manualInvoices.amount,
+          currency: manualInvoices.currency,
+          issueDate: manualInvoices.issueDate,
+          dueDate: manualInvoices.dueDate,
+          status: manualInvoices.status,
+          bookingCode: sql`'MANUAL'`,
+          clientName: manualInvoices.clientName,
+          clientEmail: manualInvoices.clientEmail,
+          title: manualInvoices.title,
+          hotelName: sql`COALESCE(${manualInvoices.title}, 'Invoice Manual')`,
+          city: sql`'Manual'`,
+          items: manualInvoices.items,
+        })
+        .from(manualInvoices)
+        .where(condition)
+        .limit(1);
+      return rows[0] ? { ...rows[0], type: 'manual' as const } : null;
+    }
+    default:
+      return null;
+  }
+}
+
+// Helper: build clean, client-friendly item description without invoice number
+function buildMergedItemDescription(invoice: any): string {
+  const type = invoice.type;
+
+  if (type === 'service_order') {
+    const rawType = String(invoice.productType || invoice.hotelName || '').toLowerCase();
+    let name = 'Layanan Service Order';
+    if (rawType.includes('siskopatuh')) {
+      name = 'Layanan Siskopatuh';
+    } else if (rawType.includes('visa')) {
+      name = 'Penerbitan Visa Umrah';
+    } else if (rawType.includes('hotel')) {
+      name = 'Reservasi Hotel';
+    } else if (rawType.includes('transport')) {
+      name = 'Layanan Transportasi';
+    } else if (rawType.includes('custom_la')) {
+      name = 'Layanan Custom LA';
+    } else if (rawType.includes('muthowif')) {
+      name = 'Layanan Muthowif';
+    } else if (invoice.productType) {
+      name = `Layanan ${String(invoice.productType).replace(/_/g, ' ').replace(/\b\w/g, (c: string) => c.toUpperCase())}`;
+    }
+
+    const pkg = invoice.servicePackage ? `Paket ${invoice.servicePackage}` : '';
+    return pkg ? `${name} (${pkg})` : name;
+  }
+
+  if (type === 'hotel') {
+    const hotel = invoice.hotelName && invoice.hotelName !== '-' ? invoice.hotelName : 'Hotel';
+    const city = invoice.city && invoice.city !== '-' ? invoice.city : '';
+    return city ? `Pemesanan Hotel ${hotel} (${city})` : `Pemesanan Hotel ${hotel}`;
+  }
+
+  if (type === 'transportation') {
+    return 'Layanan Transportasi & Operasional';
+  }
+
+  if (type === 'custom_la') {
+    const travel = invoice.travelName || (invoice.hotelName && invoice.hotelName !== '-' ? invoice.hotelName : '');
+    return travel ? `Paket Land Arrangement (LA) — ${travel}` : 'Paket Land Arrangement (LA)';
+  }
+
+  if (type === 'muthowif') {
+    const rawEvent = invoice.events || invoice.hotelName;
+    const cleanEvent = rawEvent && rawEvent !== '-' ? rawEvent.replace(/[{}"[\]]/g, '').trim() : '';
+    return cleanEvent ? `Layanan Muthowif (${cleanEvent})` : 'Layanan Muthowif / Pembimbing Ibadah';
+  }
+
+  if (type === 'agent_request') {
+    const title = invoice.title || invoice.hotelName;
+    if (title && title !== '-' && title !== 'Agent Request') {
+      return title;
+    }
+    const sType = invoice.serviceType || invoice.city;
+    return sType && sType !== '-' ? `Layanan Permintaan Agen (${sType})` : 'Layanan Permintaan Agen';
+  }
+
+  if (type === 'manual') {
+    const title = invoice.title || invoice.hotelName;
+    if (title && title !== '-' && title !== 'Invoice Manual') {
+      return title;
+    }
+    return 'Layanan / Tagihan Tambahan';
+  }
+
+  return invoice.hotelName && invoice.hotelName !== '-' ? invoice.hotelName : 'Layanan Tambahan';
+}
+
+// Helper: extract quantity from invoice
+function extractInvoiceQuantity(invoice: any): number {
+  if (invoice.type === 'service_order') {
+    const people = invoice.totalPeople != null ? Number(invoice.totalPeople) : (invoice.quantity != null ? Number(invoice.quantity) : 0);
+    return people > 0 ? people : 1;
+  }
+  if (invoice.type === 'custom_la' || invoice.type === 'muthowif') {
+    const pax = invoice.totalPax != null ? Number(invoice.totalPax) : (invoice.quantity != null ? Number(invoice.quantity) : 0);
+    return pax > 0 ? pax : 1;
+  }
+  if (invoice.type === 'hotel') {
+    const q = invoice.quantity != null ? Number(invoice.quantity) : 0;
+    return q > 0 ? q : 1;
+  }
+  if (invoice.type === 'manual') {
+    if (Array.isArray(invoice.items) && invoice.items.length > 0) {
+      const q = invoice.items.reduce((sum: number, it: any) => sum + (Number(it.quantity) || 1), 0);
+      return q > 0 ? q : 1;
+    }
+  }
+  if (invoice.quantity != null && Number(invoice.quantity) > 0) {
+    return Number(invoice.quantity);
+  }
+  return 1;
+}
+
+// Helper: determine invoice type from invoice number prefix
+function detectInvoiceType(invoiceNumber: string): InvoiceSourceType {
+  if (invoiceNumber.startsWith('TI-')) return 'transportation';
+  if (invoiceNumber.startsWith('SOI-') || invoiceNumber.startsWith('SO-INV-')) return 'service_order';
+  if (invoiceNumber.startsWith('LA-INV-')) return 'custom_la';
+  if (invoiceNumber.startsWith('MBI-')) return 'muthowif';
+  if (invoiceNumber.startsWith('INV-AR-')) return 'agent_request';
+  if (invoiceNumber.startsWith('INV-MAN-') || invoiceNumber.startsWith('INV-MRG-')) return 'manual';
+  return 'hotel';
+}
+
+// Helper: convert amount to target currency
+async function convertToTargetCurrency(
+  amount: number,
+  fromCurrency: string,
+  targetCurrency: string,
+  exchangeRates: Record<string, number>
+): Promise<{ convertedAmount: number; exchangeRate: number }> {
+  const from = fromCurrency.toUpperCase();
+  const to = targetCurrency.toUpperCase();
+
+  if (from === to) {
+    return { convertedAmount: amount, exchangeRate: 1 };
+  }
+
+  // Use cached exchange rates if available
+  const key = `${from}_to_${to}`;
+  const reverseKey = `${to}_to_${from}`;
+
+  if (exchangeRates[key]) {
+    return { convertedAmount: Math.round(amount * exchangeRates[key] * 100) / 100, exchangeRate: exchangeRates[key] };
+  }
+  if (exchangeRates[reverseKey]) {
+    const rate = 1 / exchangeRates[reverseKey];
+    return { convertedAmount: Math.round(amount * rate * 100) / 100, exchangeRate: rate };
+  }
+
+  // Fetch exchange rates if not cached
+  // Convert via IDR as intermediary
+  if (from === 'SAR' && to === 'IDR') {
+    const { getCurrentSarToIdrRate } = await import('../services/ExchangeRateService');
+    const rateData = await getCurrentSarToIdrRate();
+    exchangeRates[key] = rateData.rate;
+    return { convertedAmount: Math.round(amount * rateData.rate), exchangeRate: rateData.rate };
+  }
+  if (from === 'IDR' && to === 'SAR') {
+    const { getCurrentSarToIdrRate } = await import('../services/ExchangeRateService');
+    const rateData = await getCurrentSarToIdrRate();
+    const rate = 1 / rateData.rate;
+    exchangeRates[key] = rate;
+    return { convertedAmount: Math.round(amount * rate * 100) / 100, exchangeRate: rate };
+  }
+  if (from === 'USD' && to === 'IDR') {
+    const { getCurrentUsdToIdrRate } = await import('../services/ExchangeRateService');
+    const rateData = await getCurrentUsdToIdrRate();
+    exchangeRates[key] = rateData.rate;
+    return { convertedAmount: Math.round(amount * rateData.rate), exchangeRate: rateData.rate };
+  }
+  if (from === 'IDR' && to === 'USD') {
+    const { getCurrentUsdToIdrRate } = await import('../services/ExchangeRateService');
+    const rateData = await getCurrentUsdToIdrRate();
+    const rate = 1 / rateData.rate;
+    exchangeRates[key] = rate;
+    return { convertedAmount: Math.round(amount * rate * 100) / 100, exchangeRate: rate };
+  }
+  // SAR <-> USD: convert via IDR
+  if (from === 'SAR' && to === 'USD') {
+    const { getCurrentSarToIdrRate, getCurrentUsdToIdrRate } = await import('../services/ExchangeRateService');
+    const sarRate = await getCurrentSarToIdrRate();
+    const usdRate = await getCurrentUsdToIdrRate();
+    const rate = sarRate.rate / usdRate.rate;
+    exchangeRates[key] = rate;
+    return { convertedAmount: Math.round(amount * rate * 100) / 100, exchangeRate: rate };
+  }
+  if (from === 'USD' && to === 'SAR') {
+    const { getCurrentSarToIdrRate, getCurrentUsdToIdrRate } = await import('../services/ExchangeRateService');
+    const sarRate = await getCurrentSarToIdrRate();
+    const usdRate = await getCurrentUsdToIdrRate();
+    const rate = usdRate.rate / sarRate.rate;
+    exchangeRates[key] = rate;
+    return { convertedAmount: Math.round(amount * rate * 100) / 100, exchangeRate: rate };
+  }
+
+  // Fallback: no conversion possible
+  console.warn(`No exchange rate available for ${from} -> ${to}, using 1:1`);
+  return { convertedAmount: amount, exchangeRate: 1 };
+}
+
+// POST /api/invoices/merge/preview - Preview merge results without saving
+invoiceRoutes.post('/merge/preview', requireAdminOrFinance, async (c) => {
+  try {
+    const body = await c.req.json().catch(() => ({}));
+    const { invoices: invoiceSelections, targetCurrency = 'SAR' } = body;
+
+    if (!Array.isArray(invoiceSelections) || invoiceSelections.length < 2) {
+      return c.json({ error: 'Minimal 2 invoice untuk merge' }, 400);
+    }
+
+    const exchangeRates: Record<string, number> = {};
+    const items: any[] = [];
+    const warnings: string[] = [];
+    const uniqueClients = new Set<string>();
+    let totalAmount = 0;
+
+    for (const sel of invoiceSelections) {
+      const invoice = await fetchInvoiceByTypeAndId({
+        id: sel.id,
+        type: sel.type || detectInvoiceType(sel.number || ''),
+      });
+
+      if (!invoice) {
+        warnings.push(`Invoice ID ${sel.id} (${sel.type}) tidak ditemukan`);
+        continue;
+      }
+
+      const originalAmount = parseFloat(invoice.amount as string) || 0;
+      const fromCurrency = ((invoice.currency as string) || 'SAR').toUpperCase();
+      const to = targetCurrency.toUpperCase();
+
+      const { convertedAmount, exchangeRate } = await convertToTargetCurrency(
+        originalAmount, fromCurrency, to, exchangeRates
+      );
+
+      if ((invoice.status as string) === 'cancelled') {
+        warnings.push(`Invoice ${invoice.number} berstatus CANCELLED dan tidak bisa di-merge`);
+        continue;
+      }
+      if ((invoice.status as string) === 'paid') {
+        warnings.push(`Invoice ${invoice.number} sudah berstatus PAID`);
+      }
+
+      const clientName = (invoice.clientName as string) || 'Unknown';
+      uniqueClients.add(clientName);
+      totalAmount += convertedAmount;
+
+      const typeLabels: Record<string, string> = {
+        hotel: 'Hotel Booking',
+        transportation: 'Transportation',
+        service_order: 'Service Order',
+        custom_la: 'Custom LA',
+        muthowif: 'Muthowif',
+        agent_request: 'Agent Request',
+        manual: 'Manual Invoice',
+      };
+
+      const cleanDescription = (sel.description && String(sel.description).trim()) || buildMergedItemDescription(invoice);
+      const defaultQty = extractInvoiceQuantity(invoice);
+      const selQty = sel.quantity != null ? Number(sel.quantity) : 0;
+      const quantity = selQty > 0 ? selQty : defaultQty;
+      const unitPrice = Number((convertedAmount / quantity).toFixed(2));
+      const originalUnitPrice = Number((originalAmount / quantity).toFixed(2));
+
+      items.push({
+        invoiceId: invoice.id,
+        invoiceNumber: invoice.number,
+        type: invoice.type,
+        typeLabel: typeLabels[invoice.type] || invoice.type,
+        description: cleanDescription,
+        quantity,
+        unitPrice: unitPrice.toFixed(2),
+        originalAmount: originalAmount.toFixed(2),
+        originalUnitPrice: originalUnitPrice.toFixed(2),
+        originalCurrency: fromCurrency,
+        convertedAmount: convertedAmount.toFixed(2),
+        convertedCurrency: to,
+        exchangeRate,
+        clientName,
+        bookingCode: invoice.bookingCode,
+        status: invoice.status,
+      });
+    }
+
+    return c.json({
+      success: true,
+      data: {
+        items,
+        totalAmount: totalAmount.toFixed(2),
+        targetCurrency: targetCurrency.toUpperCase(),
+        exchangeRates,
+        uniqueClients: Array.from(uniqueClients),
+        warnings,
+      },
+    });
+  } catch (error) {
+    console.error('Error previewing merge:', error);
+    return c.json({ error: 'Gagal membuat preview merge invoice' }, 500);
+  }
+});
+
+// POST /api/invoices/merge - Execute merge and create new merged invoice
+invoiceRoutes.post('/merge', requireAdminOrFinance, async (c) => {
+  try {
+    const body = await c.req.json().catch(() => ({}));
+    const {
+      invoices: invoiceSelections,
+      targetCurrency = 'SAR',
+      clientName,
+      clientEmail,
+      clientPhone,
+      clientAddress,
+      title,
+      dueDate,
+      issueDate,
+      notes,
+    } = body;
+
+    if (!Array.isArray(invoiceSelections) || invoiceSelections.length < 2) {
+      return c.json({ error: 'Minimal 2 invoice untuk merge' }, 400);
+    }
+    if (!clientName || !clientName.trim()) {
+      return c.json({ error: 'Nama client wajib diisi' }, 400);
+    }
+    if (!dueDate) {
+      return c.json({ error: 'Tanggal jatuh tempo wajib diisi' }, 400);
+    }
+
+    const exchangeRates: Record<string, number> = {};
+    const mergedItems: any[] = [];
+    const sourceInvoices: any[] = [];
+    let totalAmount = 0;
+
+    for (const sel of invoiceSelections) {
+      const invoice = await fetchInvoiceByTypeAndId({
+        id: sel.id,
+        type: sel.type || (sel.number ? detectInvoiceType(sel.number) : undefined),
+        number: sel.number,
+      });
+
+      if (!invoice) {
+        return c.json({ error: `Invoice ${sel.number || sel.id} tidak ditemukan` }, 404);
+      }
+
+      if ((invoice.status as string) === 'cancelled') {
+        return c.json({ error: `Invoice ${invoice.number} berstatus CANCELLED, tidak bisa di-merge` }, 400);
+      }
+
+      const originalAmount = parseFloat(invoice.amount as string) || 0;
+      const fromCurrency = ((invoice.currency as string) || 'SAR').toUpperCase();
+      const to = targetCurrency.toUpperCase();
+
+      const { convertedAmount, exchangeRate } = await convertToTargetCurrency(
+        originalAmount, fromCurrency, to, exchangeRates
+      );
+
+      totalAmount += convertedAmount;
+
+      const typeLabels: Record<string, string> = {
+        hotel: 'Hotel Booking',
+        transportation: 'Transportation',
+        service_order: 'Service Order',
+        custom_la: 'Custom LA',
+        muthowif: 'Muthowif',
+        agent_request: 'Agent Request',
+        manual: 'Manual Invoice',
+      };
+
+      const cleanDescription = (sel.description && String(sel.description).trim()) || buildMergedItemDescription(invoice);
+      const defaultQty = extractInvoiceQuantity(invoice);
+      const selQty = sel.quantity != null ? Number(sel.quantity) : 0;
+      const quantity = selQty > 0 ? selQty : defaultQty;
+      const unitPrice = Number((convertedAmount / quantity).toFixed(2));
+
+      mergedItems.push({
+        description: cleanDescription,
+        quantity,
+        unitPrice,
+        subtotal: convertedAmount,
+        notes: fromCurrency !== to
+          ? `Original: ${fromCurrency} ${originalAmount.toLocaleString('en-US', { minimumFractionDigits: 2 })} × Kurs ${exchangeRate}`
+          : '',
+      });
+
+      sourceInvoices.push({
+        invoiceId: invoice.id,
+        invoiceNumber: invoice.number,
+        invoiceType: invoice.type,
+        quantity,
+        unitPrice,
+        originalAmount: originalAmount.toFixed(2),
+        originalCurrency: fromCurrency,
+        convertedAmount: convertedAmount.toFixed(2),
+        convertedCurrency: to,
+        exchangeRate,
+        bookingCode: invoice.bookingCode,
+        clientName: invoice.clientName,
+        status: invoice.status,
+      });
+    }
+
+    // Generate merged invoice number: INV-MRG-YYYY-XXXXXX
+    const year = new Date().getFullYear();
+    const randomSuffix = Math.floor(100000 + Math.random() * 900000);
+    const invoiceNumber = `INV-MRG-${year}-${randomSuffix}`;
+
+    const effectiveIssueDate = issueDate ? new Date(issueDate) : new Date();
+    const effectiveDueDate = new Date(dueDate);
+
+    const meta = {
+      isMerged: true,
+      sourceInvoices,
+      mergedAt: new Date().toISOString(),
+      targetCurrency: targetCurrency.toUpperCase(),
+      exchangeRates,
+    };
+
+    const newInvoiceData = {
+      number: invoiceNumber,
+      clientId: null,
+      clientName: clientName.trim(),
+      clientEmail: clientEmail?.trim() || null,
+      clientPhone: clientPhone?.trim() || null,
+      clientAddress: clientAddress?.trim() || null,
+      title: title?.trim() || `Merged Invoice (${sourceInvoices.length} invoices)`,
+      amount: totalAmount.toFixed(2),
+      paidAmount: '0.00',
+      currency: targetCurrency.toUpperCase(),
+      issueDate: effectiveIssueDate,
+      dueDate: effectiveDueDate,
+      status: 'draft' as const,
+      items: mergedItems,
+      paymentTerms: null,
+      notes: notes?.trim() || null,
+      pdfUrl: null as string | null,
+      meta,
+    };
+
+    const [inserted] = await db.insert(manualInvoices).values(newInvoiceData as any).returning();
+    if (!inserted) {
+      throw new Error('Gagal menyimpan merged invoice');
+    }
+
+    // Generate PDF and upload to MinIO
+    try {
+      const pdfUrl = await generateManualInvoicePDF({
+        ...inserted,
+        items: mergedItems,
+        paymentTerms: null,
+        meta,
+      });
+      await db.update(manualInvoices).set({ pdfUrl }).where(eq(manualInvoices.id, inserted.id));
+      inserted.pdfUrl = pdfUrl;
+    } catch (pdfErr) {
+      console.error('Failed to generate PDF for merged invoice:', pdfErr);
+    }
+
+    return c.json({
+      success: true,
+      message: `Berhasil menggabungkan ${sourceInvoices.length} invoice menjadi ${invoiceNumber}`,
+      data: {
+        id: inserted.id,
+        number: inserted.number,
+        amount: inserted.amount,
+        currency: inserted.currency,
+        sourceCount: sourceInvoices.length,
+        pdfUrl: inserted.pdfUrl,
+        downloadUrl: `/api/invoices/by-number/${invoiceNumber}`,
+      },
+    }, 201);
+  } catch (error) {
+    console.error('Error merging invoices:', error);
+    return c.json({ error: 'Gagal menggabungkan invoice' }, 500);
+  }
+});
+
 // POST /api/invoices/manual - Create manual invoice without booking
 invoiceRoutes.post('/manual', requireAdminOrFinance, async (c) => {
   try {
@@ -1686,13 +2365,13 @@ invoiceRoutes.get('/by-number/:number', async (c) => {
       const invoice = await db.select().from(muthowifInvoices).where(eq(muthowifInvoices.number, invoiceNumber)).limit(1);
       if (invoice.length === 0) return c.json({ error: 'Invoice not found' }, 404);
       pdfUrl = invoice[0]!.pdfUrl;
-    } else if (invoiceNumber.startsWith('INV-MAN-')) {
+    } else if (invoiceNumber.startsWith('INV-MAN-') || invoiceNumber.startsWith('INV-MRG-')) {
       const invoice = await db.select().from(manualInvoices).where(eq(manualInvoices.number, invoiceNumber)).limit(1);
       if (invoice.length === 0) return c.json({ error: 'Invoice not found' }, 404);
       pdfUrl = invoice[0]!.pdfUrl;
       const fn = pdfUrl ? pdfUrl.split('/').slice(-2).join('/') : '';
       const exists = fn ? await checkFileExistsInMinio(fn) : false;
-      if (!exists) {
+      if (!exists || !pdfUrl) {
         try {
           pdfUrl = await generateManualInvoicePDF(invoice[0]!);
           await db.update(manualInvoices).set({ pdfUrl }).where(eq(manualInvoices.id, invoice[0]!.id));
@@ -1700,6 +2379,10 @@ invoiceRoutes.get('/by-number/:number', async (c) => {
           console.error('Failed to regenerate manual invoice PDF:', e);
         }
       }
+    } else if (invoiceNumber.startsWith('INV-AR-')) {
+      const invoice = await db.select().from(agentRequestInvoices).where(eq(agentRequestInvoices.number, invoiceNumber)).limit(1);
+      if (invoice.length === 0) return c.json({ error: 'Invoice not found' }, 404);
+      pdfUrl = invoice[0]!.pdfUrl;
     } else {
       const invoice = await db.select().from(invoices).where(eq(invoices.number, invoiceNumber)).limit(1);
       if (invoice.length === 0) return c.json({ error: 'Invoice not found' }, 404);

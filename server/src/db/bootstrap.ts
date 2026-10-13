@@ -73,9 +73,14 @@ export async function ensureTablesExist() {
         items JSONB NOT NULL,
         notes TEXT,
         pdf_url TEXT,
+        meta JSONB,
         created_at TIMESTAMP NOT NULL DEFAULT NOW(),
         updated_at TIMESTAMP NOT NULL DEFAULT NOW()
       );
+    `;
+
+    await client`
+      ALTER TABLE manual_invoices ADD COLUMN IF NOT EXISTS meta JSONB;
     `;
 
     // 2b. manual_invoice_payments

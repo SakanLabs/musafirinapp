@@ -185,6 +185,124 @@ export function useDeleteInvoice() {
   });
 }
 
+// ==========================================
+// Merge Invoice Types & Hooks
+// ==========================================
+
+export type InvoiceSourceType = 'hotel' | 'transportation' | 'service_order' | 'custom_la' | 'muthowif' | 'agent_request' | 'manual';
+
+export interface MergeInvoiceSourceItem {
+  id: number;
+  type: InvoiceSourceType;
+  number?: string;
+  description?: string;
+  quantity?: number;
+}
+
+export interface MergeInvoiceItemPreview {
+  invoiceId: number;
+  invoiceNumber: string;
+  type: InvoiceSourceType;
+  typeLabel: string;
+  description: string;
+  quantity: number;
+  unitPrice: string;
+  originalAmount: string;
+  originalUnitPrice?: string;
+  originalCurrency: string;
+  convertedAmount: string;
+  convertedCurrency: string;
+  exchangeRate: number;
+  clientName: string;
+  bookingCode?: string;
+  status: string;
+}
+
+export interface MergeInvoicePreviewData {
+  items: MergeInvoiceItemPreview[];
+  totalAmount: string;
+  targetCurrency: string;
+  exchangeRates: Record<string, number>;
+  uniqueClients: string[];
+  warnings: string[];
+}
+
+export interface MergeInvoicePreviewResponse {
+  success: boolean;
+  data: MergeInvoicePreviewData;
+}
+
+export interface ExecuteMergeInvoicePayload {
+  invoices: MergeInvoiceSourceItem[];
+  targetCurrency: string;
+  clientName: string;
+  clientEmail?: string;
+  clientPhone?: string;
+  clientAddress?: string;
+  title?: string;
+  issueDate?: string;
+  dueDate: string;
+  notes?: string;
+}
+
+export interface ExecuteMergeInvoiceResponse {
+  success: boolean;
+  message?: string;
+  data: {
+    id: number;
+    number: string;
+    amount: string;
+    currency: string;
+    sourceCount: number;
+    pdfUrl?: string | null;
+    downloadUrl?: string;
+  };
+}
+
+export function useMergeInvoicePreview() {
+  return useMutation({
+    mutationFn: async ({
+      invoices,
+      targetCurrency = 'SAR',
+    }: {
+      invoices: MergeInvoiceSourceItem[];
+      targetCurrency: string;
+    }) => {
+      const response = await apiClient.post<MergeInvoicePreviewResponse>(
+        API_ENDPOINTS.INVOICE_MERGE_PREVIEW,
+        { invoices, targetCurrency }
+      );
+      return response.data;
+    },
+  });
+}
+
+export function useExecuteMergeInvoice() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (payload: ExecuteMergeInvoicePayload) => {
+      const response = await apiClient.post<ExecuteMergeInvoiceResponse>(
+        API_ENDPOINTS.INVOICE_MERGE,
+        payload
+      );
+      return response;
+    },
+    onSuccess: (res) => {
+      queryClient.invalidateQueries({ queryKey: invoiceKeys.lists() });
+      if (res?.data?.downloadUrl) {
+        try {
+          apiClient.downloadFile(res.data.downloadUrl, `${res.data.number}.pdf`).catch(err => {
+            console.warn('Auto download merged invoice failed:', err);
+          });
+        } catch (e) {
+          console.warn('Auto download error:', e);
+        }
+      }
+    },
+  });
+}
+
 // Manual invoice types
 export interface CreateManualInvoiceItem {
   description: string;

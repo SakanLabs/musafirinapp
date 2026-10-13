@@ -256,6 +256,8 @@ export const API_ENDPOINTS = {
   INVOICE_PAY: (id: string) => `/api/invoices/${id}/pay`,
   DOWNLOAD_INVOICE: (id: string) => `/api/invoices/${id}/download`,
   BACKFILL_INVOICE_STATUS: '/api/invoices/backfill-status',
+  INVOICE_MERGE: '/api/invoices/merge',
+  INVOICE_MERGE_PREVIEW: '/api/invoices/merge/preview',
 
   // Booking Service Items (visa, transportasi, lainnya)
   BOOKING_SERVICE_ITEMS: '/api/booking-service-items',

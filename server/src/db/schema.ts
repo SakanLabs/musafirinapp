@@ -768,6 +768,7 @@ export const manualInvoices = pgTable('manual_invoices', {
   paymentTerms: jsonb('payment_terms'), // Array of { termNumber: number, label: string, percentage: number, amount: number, dueDate: string, notes?: string }
   notes: text('notes'),
   pdfUrl: text('pdf_url'),
+  meta: jsonb('meta'), // For merged invoices: { isMerged: true, sourceInvoices: [...], mergedAt, exchangeRates }
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
 });

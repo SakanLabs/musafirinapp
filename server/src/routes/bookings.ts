@@ -978,13 +978,38 @@ bookingRoutes.put('/:id', requireAdmin, async (c) => {
       return c.json({ error: 'Booking not found' }, 404);
     }
 
+    // Recalculate accurate totalAmount based on nights and rooms
+    const checkIn = new Date(checkInDate);
+    const checkOut = new Date(checkOutDate);
+    const diffDays = Math.ceil((checkOut.getTime() - checkIn.getTime()) / (1000 * 60 * 60 * 24));
+    const nights = diffDays > 0 ? diffDays : 1;
+
+    let calculatedTotal = 0;
+    if (Array.isArray(roomsData) && roomsData.length > 0) {
+      for (const room of roomsData) {
+        if (room.pricingPeriods && room.pricingPeriods.length > 0) {
+          const roomTotal = room.pricingPeriods.reduce((sum: number, p: any) => sum + (parseFloat(p.subtotal) || 0), 0);
+          calculatedTotal += roomTotal * (room.roomCount || 1);
+        } else {
+          calculatedTotal += (parseFloat(room.unitPrice) || 0) * (room.roomCount || 1) * nights;
+        }
+      }
+    }
+
+    const finalTotalAmount = calculatedTotal > 0 ? calculatedTotal : (parseFloat(totalAmount) || 0);
+
     // Update booking information & preserve existing metadata (e.g. payments)
     const existingMeta = (existingBooking[0]?.meta as Record<string, any>) || {};
+    const paidAmount = Array.isArray(existingMeta.payments)
+      ? existingMeta.payments.reduce((sum: number, p: any) => sum + (parseFloat(p.amount) || 0), 0)
+      : 0;
+
     const metaData: Record<string, any> = {
       ...existingMeta,
       guestName,
       guestEmail: guestEmail || '',
       guestPhone: guestPhone || '',
+      remainingBalance: Math.max(0, finalTotalAmount - paidAmount),
     };
     if (specialRequests !== undefined) {
       metaData.specialRequests = specialRequests;
@@ -994,9 +1019,9 @@ bookingRoutes.put('/:id', requireAdmin, async (c) => {
     }
 
     const updatePayload: any = {
-      checkIn: new Date(checkInDate),
-      checkOut: new Date(checkOutDate),
-      totalAmount: totalAmount.toString(),
+      checkIn,
+      checkOut,
+      totalAmount: finalTotalAmount.toFixed(2),
       bookingStatus: status || 'pending',
       mealPlan: mealPlan || 'Room Only',
       meta: metaData,
