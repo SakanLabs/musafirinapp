@@ -121,12 +121,12 @@ transportationApp.post('/', requireAdmin, async (c) => {
     const { routes: routesData, ...bookingData } = body;
 
     // Generate booking number
-    const bookingNumber = `TB - ${new Date().getFullYear()}-${String(Date.now()).slice(-6)} `;
+    const bookingNumber = `TB-${new Date().getFullYear()}-${String(Date.now()).slice(-6)}`;
 
     const result = await db.transaction(async (tx) => {
       // Find or create client
       let clientRecord: any;
-      const emailToUse = bookingData.customerEmail || `no - email - ${Date.now()} @musafirin.com`;
+      const emailToUse = bookingData.customerEmail?.trim() || `no-email-${Date.now()}@musafirin.com`;
 
       const existingClient = await tx
         .select()
@@ -178,15 +178,23 @@ transportationApp.post('/', requireAdmin, async (c) => {
 
       // Create transportation routes
       if (routesData && routesData.length > 0 && createdBooking?.id) {
-        const newRoutes: NewTransportationRoute[] = routesData.map((route: any) => ({
-          transportationBookingId: createdBooking.id!,
-          pickupDateTime: new Date(`${route.pickupDate}T${route.pickupTime} `),
-          originLocation: route.origin,
-          destinationLocation: route.destination,
-          vehicleType: route.vehicleType,
-          price: route.price.toString(),
-          notes: route.notes || null,
-        }));
+        const newRoutes: NewTransportationRoute[] = routesData.map((route: any) => {
+          const pickupDate = (route.pickupDate || '').trim();
+          const pickupTime = (route.pickupTime || '').trim();
+          const dateStr = pickupDate && pickupTime ? `${pickupDate}T${pickupTime}` : (pickupDate || new Date().toISOString());
+          const pickupDateTime = isNaN(new Date(dateStr).getTime()) ? new Date() : new Date(dateStr);
+
+          return {
+            transportationBookingId: createdBooking.id!,
+            pickupDateTime,
+            originLocation: route.origin,
+            destinationLocation: route.destination,
+            vehicleType: route.vehicleType,
+            price: (route.price || 0).toString(),
+            currency: route.currency || bookingData.currency || 'SAR',
+            notes: route.notes || null,
+          };
+        });
 
         await tx.insert(transportationRoutesTable).values(newRoutes);
       }
@@ -233,15 +241,23 @@ transportationApp.put('/:id', requireAdmin, async (c) => {
       await db.delete(transportationRoutesTable).where(eq(transportationRoutesTable.transportationBookingId, id));
 
       if (routesData.length > 0) {
-        const newRoutes: NewTransportationRoute[] = routesData.map((route: any) => ({
-          transportationBookingId: id,
-          pickupDateTime: new Date(`${route.pickupDate}T${route.pickupTime} `),
-          originLocation: route.origin,
-          destinationLocation: route.destination,
-          vehicleType: route.vehicleType,
-          price: route.price.toString(),
-          notes: route.notes || null,
-        }));
+        const newRoutes: NewTransportationRoute[] = routesData.map((route: any) => {
+          const pickupDate = (route.pickupDate || '').trim();
+          const pickupTime = (route.pickupTime || '').trim();
+          const dateStr = pickupDate && pickupTime ? `${pickupDate}T${pickupTime}` : (pickupDate || new Date().toISOString());
+          const pickupDateTime = isNaN(new Date(dateStr).getTime()) ? new Date() : new Date(dateStr);
+
+          return {
+            transportationBookingId: id,
+            pickupDateTime,
+            originLocation: route.origin,
+            destinationLocation: route.destination,
+            vehicleType: route.vehicleType,
+            price: (route.price || 0).toString(),
+            currency: route.currency || bookingData.currency || 'SAR',
+            notes: route.notes || null,
+          };
+        });
 
         await db.insert(transportationRoutesTable).values(newRoutes);
       }
@@ -706,7 +722,7 @@ transportationApp.post('/:id/voucher', requireAdmin, async (c) => {
     }
 
     // Generate voucher number
-    const voucherNumber = `TV - ${new Date().getFullYear()} -${String(Date.now()).slice(-6)} `;
+    const voucherNumber = `TV-${new Date().getFullYear()}-${String(Date.now()).slice(-6)}`;
 
     const newVoucher: NewTransportationVoucher = {
       transportationBookingId: id,
@@ -724,7 +740,7 @@ transportationApp.post('/:id/voucher', requireAdmin, async (c) => {
 
     // Upload to MinIO
     const pdfUrl = await uploadToMinio(
-      `transportation - vouchers / ${voucherNumber}.pdf`,
+      `transportation-vouchers/${voucherNumber}.pdf`,
       pdfBuffer,
       'application/pdf'
     );
