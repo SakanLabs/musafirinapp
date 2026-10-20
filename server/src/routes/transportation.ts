@@ -400,7 +400,7 @@ transportationApp.get('/invoice/:number', requireAdminOrFinance, async (c) => {
     c.header('Content-Disposition', `${isView ? 'inline' : 'attachment'}; filename="${invoiceNumber}.pdf"`);
     c.header('Content-Length', pdfBuffer.length.toString());
 
-    return c.body(pdfBuffer);
+    return c.body(pdfBuffer as any);
   } catch (error) {
     console.error('Error serving transportation invoice PDF:', error);
     return c.json({ error: 'Failed to serve transportation invoice PDF' }, 500);
@@ -776,7 +776,7 @@ transportationApp.get('/receipt/:number', requireAdminOrFinance, async (c) => {
     c.header('Content-Disposition', `${isView ? 'inline' : 'attachment'}; filename="${receiptNumber}.pdf"`);
     c.header('Content-Length', pdfBuffer.length.toString());
 
-    return c.body(pdfBuffer);
+    return c.body(pdfBuffer as any);
   } catch (error) {
     console.error('Error serving receipt PDF:', error);
     return c.json({ error: 'Failed to serve receipt PDF' }, 500);
@@ -941,7 +941,7 @@ transportationApp.get('/voucher/:number', requireAdmin, async (c) => {
     c.header('Content-Disposition', `${isView ? 'inline' : 'attachment'}; filename="${voucherNumber}.pdf"`);
     c.header('Content-Length', pdfBuffer.length.toString());
 
-    return c.body(pdfBuffer);
+    return c.body(pdfBuffer as any);
   } catch (error) {
     console.error('Error serving voucher PDF:', error);
     return c.json({ error: 'Failed to serve voucher PDF' }, 500);
