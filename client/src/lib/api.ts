@@ -309,6 +309,9 @@ export const API_ENDPOINTS = {
   TRANSPORTATION_BY_ID: (id: string | number) => `/api/transportation/${id}`,
   TRANSPORTATION_INVOICE: (id: string | number) => `/api/transportation/${id}/invoice`,
   TRANSPORTATION_RECEIPT: (id: string | number) => `/api/transportation/${id}/receipt`,
+  TRANSPORTATION_BILLING: (id: string | number) => `/api/transportation/${id}/billing`,
+  TRANSPORTATION_PAY: (id: string | number) => `/api/transportation/${id}/pay`,
+  TRANSPORTATION_DELETE_PAYMENT: (id: string | number, paymentId: string | number) => `/api/transportation/${id}/payments/${paymentId}`,
 
   // Exchange Rates — SAR
   EXCHANGE_RATE_SAR_IDR: '/api/exchange-rates/SAR-IDR',

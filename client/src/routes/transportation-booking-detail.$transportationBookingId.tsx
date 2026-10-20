@@ -1,14 +1,28 @@
 import { createFileRoute, redirect, useNavigate } from "@tanstack/react-router";
 import { toast } from "sonner";
-import { ArrowLeft, Edit, FileText, Receipt, Trash2, Loader2, Package } from "lucide-react";
+import { 
+  ArrowLeft, Edit, FileText, Receipt, Trash2, Loader2, Package,
+  CreditCard, Wallet, Banknote, Building2, CheckCircle2
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
+import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { PageLayout } from "@/components/layout/PageLayout";
 import { formatCurrency, formatDate } from "@/lib/utils";
 import { authService } from "@/lib/auth";
-import { useTransportationBooking, useDeleteTransportationBooking, useGenerateTransportationInvoice, useGenerateTransportationReceipt, useTransportationInvoice } from "@/lib/queries/transportationBookings";
+import { 
+  useTransportationBooking, 
+  useDeleteTransportationBooking, 
+  useGenerateTransportationInvoice, 
+  useGenerateTransportationReceipt, 
+  useTransportationInvoice,
+  useTransportationBookingBilling,
+  usePayTransportationBooking,
+  useDeleteTransportationPayment,
+  type TransportationPaymentMethod
+} from "@/lib/queries/transportationBookings";
 import { DueDateModal } from "@/components/modals/DueDateModal";
+import { TransportationPaymentModal } from "@/components/modals/TransportationPaymentModal";
 import { useState } from "react";
 // Helper functions
 const getStatusBadgeStyle = (status: string) => {
@@ -47,7 +61,18 @@ function TransportationBookingDetailPage() {
   const generateReceiptMutation = useGenerateTransportationReceipt();
   const { data: existingInvoice } = useTransportationInvoice(transportationBookingId);
 
+  // Billing & Payment queries and mutations
+  const { data: billingData } = useTransportationBookingBilling(transportationBookingId);
+  const payMutation = usePayTransportationBooking();
+  const deletePaymentMutation = useDeleteTransportationPayment();
+
   const [isDueDateModalOpen, setIsDueDateModalOpen] = useState(false);
+  const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
+
+  const billingSummary = billingData?.summary;
+  const paymentPercent = billingSummary && billingSummary.totalAmount > 0
+    ? Math.min(100, Math.round((billingSummary.paidAmount / billingSummary.totalAmount) * 100))
+    : 0;
 
   const getVehicleTypeLabel = (type: string) => {
     switch (type) {
@@ -126,16 +151,59 @@ function TransportationBookingDetailPage() {
     try {
       const resp = await generateReceiptMutation.mutateAsync(transportationBookingId);
       toast.success('Receipt generated successfully!');
-      // Assuming Resp could be shaped like { id, number } or direct object
       const receiptNumber = (resp as any).number || (resp as any).data?.number;
       if (receiptNumber) {
-        window.open(`/api/transportation/receipt/${receiptNumber}`, '_blank');
+        window.open(`/api/transportation/receipt/${encodeURIComponent(receiptNumber.trim())}`, '_blank');
       }
     } catch (error) {
       console.error('Error generating receipt:', error);
       const msg = error instanceof Error ? error.message : 'An unexpected error occurred';
       toast.error(msg);
     }
+  };
+
+  const handleRecordPayment = async (data: {
+    amount: number;
+    method: TransportationPaymentMethod;
+    referenceNumber?: string;
+    description?: string;
+    autoGenerateReceipt: boolean;
+    sendEmail?: boolean;
+    sendWhatsApp?: boolean;
+  }) => {
+    try {
+      const res = await payMutation.mutateAsync({
+        bookingId: transportationBookingId,
+        ...data,
+      });
+      toast.success('Pembayaran berhasil dicatat!');
+      if (res?.receipt?.number) {
+        window.open(`/api/transportation/receipt/${encodeURIComponent(res.receipt.number.trim())}`, '_blank');
+      }
+    } catch (err: any) {
+      toast.error(err?.message || 'Gagal memproses pembayaran');
+      throw err;
+    }
+  };
+
+  const handleDeletePayment = async (paymentId: number, amount: number) => {
+    const currency = billingSummary?.currency || transportationBooking?.currency || 'SAR';
+    if (!window.confirm(`Yakin ingin membatalkan/menghapus pembayaran sebesar ${formatCurrency(amount, currency)} ini? Sisa tagihan dan status akan diperbarui otomatis.`)) {
+      return;
+    }
+    try {
+      await deletePaymentMutation.mutateAsync({
+        bookingId: transportationBookingId,
+        paymentId,
+      });
+      toast.success('Pembayaran berhasil dibatalkan/dihapus');
+    } catch (err: any) {
+      toast.error(err?.message || 'Gagal menghapus pembayaran');
+    }
+  };
+
+  const handleDownloadReceipt = (receiptNumber: string) => {
+    window.open(`/api/transportation/receipt/${encodeURIComponent(receiptNumber.trim())}`, '_blank');
   };
 
   // Loading state
@@ -205,9 +273,30 @@ function TransportationBookingDetailPage() {
             <span className={`inline-flex items-center px-2.5 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider border ${getStatusBadgeStyle(transportationBooking.status)}`}>
               {transportationBooking.status}
             </span>
+            {billingSummary && (
+              <span className={`inline-flex items-center px-2.5 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider border ${
+                billingSummary.paymentStatus === 'paid'
+                  ? 'bg-emerald-50 text-emerald-700 border-emerald-200/60'
+                  : billingSummary.paymentStatus === 'partial'
+                    ? 'bg-amber-50 text-amber-700 border-amber-200/60'
+                    : 'bg-zinc-50 text-zinc-600 border-zinc-200/60'
+              }`}>
+                {billingSummary.paymentStatus === 'paid' ? 'Lunas' : billingSummary.paymentStatus === 'partial' ? 'Sebagian' : 'Belum Bayar'}
+              </span>
+            )}
           </div>
           
           <div className="flex flex-wrap items-center gap-2">
+            {billingSummary && billingSummary.remainingBalance > 0 && (
+              <Button
+                onClick={() => setIsPaymentModalOpen(true)}
+                disabled={payMutation.isPending}
+                className="bg-[#111111] hover:bg-[#242424] text-white h-9 px-3.5 rounded-md text-xs font-semibold flex items-center space-x-1.5 border border-transparent shadow-none"
+              >
+                <CreditCard className="h-4 w-4 mr-1 text-white/90" />
+                <span>Terima Pembayaran</span>
+              </Button>
+            )}
             {(!transportationBooking.customLaRequestId) && (
               <>
                 <Button 
@@ -349,15 +438,216 @@ function TransportationBookingDetailPage() {
           </div>
         </div>
 
-        {/* Summary */}
-        <div className="border border-[#e5e7eb] rounded-xl bg-white shadow-none p-6">
-          <div className="flex justify-between items-center">
-            <span className="text-xs font-bold text-[#111111] uppercase tracking-wider">Grand Total Amount</span>
-            <span className="text-xl font-bold text-[#111111] tracking-tight">
-              {formatCurrency(transportationBooking.totalAmount, transportationBooking.currency)}
-            </span>
-          </div>
-        </div>
+        {/* Billing & Payment History */}
+        <Card className="border border-[#e5e7eb] rounded-xl bg-white shadow-none overflow-hidden">
+          <CardHeader className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-b border-gray-100 bg-white p-6">
+            <div className="space-y-1">
+              <div className="flex items-center space-x-3">
+                <CardTitle className="text-sm font-bold text-[#111111] uppercase tracking-wider">
+                  Informasi Tagihan & Pembayaran
+                </CardTitle>
+                {billingSummary && (
+                  <Badge
+                    variant="outline"
+                    className={`text-[10px] font-bold uppercase tracking-wider ${
+                      billingSummary.paymentStatus === 'paid'
+                        ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                        : billingSummary.paymentStatus === 'partial'
+                          ? 'bg-amber-50 text-amber-700 border-amber-200'
+                          : 'bg-zinc-100 text-zinc-600 border-zinc-200'
+                    }`}
+                  >
+                    {billingSummary.paymentStatus === 'paid' ? 'Lunas' : billingSummary.paymentStatus === 'partial' ? 'Cicilan' : 'Belum Bayar'}
+                  </Badge>
+                )}
+              </div>
+              <p className="text-xs text-zinc-500">
+                Kelola termin pembayaran, unduh invoice resmi, dan pantau status pelunasan booking transportasi.
+              </p>
+            </div>
+
+            <div className="flex items-center space-x-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleGenerateInvoice}
+                disabled={generateInvoiceMutation.isPending}
+                className="h-8 px-3 text-xs font-semibold border-zinc-200 text-zinc-700 hover:bg-zinc-50 rounded-md shadow-none"
+              >
+                <FileText className="h-3.5 w-3.5 mr-1.5 text-zinc-400" />
+                <span>{existingInvoice ? "Generate Ulang Invoice" : "Terbitkan Invoice"}</span>
+              </Button>
+
+              {billingSummary && billingSummary.remainingBalance > 0 && (
+                <Button
+                  size="sm"
+                  onClick={() => setIsPaymentModalOpen(true)}
+                  disabled={payMutation.isPending}
+                  className="h-8 px-3.5 bg-[#111111] hover:bg-[#242424] text-white font-semibold text-xs rounded-md shadow-none flex items-center space-x-1.5 border border-transparent"
+                >
+                  <CreditCard className="h-3.5 w-3.5" />
+                  <span>Terima Pembayaran</span>
+                </Button>
+              )}
+            </div>
+          </CardHeader>
+
+          <CardContent className="p-6 space-y-6">
+            {/* 3 Summary Stat Boxes */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 p-4 bg-zinc-50/70 rounded-xl border border-zinc-200/70">
+              <div className="space-y-1">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-500">Total Tagihan</span>
+                <p className="text-xl font-bold font-mono text-zinc-900">
+                  {formatCurrency(billingSummary?.totalAmount || transportationBooking.totalAmount, billingSummary?.currency || transportationBooking.currency || 'SAR')}
+                </p>
+                <p className="text-[11px] font-mono text-zinc-400">
+                  {transportationBooking.routes?.length || transportationBooking.routeCount || 0} Rute Perjalanan
+                </p>
+              </div>
+
+              <div className="space-y-1 border-t md:border-t-0 md:border-l border-zinc-200/60 pt-3 md:pt-0 md:pl-4">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-500">Telah Dibayar</span>
+                <p className="text-xl font-bold font-mono text-emerald-600">
+                  {formatCurrency(billingSummary?.paidAmount || 0, billingSummary?.currency || transportationBooking.currency || 'SAR')}
+                </p>
+                <div className="flex items-center gap-1.5 text-[11px] text-emerald-700 font-medium">
+                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                  <span>{paymentPercent}% Terbayar</span>
+                </div>
+              </div>
+
+              <div className="space-y-1 border-t md:border-t-0 md:border-l border-zinc-200/60 pt-3 md:pt-0 md:pl-4">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-500">Sisa Tagihan</span>
+                <p className={`text-xl font-bold font-mono ${
+                  (billingSummary?.remainingBalance || 0) === 0 ? 'text-emerald-600' : 'text-rose-600'
+                }`}>
+                  {formatCurrency(billingSummary?.remainingBalance ?? transportationBooking.totalAmount, billingSummary?.currency || transportationBooking.currency || 'SAR')}
+                </p>
+                <p className="text-[11px] text-zinc-400">
+                  {(billingSummary?.remainingBalance || 0) === 0 ? 'Semua tagihan lunas' : 'Menunggu pelunasan'}
+                </p>
+              </div>
+            </div>
+
+            {/* Riwayat Pembayaran & Kwitansi */}
+            <div className="space-y-3">
+              <div className="flex items-center justify-between border-b border-zinc-100 pb-2">
+                <h4 className="text-xs font-bold uppercase tracking-wider text-zinc-600">
+                  Riwayat Pembayaran & Kwitansi Resmi
+                </h4>
+                <span className="text-xs text-zinc-400 font-medium">
+                  {billingData?.payments?.length || 0} transaksi tercatat
+                </span>
+              </div>
+
+              {billingData?.payments && billingData.payments.length > 0 ? (
+                <div className="overflow-x-auto rounded-lg border border-zinc-200">
+                  <table className="w-full text-xs">
+                    <thead className="bg-zinc-50 border-b border-zinc-200">
+                      <tr>
+                        <th className="text-left font-bold text-zinc-600 py-2.5 px-4 uppercase tracking-wider">Tanggal</th>
+                        <th className="text-left font-bold text-zinc-600 py-2.5 px-4 uppercase tracking-wider">Metode</th>
+                        <th className="text-left font-bold text-zinc-600 py-2.5 px-4 uppercase tracking-wider">No. Referensi / Catatan</th>
+                        <th className="text-right font-bold text-zinc-600 py-2.5 px-4 uppercase tracking-wider">Nominal</th>
+                        <th className="text-right font-bold text-zinc-600 py-2.5 px-4 uppercase tracking-wider">Kwitansi (PDF)</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-zinc-100">
+                      {billingData.payments.map((p) => {
+                        const receiptNumber = p.receiptNumber || billingData.receipts?.find(r => 
+                          (r.meta?.paymentId && r.meta.paymentId === p.id) ||
+                          (r.meta?.referenceNumber && r.meta.referenceNumber === p.referenceNumber) ||
+                          (r.meta?.termin && r.meta.termin === p.termin) ||
+                          (parseFloat(r.paidAmount) === parseFloat(p.amount))
+                        )?.number || (billingData.receipts?.length === 1 && billingData.payments.length === 1 ? billingData.receipts[0]?.number : null);
+
+                        return (
+                          <tr key={p.id} className="hover:bg-zinc-50/60 transition-colors">
+                            <td className="py-3 px-4 font-mono text-zinc-700">
+                              {formatDate(p.paidAt)}
+                            </td>
+                            <td className="py-3 px-4">
+                              <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md font-medium text-[11px] bg-zinc-100 text-zinc-700">
+                                {p.method === 'bank_transfer' ? (
+                                  <>
+                                    <Building2 className="w-3 h-3 text-zinc-500" />
+                                    <span>Transfer Bank</span>
+                                  </>
+                                ) : p.method === 'deposit' ? (
+                                  <>
+                                    <Wallet className="w-3 h-3 text-emerald-600" />
+                                    <span>Saldo Deposit</span>
+                                  </>
+                                ) : (
+                                  <>
+                                    <Banknote className="w-3 h-3 text-zinc-500" />
+                                    <span>Tunai</span>
+                                  </>
+                                )}
+                              </span>
+                            </td>
+                            <td className="py-3 px-4">
+                              <div className="flex items-center gap-1.5 flex-wrap">
+                                {p.terminLabel ? (
+                                  <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold bg-sky-50 text-sky-700 border border-sky-200">
+                                    {p.terminLabel}
+                                  </span>
+                                ) : null}
+                                <span className="font-mono text-zinc-800">{p.referenceNumber || '-'}</span>
+                              </div>
+                              {p.meta?.description && (
+                                <div className="text-[11px] text-zinc-500 mt-0.5">{p.meta.description}</div>
+                              )}
+                            </td>
+                            <td className="py-3 px-4 text-right font-mono font-bold text-emerald-600 text-sm">
+                              {formatCurrency(p.amount, billingSummary?.currency || transportationBooking.currency || 'SAR')}
+                            </td>
+                            <td className="py-3 px-4 text-right">
+                              <div className="flex items-center justify-end space-x-2">
+                                {receiptNumber ? (
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => handleDownloadReceipt(receiptNumber)}
+                                    className="h-7 text-[11px] px-2.5 font-medium border-zinc-200 text-zinc-700 hover:bg-zinc-50 hover:text-zinc-900 inline-flex items-center space-x-1"
+                                    title="Download Kwitansi PDF"
+                                  >
+                                    <Receipt className="w-3 h-3 text-zinc-500" />
+                                    <span>{receiptNumber}</span>
+                                  </Button>
+                                ) : (
+                                  <span className="text-zinc-400 text-[11px] italic mr-1">-</span>
+                                )}
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => handleDeletePayment(p.id, parseFloat(p.amount))}
+                                  disabled={deletePaymentMutation.isPending}
+                                  className="h-7 w-7 p-0 text-zinc-400 hover:text-red-600 hover:bg-red-50 rounded"
+                                  title="Batalkan / Hapus Pembayaran Ini"
+                                >
+                                  <Trash2 className="w-3.5 h-3.5" />
+                                </Button>
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              ) : (
+                <div className="text-center py-8 border border-dashed border-zinc-200 rounded-lg bg-zinc-50/40">
+                  <CreditCard className="w-8 h-8 text-zinc-300 mx-auto mb-2" />
+                  <p className="text-xs text-zinc-500 font-medium">Belum ada pembayaran yang dicatat untuk pemesanan ini.</p>
+                  <p className="text-[11px] text-zinc-400 mt-0.5">
+                    Klik tombol <strong>"Terima Pembayaran"</strong> untuk mencatat DP atau pelunasan dan otomatis membuat Kwitansi resmi.
+                  </p>
+                </div>
+              )}
+            </div>
+          </CardContent>
+        </Card>
       </div>
 
       <DueDateModal
@@ -365,6 +655,20 @@ function TransportationBookingDetailPage() {
         onClose={() => setIsDueDateModalOpen(false)}
         onSubmit={handleDueDateSubmit}
         isLoading={generateInvoiceMutation.isPending}
+      />
+
+      <TransportationPaymentModal
+        isOpen={isPaymentModalOpen}
+        onClose={() => setIsPaymentModalOpen(false)}
+        bookingNumber={transportationBooking.number}
+        totalAmount={billingSummary?.totalAmount || parseFloat(transportationBooking.totalAmount)}
+        paidAmount={billingSummary?.paidAmount || 0}
+        remainingBalance={billingSummary?.remainingBalance ?? parseFloat(transportationBooking.totalAmount)}
+        currency={billingSummary?.currency || transportationBooking.currency || 'SAR'}
+        clientName={billingData?.client?.name || transportationBooking.customerName}
+        clientDepositBalance={billingSummary?.clientDepositBalance || 0}
+        onSubmit={handleRecordPayment}
+        isLoading={payMutation.isPending}
       />
     </PageLayout>
   );

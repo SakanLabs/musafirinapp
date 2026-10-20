@@ -126,13 +126,27 @@ function TransportationBookingsPage() {
               <Card key={booking.id} className="p-6 border border-[#e5e7eb] rounded-xl shadow-none bg-white hover:border-[#111111] transition-all duration-200">
                 <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                   <div className="flex-1">
-                    <div className="flex items-center space-x-4 mb-3">
+                    <div className="flex items-center space-x-2.5 mb-3 flex-wrap gap-y-1">
                       <h3 className="text-base font-bold text-zinc-950 tracking-tight">
                         {booking.number}
                       </h3>
                       <Badge variant="outline" className={`text-[10px] font-semibold py-0.5 px-2 rounded-md shadow-none capitalize ${getStatusColor(booking.status)}`}>
                         {booking.status}
                       </Badge>
+                      {booking.paymentStatus && (
+                        <Badge
+                          variant="outline"
+                          className={`text-[10px] font-semibold py-0.5 px-2 rounded-md shadow-none ${
+                            booking.paymentStatus === 'paid'
+                              ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                              : booking.paymentStatus === 'partial'
+                                ? 'bg-amber-50 text-amber-700 border-amber-200'
+                                : 'bg-zinc-50 text-zinc-600 border-zinc-200'
+                          }`}
+                        >
+                          {booking.paymentStatus === 'paid' ? 'Lunas' : booking.paymentStatus === 'partial' ? 'Sebagian' : 'Belum Bayar'}
+                        </Badge>
+                      )}
                     </div>
 
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs font-semibold text-zinc-500 uppercase tracking-wider">
@@ -173,8 +187,15 @@ function TransportationBookingsPage() {
                       <div className="text-xs text-zinc-400 font-medium">
                         Created: {formatDate(booking.createdAt)}
                       </div>
-                      <div className="text-base font-bold text-zinc-950">
-                        {formatCurrency(booking.totalAmount.toString(), booking.currency)}
+                      <div className="text-right">
+                        <div className="text-base font-bold text-zinc-950">
+                          {formatCurrency(booking.totalAmount.toString(), booking.currency)}
+                        </div>
+                        {booking.paymentStatus === 'partial' && booking.paidAmount !== undefined && (
+                          <div className="text-[11px] font-mono text-emerald-600 font-semibold">
+                            Dibayar: {formatCurrency(booking.paidAmount, booking.currency)}
+                          </div>
+                        )}
                       </div>
                     </div>
                   </div>
