@@ -35,6 +35,11 @@ export interface TransportationBooking {
   updatedAt: string;
   customLaRequestId?: number;
   routes?: TransportationRoute[];
+  paymentStatus?: 'paid' | 'partial' | 'unpaid';
+  paidAmount?: number;
+  remainingBalance?: number;
+  clientName?: string;
+  clientDepositBalance?: number;
 }
 
 export interface CreateTransportationBookingData {
@@ -231,6 +236,150 @@ export function useGenerateTransportationReceipt() {
         issueDate: string;
       }>(`${API_ENDPOINTS.TRANSPORTATION}/${bookingId}/receipt`);
       return response;
+    },
+  });
+}
+
+export type TransportationPaymentMethod = 'bank_transfer' | 'deposit' | 'cash';
+
+export interface TransportationPaymentItem {
+  id: number;
+  invoiceId: number;
+  amount: string;
+  method: string;
+  referenceNumber: string | null;
+  paidAt: string;
+  notes: string | null;
+  termin: number | null;
+  terminLabel: string | null;
+  receiptNumber: string | null;
+  meta: any;
+  createdAt: string;
+}
+
+export interface TransportationReceiptItem {
+  id: number;
+  number: string;
+  transportationBookingId: number;
+  invoiceId: number | null;
+  amount: string;
+  paidAmount: string;
+  remainingAmount: string | null;
+  currency: string;
+  issueDate: string;
+  receivedFrom: string;
+  description: string;
+  pdfUrl: string | null;
+  meta: any;
+  createdAt: string;
+}
+
+export interface TransportationBookingBillingData {
+  booking: TransportationBooking;
+  client: {
+    id: number;
+    name: string;
+    email: string;
+    phone?: string;
+    depositBalance?: string;
+  } | null;
+  invoice: {
+    id: number;
+    number: string;
+    amount: string;
+    paidAmount: string;
+    status: string;
+    issueDate: string;
+    dueDate: string;
+    pdfUrl: string | null;
+  } | null;
+  payments: TransportationPaymentItem[];
+  receipts: TransportationReceiptItem[];
+  summary: {
+    totalAmount: number;
+    paidAmount: number;
+    remainingBalance: number;
+    paymentStatus: 'unpaid' | 'partial' | 'paid';
+    currency: string;
+    clientDepositBalance: number;
+  };
+}
+
+export interface PayTransportationBookingData {
+  bookingId: string | number;
+  amount: number;
+  method: TransportationPaymentMethod;
+  referenceNumber?: string;
+  description?: string;
+  autoGenerateReceipt?: boolean;
+  sendEmail?: boolean;
+  sendWhatsApp?: boolean;
+}
+
+// Get billing, payment records, and receipts for transportation booking
+export function useTransportationBookingBilling(bookingId: string | number) {
+  return useQuery({
+    queryKey: [...transportationBookingKeys.detail(bookingId), 'billing'],
+    queryFn: async () => {
+      const response = await apiClient.get<{
+        success: boolean;
+        data: TransportationBookingBillingData;
+      }>(API_ENDPOINTS.TRANSPORTATION_BILLING(bookingId));
+      return response.data;
+    },
+    enabled: !!bookingId,
+  });
+}
+
+// Record payment for transportation booking
+export function usePayTransportationBooking() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (data: PayTransportationBookingData) => {
+      const response = await apiClient.post<{
+        success: boolean;
+        message: string;
+        data: any;
+      }>(API_ENDPOINTS.TRANSPORTATION_PAY(data.bookingId), {
+        amount: data.amount,
+        method: data.method,
+        referenceNumber: data.referenceNumber,
+        description: data.description,
+        autoGenerateReceipt: data.autoGenerateReceipt !== false,
+        sendEmail: data.sendEmail,
+        sendWhatsApp: data.sendWhatsApp,
+      });
+      return response.data;
+    },
+    onSuccess: (_, variables) => {
+      qc.invalidateQueries({ queryKey: transportationBookingKeys.detail(variables.bookingId) });
+      qc.invalidateQueries({ queryKey: [...transportationBookingKeys.detail(variables.bookingId), 'billing'] });
+      qc.invalidateQueries({ queryKey: [...transportationBookingKeys.detail(variables.bookingId), 'invoice'] });
+      qc.invalidateQueries({ queryKey: transportationBookingKeys.lists() });
+      qc.invalidateQueries({ queryKey: ['invoices'] });
+      qc.invalidateQueries({ queryKey: ['receipts'] });
+    },
+  });
+}
+
+// Delete / cancel a transportation payment
+export function useDeleteTransportationPayment() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ bookingId, paymentId }: { bookingId: string | number; paymentId: string | number }) => {
+      const response = await apiClient.delete<{
+        success: boolean;
+        message: string;
+      }>(API_ENDPOINTS.TRANSPORTATION_DELETE_PAYMENT(bookingId, paymentId));
+      return response;
+    },
+    onSuccess: (_, variables) => {
+      qc.invalidateQueries({ queryKey: transportationBookingKeys.detail(variables.bookingId) });
+      qc.invalidateQueries({ queryKey: [...transportationBookingKeys.detail(variables.bookingId), 'billing'] });
+      qc.invalidateQueries({ queryKey: [...transportationBookingKeys.detail(variables.bookingId), 'invoice'] });
+      qc.invalidateQueries({ queryKey: transportationBookingKeys.lists() });
+      qc.invalidateQueries({ queryKey: ['invoices'] });
+      qc.invalidateQueries({ queryKey: ['receipts'] });
     },
   });
 }

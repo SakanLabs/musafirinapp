@@ -1,5 +1,5 @@
 import { Hono } from 'hono';
-import { eq, desc, sql } from 'drizzle-orm';
+import { eq, desc, asc, sql } from 'drizzle-orm';
 import { db } from '../db';
 import {
   transportationBookings,
@@ -8,7 +8,9 @@ import {
   transportationReceipts,
   transportationVouchers,
   transportationInvoicePayments,
-  clients
+  clients,
+  clientDeposits,
+  depositTransactions
 } from '../db/schema';
 import { requireAdmin, requireAdminOrFinance, requireFinance } from '../middleware/auth';
 import type {
@@ -43,10 +45,12 @@ transportationApp.get('/', requireAdmin, async (c) => {
       .from(transportationBookings)
       .orderBy(desc(transportationBookings.createdAt));
 
-    // Get routes for each booking
+    // Get routes and invoices for each booking
     const bookingIds = result.map(booking => booking.id).filter(id => id !== null);
 
     let routesByBookingId: Record<number, any[]> = {};
+    let invoicesByBookingId: Record<number, any> = {};
+
     if (bookingIds.length > 0) {
       const allRoutes = await db
         .select()
@@ -64,14 +68,38 @@ transportationApp.get('/', requireAdmin, async (c) => {
         }
         return acc;
       }, {} as Record<number, any[]>);
+
+      const allInvoices = await db
+        .select()
+        .from(transportationInvoices)
+        .where(sql`${transportationInvoices.transportationBookingId} IN(${sql.join(bookingIds, sql`, `)})`);
+
+      invoicesByBookingId = allInvoices.reduce((acc, item) => {
+        const bId = item.transportationBookingId;
+        if (bId !== null && bId !== undefined) {
+          acc[bId] = item;
+        }
+        return acc;
+      }, {} as Record<number, any>);
     }
 
     const bookingsWithRoutes = result.map(booking => {
       const routes = booking.id ? routesByBookingId[booking.id] || [] : [];
+      const invoice = booking.id ? invoicesByBookingId[booking.id] || null : null;
+      const totalAmount = invoice ? parseFloat(invoice.amount) : parseFloat(booking.totalAmount || '0');
+      const paidAmount = invoice ? parseFloat(invoice.paidAmount || '0') : 0;
+      const remainingBalance = Math.max(0, totalAmount - paidAmount);
+      const isPaid = paidAmount >= totalAmount && totalAmount > 0;
+      const paymentStatus = isPaid ? 'paid' : paidAmount > 0 ? 'partial' : 'unpaid';
+
       return {
         ...booking,
         routes,
-        routeCount: routes.length
+        routeCount: routes.length,
+        invoice,
+        paidAmount,
+        remainingBalance,
+        paymentStatus,
       };
     });
 
@@ -104,9 +132,26 @@ transportationApp.get('/:id', requireAdmin, async (c) => {
       .where(eq(transportationRoutesTable.transportationBookingId, id))
       .orderBy(transportationRoutesTable.pickupDateTime);
 
+    // Get invoice for this booking
+    const invRows = await db
+      .select()
+      .from(transportationInvoices)
+      .where(eq(transportationInvoices.transportationBookingId, id))
+      .limit(1);
+
+    const invoice = invRows.length > 0 ? invRows[0] : null;
+    const totalAmount = invoice ? parseFloat(invoice.amount) : parseFloat(booking[0]?.totalAmount || '0');
+    const paidAmount = invoice ? parseFloat(invoice.paidAmount || '0') : 0;
+    const remainingBalance = Math.max(0, totalAmount - paidAmount);
+    const paymentStatus = (paidAmount >= totalAmount && totalAmount > 0) ? 'paid' : paidAmount > 0 ? 'partial' : 'unpaid';
+
     return c.json({
       ...booking[0],
-      routes
+      routes,
+      invoice,
+      paidAmount,
+      remainingBalance,
+      paymentStatus,
     });
   } catch (error) {
     console.error('Error fetching transportation booking:', error);
@@ -945,6 +990,619 @@ transportationApp.get('/voucher/:number', requireAdmin, async (c) => {
   } catch (error) {
     console.error('Error serving voucher PDF:', error);
     return c.json({ error: 'Failed to serve voucher PDF' }, 500);
+  }
+});
+
+// GET /api/transportation/:id/billing - Get full billing, payments, and receipts data
+transportationApp.get('/:id/billing', requireAdminOrFinance, async (c) => {
+  try {
+    const id = parseInt(c.req.param('id'));
+    if (!id || isNaN(id)) return c.json({ error: 'Invalid ID' }, 400);
+
+    const bookingRows = await db
+      .select({
+        booking: transportationBookings,
+        client: clients,
+      })
+      .from(transportationBookings)
+      .leftJoin(clients, eq(transportationBookings.clientId, clients.id))
+      .where(eq(transportationBookings.id, id))
+      .limit(1);
+
+    if (!bookingRows.length || !bookingRows[0]) {
+      return c.json({ error: 'Transportation booking not found' }, 404);
+    }
+
+    const { booking, client } = bookingRows[0];
+
+    // Fetch client deposit balance if client exists
+    let clientDepositBalance = '0.00';
+    if (booking.clientId) {
+      const dep = await db
+        .select({ currentBalance: clientDeposits.currentBalance })
+        .from(clientDeposits)
+        .where(eq(clientDeposits.clientId, booking.clientId))
+        .limit(1);
+      if (dep.length > 0 && dep[0]?.currentBalance) {
+        clientDepositBalance = dep[0].currentBalance;
+      }
+    }
+
+    // Fetch invoice
+    const invRows = await db
+      .select()
+      .from(transportationInvoices)
+      .where(eq(transportationInvoices.transportationBookingId, id))
+      .limit(1);
+
+    const invoice = invRows.length > 0 ? invRows[0] : null;
+
+    // Fetch receipts
+    const receiptsList = await db
+      .select()
+      .from(transportationReceipts)
+      .where(eq(transportationReceipts.transportationBookingId, id))
+      .orderBy(desc(transportationReceipts.createdAt));
+
+    // Summary calculations
+    const totalAmount = invoice ? parseFloat(invoice.amount) : parseFloat(booking.totalAmount || '0');
+    const paidAmount = invoice ? parseFloat(invoice.paidAmount || '0') : 0;
+    const remainingBalance = Math.max(0, totalAmount - paidAmount);
+    const isOrderPaidFull = paidAmount >= totalAmount && totalAmount > 0;
+    const paymentStatus = isOrderPaidFull
+      ? 'paid' 
+      : paidAmount > 0 
+        ? 'partial' 
+        : 'unpaid';
+
+    // Fetch payments chronologically
+    let payments: any[] = [];
+    if (invoice) {
+      const rawPayments = await db
+        .select()
+        .from(transportationInvoicePayments)
+        .where(eq(transportationInvoicePayments.invoiceId, invoice.id))
+        .orderBy(asc(transportationInvoicePayments.paidAt), asc(transportationInvoicePayments.id));
+
+      const totalPaymentsCount = rawPayments.length;
+      payments = rawPayments.map((p, index) => {
+        const meta = (p.meta as any) || {};
+        const terminNumber = meta.termin || (index + 1);
+        const isLastPayment = index === totalPaymentsCount - 1;
+        let terminLabel = meta.terminLabel;
+        if (!terminLabel) {
+          if (isOrderPaidFull && isLastPayment) {
+            terminLabel = terminNumber === 1 ? 'Pelunasan (Lunas Penuh)' : `Termin #${terminNumber} (Pelunasan)`;
+          } else if (terminNumber === 1) {
+            terminLabel = 'Termin #1 (Uang Muka / DP)';
+          } else {
+            terminLabel = `Termin #${terminNumber}`;
+          }
+        }
+
+        // Match receipt specifically for this payment
+        const matchedReceipt = receiptsList.find(r => {
+          const rMeta = (r.meta as any) || {};
+          if (rMeta.paymentId && rMeta.paymentId === p.id) return true;
+          if (meta.receiptNumber && r.number === meta.receiptNumber) return true;
+          if (rMeta.referenceNumber && rMeta.referenceNumber === p.referenceNumber) return true;
+          if (rMeta.termin && rMeta.termin === terminNumber) return true;
+          return false;
+        }) || receiptsList.find(r => parseFloat(r.paidAmount) === parseFloat(p.amount))
+          || (receiptsList.length === 1 && totalPaymentsCount === 1 ? receiptsList[0] : null);
+
+        return {
+          ...p,
+          termin: terminNumber,
+          terminLabel,
+          receiptNumber: matchedReceipt?.number || meta.receiptNumber || null,
+          receiptUrl: matchedReceipt?.pdfUrl || null,
+        };
+      });
+
+      // Display newest payment on top for user view
+      payments.reverse();
+    }
+
+    return c.json({
+      success: true,
+      data: {
+        booking,
+        client: client ? {
+          ...client,
+          depositBalance: clientDepositBalance,
+        } : null,
+        invoice,
+        payments,
+        receipts: receiptsList,
+        summary: {
+          totalAmount,
+          paidAmount,
+          remainingBalance,
+          paymentStatus,
+          currency: invoice?.currency || booking.currency || 'SAR',
+          clientDepositBalance: parseFloat(clientDepositBalance) || 0,
+        },
+      }
+    });
+  } catch (error) {
+    console.error('Error fetching transportation billing:', error);
+    return c.json({ error: 'Failed to fetch transportation billing' }, 500);
+  }
+});
+
+// POST /api/transportation/:id/pay - Record payment for transportation booking
+transportationApp.post('/:id/pay', requireAdminOrFinance, async (c) => {
+  try {
+    const id = parseInt(c.req.param('id'));
+    if (!id || isNaN(id)) return c.json({ error: 'Invalid ID' }, 400);
+
+    const body = await c.req.json().catch(() => ({}));
+    const method = body?.method as 'bank_transfer' | 'deposit' | 'cash' | undefined;
+    const amountNum = body?.amount !== undefined ? parseFloat(body.amount) : undefined;
+    const referenceNumber: string | undefined = body?.referenceNumber;
+    const description: string | undefined = body?.description;
+    const autoGenerateReceipt: boolean = body?.autoGenerateReceipt !== false;
+
+    const allowedMethods = ['bank_transfer', 'deposit', 'cash'];
+    if (!method || !allowedMethods.includes(method)) {
+      return c.json({ error: 'Metode pembayaran tidak valid. Pilih: Transfer Bank, Saldo Deposit, atau Tunai' }, 400);
+    }
+    if (amountNum === undefined || isNaN(amountNum) || amountNum <= 0) {
+      return c.json({ error: 'Nominal pembayaran harus lebih besar dari 0' }, 400);
+    }
+
+    const bookingRows = await db
+      .select({
+        booking: transportationBookings,
+        client: clients,
+      })
+      .from(transportationBookings)
+      .leftJoin(clients, eq(transportationBookings.clientId, clients.id))
+      .where(eq(transportationBookings.id, id))
+      .limit(1);
+
+    if (!bookingRows.length || !bookingRows[0]) {
+      return c.json({ error: 'Transportation booking not found' }, 404);
+    }
+
+    const { booking, client } = bookingRows[0];
+
+    // Find or auto-generate invoice
+    let invoiceRows = await db
+      .select()
+      .from(transportationInvoices)
+      .where(eq(transportationInvoices.transportationBookingId, id))
+      .limit(1);
+
+    let invoice = invoiceRows.length > 0 ? invoiceRows[0] : null;
+
+    if (!invoice) {
+      const invoiceNumber = `TI-${new Date().getFullYear()}-${String(Date.now()).slice(-6)}`;
+      const issueDate = new Date();
+      const dueDate = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
+
+      const [newInv] = await db
+        .insert(transportationInvoices)
+        .values({
+          number: invoiceNumber,
+          transportationBookingId: id,
+          amount: booking.totalAmount.toString(),
+          paidAmount: '0.00',
+          currency: booking.currency || 'SAR',
+          issueDate,
+          dueDate,
+          status: 'draft',
+          pdfUrl: null as any,
+        })
+        .returning();
+      invoice = newInv!;
+
+      // Background attempt to generate invoice PDF
+      try {
+        const routes = await db
+          .select()
+          .from(transportationRoutesTable)
+          .where(eq(transportationRoutesTable.transportationBookingId, id));
+
+        const pdfBuf = await generateTransportationInvoicePDF(
+          invoice,
+          booking,
+          client || {},
+          routes
+        );
+        const pdfUrl = await uploadToMinio(`transportation-invoices/${invoiceNumber}.pdf`, pdfBuf, 'application/pdf');
+        await db.update(transportationInvoices).set({ pdfUrl }).where(eq(transportationInvoices.id, invoice.id));
+        invoice.pdfUrl = pdfUrl;
+      } catch (e) {
+        console.warn('Auto invoice PDF generation deferred:', e);
+      }
+    }
+
+    const totalInvoiceAmount = parseFloat(invoice.amount);
+    const currentPaidAmount = parseFloat(invoice.paidAmount || '0');
+    const remainingBalance = Math.max(0, totalInvoiceAmount - currentPaidAmount);
+
+    if (remainingBalance <= 0) {
+      return c.json({ error: 'Booking transportasi ini sudah lunas. Tidak ada sisa tagihan.' }, 400);
+    }
+
+    // Process payment within transaction
+    const paymentResult = await db.transaction(async (tx) => {
+      let depositUsed = 0;
+
+      if (method === 'deposit') {
+        if (!booking.clientId) {
+          throw new Error('Klien tidak ditemukan untuk pemotongan deposit');
+        }
+
+        const depRows = await tx
+          .select()
+          .from(clientDeposits)
+          .where(eq(clientDeposits.clientId, booking.clientId))
+          .limit(1);
+
+        const currentDepositBalance = depRows.length > 0 ? parseFloat(depRows[0]!.currentBalance) : 0;
+        depositUsed = Math.min(amountNum, remainingBalance);
+
+        if (currentDepositBalance < depositUsed) {
+          throw new Error(`Saldo deposit tidak mencukupi. Saldo saat ini: SAR ${currentDepositBalance.toLocaleString()}, diperlukan: SAR ${depositUsed.toLocaleString()}`);
+        }
+
+        const newDepositBalance = currentDepositBalance - depositUsed;
+        const newTotalUsed = (depRows.length > 0 ? parseFloat(depRows[0]!.totalUsed) : 0) + depositUsed;
+
+        await tx
+          .update(clientDeposits)
+          .set({
+            currentBalance: newDepositBalance.toString(),
+            totalUsed: newTotalUsed.toString(),
+            lastTransactionAt: new Date(),
+            updatedAt: new Date(),
+          })
+          .where(eq(clientDeposits.clientId, booking.clientId));
+
+        // Insert deposit transaction
+        await tx.insert(depositTransactions).values({
+          clientId: booking.clientId,
+          type: 'usage',
+          amount: depositUsed.toString(),
+          balanceBefore: currentDepositBalance.toString(),
+          balanceAfter: newDepositBalance.toString(),
+          currency: 'SAR',
+          status: 'completed',
+          description: description || `Pembayaran Booking Transportasi ${booking.number}`,
+          referenceNumber: referenceNumber || `DEP-TB-${Date.now()}`,
+          processedAt: new Date(),
+        });
+      }
+
+      const effectivePayAmount = method === 'deposit' ? depositUsed : Math.min(amountNum, remainingBalance);
+      const newPaidTotal = currentPaidAmount + effectivePayAmount;
+      const newRemaining = Math.max(0, totalInvoiceAmount - newPaidTotal);
+      const isPaidFull = newPaidTotal >= totalInvoiceAmount;
+      const newInvoiceStatus = isPaidFull ? 'paid' : 'partially_paid';
+
+      const existingPayments = await tx
+        .select()
+        .from(transportationInvoicePayments)
+        .where(eq(transportationInvoicePayments.invoiceId, invoice!.id));
+      const terminNumber = existingPayments.length + 1;
+      let terminLabel = `Termin #${terminNumber}`;
+      if (isPaidFull && terminNumber === 1) {
+        terminLabel = 'Pelunasan (Lunas Penuh)';
+      } else if (isPaidFull) {
+        terminLabel = `Termin #${terminNumber} (Pelunasan)`;
+      } else if (terminNumber === 1) {
+        terminLabel = 'Termin #1 (Uang Muka / DP)';
+      }
+      const receiptNumber = `TR-${new Date().getFullYear()}-${String(Date.now()).slice(-6)}`;
+
+      // 1. Record payment in transportationInvoicePayments
+      const [paymentRecord] = await tx
+        .insert(transportationInvoicePayments)
+        .values({
+          invoiceId: invoice!.id,
+          amount: effectivePayAmount.toString(),
+          currency: invoice!.currency || booking.currency || 'SAR',
+          method,
+          referenceNumber: referenceNumber || (method === 'deposit' ? `DEP-${Date.now()}` : `PAY-${Date.now()}`),
+          paidAt: new Date(),
+          status: 'completed',
+          meta: {
+            description: description || null,
+            termin: terminNumber,
+            terminLabel,
+            receiptNumber,
+          },
+        })
+        .returning();
+
+      if (!paymentRecord) {
+        throw new Error('Gagal menyimpan transaksi pembayaran');
+      }
+
+      // 2. Update transportationInvoices
+      await tx
+        .update(transportationInvoices)
+        .set({
+          paidAmount: newPaidTotal.toString(),
+          status: newInvoiceStatus,
+          updatedAt: new Date(),
+        })
+        .where(eq(transportationInvoices.id, invoice!.id));
+
+      // 3. Update transportationBookings status if paid full
+      if (isPaidFull) {
+        await tx
+          .update(transportationBookings)
+          .set({
+            status: 'confirmed',
+            updatedAt: new Date(),
+          })
+          .where(eq(transportationBookings.id, id));
+      }
+
+      return {
+        payment: paymentRecord,
+        newPaidTotal,
+        newRemaining,
+        isPaidFull,
+        effectivePayAmount,
+        terminNumber,
+        terminLabel,
+        receiptNumber,
+      };
+    });
+
+    // Generate receipt if requested
+    let createdReceipt: any = null;
+    if (autoGenerateReceipt) {
+      try {
+        const receiptNumber = paymentResult.receiptNumber;
+        const newReceipt: NewTransportationReceipt = {
+          transportationBookingId: id,
+          transportationInvoiceId: invoice.id,
+          number: receiptNumber,
+          totalAmount: totalInvoiceAmount.toString(),
+          paidAmount: paymentResult.effectivePayAmount.toString(),
+          balanceDue: paymentResult.newRemaining.toString(),
+          currency: invoice.currency || booking.currency || 'SAR',
+          payerName: client?.name || booking.customerName || 'Pelanggan Musafirin',
+          payerEmail: client?.email || booking.customerEmail || null,
+          payerPhone: client?.phone || booking.customerPhone || null,
+          notes: description || null,
+          pdfUrl: '',
+          meta: {
+            paymentId: paymentResult.payment.id,
+            termin: paymentResult.terminNumber,
+            terminLabel: paymentResult.terminLabel,
+            referenceNumber: paymentResult.payment.referenceNumber,
+            method,
+            description: description || null,
+          },
+        };
+
+        const routes = await db
+          .select()
+          .from(transportationRoutesTable)
+          .where(eq(transportationRoutesTable.transportationBookingId, id));
+
+        const pdfBuffer = await generateTransportationReceiptPDF(
+          newReceipt,
+          booking,
+          client || {},
+          routes,
+          invoice
+        );
+
+        const pdfUrl = await uploadToMinio(
+          `transportation-receipts/${receiptNumber}.pdf`,
+          pdfBuffer,
+          'application/pdf'
+        );
+
+        newReceipt.pdfUrl = pdfUrl;
+
+        const [receiptRow] = await db
+          .insert(transportationReceipts)
+          .values(newReceipt)
+          .returning();
+
+        createdReceipt = receiptRow;
+      } catch (receiptErr) {
+        console.error('Error auto-generating receipt PDF:', receiptErr);
+      }
+    }
+
+    // Optional client payment confirmation notification
+    const payChannels: ('email' | 'whatsapp')[] = [];
+    if (body?.sendEmail) payChannels.push('email');
+    if (body?.sendWhatsApp) payChannels.push('whatsapp');
+
+    if (payChannels.length > 0) {
+      const recipientName = client?.name || booking.customerName || 'Pelanggan Musafirin';
+      const recipientPhone = client?.phone || booking.customerPhone || undefined;
+      const recipientEmail = client?.email || undefined;
+
+      notificationService.sendPaymentConfirmation({
+        orderCode: booking.number,
+        orderTitle: `Pemesanan Transportasi (${booking.number})`,
+        paymentId: paymentResult.payment.referenceNumber ?? undefined,
+        amount: paymentResult.effectivePayAmount,
+        currency: invoice.currency || booking.currency || 'SAR',
+        method,
+        terminLabel: paymentResult.terminLabel,
+        remainingBalance: paymentResult.newRemaining,
+        recipientName,
+        recipientEmail,
+        recipientPhone,
+        paymentStatus: paymentResult.isPaidFull ? 'paid' : 'partial',
+        channels: payChannels,
+      }).catch((err) => console.error('[NotificationService] Error sending transportation payment confirmation:', err));
+    }
+
+    return c.json({
+      success: true,
+      message: 'Pembayaran berhasil dicatat',
+      data: {
+        payment: paymentResult.payment,
+        receipt: createdReceipt,
+        paidAmount: paymentResult.newPaidTotal,
+        remainingBalance: paymentResult.newRemaining,
+        isPaidFull: paymentResult.isPaidFull,
+      }
+    }, 201);
+  } catch (error: any) {
+    console.error('Error recording transportation payment:', error);
+    return c.json({ error: error.message || 'Gagal mencatat pembayaran' }, 500);
+  }
+});
+
+// DELETE /api/transportation/:id/payments/:paymentId - Cancel/delete a payment record
+transportationApp.delete('/:id/payments/:paymentId', requireAdminOrFinance, async (c) => {
+  try {
+    const id = parseInt(c.req.param('id'));
+    const paymentId = parseInt(c.req.param('paymentId'));
+
+    if (!id || isNaN(id) || !paymentId || isNaN(paymentId)) {
+      return c.json({ error: 'Invalid parameters' }, 400);
+    }
+
+    const booking = await db
+      .select()
+      .from(transportationBookings)
+      .where(eq(transportationBookings.id, id))
+      .limit(1);
+
+    if (booking.length === 0 || !booking[0]) {
+      return c.json({ error: 'Transportation booking not found' }, 404);
+    }
+
+    const bookingData = booking[0];
+
+    const invoice = await db
+      .select()
+      .from(transportationInvoices)
+      .where(eq(transportationInvoices.transportationBookingId, id))
+      .limit(1);
+
+    if (invoice.length === 0 || !invoice[0]) {
+      return c.json({ error: 'Invoice not found for this transportation booking' }, 404);
+    }
+
+    const invoiceData = invoice[0];
+
+    // Find the payment record
+    const paymentRows = await db
+      .select()
+      .from(transportationInvoicePayments)
+      .where(
+        sql`${transportationInvoicePayments.id} = ${paymentId} AND ${transportationInvoicePayments.invoiceId} = ${invoiceData.id}`
+      )
+      .limit(1);
+
+    if (paymentRows.length === 0 || !paymentRows[0]) {
+      return c.json({ error: 'Payment record not found' }, 404);
+    }
+
+    const payment = paymentRows[0];
+    const amountToRevert = parseFloat(payment.amount);
+
+    await db.transaction(async (tx) => {
+      // 1. If method was deposit, refund client deposit balance
+      if (payment.method === 'deposit' && bookingData.clientId) {
+        const depRows = await tx
+          .select()
+          .from(clientDeposits)
+          .where(eq(clientDeposits.clientId, bookingData.clientId))
+          .limit(1);
+
+        if (depRows.length > 0 && depRows[0]) {
+          const curBal = parseFloat(depRows[0].currentBalance);
+          const curUsed = parseFloat(depRows[0].totalUsed);
+          const newBal = curBal + amountToRevert;
+          const newUsed = Math.max(0, curUsed - amountToRevert);
+
+          await tx
+            .update(clientDeposits)
+            .set({
+              currentBalance: newBal.toString(),
+              totalUsed: newUsed.toString(),
+              lastTransactionAt: new Date(),
+              updatedAt: new Date(),
+            })
+            .where(eq(clientDeposits.clientId, bookingData.clientId));
+
+          // Log refund deposit transaction
+          await tx.insert(depositTransactions).values({
+            clientId: bookingData.clientId,
+            type: 'refund',
+            amount: amountToRevert.toString(),
+            balanceBefore: curBal.toString(),
+            balanceAfter: newBal.toString(),
+            currency: 'SAR',
+            status: 'completed',
+            description: `Pembatalan pembayaran Booking Transportasi ${bookingData.number}`,
+            referenceNumber: `REF-TB-${Date.now()}`,
+            processedAt: new Date(),
+          });
+        }
+      }
+
+      // 2. Delete the payment
+      await tx
+        .delete(transportationInvoicePayments)
+        .where(eq(transportationInvoicePayments.id, paymentId));
+
+      // Also clean up any receipt generated for this payment
+      await tx
+        .delete(transportationReceipts)
+        .where(
+          sql`${transportationReceipts.transportationBookingId} = ${id} AND ${transportationReceipts.meta}->>'paymentId' = ${paymentId.toString()}`
+        );
+
+      // 3. Recalculate remaining payments for this invoice
+      const remainingPayments = await tx
+        .select()
+        .from(transportationInvoicePayments)
+        .where(eq(transportationInvoicePayments.invoiceId, invoiceData.id));
+
+      const newPaidTotal = remainingPayments.reduce((acc, p) => acc + parseFloat(p.amount), 0);
+      const totalInvoiceAmount = parseFloat(invoiceData.amount);
+      const isPaidFull = newPaidTotal >= totalInvoiceAmount && totalInvoiceAmount > 0;
+      const newInvoiceStatus = isPaidFull 
+        ? 'paid' 
+        : newPaidTotal > 0 
+          ? 'partially_paid' 
+          : 'draft';
+
+      await tx
+        .update(transportationInvoices)
+        .set({
+          paidAmount: newPaidTotal.toString(),
+          status: newInvoiceStatus,
+          updatedAt: new Date(),
+        })
+        .where(eq(transportationInvoices.id, invoiceData.id));
+
+      // 4. Update transportation booking status
+      await tx
+        .update(transportationBookings)
+        .set({
+          status: isPaidFull ? 'confirmed' : 'pending',
+          updatedAt: new Date(),
+        })
+        .where(eq(transportationBookings.id, id));
+    });
+
+    return c.json({
+      success: true,
+      message: 'Pembayaran berhasil dibatalkan/dihapus'
+    });
+  } catch (error) {
+    console.error('Error deleting transportation payment:', error);
+    return c.json({ error: 'Failed to delete payment' }, 500);
   }
 });
 
