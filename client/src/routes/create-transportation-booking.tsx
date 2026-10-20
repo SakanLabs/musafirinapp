@@ -359,17 +359,15 @@ function CreateTransportationBookingPage() {
       status: "pending" as const,
     };
 
-    createTransportationBooking.mutate(bookingData, {
-      onSuccess: () => {
-        toast.success("Pemesanan transportasi berhasil dibuat!");
-        navigate({ to: "/transportation-bookings" });
-      },
-      onError: (error) => {
-        console.error("Error creating booking:", error);
-        const msg = error instanceof Error ? error.message : "Gagal membuat pemesanan";
-        toast.error(msg);
-      },
-    });
+    try {
+      await createTransportationBooking.mutateAsync(bookingData);
+      toast.success("Pemesanan transportasi berhasil dibuat!");
+      navigate({ to: "/transportation-bookings" });
+    } catch (error) {
+      console.error("Error creating booking:", error);
+      const msg = error instanceof Error ? error.message : "Gagal membuat pemesanan";
+      toast.error(msg);
+    }
   };
 
   return (

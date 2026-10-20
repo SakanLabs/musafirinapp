@@ -335,22 +335,72 @@ transportationApp.get('/invoice/:number', requireAdminOrFinance, async (c) => {
     }
 
     const invoice = await db
-      .select()
+      .select({
+        invoice: transportationInvoices,
+        booking: transportationBookings,
+        client: clients,
+      })
       .from(transportationInvoices)
+      .leftJoin(transportationBookings, eq(transportationInvoices.transportationBookingId, transportationBookings.id))
+      .leftJoin(clients, eq(transportationBookings.clientId, clients.id))
       .where(eq(transportationInvoices.number, invoiceNumber))
       .limit(1);
 
-    if (invoice.length === 0) {
+    if (invoice.length === 0 || !invoice[0]) {
       return c.json({ error: 'Transportation invoice not found' }, 404);
     }
 
-    const invoiceData = invoice[0]!;
+    const { invoice: invoiceData, booking: bookingData, client: clientData } = invoice[0];
 
-    if (!invoiceData.pdfUrl) {
+    const { getFileStreamFromMinio, fileExistsInMinio, generateTransportationInvoicePDF, uploadToMinio } = await import('../utils/pdf');
+
+    let pdfBuffer: Buffer | null = null;
+    const fileName = `transportation-invoices/${invoiceNumber}.pdf`;
+
+    if (await fileExistsInMinio(fileName)) {
+      try {
+        const fileStream = await getFileStreamFromMinio(fileName);
+        const chunks: Buffer[] = [];
+        for await (const chunk of fileStream) {
+          chunks.push(typeof chunk === 'string' ? Buffer.from(chunk) : chunk);
+        }
+        pdfBuffer = Buffer.concat(chunks);
+      } catch (streamErr) {
+        console.warn('Failed to stream from MinIO, will regenerate PDF:', streamErr);
+      }
+    }
+
+    if (!pdfBuffer && bookingData && clientData) {
+      const routes = await db
+        .select()
+        .from(transportationRoutesTable)
+        .where(eq(transportationRoutesTable.transportationBookingId, invoiceData.transportationBookingId));
+
+      pdfBuffer = await generateTransportationInvoicePDF(
+        invoiceData,
+        bookingData,
+        clientData,
+        routes
+      );
+
+      try {
+        const pdfUrl = await uploadToMinio(fileName, pdfBuffer, 'application/pdf');
+        await db.update(transportationInvoices).set({ pdfUrl }).where(eq(transportationInvoices.id, invoiceData.id));
+      } catch (uploadErr) {
+        console.warn('Failed to upload regenerated PDF to MinIO:', uploadErr);
+      }
+    }
+
+    if (!pdfBuffer) {
       return c.json({ error: 'PDF not available for this invoice' }, 404);
     }
 
-    return c.redirect(invoiceData.pdfUrl);
+    const isView = c.req.query('view') === 'true';
+    c.header('Content-Type', 'application/pdf');
+    c.header('Content-Disposition', `${isView ? 'inline' : 'attachment'}; filename="${invoiceNumber}.pdf"`);
+    c.header('Content-Length', pdfBuffer.length.toString());
+
+    return c.body(pdfBuffer);
   } catch (error) {
     console.error('Error serving transportation invoice PDF:', error);
     return c.json({ error: 'Failed to serve transportation invoice PDF' }, 500);
@@ -654,22 +704,79 @@ transportationApp.get('/receipt/:number', requireAdminOrFinance, async (c) => {
     }
 
     const receipt = await db
-      .select()
+      .select({
+        receipt: transportationReceipts,
+        booking: transportationBookings,
+        client: clients,
+      })
       .from(transportationReceipts)
+      .leftJoin(transportationBookings, eq(transportationReceipts.transportationBookingId, transportationBookings.id))
+      .leftJoin(clients, eq(transportationBookings.clientId, clients.id))
       .where(eq(transportationReceipts.number, receiptNumber))
       .limit(1);
 
-    if (receipt.length === 0) {
+    if (receipt.length === 0 || !receipt[0]) {
       return c.json({ error: 'Receipt not found' }, 404);
     }
 
-    const receiptData = receipt[0]!;
+    const { receipt: receiptData, booking: bookingData, client: clientData } = receipt[0];
 
-    if (!receiptData.pdfUrl) {
+    const { getFileStreamFromMinio, fileExistsInMinio, generateTransportationReceiptPDF, uploadToMinio } = await import('../utils/pdf');
+
+    let pdfBuffer: Buffer | null = null;
+    const fileName = `transportation-receipts/${receiptNumber}.pdf`;
+
+    if (await fileExistsInMinio(fileName)) {
+      try {
+        const fileStream = await getFileStreamFromMinio(fileName);
+        const chunks: Buffer[] = [];
+        for await (const chunk of fileStream) {
+          chunks.push(typeof chunk === 'string' ? Buffer.from(chunk) : chunk);
+        }
+        pdfBuffer = Buffer.concat(chunks);
+      } catch (streamErr) {
+        console.warn('Failed to stream receipt from MinIO, will regenerate PDF:', streamErr);
+      }
+    }
+
+    if (!pdfBuffer && bookingData && clientData) {
+      const routes = await db
+        .select()
+        .from(transportationRoutesTable)
+        .where(eq(transportationRoutesTable.transportationBookingId, receiptData.transportationBookingId));
+
+      const invoice = await db
+        .select()
+        .from(transportationInvoices)
+        .where(eq(transportationInvoices.transportationBookingId, receiptData.transportationBookingId))
+        .limit(1);
+
+      pdfBuffer = await generateTransportationReceiptPDF(
+        receiptData,
+        bookingData,
+        clientData,
+        routes,
+        invoice[0] || null
+      );
+
+      try {
+        const pdfUrl = await uploadToMinio(fileName, pdfBuffer, 'application/pdf');
+        await db.update(transportationReceipts).set({ pdfUrl }).where(eq(transportationReceipts.id, receiptData.id));
+      } catch (uploadErr) {
+        console.warn('Failed to upload regenerated receipt PDF to MinIO:', uploadErr);
+      }
+    }
+
+    if (!pdfBuffer) {
       return c.json({ error: 'PDF not available for this receipt' }, 404);
     }
 
-    return c.redirect(receiptData.pdfUrl);
+    const isView = c.req.query('view') === 'true';
+    c.header('Content-Type', 'application/pdf');
+    c.header('Content-Disposition', `${isView ? 'inline' : 'attachment'}; filename="${receiptNumber}.pdf"`);
+    c.header('Content-Length', pdfBuffer.length.toString());
+
+    return c.body(pdfBuffer);
   } catch (error) {
     console.error('Error serving receipt PDF:', error);
     return c.json({ error: 'Failed to serve receipt PDF' }, 500);
@@ -769,22 +876,72 @@ transportationApp.get('/voucher/:number', requireAdmin, async (c) => {
     }
 
     const voucher = await db
-      .select()
+      .select({
+        voucher: transportationVouchers,
+        booking: transportationBookings,
+        client: clients,
+      })
       .from(transportationVouchers)
+      .leftJoin(transportationBookings, eq(transportationVouchers.transportationBookingId, transportationBookings.id))
+      .leftJoin(clients, eq(transportationBookings.clientId, clients.id))
       .where(eq(transportationVouchers.number, voucherNumber))
       .limit(1);
 
-    if (voucher.length === 0) {
+    if (voucher.length === 0 || !voucher[0]) {
       return c.json({ error: 'Voucher not found' }, 404);
     }
 
-    const voucherData = voucher[0]!;
+    const { voucher: voucherData, booking: bookingData, client: clientData } = voucher[0];
 
-    if (!voucherData.pdfUrl) {
+    const { getFileStreamFromMinio, fileExistsInMinio, generateTransportationVoucherPDF, uploadToMinio } = await import('../utils/pdf');
+
+    let pdfBuffer: Buffer | null = null;
+    const fileName = `transportation-vouchers/${voucherNumber}.pdf`;
+
+    if (await fileExistsInMinio(fileName)) {
+      try {
+        const fileStream = await getFileStreamFromMinio(fileName);
+        const chunks: Buffer[] = [];
+        for await (const chunk of fileStream) {
+          chunks.push(typeof chunk === 'string' ? Buffer.from(chunk) : chunk);
+        }
+        pdfBuffer = Buffer.concat(chunks);
+      } catch (streamErr) {
+        console.warn('Failed to stream voucher from MinIO, will regenerate PDF:', streamErr);
+      }
+    }
+
+    if (!pdfBuffer && bookingData && clientData) {
+      const routes = await db
+        .select()
+        .from(transportationRoutesTable)
+        .where(eq(transportationRoutesTable.transportationBookingId, voucherData.transportationBookingId));
+
+      pdfBuffer = await generateTransportationVoucherPDF(
+        voucherData,
+        bookingData,
+        clientData,
+        routes
+      );
+
+      try {
+        const pdfUrl = await uploadToMinio(fileName, pdfBuffer, 'application/pdf');
+        await db.update(transportationVouchers).set({ pdfUrl }).where(eq(transportationVouchers.id, voucherData.id));
+      } catch (uploadErr) {
+        console.warn('Failed to upload regenerated voucher PDF to MinIO:', uploadErr);
+      }
+    }
+
+    if (!pdfBuffer) {
       return c.json({ error: 'PDF not available for this voucher' }, 404);
     }
 
-    return c.redirect(voucherData.pdfUrl);
+    const isView = c.req.query('view') === 'true';
+    c.header('Content-Type', 'application/pdf');
+    c.header('Content-Disposition', `${isView ? 'inline' : 'attachment'}; filename="${voucherNumber}.pdf"`);
+    c.header('Content-Length', pdfBuffer.length.toString());
+
+    return c.body(pdfBuffer);
   } catch (error) {
     console.error('Error serving voucher PDF:', error);
     return c.json({ error: 'Failed to serve voucher PDF' }, 500);

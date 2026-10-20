@@ -10,6 +10,7 @@ import { PageLayout } from "@/components/layout/PageLayout";
 import { formatCurrency, formatDate } from "@/lib/utils";
 import { authService } from "@/lib/auth";
 import { useTransportationBookings } from "@/lib/queries/transportationBookings";
+import { apiClient } from "@/lib/api";
 
 export const Route = createFileRoute("/transportation-bookings")({
   beforeLoad: async () => {
@@ -201,37 +202,20 @@ function TransportationBookingsPage() {
                       variant="outline"
                       size="sm"
                       onClick={async () => {
+                        const toastId = toast.loading('Memproses invoice...');
                         try {
-                          const response = await fetch(`/api/transportation/${booking.id}/invoice`, {
-                            method: 'POST',
-                            headers: {
-                              'Content-Type': 'application/json',
-                            },
-                          });
-
-                          if (response.ok) {
-                            const blob = await response.blob();
-                            const url = window.URL.createObjectURL(blob);
-                            const a = document.createElement('a');
-                            a.style.display = 'none';
-                            a.href = url;
-                            a.download = `transportation-invoice-${booking.number}.pdf`;
-                            document.body.appendChild(a);
-                            a.click();
-                            window.URL.revokeObjectURL(url);
-                            toast.success('Invoice generated and downloaded successfully!');
+                          const res = await apiClient.post<any>(`/api/transportation/${booking.id}/invoice`, {});
+                          const invoiceNumber = res?.number || res?.data?.number;
+                          if (invoiceNumber) {
+                            toast.success('Invoice berhasil digenerate!', { id: toastId });
+                            window.open(`/api/transportation/invoice/${encodeURIComponent(invoiceNumber.trim())}`, '_blank');
                           } else {
-                            let errorMsg = 'Failed to generate invoice';
-                            try {
-                              const errData = await response.json();
-                              errorMsg = errData.error || errData.message || errorMsg;
-                            } catch (_) { }
-                            toast.error(errorMsg);
+                            toast.error('Gagal mendapatkan nomor invoice', { id: toastId });
                           }
                         } catch (error) {
                           console.error('Error generating invoice:', error);
-                          const msg = error instanceof Error ? error.message : 'An unexpected error occurred';
-                          toast.error(msg);
+                          const msg = error instanceof Error ? error.message : 'Gagal membuat/mengunduh invoice';
+                          toast.error(msg, { id: toastId });
                         }
                       }}
                       className="h-8 w-8 p-0 border-[#e5e7eb] text-zinc-700 hover:bg-zinc-50 hover:text-black rounded-md flex items-center justify-center transition-colors"
@@ -243,37 +227,20 @@ function TransportationBookingsPage() {
                       variant="outline"
                       size="sm"
                       onClick={async () => {
+                        const toastId = toast.loading('Memproses kwitansi...');
                         try {
-                          const response = await fetch(`/api/transportation/${booking.id}/receipt`, {
-                            method: 'POST',
-                            headers: {
-                              'Content-Type': 'application/json',
-                            },
-                          });
-
-                          if (response.ok) {
-                            const blob = await response.blob();
-                            const url = window.URL.createObjectURL(blob);
-                            const a = document.createElement('a');
-                            a.style.display = 'none';
-                            a.href = url;
-                            a.download = `transportation-receipt-${booking.number}.pdf`;
-                            document.body.appendChild(a);
-                            a.click();
-                            window.URL.revokeObjectURL(url);
-                            toast.success('Receipt generated and downloaded successfully!');
+                          const res = await apiClient.post<any>(`/api/transportation/${booking.id}/receipt`, {});
+                          const receiptNumber = res?.number || res?.data?.number;
+                          if (receiptNumber) {
+                            toast.success('Kwitansi berhasil digenerate!', { id: toastId });
+                            window.open(`/api/transportation/receipt/${encodeURIComponent(receiptNumber.trim())}`, '_blank');
                           } else {
-                            let errorMsg = 'Failed to generate receipt';
-                            try {
-                              const errData = await response.json();
-                              errorMsg = errData.error || errData.message || errorMsg;
-                            } catch (_) { }
-                            toast.error(errorMsg);
+                            toast.error('Gagal mendapatkan nomor kwitansi', { id: toastId });
                           }
                         } catch (error) {
                           console.error('Error generating receipt:', error);
-                          const msg = error instanceof Error ? error.message : 'An unexpected error occurred';
-                          toast.error(msg);
+                          const msg = error instanceof Error ? error.message : 'Gagal membuat/mengunduh kwitansi';
+                          toast.error(msg, { id: toastId });
                         }
                       }}
                       className="h-8 w-8 p-0 border-[#e5e7eb] text-zinc-700 hover:bg-zinc-50 hover:text-black rounded-md flex items-center justify-center transition-colors"
