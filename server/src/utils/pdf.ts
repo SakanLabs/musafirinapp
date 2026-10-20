@@ -117,7 +117,7 @@ export async function generateInvoicePDF(
   } catch (err) {
     console.warn("Browser crashed, restarting for invoice PDF...");
     if (browserInstance) {
-      try { await browserInstance.close(); } catch (e) {}
+      try { await browserInstance.close(); } catch (e) { }
       browserInstance = null;
     }
     const browser = await launchBrowser();
@@ -164,7 +164,7 @@ export async function generateVoucherPDF(
   } catch (err) {
     console.warn("Browser crashed, restarting for voucher PDF...");
     if (browserInstance) {
-      try { await browserInstance.close(); } catch (e) {}
+      try { await browserInstance.close(); } catch (e) { }
       browserInstance = null;
     }
     const browser = await launchBrowser();
@@ -172,114 +172,114 @@ export async function generateVoucherPDF(
   }
 
   try {
-  // Import required modules for Handlebars template
-  const { readFileSync } = await import('fs');
-  const { join } = await import('path');
-  const { fileURLToPath } = await import('url');
-  const { dirname } = await import('path');
-  const Handlebars = await import('handlebars');
+    // Import required modules for Handlebars template
+    const { readFileSync } = await import('fs');
+    const { join } = await import('path');
+    const { fileURLToPath } = await import('url');
+    const { dirname } = await import('path');
+    const Handlebars = await import('handlebars');
 
-  const __filename = fileURLToPath(import.meta.url);
-  const __dirname = dirname(__filename);
+    const __filename = fileURLToPath(import.meta.url);
+    const __dirname = dirname(__filename);
 
-  // Helper function to format date
-  function formatDate(date: Date | string): string {
-    const d = typeof date === 'string' ? new Date(date) : date;
-    return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' }); // DD MONTH YYYY
-  }
-
-  // Helper function to calculate nights
-  function calculateNights(checkIn: Date, checkOut: Date): number {
-    const diffTime = Math.abs(checkOut.getTime() - checkIn.getTime());
-    return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-  }
-
-  // Prepare voucher data for Handlebars template
-  const voucherData = {
-    // Brand info
-    brandName: "Musafirin",
-    brandTagline: "We are musafirin of Baitullah",
-    brandWebsite: "https://hotel.musafirin.co",
-    logoBase64: TemplateHelpers.getLogoBase64(),
-    voucherNo: voucher.number,
-    issueDate: formatDate(new Date()),
-    paymentType: "Prepaid",
-    isPayAtHotel: false,
-    hotelConfirmationNo: booking.hotelConfirmationNo || '',
-    supplierRef: booking.code,
-
-    // Hotel info
-    hotelName: booking.hotelName,
-    hotelAddress: `${booking.hotelName}, ${booking.city}, Saudi Arabia`,
-    hotelPhone: "+966-14-xxxxxxx",
-    hotelEmail: "reservations@hotel.example",
-    hotelMapUrl: `https://maps.google.com/?q=${encodeURIComponent(booking.hotelName)}`,
-
-    // Guest info
-    leadGuest: {
-      name: voucher.guestName || client.name,
-      email: client.email,
-      phone: client.phone || '+966-5XXXXXXX'
-    },
-    guests: [], // Additional guests if any
-
-    // Calculate totals from booking items
-    totalRooms: bookingItems.reduce((sum, item) => sum + item.roomCount, 0),
-
-    // Stay details
-    checkIn: formatDate(booking.checkIn ?? new Date()),
-    checkOut: formatDate(booking.checkOut ?? new Date()),
-    policyCheckInTime: "16:00",
-    policyCheckOutTime: "12:00",
-    nights: calculateNights(booking.checkIn, booking.checkOut),
-    rooms: bookingItems.reduce((sum, item) => sum + item.roomCount, 0),
-    // Note: Pax data (adults/children) tidak tersedia di booking items saat ini
-    adults: 0, // Data tidak tersedia
-    children: 0, // Data tidak tersedia
-
-    // Room details dari booking items yang sebenarnya
-    roomsDetail: bookingItems.map(item => ({
-      roomType: item.roomType,
-      mealPlan: TemplateHelpers.formatMealPlan(booking.mealPlan),
-      quantity: item.roomCount,
-      remarks: '-'
-    })),
-
-    // Inclusions and policies
-    inclusions: [
-      "Wi-Fi gratis",
-      "Akses ke fasilitas hotel"
-    ],
-    specialRequest: "",
-    cancellationPolicy: "Mengikuti kebijakan hotel; no-show dikenakan 1 malam.",
-    paymentNote: "Prepaid — hotel tidak akan menagih tamu saat check-in.",
-
-    // Support
-    supportEmail: "support@musafirin.co",
-    supportPhone: "+966-539101812"
-  };
-
-  // Load and compile template
-  const templatePath = join(__dirname, '../templates/voucher.html');
-  const templateContent = readFileSync(templatePath, 'utf-8');
-  const template = Handlebars.compile(templateContent);
-
-  // Generate HTML
-  const html = template(voucherData);
-
-  await page.setContent(html);
-  const pdf = await page.pdf({
-    format: 'A4',
-    printBackground: true,
-    margin: {
-      top: '20px',
-      right: '20px',
-      bottom: '20px',
-      left: '20px'
+    // Helper function to format date
+    function formatDate(date: Date | string): string {
+      const d = typeof date === 'string' ? new Date(date) : date;
+      return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' }); // DD MONTH YYYY
     }
-  });
 
-  return Buffer.from(pdf);
+    // Helper function to calculate nights
+    function calculateNights(checkIn: Date, checkOut: Date): number {
+      const diffTime = Math.abs(checkOut.getTime() - checkIn.getTime());
+      return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    }
+
+    // Prepare voucher data for Handlebars template
+    const voucherData = {
+      // Brand info
+      brandName: "Musafirin",
+      brandTagline: "We are musafirin of Baitullah",
+      brandWebsite: "https://hotel.musafirin.co",
+      logoBase64: TemplateHelpers.getLogoBase64(),
+      voucherNo: voucher.number,
+      issueDate: formatDate(new Date()),
+      paymentType: "Prepaid",
+      isPayAtHotel: false,
+      hotelConfirmationNo: booking.hotelConfirmationNo || '',
+      supplierRef: booking.code,
+
+      // Hotel info
+      hotelName: booking.hotelName,
+      hotelAddress: `${booking.hotelName}, ${booking.city}, Saudi Arabia`,
+      hotelPhone: "+966-14-xxxxxxx",
+      hotelEmail: "reservations@hotel.example",
+      hotelMapUrl: `https://maps.google.com/?q=${encodeURIComponent(booking.hotelName)}`,
+
+      // Guest info
+      leadGuest: {
+        name: voucher.guestName || client.name,
+        email: client.email,
+        phone: client.phone || '+966-5XXXXXXX'
+      },
+      guests: [], // Additional guests if any
+
+      // Calculate totals from booking items
+      totalRooms: bookingItems.reduce((sum, item) => sum + item.roomCount, 0),
+
+      // Stay details
+      checkIn: formatDate(booking.checkIn ?? new Date()),
+      checkOut: formatDate(booking.checkOut ?? new Date()),
+      policyCheckInTime: "16:00",
+      policyCheckOutTime: "12:00",
+      nights: calculateNights(booking.checkIn, booking.checkOut),
+      rooms: bookingItems.reduce((sum, item) => sum + item.roomCount, 0),
+      // Note: Pax data (adults/children) tidak tersedia di booking items saat ini
+      adults: 0, // Data tidak tersedia
+      children: 0, // Data tidak tersedia
+
+      // Room details dari booking items yang sebenarnya
+      roomsDetail: bookingItems.map(item => ({
+        roomType: item.roomType,
+        mealPlan: TemplateHelpers.formatMealPlan(booking.mealPlan),
+        quantity: item.roomCount,
+        remarks: '-'
+      })),
+
+      // Inclusions and policies
+      inclusions: [
+        "Wi-Fi gratis",
+        "Akses ke fasilitas hotel"
+      ],
+      specialRequest: "",
+      cancellationPolicy: "Mengikuti kebijakan hotel; no-show dikenakan 1 malam.",
+      paymentNote: "Prepaid — hotel tidak akan menagih tamu saat check-in.",
+
+      // Support
+      supportEmail: "support@musafirin.co",
+      supportPhone: "+966-539101812"
+    };
+
+    // Load and compile template
+    const templatePath = join(__dirname, '../templates/voucher.html');
+    const templateContent = readFileSync(templatePath, 'utf-8');
+    const template = Handlebars.compile(templateContent);
+
+    // Generate HTML
+    const html = template(voucherData);
+
+    await page.setContent(html);
+    const pdf = await page.pdf({
+      format: 'A4',
+      printBackground: true,
+      margin: {
+        top: '20px',
+        right: '20px',
+        bottom: '20px',
+        left: '20px'
+      }
+    });
+
+    return Buffer.from(pdf);
   } finally {
     await page.close();
   }
@@ -663,7 +663,7 @@ export async function generateServiceOrderInvoicePDF(
   } catch (err) {
     console.warn('Browser crashed, restarting for service order invoice PDF...');
     if (browserInstance) {
-      try { await browserInstance.close(); } catch (e) {}
+      try { await browserInstance.close(); } catch (e) { }
       browserInstance = null;
     }
     const browser = await launchBrowser();
@@ -1965,7 +1965,7 @@ export async function generateManualInvoicePDF(
       bank: defaultBank,
       billingContact: {
         email: 'finance@musafirin.co',
-        phone: '+966 539 101 812'
+        phone: '+62 852-1830-0910'
       },
       termsTitle: 'Ketentuan Pemesanan',
       termsHtml: '',
