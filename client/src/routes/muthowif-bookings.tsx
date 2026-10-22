@@ -16,6 +16,7 @@ import {
 import { authService } from "@/lib/auth"
 import { useMuthowifBookings } from "@/lib/queries/muthowifBookings"
 import { formatCurrency } from "@/lib/utils"
+import { formatOperationalDate, OPERATIONAL_TIMEZONE } from "@/lib/date"
 
 export const Route = createFileRoute("/muthowif-bookings")({
   beforeLoad: async () => {
@@ -129,16 +130,32 @@ function MuthowifBookingsPage() {
                       <td className="px-6 py-4">
                         <div className="text-slate-700 flex items-center gap-1.5">
                           <Calendar className="w-4 h-4 text-slate-400" />
-                          {new Date(booking.dateTime).toLocaleDateString()}
+                          {formatOperationalDate(booking.dateTime, 'medium')}
                         </div>
                         <div className="text-slate-500 text-xs mt-0.5 ml-5.5">
-                          {new Date(booking.dateTime).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
+                          {new Intl.DateTimeFormat('id-ID', { timeZone: OPERATIONAL_TIMEZONE, hour: '2-digit', minute: '2-digit' }).format(new Date(booking.dateTime))} WAS
                         </div>
                       </td>
                       <td className="px-6 py-4">
                         <span className="font-semibold text-slate-900">
                           {booking.currency} {formatCurrency(parseFloat(booking.totalAmount), booking.currency)}
                         </span>
+                        {booking.paymentStatus && (
+                          <div className="mt-1">
+                            <Badge
+                              variant="outline"
+                              className={`text-[10px] font-semibold py-0.5 px-2 ${
+                                booking.paymentStatus === 'paid'
+                                  ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                                  : booking.paymentStatus === 'partial'
+                                    ? 'bg-amber-50 text-amber-700 border-amber-200'
+                                    : 'bg-zinc-50 text-zinc-600 border-zinc-200'
+                              }`}
+                            >
+                              {booking.paymentStatus === 'paid' ? 'Lunas' : booking.paymentStatus === 'partial' ? 'Sebagian' : 'Belum Bayar'}
+                            </Badge>
+                          </div>
+                        )}
                       </td>
                       <td className="px-6 py-4">
                         <Badge variant="outline" className={`${getStatusColor(booking.status)} capitalize px-2.5 py-0.5`}>

@@ -220,7 +220,7 @@ function CreateMuthowifBookingPage() {
               </div>
 
               <div className="space-y-2">
-                <label className="text-sm font-semibold text-slate-700">Date and Time <span className="text-red-500">*</span></label>
+                <label className="text-sm font-semibold text-slate-700">Date and Time (Waktu Saudi) <span className="text-red-500">*</span></label>
                 <div className="relative">
                   <Calendar className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
                   <Input
