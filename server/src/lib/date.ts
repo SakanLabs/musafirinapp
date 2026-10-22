@@ -134,3 +134,16 @@ export function formatOperationalDate(
     year: 'numeric',
   }).format(d);
 }
+
+/**
+ * Parses a wall-clock date ("YYYY-MM-DD") and optional time ("HH:mm" / "HH:mm:ss")
+ * entered by an operator as Asia/Riyadh time. Returns null when the input is invalid.
+ */
+export function parseOperationalDateTime(dateStr: string, timeStr: string = ''): Date | null {
+  const date = (dateStr || '').trim();
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return null;
+  const time = (timeStr || '').trim() || '00:00';
+  const normalizedTime = /^\d{2}:\d{2}$/.test(time) ? `${time}:00` : time;
+  const parsed = new Date(`${date}T${normalizedTime}+03:00`);
+  return isNaN(parsed.getTime()) ? null : parsed;
+}

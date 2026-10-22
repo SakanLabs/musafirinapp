@@ -58,6 +58,11 @@ export interface CreateTransportationBookingData {
     vehicleType: string;
     price: number;
     notes?: string;
+    /** Existing route id, lets the server keep its driver/vehicle assignment */
+    id?: number | string;
+    driverName?: string;
+    driverPhone?: string;
+    vehiclePlateNumber?: string;
   }[];
 }
 
@@ -145,6 +150,32 @@ export function useUpdateTransportationBooking() {
       queryClient.setQueryData(transportationBookingKeys.detail(response.id), response);
       // Invalidate bookings list to refresh
       queryClient.invalidateQueries({ queryKey: transportationBookingKeys.lists() });
+    },
+  });
+}
+
+export interface UpdateTransportationOperationsData {
+  id: string | number;
+  status?: TransportationBooking['status'];
+  routes?: { id: number; driverName?: string; driverPhone?: string; vehiclePlateNumber?: string }[];
+}
+
+// Update booking status and driver/vehicle per route (operational fields only)
+export function useUpdateTransportationOperations() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ id, ...payload }: UpdateTransportationOperationsData) => {
+      const response = await apiClient.patch<{ success: boolean; data: TransportationBooking }>(
+        `${API_ENDPOINTS.TRANSPORTATION}/${id}/operations`,
+        payload
+      );
+      return response.data;
+    },
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: transportationBookingKeys.detail(variables.id) });
+      queryClient.invalidateQueries({ queryKey: transportationBookingKeys.lists() });
+      queryClient.invalidateQueries({ queryKey: ['arrivals'] });
     },
   });
 }

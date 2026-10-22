@@ -564,7 +564,7 @@ function CreateTransportationBookingPage() {
                         />
                       </div>
                       <div>
-                        <Label htmlFor={`pickupTime-${route.id}`} className="block text-xs font-semibold text-zinc-700 uppercase tracking-wider mb-2">Jam Penjemputan *</Label>
+                        <Label htmlFor={`pickupTime-${route.id}`} className="block text-xs font-semibold text-zinc-700 uppercase tracking-wider mb-2">Jam Penjemputan (Waktu Saudi) *</Label>
                         <Input
                           id={`pickupTime-${route.id}`}
                           type="time"

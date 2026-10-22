@@ -9,6 +9,7 @@ import { PageLayout } from "@/components/layout/PageLayout";
 import { authService } from "@/lib/auth";
 import { useTransportationBooking, useUpdateTransportationBooking } from "@/lib/queries/transportationBookings";
 import { TRANSPORT_LOCATIONS } from "@/lib/constants";
+import { toOperationalDateTimeInput } from "@/lib/date";
 
 export const Route = createFileRoute("/transportation-booking-edit/$transportationBookingId")({
   beforeLoad: async () => {
@@ -28,6 +29,9 @@ interface RouteData {
   vehicleType: string;
   price: number;
   notes?: string;
+  driverName?: string;
+  driverPhone?: string;
+  vehiclePlateNumber?: string;
 }
 
 function TransportationBookingEditPage() {
@@ -61,12 +65,15 @@ function TransportationBookingEditPage() {
       if (transportationBooking.routes && transportationBooking.routes.length > 0) {
         setRoutes(transportationBooking.routes.map(route => ({
           id: route.id,
-          pickupDateTime: route.pickupDateTime.slice(0, 16), // Format for datetime-local input
+          pickupDateTime: toOperationalDateTimeInput(route.pickupDateTime), // Saudi time for datetime-local input
           originLocation: route.originLocation,
           destinationLocation: route.destinationLocation,
           vehicleType: route.vehicleType,
           price: parseFloat(route.price),
           notes: route.notes || "",
+          driverName: route.driverName || undefined,
+          driverPhone: route.driverPhone || undefined,
+          vehiclePlateNumber: route.vehiclePlateNumber || undefined,
         })));
       } else {
         // Add default route if no routes exist
@@ -132,7 +139,7 @@ function TransportationBookingEditPage() {
         customerEmail: formData.customerEmail || undefined,
         totalAmount: totalAmount,
         currency: 'SAR',
-        status: 'pending' as const,
+        status: transportationBooking?.status,
         notes: formData.notes || undefined,
         routes: routes.map(route => ({
           pickupDate: route.pickupDateTime.split('T')[0],
@@ -142,6 +149,10 @@ function TransportationBookingEditPage() {
           vehicleType: route.vehicleType,
           price: route.price,
           notes: route.notes || undefined,
+          id: route.id,
+          driverName: route.driverName,
+          driverPhone: route.driverPhone,
+          vehiclePlateNumber: route.vehiclePlateNumber,
         }))
       };
 
@@ -309,7 +320,7 @@ function TransportationBookingEditPage() {
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-y-4 gap-x-6">
                   <div>
                     <label className="block text-[10px] font-bold text-zinc-400 uppercase tracking-wider mb-1.5">
-                      Pickup Date & Time *
+                      Pickup Date & Time (Waktu Saudi) *
                     </label>
                     <Input
                       type="datetime-local"

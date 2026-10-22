@@ -2,13 +2,16 @@ import { createFileRoute, redirect, useNavigate } from "@tanstack/react-router";
 import { toast } from "sonner";
 import { 
   ArrowLeft, Edit, FileText, Receipt, Trash2, Loader2, Package,
-  CreditCard, Wallet, Banknote, Building2, CheckCircle2
+  CreditCard, Wallet, Banknote, Building2, CheckCircle2,
+  Truck, Save, X, AlertTriangle
 } from "lucide-react";
+import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { PageLayout } from "@/components/layout/PageLayout";
 import { formatCurrency, formatDate } from "@/lib/utils";
+import { formatOperationalDate } from "@/lib/date";
 import { authService } from "@/lib/auth";
 import { 
   useTransportationBooking, 
@@ -19,12 +22,23 @@ import {
   useTransportationBookingBilling,
   usePayTransportationBooking,
   useDeleteTransportationPayment,
+  useUpdateTransportationOperations,
+  type TransportationBooking,
   type TransportationPaymentMethod
 } from "@/lib/queries/transportationBookings";
 import { DueDateModal } from "@/components/modals/DueDateModal";
 import { TransportationPaymentModal } from "@/components/modals/TransportationPaymentModal";
 import { useState } from "react";
 // Helper functions
+const STATUS_OPTIONS: { value: TransportationBooking['status']; label: string }[] = [
+  { value: 'pending', label: 'Pending' },
+  { value: 'confirmed', label: 'Confirmed' },
+  { value: 'completed', label: 'Completed' },
+  { value: 'cancelled', label: 'Cancelled' },
+];
+
+type DriverDraft = { driverName: string; driverPhone: string; vehiclePlateNumber: string };
+
 const getStatusBadgeStyle = (status: string) => {
   switch (status?.toLowerCase()) {
     case 'confirmed':
@@ -65,6 +79,62 @@ function TransportationBookingDetailPage() {
   const { data: billingData } = useTransportationBookingBilling(transportationBookingId);
   const payMutation = usePayTransportationBooking();
   const deletePaymentMutation = useDeleteTransportationPayment();
+
+  // Operational data: booking status and driver/vehicle per route
+  const updateOperationsMutation = useUpdateTransportationOperations();
+  const [isEditingDrivers, setIsEditingDrivers] = useState(false);
+  const [driverDrafts, setDriverDrafts] = useState<Record<number, DriverDraft>>({});
+
+  const handleStatusChange = async (status: TransportationBooking['status']) => {
+    if (!transportationBooking || status === transportationBooking.status) return;
+    if (status === 'cancelled' && !window.confirm(`Batalkan booking ${transportationBooking.number}? Booking tidak akan tampil lagi di Upcoming Arrivals.`)) {
+      return;
+    }
+    try {
+      await updateOperationsMutation.mutateAsync({ id: transportationBookingId, status });
+      toast.success(`Status booking diubah menjadi ${status}`);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Gagal mengubah status booking');
+    }
+  };
+
+  const startEditingDrivers = () => {
+    const drafts: Record<number, DriverDraft> = {};
+    (transportationBooking?.routes || []).forEach((route) => {
+      drafts[route.id] = {
+        driverName: route.driverName || '',
+        driverPhone: route.driverPhone || '',
+        vehiclePlateNumber: route.vehiclePlateNumber || '',
+      };
+    });
+    setDriverDrafts(drafts);
+    setIsEditingDrivers(true);
+  };
+
+  const updateDriverDraft = (routeId: number, field: keyof DriverDraft, value: string) => {
+    setDriverDrafts((prev) => ({ ...prev, [routeId]: { ...prev[routeId]!, [field]: value } }));
+  };
+
+  // Same driver for every segment is the common case, so allow copying the first one down
+  const copyFirstDriverToAll = () => {
+    const routes = transportationBooking?.routes || [];
+    const first = routes[0] && driverDrafts[routes[0].id];
+    if (!first) return;
+    setDriverDrafts(Object.fromEntries(routes.map((route) => [route.id, { ...first }])));
+  };
+
+  const saveDrivers = async () => {
+    try {
+      await updateOperationsMutation.mutateAsync({
+        id: transportationBookingId,
+        routes: Object.entries(driverDrafts).map(([routeId, draft]) => ({ id: Number(routeId), ...draft })),
+      });
+      toast.success('Driver & kendaraan berhasil disimpan');
+      setIsEditingDrivers(false);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Gagal menyimpan driver & kendaraan');
+    }
+  };
 
   const [isDueDateModalOpen, setIsDueDateModalOpen] = useState(false);
   const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
@@ -270,9 +340,17 @@ function TransportationBookingDetailPage() {
               <ArrowLeft className="h-4 w-4 mr-2" />
               Kembali ke Registrasi
             </Button>
-            <span className={`inline-flex items-center px-2.5 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider border ${getStatusBadgeStyle(transportationBooking.status)}`}>
-              {transportationBooking.status}
-            </span>
+            <select
+              value={transportationBooking.status}
+              onChange={(e) => handleStatusChange(e.target.value as TransportationBooking['status'])}
+              disabled={updateOperationsMutation.isPending}
+              title="Ubah status booking"
+              className={`h-7 pl-2.5 pr-7 rounded-md text-[10px] font-bold uppercase tracking-wider border cursor-pointer focus:outline-none focus:ring-1 focus:ring-[#111111] disabled:opacity-60 ${getStatusBadgeStyle(transportationBooking.status)}`}
+            >
+              {STATUS_OPTIONS.map((option) => (
+                <option key={option.value} value={option.value}>{option.label}</option>
+              ))}
+            </select>
             {billingSummary && (
               <span className={`inline-flex items-center px-2.5 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider border ${
                 billingSummary.paymentStatus === 'paid'
@@ -389,9 +467,56 @@ function TransportationBookingDetailPage() {
 
         {/* Transportation Routes */}
         <div className="border border-[#e5e7eb] rounded-xl bg-white shadow-none p-6">
-          <h2 className="text-sm font-bold text-[#111111] uppercase tracking-wider mb-6 pb-2 border-b border-gray-100">
-            Transportation Routes
-          </h2>
+          <div className="flex flex-wrap items-center justify-between gap-2 mb-6 pb-2 border-b border-gray-100">
+            <h2 className="text-sm font-bold text-[#111111] uppercase tracking-wider">
+              Transportation Routes
+            </h2>
+            {(transportationBooking.routes?.length || 0) > 0 && (
+              isEditingDrivers ? (
+                <div className="flex items-center gap-2">
+                  {(transportationBooking.routes?.length || 0) > 1 && (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      onClick={copyFirstDriverToAll}
+                      className="h-8 px-2.5 text-xs font-semibold text-zinc-600 hover:text-black"
+                    >
+                      Samakan dengan Segment #1
+                    </Button>
+                  )}
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => setIsEditingDrivers(false)}
+                    disabled={updateOperationsMutation.isPending}
+                    className="h-8 px-3 border-[#e5e7eb] text-zinc-700 text-xs font-semibold bg-white shadow-none"
+                  >
+                    <X className="h-3.5 w-3.5 mr-1" />
+                    Batal
+                  </Button>
+                  <Button
+                    type="button"
+                    onClick={saveDrivers}
+                    disabled={updateOperationsMutation.isPending}
+                    className="h-8 px-3 bg-[#111111] hover:bg-[#242424] text-white text-xs font-semibold shadow-none"
+                  >
+                    {updateOperationsMutation.isPending ? <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" /> : <Save className="h-3.5 w-3.5 mr-1" />}
+                    Simpan
+                  </Button>
+                </div>
+              ) : (
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={startEditingDrivers}
+                  className="h-8 px-3 border-[#e5e7eb] text-zinc-700 hover:bg-gray-50 hover:text-black text-xs font-semibold bg-white shadow-none"
+                >
+                  <Truck className="h-3.5 w-3.5 mr-1.5" />
+                  Atur Driver & Kendaraan
+                </Button>
+              )
+            )}
+          </div>
           <div className="space-y-5">
             {transportationBooking.routes && transportationBooking.routes.length > 0 ? (
               transportationBooking.routes.map((route, index) => (
@@ -407,7 +532,7 @@ function TransportationBookingDetailPage() {
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-y-4 gap-x-6">
                     <div className="space-y-0.5">
                       <label className="block text-[10px] font-bold text-zinc-400 uppercase tracking-wider">Pickup Date & Time</label>
-                      <p className="text-xs font-bold text-zinc-800">{formatDate(route.pickupDateTime)}</p>
+                      <p className="text-xs font-bold text-zinc-800">{formatOperationalDate(route.pickupDateTime, 'datetime')} WAS</p>
                     </div>
                     <div className="space-y-0.5">
                       <label className="block text-[10px] font-bold text-zinc-400 uppercase tracking-wider">Origin Location (From)</label>
@@ -420,6 +545,72 @@ function TransportationBookingDetailPage() {
                     <div className="space-y-0.5">
                       <label className="block text-[10px] font-bold text-zinc-400 uppercase tracking-wider">Segment Price</label>
                       <p className="text-xs font-bold text-[#111111]">{formatCurrency(route.price, transportationBooking.currency)}</p>
+                    </div>
+                    {/* Operational assignment: driver & vehicle */}
+                    <div className="md:col-span-2 lg:col-span-3 pt-3 border-t border-gray-100 mt-1">
+                      {isEditingDrivers && driverDrafts[route.id] ? (
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                          <div className="space-y-1">
+                            <label className="block text-[10px] font-bold text-zinc-400 uppercase tracking-wider">Nama Driver</label>
+                            <Input
+                              value={driverDrafts[route.id]!.driverName}
+                              onChange={(e) => updateDriverDraft(route.id, 'driverName', e.target.value)}
+                              placeholder="Nama driver"
+                              className="h-9 text-xs border-[#e5e7eb] shadow-none"
+                            />
+                          </div>
+                          <div className="space-y-1">
+                            <label className="block text-[10px] font-bold text-zinc-400 uppercase tracking-wider">No. HP Driver</label>
+                            <Input
+                              value={driverDrafts[route.id]!.driverPhone}
+                              onChange={(e) => updateDriverDraft(route.id, 'driverPhone', e.target.value)}
+                              placeholder="+966..."
+                              inputMode="tel"
+                              className="h-9 text-xs border-[#e5e7eb] shadow-none"
+                            />
+                          </div>
+                          <div className="space-y-1">
+                            <label className="block text-[10px] font-bold text-zinc-400 uppercase tracking-wider">Nomor Kendaraan</label>
+                            <Input
+                              value={driverDrafts[route.id]!.vehiclePlateNumber}
+                              onChange={(e) => updateDriverDraft(route.id, 'vehiclePlateNumber', e.target.value.toUpperCase())}
+                              placeholder="Plat nomor"
+                              className="h-9 text-xs border-[#e5e7eb] shadow-none uppercase"
+                            />
+                          </div>
+                        </div>
+                      ) : route.driverName ? (
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-y-3 gap-x-6">
+                          <div className="space-y-0.5">
+                            <label className="block text-[10px] font-bold text-zinc-400 uppercase tracking-wider">Nama Driver</label>
+                            <p className="text-xs font-bold text-zinc-800">{route.driverName}</p>
+                          </div>
+                          <div className="space-y-0.5">
+                            <label className="block text-[10px] font-bold text-zinc-400 uppercase tracking-wider">No. HP Driver</label>
+                            {route.driverPhone ? (
+                              <a
+                                href={`https://wa.me/${route.driverPhone.replace(/\D/g, '')}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-xs font-bold text-emerald-700 hover:underline"
+                              >
+                                {route.driverPhone}
+                              </a>
+                            ) : (
+                              <p className="text-xs font-medium text-zinc-400">-</p>
+                            )}
+                          </div>
+                          <div className="space-y-0.5">
+                            <label className="block text-[10px] font-bold text-zinc-400 uppercase tracking-wider">Nomor Kendaraan</label>
+                            <p className="text-xs font-bold text-zinc-800 font-mono">{route.vehiclePlateNumber || '-'}</p>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="inline-flex items-center gap-1.5 text-[11px] font-semibold text-amber-700 bg-amber-50 border border-amber-200 rounded px-2 py-1">
+                          <AlertTriangle className="h-3 w-3" />
+                          Driver & kendaraan belum diatur
+                        </div>
+                      )}
                     </div>
                     {route.notes && (
                       <div className="md:col-span-2 lg:col-span-3 space-y-0.5 pt-2 border-t border-gray-50 mt-1">
