@@ -3,6 +3,7 @@ import { eq, desc, sql } from 'drizzle-orm';
 import { db } from '../db';
 import { invoices, bookings, clients, bookingItems, bookingItemPricingPeriods, clientDeposits, depositTransactions, bookingServiceItems, invoicePayments, transportationInvoices, transportationBookings, serviceOrderInvoices, serviceOrders, customLaInvoices, customLaRequests, muthowifInvoices, muthowifBookings, manualInvoices, manualInvoicePayments, manualInvoiceReceipts, agentRequestInvoices, agentRequests, user } from '../db/schema';
 import { requireAdminOrFinance } from '../middleware/auth';
+import { allocateMergedInvoicePayment, reverseMergedInvoicePayment, type PaymentAllocation } from '../services/MergedInvoicePaymentSync';
 import { generateInvoiceNumber, generateInvoicePDF, generateManualInvoicePDF, generateManualInvoiceReceiptPDF, uploadToMinio, checkFileExistsInMinio, deleteFromMinio } from '../utils/pdf';
 import { TemplateHelpers } from '../utils/template';
 import type { NewInvoice, NewDepositTransaction, NewInvoicePayment, NewManualInvoicePayment, NewManualInvoiceReceipt } from '../db/schema';
@@ -1067,6 +1068,140 @@ async function convertToTargetCurrency(
 }
 
 // POST /api/invoices/merge/preview - Preview merge results without saving
+type MergeBookingServiceType = 'hotel' | 'transportation' | 'muthowif';
+
+// Unique per call even when several invoices are created in the same millisecond
+const sourceInvoiceNumber = (prefix: string, index: number) =>
+  `${prefix}-${new Date().getFullYear()}-${String(Date.now()).slice(-6)}${index}`;
+
+/**
+ * Returns the active invoice of a booking, creating a draft one when the booking has none yet,
+ * so bookings can be billed together without opening each module first.
+ */
+async function getOrCreateBookingInvoice(serviceType: MergeBookingServiceType, bookingId: number, index: number) {
+  const issueDate = new Date();
+  const dueDate = new Date(issueDate.getTime() + 7 * 24 * 60 * 60 * 1000);
+  const notCancelled = (statusColumn: any) => sql`${statusColumn} != 'cancelled'`;
+
+  if (serviceType === 'hotel') {
+    const [existing] = await db.select({ id: invoices.id, number: invoices.number }).from(invoices)
+      .where(sql`${eq(invoices.bookingId, bookingId)} AND ${notCancelled(invoices.status)}`)
+      .orderBy(desc(invoices.id)).limit(1);
+    if (existing) return { ...existing, type: serviceType, created: false };
+
+    const [booking] = await db.select().from(bookings).where(eq(bookings.id, bookingId)).limit(1);
+    if (!booking) return null;
+    // Hotel invoices include extra service items (visa, bus, ...), same as POST /api/invoices
+    const extras = await db.select().from(bookingServiceItems).where(eq(bookingServiceItems.bookingId, bookingId));
+    const extraTotal = extras.reduce((sum, item) => sum + (Number((item as any).subtotal ?? 0) || 0), 0);
+
+    const [created] = await db.insert(invoices).values({
+      number: generateInvoiceNumber().replace(/(\d+)$/, `$1${index}`),
+      bookingId,
+      amount: ((Number(booking.totalAmount) || 0) + extraTotal).toFixed(2),
+      currency: 'SAR',
+      issueDate,
+      dueDate,
+      status: 'draft',
+      pdfUrl: null,
+    }).returning({ id: invoices.id, number: invoices.number });
+    return { ...created!, type: serviceType, created: true };
+  }
+
+  if (serviceType === 'transportation') {
+    const [existing] = await db.select({ id: transportationInvoices.id, number: transportationInvoices.number }).from(transportationInvoices)
+      .where(sql`${eq(transportationInvoices.transportationBookingId, bookingId)} AND ${notCancelled(transportationInvoices.status)}`)
+      .orderBy(desc(transportationInvoices.createdAt)).limit(1);
+    if (existing) return { ...existing, type: serviceType, created: false };
+
+    const [booking] = await db.select().from(transportationBookings).where(eq(transportationBookings.id, bookingId)).limit(1);
+    if (!booking) return null;
+    const [created] = await db.insert(transportationInvoices).values({
+      number: sourceInvoiceNumber('TI', index),
+      transportationBookingId: bookingId,
+      amount: booking.totalAmount || '0',
+      currency: booking.currency || 'SAR',
+      issueDate,
+      dueDate,
+      status: 'draft',
+    }).returning({ id: transportationInvoices.id, number: transportationInvoices.number });
+    return { ...created!, type: serviceType, created: true };
+  }
+
+  const [existing] = await db.select({ id: muthowifInvoices.id, number: muthowifInvoices.number }).from(muthowifInvoices)
+    .where(sql`${eq(muthowifInvoices.muthowifBookingId, bookingId)} AND ${notCancelled(muthowifInvoices.status)}`)
+    .orderBy(desc(muthowifInvoices.createdAt)).limit(1);
+  if (existing) return { ...existing, type: serviceType, created: false };
+
+  const [booking] = await db.select().from(muthowifBookings).where(eq(muthowifBookings.id, bookingId)).limit(1);
+  if (!booking) return null;
+  const [created] = await db.insert(muthowifInvoices).values({
+    number: sourceInvoiceNumber('MBI', index),
+    muthowifBookingId: bookingId,
+    amount: booking.totalAmount,
+    currency: booking.currency || 'SAR',
+    issueDate,
+    dueDate,
+    status: 'draft',
+  }).returning({ id: muthowifInvoices.id, number: muthowifInvoices.number });
+  return { ...created!, type: serviceType, created: true };
+}
+
+// POST /api/invoices/merge/from-bookings - Resolve bookings to invoices (auto-creating drafts) for a combined bill
+invoiceRoutes.post('/merge/from-bookings', requireAdminOrFinance, async (c) => {
+  try {
+    const body = await c.req.json().catch(() => ({}));
+    const selections: Array<{ serviceType: MergeBookingServiceType; id: number }> = Array.isArray(body?.bookings) ? body.bookings : [];
+    const allowedTypes: MergeBookingServiceType[] = ['hotel', 'transportation', 'muthowif'];
+
+    const unique = selections.filter((sel, i) =>
+      allowedTypes.includes(sel.serviceType) && Number.isInteger(sel.id) &&
+      selections.findIndex((o) => o.serviceType === sel.serviceType && o.id === sel.id) === i
+    );
+    if (unique.length < 2) {
+      return c.json({ error: 'Pilih minimal 2 booking untuk dibuatkan tagihan gabungan' }, 400);
+    }
+
+    // Invoices already billed inside another active merged invoice, to warn about double billing
+    const activeMerged = await db.select({ number: manualInvoices.number, meta: manualInvoices.meta, status: manualInvoices.status })
+      .from(manualInvoices)
+      .where(sql`${manualInvoices.meta} ->> 'isMerged' = 'true' AND ${manualInvoices.status} != 'cancelled'`);
+    const mergedInto = (type: string, invoiceId: number) =>
+      activeMerged.find((m) => ((m.meta as any)?.sourceInvoices || []).some((src: any) => src.invoiceType === type && src.invoiceId === invoiceId))?.number || null;
+
+    const resolved: any[] = [];
+    const warnings: string[] = [];
+
+    for (const [index, sel] of unique.entries()) {
+      const ref = await getOrCreateBookingInvoice(sel.serviceType, sel.id, index);
+      if (!ref) {
+        warnings.push(`Booking ${sel.serviceType} #${sel.id} tidak ditemukan`);
+        continue;
+      }
+      const invoice = await fetchInvoiceByTypeAndId({ id: ref.id, type: ref.type });
+      if (!invoice) continue;
+
+      const alreadyMergedInto = mergedInto(ref.type, ref.id);
+      if (alreadyMergedInto) {
+        warnings.push(`${invoice.number} (${invoice.bookingCode}) sudah ditagih di ${alreadyMergedInto}`);
+      }
+      resolved.push({ ...invoice, created: ref.created, alreadyMergedInto });
+    }
+
+    return c.json({
+      success: true,
+      data: {
+        invoices: resolved,
+        createdCount: resolved.filter((r) => r.created).length,
+        warnings,
+      },
+    });
+  } catch (error) {
+    console.error('Error preparing merge from bookings:', error);
+    return c.json({ error: 'Gagal menyiapkan tagihan gabungan dari booking' }, 500);
+  }
+});
+
 invoiceRoutes.post('/merge/preview', requireAdminOrFinance, async (c) => {
   try {
     const body = await c.req.json().catch(() => ({}));
@@ -1783,16 +1918,48 @@ invoiceRoutes.post('/manual/:id/pay', requireAdminOrFinance, async (c) => {
         })
         .returning();
 
+      // Merged invoice: forward the payment to each source invoice so every booking shows the right status
+      const invoiceMeta: any = invoice.meta || {};
+      let allocations: PaymentAllocation[] = [];
+      if (invoiceMeta.isMerged && Array.isArray(invoiceMeta.sourceInvoices) && invoiceMeta.sourceInvoices.length > 0) {
+        const priorAllocations: PaymentAllocation[] = Array.isArray(invoiceMeta.paymentAllocations) ? invoiceMeta.paymentAllocations : [];
+        allocations = await allocateMergedInvoicePayment(tx, {
+          mergedInvoiceNumber: invoice.number,
+          mergedPaymentId: paymentRecord!.id,
+          sourceInvoices: invoiceMeta.sourceInvoices,
+          priorAllocations,
+          amount: effectivePayAmount,
+          method,
+          referenceNumber: paymentRecord!.referenceNumber || `PAY-${Date.now()}`,
+          paidAt: paymentRecord!.paidAt,
+        });
+
+        await tx
+          .update(manualInvoicePayments)
+          .set({ meta: { ...(paymentRecord!.meta as any), allocations } })
+          .where(eq(manualInvoicePayments.id, paymentRecord!.id));
+      }
+
       await tx
         .update(manualInvoices)
         .set({
           paidAmount: newPaidTotal.toString(),
           status: newInvoiceStatus,
+          ...(allocations.length > 0 && {
+            meta: {
+              ...invoiceMeta,
+              paymentAllocations: [
+                ...(Array.isArray(invoiceMeta.paymentAllocations) ? invoiceMeta.paymentAllocations : []),
+                ...allocations.map((a) => ({ ...a, paymentId: paymentRecord!.id })),
+              ],
+            },
+          }),
           updatedAt: new Date(),
         })
         .where(eq(manualInvoices.id, id));
 
       return {
+        allocations,
         payment: paymentRecord!,
         newPaidTotal,
         newRemaining,
@@ -1866,6 +2033,7 @@ invoiceRoutes.post('/manual/:id/pay', requireAdminOrFinance, async (c) => {
       data: {
         payment: result.payment,
         receipt: receiptRecord,
+        allocations: result.allocations,
         summary: {
           totalAmount,
           paidAmount: result.newPaidTotal,
@@ -1931,6 +2099,12 @@ invoiceRoutes.delete('/manual/:id/payments/:paymentId', requireAdminOrFinance, a
         }
       }
 
+      // Merged invoice: undo the amounts forwarded to the source bookings
+      const paymentAllocations: PaymentAllocation[] = (payment.meta as any)?.allocations || [];
+      if (paymentAllocations.length > 0) {
+        await reverseMergedInvoicePayment(tx, { mergedPaymentId: paymentId, allocations: paymentAllocations });
+      }
+
       // Delete linked receipts
       await tx.delete(manualInvoiceReceipts).where(eq(manualInvoiceReceipts.paymentId, paymentId));
 
@@ -1944,9 +2118,16 @@ invoiceRoutes.delete('/manual/:id/payments/:paymentId', requireAdminOrFinance, a
       const isPaidFull = newPaidTotal >= totalAmount && totalAmount > 0;
       const newStatus = isPaidFull ? 'paid' : newPaidTotal > 0 ? 'sent' : 'draft';
 
+      const invoiceMeta: any = invoice.meta || {};
       await tx.update(manualInvoices).set({
         paidAmount: newPaidTotal.toString(),
         status: newStatus,
+        ...(Array.isArray(invoiceMeta.paymentAllocations) && {
+          meta: {
+            ...invoiceMeta,
+            paymentAllocations: invoiceMeta.paymentAllocations.filter((a: any) => a.paymentId !== paymentId),
+          },
+        }),
         updatedAt: new Date(),
       }).where(eq(manualInvoices.id, id));
     });
@@ -2015,6 +2196,39 @@ invoiceRoutes.put('/manual/:id/payments/:paymentId', requireAdminOrFinance, asyn
     if (newPaidAt) updateData.paidAt = newPaidAt;
 
     await db.update(manualInvoicePayments).set(updateData).where(eq(manualInvoicePayments.id, paymentId));
+
+    // Merged invoice: a changed nominal must be re-forwarded to the source bookings
+    const previousAllocations: PaymentAllocation[] = currentMeta.allocations || [];
+    if (updateData.amount && parseFloat(updateData.amount) !== parseFloat(payment.amount) && previousAllocations.length > 0) {
+      const invoiceMeta: any = invoice.meta || {};
+      const otherAllocations: PaymentAllocation[] = (invoiceMeta.paymentAllocations || []).filter((a: any) => a.paymentId !== paymentId);
+
+      await db.transaction(async (tx) => {
+        await reverseMergedInvoicePayment(tx, { mergedPaymentId: paymentId, allocations: previousAllocations });
+        const allocations = await allocateMergedInvoicePayment(tx, {
+          mergedInvoiceNumber: invoice.number,
+          mergedPaymentId: paymentId,
+          sourceInvoices: invoiceMeta.sourceInvoices || [],
+          priorAllocations: otherAllocations,
+          amount: parseFloat(updateData.amount),
+          method: updateData.method || payment.method || 'bank_transfer',
+          referenceNumber: updateData.referenceNumber ?? payment.referenceNumber ?? `PAY-${Date.now()}`,
+          paidAt: updateData.paidAt || payment.paidAt,
+        });
+
+        await tx.update(manualInvoicePayments)
+          .set({ meta: { ...updatedMeta, allocations } })
+          .where(eq(manualInvoicePayments.id, paymentId));
+        await tx.update(manualInvoices)
+          .set({
+            meta: {
+              ...invoiceMeta,
+              paymentAllocations: [...otherAllocations, ...allocations.map((a) => ({ ...a, paymentId }))],
+            },
+          })
+          .where(eq(manualInvoices.id, id));
+      });
+    }
 
     // Recalculate invoice total paid
     const allPayments = await db.select().from(manualInvoicePayments).where(eq(manualInvoicePayments.manualInvoiceId, id));

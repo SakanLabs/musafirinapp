@@ -73,3 +73,23 @@ export function formatOperationalDate(
     year: 'numeric',
   }).format(d);
 }
+
+/**
+ * Formats a stored timestamp as "YYYY-MM-DDTHH:mm" in Asia/Riyadh,
+ * suitable for a datetime-local input that operators fill in Saudi time.
+ */
+export function toOperationalDateTimeInput(date: Date | string | number): string {
+  const d = typeof date === 'string' || typeof date === 'number' ? new Date(date) : date;
+  if (isNaN(d.getTime())) return '';
+  const parts = new Intl.DateTimeFormat('en-CA', {
+    timeZone: OPERATIONAL_TIMEZONE,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    hourCycle: 'h23',
+  }).formatToParts(d);
+  const get = (type: string) => parts.find((p) => p.type === type)?.value || '';
+  return `${get('year')}-${get('month')}-${get('day')}T${get('hour')}:${get('minute')}`;
+}

@@ -9,6 +9,7 @@ import { ReceiptService } from '../services/ReceiptService';
 import { notifyAdminNewBooking } from '../lib/notification';
 import { getOperationalDateString, getOperationalTodayBoundaries, getArrivalWindowBoundaries, getDaysUntilArrival } from '../lib/date';
 import { notificationService } from '../services/NotificationService';
+import { getMuthowifArrivals, getTransportationArrivals } from '../lib/serviceArrivals';
 
 const bookingRoutes = new Hono();
 const receiptService = new ReceiptService();
@@ -143,6 +144,7 @@ bookingRoutes.get('/arrivals', requireAdmin, async (c) => {
     const paymentStatus = c.req.query('paymentStatus');
     const voucherStatus = c.req.query('voucherStatus');
     const search = c.req.query('search');
+    const serviceType = c.req.query('serviceType');
 
     const conditions = [
       sql`DATE(${bookings.checkIn}) >= ${from}::date`,
@@ -219,7 +221,7 @@ bookingRoutes.get('/arrivals', requireAdmin, async (c) => {
 
     const todayStr = getOperationalDateString();
 
-    let arrivals = rows.map((b) => {
+    const hotelArrivals = rows.map((b) => {
       const meta = (b.meta as Record<string, any>) || {};
       const guestName = (typeof meta.guestName === 'string' && meta.guestName.trim()) ? meta.guestName.trim() : (b.clientName ?? '');
       const guestEmail = (typeof meta.guestEmail === 'string' && meta.guestEmail.trim()) ? meta.guestEmail.trim() : (b.clientEmail ?? '');
@@ -250,6 +252,8 @@ bookingRoutes.get('/arrivals', requireAdmin, async (c) => {
       const isUrgent = daysUntilArrival >= 0 && daysUntilArrival <= 3 && (b.paymentStatus !== 'paid' || computedVoucherStatus !== 'sent' || isHcnMissing);
 
       return {
+        serviceType: 'hotel' as const,
+        uid: `hotel-${b.id}`,
         id: b.id,
         code: b.code,
         clientId: b.clientId,
@@ -279,6 +283,12 @@ bookingRoutes.get('/arrivals', requireAdmin, async (c) => {
         voucherNumber: voucher?.number || null,
         voucherPdfUrl: voucher?.pdfUrl || null,
         voucherSentAt: voucher?.sentAt || null,
+        eventTime: null,
+        location: null,
+        serviceDetail: null,
+        assigneeName: null,
+        assigneePhone: null,
+        isAssigneeMissing: false,
         notificationSummary: {
           paymentEmail: bLogs['payment_confirmation_email']?.status || 'none',
           paymentWhatsApp: bLogs['payment_confirmation_whatsapp']?.status || 'none',
@@ -288,6 +298,25 @@ bookingRoutes.get('/arrivals', requireAdmin, async (c) => {
       };
     });
 
+    // Merge muthowif & transportation schedules into the same operational board
+    const [muthowifArrivals, transportationArrivals] = await Promise.all([
+      getMuthowifArrivals(from, to, todayStr),
+      getTransportationArrivals(from, to, todayStr),
+    ]);
+
+    type UnifiedArrival = (typeof hotelArrivals)[number] | (typeof muthowifArrivals)[number] | (typeof transportationArrivals)[number];
+    let arrivals: UnifiedArrival[] = [...hotelArrivals, ...muthowifArrivals, ...transportationArrivals];
+
+    // Non-hotel services have no city column; match the city against their location text instead
+    if (city && city !== 'all') {
+      const q = city.toLowerCase();
+      arrivals = arrivals.filter((a) => a.serviceType === 'hotel' || (a.location || '').toLowerCase().includes(q));
+    }
+
+    if (paymentStatus && paymentStatus !== 'all') {
+      arrivals = arrivals.filter((a) => a.paymentStatus === paymentStatus);
+    }
+
     // In-memory filters
     if (hotel && hotel.trim()) {
       const q = hotel.toLowerCase();
@@ -295,7 +324,10 @@ bookingRoutes.get('/arrivals', requireAdmin, async (c) => {
     }
 
     if (voucherStatus && voucherStatus !== 'all') {
-      arrivals = arrivals.filter((a) => a.voucherStatus === voucherStatus);
+      // Muthowif/transport vouchers are only issued (no delivery tracking), treat them as sent
+      arrivals = arrivals.filter((a) =>
+        voucherStatus === 'sent' ? (a.voucherStatus === 'sent' || a.voucherStatus === 'issued') : a.voucherStatus === voucherStatus
+      );
     }
 
     if (search && search.trim()) {
@@ -307,9 +339,24 @@ bookingRoutes.get('/arrivals', requireAdmin, async (c) => {
         (a.hotelConfirmationNo && a.hotelConfirmationNo.toLowerCase().includes(q)) ||
         (a.source && a.source.toLowerCase().includes(q)) ||
         (a.guestPhone && a.guestPhone.includes(q)) ||
-        a.hotelName.toLowerCase().includes(q)
+        a.hotelName.toLowerCase().includes(q) ||
+        (a.location && a.location.toLowerCase().includes(q)) ||
+        (a.assigneeName && a.assigneeName.toLowerCase().includes(q))
       );
     }
+
+    // Counts per service are computed before the service filter so the tabs stay informative
+    const countsByServiceType = {
+      hotel: arrivals.filter((a) => a.serviceType === 'hotel').length,
+      muthowif: arrivals.filter((a) => a.serviceType === 'muthowif').length,
+      transportation: arrivals.filter((a) => a.serviceType === 'transportation').length,
+    };
+
+    if (serviceType && serviceType !== 'all') {
+      arrivals = arrivals.filter((a) => a.serviceType === serviceType);
+    }
+
+    arrivals.sort((a, b) => new Date(a.checkIn).getTime() - new Date(b.checkIn).getTime());
 
     // Operational summary calculations
     const summary = {
@@ -318,8 +365,11 @@ bookingRoutes.get('/arrivals', requireAdmin, async (c) => {
       next3DaysArrivals: arrivals.filter((a) => a.daysUntilArrival >= 0 && a.daysUntilArrival <= 3).length,
       missingHcnCount: arrivals.filter((a) => a.isHcnMissing).length,
       urgentMissingHcnCount: arrivals.filter((a) => a.isHcnUrgent).length,
-      voucherNotSentCount: arrivals.filter((a) => a.voucherStatus !== 'sent').length,
+      voucherNotSentCount: arrivals.filter((a) => a.voucherStatus !== 'sent' && a.voucherStatus !== 'issued').length,
       paymentIncompleteCount: arrivals.filter((a) => a.paymentStatus !== 'paid').length,
+      missingAssigneeCount: arrivals.filter((a) => a.isAssigneeMissing).length,
+      urgentMissingAssigneeCount: arrivals.filter((a) => a.isAssigneeMissing && a.daysUntilArrival >= 0 && a.daysUntilArrival <= 3).length,
+      countsByServiceType,
       windowPeriod: {
         from,
         to,

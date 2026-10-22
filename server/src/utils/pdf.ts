@@ -923,7 +923,7 @@ export async function generateTransportationInvoicePDF(
     const formatDateTime = (date: any) => {
       if (!date) return '';
       const d = typeof date === 'string' ? new Date(date) : date;
-      return d.toLocaleString('en-CA');
+      return d.toLocaleString('en-CA', { timeZone: 'Asia/Riyadh' });
     };
 
     // Prepare data
@@ -1043,7 +1043,7 @@ export async function generateTransportationReceiptPDF(
     const formatDateTime = (date: any) => {
       if (!date) return '';
       const d = typeof date === 'string' ? new Date(date) : date;
-      return d.toLocaleString('en-CA');
+      return d.toLocaleString('en-CA', { timeZone: 'Asia/Riyadh' });
     };
 
     // Determine vehicle type, driver name, driver phone from the first route or combine them
@@ -1182,7 +1182,7 @@ export async function generateTransportationVoucherPDF(
     const formatDateTime = (date: any) => {
       if (!date) return '';
       const d = typeof date === 'string' ? new Date(date) : date;
-      return d.toLocaleString('en-CA');
+      return d.toLocaleString('en-CA', { timeZone: 'Asia/Riyadh' });
     };
 
     const firstRoute = routes[0] || {};

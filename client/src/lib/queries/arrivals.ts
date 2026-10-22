@@ -1,7 +1,12 @@
 import { useQuery } from '@tanstack/react-query';
 import { apiClient } from '../api';
 
+export type ArrivalServiceType = 'hotel' | 'muthowif' | 'transportation';
+
 export interface ArrivalItem {
+  serviceType: ArrivalServiceType;
+  /** Unique row key: a transportation booking yields one row per route */
+  uid: string;
   id: number;
   code: string;
   clientId: number;
@@ -13,8 +18,9 @@ export interface ArrivalItem {
   guestPhone: string;
   hotelName: string;
   city: string;
+  /** Hotel check-in, muthowif schedule, or transport pickup time */
   checkIn: string;
-  checkOut: string;
+  checkOut: string | null;
   totalAmount: string | number;
   paymentStatus: 'paid' | 'partial' | 'unpaid' | 'overdue';
   hotelConfirmationNo: string | null;
@@ -27,10 +33,20 @@ export interface ArrivalItem {
   urgency: 'critical' | 'warning' | 'normal';
   isHcnMissing: boolean;
   isHcnUrgent: boolean;
-  voucherStatus: 'sent' | 'ready_not_sent' | 'not_ready';
+  /** 'issued' = muthowif/transport voucher generated (no delivery tracking) */
+  voucherStatus: 'sent' | 'issued' | 'ready_not_sent' | 'not_ready';
   voucherNumber: string | null;
   voucherPdfUrl: string | null;
   voucherSentAt: string | null;
+  eventTime: string | null;
+  /** Muthowif meeting point or transport "origin → destination" */
+  location: string | null;
+  /** Muthowif events or transport vehicle info */
+  serviceDetail: string | null;
+  /** Assigned muthowif or driver */
+  assigneeName: string | null;
+  assigneePhone: string | null;
+  isAssigneeMissing: boolean;
   notificationSummary: {
     paymentEmail: string;
     paymentWhatsApp: string;
@@ -47,6 +63,9 @@ export interface ArrivalsSummary {
   urgentMissingHcnCount: number;
   voucherNotSentCount: number;
   paymentIncompleteCount: number;
+  missingAssigneeCount: number;
+  urgentMissingAssigneeCount: number;
+  countsByServiceType: Record<ArrivalServiceType, number>;
   windowPeriod: {
     from: string;
     to: string;
@@ -67,6 +86,7 @@ export interface ArrivalsFilterParams {
   paymentStatus?: string;
   voucherStatus?: string;
   search?: string;
+  serviceType?: string;
 }
 
 export function useUpcomingArrivals(filters?: ArrivalsFilterParams) {
@@ -81,6 +101,7 @@ export function useUpcomingArrivals(filters?: ArrivalsFilterParams) {
       if (filters?.paymentStatus && filters.paymentStatus !== 'all') params.append('paymentStatus', filters.paymentStatus);
       if (filters?.voucherStatus && filters.voucherStatus !== 'all') params.append('voucherStatus', filters.voucherStatus);
       if (filters?.search) params.append('search', filters.search);
+      if (filters?.serviceType && filters.serviceType !== 'all') params.append('serviceType', filters.serviceType);
 
       const qs = params.toString() ? `?${params.toString()}` : '';
       const response = await apiClient.get<{

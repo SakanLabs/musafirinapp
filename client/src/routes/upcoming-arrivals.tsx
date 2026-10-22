@@ -1,4 +1,4 @@
-import { createFileRoute, redirect, useNavigate, Link } from '@tanstack/react-router';
+import { createFileRoute, redirect, useNavigate } from '@tanstack/react-router';
 import { useState, useMemo } from 'react';
 import { PageLayout } from '@/components/layout/PageLayout';
 import { Button } from '@/components/ui/button';
@@ -25,11 +25,37 @@ import {
   AlertCircle,
   RefreshCw,
   MessageCircle,
+  Car,
+  UserCheck,
+  MapPin,
+  Layers,
+  FileStack,
+  Loader2,
 } from 'lucide-react';
+import { useQueryClient } from '@tanstack/react-query';
+import { toast } from 'sonner';
+import { MergeInvoiceModal } from '@/components/modals/MergeInvoiceModal';
+import { usePrepareMergeFromBookings, type Invoice } from '@/lib/queries/invoices';
 import { authService } from '@/lib/auth';
 import { formatCurrency, formatSAR } from '@/lib/utils';
-import { useUpcomingArrivals, type ArrivalItem, type ArrivalsFilterParams } from '@/lib/queries/arrivals';
-import { getOperationalDateString, formatOperationalDate, getDaysUntilArrival } from '@/lib/date';
+import { useUpcomingArrivals, type ArrivalItem, type ArrivalServiceType, type ArrivalsFilterParams } from '@/lib/queries/arrivals';
+import { getOperationalDateString, formatOperationalDate, getDaysUntilArrival, OPERATIONAL_TIMEZONE } from '@/lib/date';
+
+const SERVICE_META: Record<ArrivalServiceType, { label: string; icon: typeof Building; badgeClass: string }> = {
+  hotel: { label: 'Hotel', icon: Building, badgeClass: 'bg-sky-50 text-sky-700 border-sky-200' },
+  muthowif: { label: 'Muthowif', icon: UserCheck, badgeClass: 'bg-violet-50 text-violet-700 border-violet-200' },
+  transportation: { label: 'Transportasi', icon: Car, badgeClass: 'bg-teal-50 text-teal-700 border-teal-200' },
+};
+
+function formatOperationalTime(date: string | Date): string {
+  const d = new Date(date);
+  if (isNaN(d.getTime())) return '-';
+  return new Intl.DateTimeFormat('id-ID', {
+    timeZone: OPERATIONAL_TIMEZONE,
+    hour: '2-digit',
+    minute: '2-digit',
+  }).format(d);
+}
 
 export const Route = createFileRoute('/upcoming-arrivals')({
   beforeLoad: async () => {
@@ -60,7 +86,16 @@ function UpcomingArrivalsPage() {
   const [paymentStatusFilter, setPaymentStatusFilter] = useState('all');
   const [voucherStatusFilter, setVoucherStatusFilter] = useState('all');
   const [hcnStatusFilter, setHcnStatusFilter] = useState('all');
+  const [assigneeFilter, setAssigneeFilter] = useState('all');
+  const [serviceTypeFilter, setServiceTypeFilter] = useState<'all' | ArrivalServiceType>('all');
   const [searchQuery, setSearchQuery] = useState('');
+
+  // Combined bill: bookings picked from this board, keyed by `${serviceType}-${id}`
+  const queryClient = useQueryClient();
+  const [selectedBookings, setSelectedBookings] = useState<Map<string, ArrivalItem>>(new Map());
+  const [mergeInvoices, setMergeInvoices] = useState<Invoice[]>([]);
+  const [isMergeModalOpen, setIsMergeModalOpen] = useState(false);
+  const { mutate: prepareMerge, isPending: isPreparingMerge } = usePrepareMergeFromBookings();
 
   // Fetch upcoming arrivals
   const queryFilters: ArrivalsFilterParams = {
@@ -71,6 +106,7 @@ function UpcomingArrivalsPage() {
     paymentStatus: paymentStatusFilter,
     voucherStatus: voucherStatusFilter,
     search: searchQuery,
+    serviceType: serviceTypeFilter,
   };
 
   const { data, isLoading, error, refetch, isFetching } = useUpcomingArrivals(queryFilters);
@@ -78,14 +114,85 @@ function UpcomingArrivalsPage() {
   const arrivals = data?.data || [];
   const summary = data?.summary;
 
-  // Additional in-memory filtering for HCN status if applied
+  // Additional in-memory filtering for HCN (hotel only) and muthowif/driver assignment
   const displayedArrivals = useMemo(() => {
-    if (hcnStatusFilter === 'all') return arrivals;
-    if (hcnStatusFilter === 'missing') return arrivals.filter(a => a.isHcnMissing);
-    if (hcnStatusFilter === 'urgent_missing') return arrivals.filter(a => a.isHcnUrgent);
-    if (hcnStatusFilter === 'available') return arrivals.filter(a => !a.isHcnMissing);
-    return arrivals;
-  }, [arrivals, hcnStatusFilter]);
+    let list = arrivals;
+    if (hcnStatusFilter !== 'all') {
+      list = list.filter(a => a.serviceType === 'hotel');
+      if (hcnStatusFilter === 'missing') list = list.filter(a => a.isHcnMissing);
+      if (hcnStatusFilter === 'urgent_missing') list = list.filter(a => a.isHcnUrgent);
+      if (hcnStatusFilter === 'available') list = list.filter(a => !a.isHcnMissing);
+    }
+    if (assigneeFilter === 'missing') list = list.filter(a => a.isAssigneeMissing);
+    return list;
+  }, [arrivals, hcnStatusFilter, assigneeFilter]);
+
+  const serviceCounts = summary?.countsByServiceType;
+  const serviceTabs: { value: 'all' | ArrivalServiceType; label: string; icon: typeof Building; count?: number }[] = [
+    {
+      value: 'all',
+      label: 'Semua Layanan',
+      icon: Layers,
+      count: serviceCounts ? serviceCounts.hotel + serviceCounts.muthowif + serviceCounts.transportation : undefined,
+    },
+    ...(Object.keys(SERVICE_META) as ArrivalServiceType[]).map((type) => ({
+      value: type,
+      label: SERVICE_META[type].label,
+      icon: SERVICE_META[type].icon,
+      count: serviceCounts?.[type],
+    })),
+  ];
+
+  const bookingKey = (arrival: ArrivalItem) => `${arrival.serviceType}-${arrival.id}`;
+
+  const toggleBookingSelection = (arrival: ArrivalItem) => {
+    setSelectedBookings((prev) => {
+      const next = new Map(prev);
+      const key = bookingKey(arrival);
+      if (next.has(key)) next.delete(key);
+      else next.set(key, arrival);
+      return next;
+    });
+  };
+
+  const selectedList = Array.from(selectedBookings.values());
+  const selectedClientNames = Array.from(new Set(selectedList.map((a) => a.clientName)));
+
+  const handleCreateCombinedBill = () => {
+    prepareMerge(
+      selectedList.map((a) => ({ serviceType: a.serviceType, id: a.id })),
+      {
+        onSuccess: (result) => {
+          result.warnings.forEach((w) => toast.warning(w));
+          if (result.createdCount > 0) {
+            toast.info(`${result.createdCount} invoice draft dibuat otomatis untuk booking yang belum punya invoice`);
+          }
+          if (result.invoices.length < 2) {
+            toast.error('Minimal 2 invoice dibutuhkan untuk tagihan gabungan');
+            return;
+          }
+          setMergeInvoices(result.invoices);
+          setIsMergeModalOpen(true);
+        },
+        onError: (err: any) => {
+          toast.error(err?.response?.data?.error || err?.message || 'Gagal menyiapkan tagihan gabungan');
+        },
+      }
+    );
+  };
+
+  const goToDetail = (arrival: ArrivalItem) => {
+    if (arrival.serviceType === 'muthowif') {
+      navigate({ to: '/muthowif-booking-detail/$id', params: { id: String(arrival.id) } });
+    } else if (arrival.serviceType === 'transportation') {
+      navigate({
+        to: '/transportation-booking-detail/$transportationBookingId',
+        params: { transportationBookingId: String(arrival.id) },
+      });
+    } else {
+      navigate({ to: '/booking-detail', search: { id: String(arrival.id) } });
+    }
+  };
 
   const hasActiveFilters = Boolean(
     fromDate !== defaultToday ||
@@ -95,6 +202,8 @@ function UpcomingArrivalsPage() {
     paymentStatusFilter !== 'all' ||
     voucherStatusFilter !== 'all' ||
     hcnStatusFilter !== 'all' ||
+    assigneeFilter !== 'all' ||
+    serviceTypeFilter !== 'all' ||
     searchQuery.trim()
   );
 
@@ -106,6 +215,8 @@ function UpcomingArrivalsPage() {
     setPaymentStatusFilter('all');
     setVoucherStatusFilter('all');
     setHcnStatusFilter('all');
+    setAssigneeFilter('all');
+    setServiceTypeFilter('all');
     setSearchQuery('');
   };
 
@@ -152,8 +263,8 @@ function UpcomingArrivalsPage() {
 
   return (
     <PageLayout
-      title="Kedatangan 14 Hari Ke Depan"
-      subtitle="Monitoring kedatangan tamu & kesiapan operasional hotel Musafirin"
+      title="Kedatangan & Jadwal Layanan"
+      subtitle="Monitoring kedatangan tamu hotel, jadwal muthowif & penjemputan transportasi dalam satu tampilan"
       actions={
         <div className="flex items-center gap-2 print:hidden">
           <Button
@@ -186,7 +297,7 @@ function UpcomingArrivalsPage() {
               MUSAFIRIN &bull; DAFTAR KEDATANGAN OPERASIONAL
             </h1>
             <p className="text-xs font-semibold text-zinc-700 mt-1">
-              Upcoming Hotel Arrival Manifest
+              Upcoming Arrival Manifest &bull; {serviceTypeFilter === 'all' ? 'Hotel, Muthowif & Transportasi' : SERVICE_META[serviceTypeFilter].label}
             </p>
           </div>
           <div className="text-right text-xs">
@@ -200,20 +311,51 @@ function UpcomingArrivalsPage() {
         </div>
 
         <div className="mt-3 pt-3 border-t border-zinc-200 flex gap-6 text-xs font-semibold text-zinc-800">
-          <div>Total Kedatangan: <span className="font-bold text-black">{displayedArrivals.length}</span> reservasi</div>
+          <div>Total Jadwal: <span className="font-bold text-black">{displayedArrivals.length}</span></div>
           <div>Kedatangan Hari Ini: <span className="font-bold text-black">{summary?.todayArrivals || 0}</span></div>
           <div>3 Hari Ke Depan: <span className="font-bold text-black">{summary?.next3DaysArrivals || 0}</span></div>
           <div>Belum Ada HCN: <span className="font-bold text-rose-700">{summary?.missingHcnCount || 0}</span></div>
           <div>Voucher Belum Terkirim: <span className="font-bold text-amber-700">{summary?.voucherNotSentCount || 0}</span></div>
           <div>Pembayaran Belum Lunas: <span className="font-bold text-rose-700">{summary?.paymentIncompleteCount || 0}</span></div>
+          <div>Belum Ada Muthowif/Driver: <span className="font-bold text-rose-700">{summary?.missingAssigneeCount || 0}</span></div>
         </div>
       </div>
 
       <div className="space-y-6">
         {/* ========================================================================= */}
+        {/* SERVICE TYPE TABS (Screen only) */}
+        {/* ========================================================================= */}
+        <div className="flex flex-wrap items-center gap-2 print:hidden">
+          {serviceTabs.map((tab) => {
+            const Icon = tab.icon;
+            const isActive = serviceTypeFilter === tab.value;
+            return (
+              <button
+                key={tab.value}
+                type="button"
+                onClick={() => setServiceTypeFilter(tab.value)}
+                className={`h-9 px-3.5 inline-flex items-center gap-1.5 rounded-lg border text-xs font-semibold transition-colors ${
+                  isActive
+                    ? 'bg-[#111111] border-[#111111] text-white'
+                    : 'bg-white border-[#e5e7eb] text-zinc-700 hover:bg-zinc-50'
+                }`}
+              >
+                <Icon className="h-3.5 w-3.5" />
+                {tab.label}
+                {tab.count !== undefined && (
+                  <span className={`ml-0.5 px-1.5 rounded text-[10px] font-bold ${isActive ? 'bg-white/20 text-white' : 'bg-zinc-100 text-zinc-600'}`}>
+                    {tab.count}
+                  </span>
+                )}
+              </button>
+            );
+          })}
+        </div>
+
+        {/* ========================================================================= */}
         {/* SUMMARY CARDS (Screen only) */}
         {/* ========================================================================= */}
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 print:hidden">
+        <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-3 print:hidden">
           {/* Card 1: Total Arrivals */}
           <Card className="border border-[#e5e7eb] rounded-xl shadow-none bg-white p-3.5">
             <div className="flex items-center justify-between">
@@ -306,6 +448,27 @@ function UpcomingArrivalsPage() {
             </div>
             <div className="text-[10px] text-zinc-400 mt-0.5">Unpaid / Partial</div>
           </Card>
+
+          {/* Card 7: Muthowif / Driver not assigned */}
+          <Card
+            className={`border rounded-xl shadow-none p-3.5 cursor-pointer transition-colors ${
+              assigneeFilter === 'missing'
+                ? 'border-violet-400 bg-violet-50/30'
+                : 'border-[#e5e7eb] bg-white hover:bg-zinc-50'
+            }`}
+            onClick={() => setAssigneeFilter(assigneeFilter === 'missing' ? 'all' : 'missing')}
+          >
+            <div className="flex items-center justify-between">
+              <span className="text-[11px] font-semibold text-violet-700 uppercase tracking-wider">Petugas Kosong</span>
+              <UserCheck className="h-4 w-4 text-violet-600" />
+            </div>
+            <div className="text-2xl font-bold text-violet-700 mt-2">
+              {summary?.missingAssigneeCount ?? 0}
+            </div>
+            <div className="text-[10px] text-zinc-400 mt-0.5">
+              Muthowif / driver belum ada{summary?.urgentMissingAssigneeCount ? ` • ${summary.urgentMissingAssigneeCount} segera` : ''}
+            </div>
+          </Card>
         </div>
 
         {/* ========================================================================= */}
@@ -319,7 +482,7 @@ function UpcomingArrivalsPage() {
               <div className="relative flex-1">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-400 pointer-events-none" />
                 <Input
-                  placeholder="Cari ID Booking, HCN, Nama Tamu/Klien, Hotel, No. HP..."
+                  placeholder="Cari ID Booking, HCN, Nama Tamu/Klien, Hotel, Muthowif/Driver, Lokasi, No. HP..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   className="pl-9 h-10 border-[#e5e7eb] rounded-lg bg-white text-sm focus-visible:ring-0 focus-visible:border-[#111111]"
@@ -417,11 +580,48 @@ function UpcomingArrivalsPage() {
               )}
 
               <div className="ml-auto text-xs text-zinc-400">
-                Menampilkan <strong className="text-zinc-900">{displayedArrivals.length}</strong> reservasi
+                Menampilkan <strong className="text-zinc-900">{displayedArrivals.length}</strong> jadwal
               </div>
             </div>
           </div>
         </Card>
+
+        {/* ========================================================================= */}
+        {/* COMBINED BILL SELECTION BAR (Screen only) */}
+        {/* ========================================================================= */}
+        {selectedList.length > 0 && (
+          <div className="sticky top-2 z-10 flex flex-wrap items-center gap-3 rounded-xl border border-[#111111] bg-white px-4 py-3 shadow-sm print:hidden">
+            <FileStack className="h-4 w-4 text-zinc-700" />
+            <div className="text-xs text-zinc-700">
+              <strong className="text-zinc-900">{selectedList.length} booking</strong> dipilih untuk tagihan gabungan
+              {selectedClientNames.length > 1 && (
+                <span className="ml-2 inline-flex items-center gap-1 text-amber-700">
+                  <AlertTriangle className="h-3 w-3" />
+                  Berbeda klien: {selectedClientNames.join(', ')}
+                </span>
+              )}
+            </div>
+            <div className="ml-auto flex items-center gap-2">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setSelectedBookings(new Map())}
+                className="h-8 px-2.5 text-xs font-semibold text-zinc-500 hover:text-zinc-900"
+              >
+                Batal
+              </Button>
+              <Button
+                size="sm"
+                onClick={handleCreateCombinedBill}
+                disabled={selectedList.length < 2 || isPreparingMerge}
+                className="h-8 px-3 text-xs font-semibold bg-[#111111] hover:bg-zinc-800 text-white"
+              >
+                {isPreparingMerge ? <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> : <FileStack className="h-3.5 w-3.5 mr-1.5" />}
+                Buat Tagihan Gabungan
+              </Button>
+            </div>
+          </div>
+        )}
 
         {/* ========================================================================= */}
         {/* ARRIVALS TABLE */}
@@ -431,10 +631,13 @@ function UpcomingArrivalsPage() {
             <table className="w-full text-left text-xs border-collapse">
               <thead>
                 <tr className="bg-zinc-50/80 border-b border-[#e5e7eb] text-zinc-600 font-bold uppercase tracking-wider text-[11px] print:bg-zinc-100 print:text-black print:border-black">
+                  <th className="py-3 pl-4 pr-0 w-8 print:hidden" title="Pilih untuk tagihan gabungan">
+                    <FileStack className="h-3.5 w-3.5 text-zinc-400" />
+                  </th>
                   <th className="py-3 px-4 whitespace-nowrap">Jadwal & Urgensi</th>
-                  <th className="py-3 px-4 whitespace-nowrap">Booking & HCN</th>
+                  <th className="py-3 px-4 whitespace-nowrap">Booking & Kesiapan</th>
                   <th className="py-3 px-4 whitespace-nowrap">Tamu / Klien</th>
-                  <th className="py-3 px-4 whitespace-nowrap">Hotel & Kamar</th>
+                  <th className="py-3 px-4 whitespace-nowrap">Layanan & Detail</th>
                   <th className="py-3 px-4 whitespace-nowrap text-center">Pembayaran</th>
                   <th className="py-3 px-4 whitespace-nowrap text-center">Voucher</th>
                   <th className="py-3 px-4 whitespace-nowrap">Kontak</th>
@@ -444,7 +647,7 @@ function UpcomingArrivalsPage() {
               <tbody className="divide-y divide-[#e5e7eb] print:divide-zinc-300">
                 {isLoading ? (
                   <tr>
-                    <td colSpan={8} className="py-12 text-center text-zinc-500">
+                    <td colSpan={9} className="py-12 text-center text-zinc-500">
                       <div className="flex flex-col items-center justify-center gap-2">
                         <RefreshCw className="h-5 w-5 animate-spin text-zinc-400" />
                         <span>Memuat data kedatangan...</span>
@@ -453,32 +656,49 @@ function UpcomingArrivalsPage() {
                   </tr>
                 ) : displayedArrivals.length === 0 ? (
                   <tr>
-                    <td colSpan={8} className="py-12 text-center text-zinc-500">
+                    <td colSpan={9} className="py-12 text-center text-zinc-500">
                       <div className="flex flex-col items-center justify-center gap-1">
                         <CalendarCheck className="h-8 w-8 text-zinc-300 stroke-1" />
-                        <span className="font-semibold text-zinc-700">Tidak ada kedatangan dalam periode ini</span>
+                        <span className="font-semibold text-zinc-700">Tidak ada jadwal dalam periode ini</span>
                         <span className="text-zinc-400 text-xs">Coba sesuaikan filter atau rentang tanggal</span>
                       </div>
                     </td>
                   </tr>
                 ) : (
                   displayedArrivals.map((arrival) => {
-                    const isUrgent = arrival.isHcnUrgent || (arrival.daysUntilArrival <= 3 && arrival.paymentStatus !== 'paid');
+                    const isHotel = arrival.serviceType === 'hotel';
+                    const service = SERVICE_META[arrival.serviceType];
+                    const ServiceIcon = service.icon;
+                    const isSoon = arrival.daysUntilArrival >= 0 && arrival.daysUntilArrival <= 3;
+                    const isUrgent = arrival.isHcnUrgent || (isSoon && (arrival.paymentStatus !== 'paid' || arrival.isAssigneeMissing));
 
                     return (
                       <tr
-                        key={arrival.id}
+                        key={arrival.uid}
                         className={`hover:bg-zinc-50/60 transition-colors ${
                           isUrgent ? 'bg-rose-50/20' : ''
                         } print:text-black print:hover:bg-transparent`}
                       >
+                        {/* 0. Combined bill selection */}
+                        <td className="py-3 pl-4 pr-0 align-top print:hidden">
+                          <input
+                            type="checkbox"
+                            checked={selectedBookings.has(bookingKey(arrival))}
+                            onChange={() => toggleBookingSelection(arrival)}
+                            className="mt-0.5 h-3.5 w-3.5 cursor-pointer accent-[#111111]"
+                            aria-label={`Pilih ${arrival.code} untuk tagihan gabungan`}
+                          />
+                        </td>
+
                         {/* 1. Jadwal & Urgensi */}
                         <td className="py-3 px-4 align-top whitespace-nowrap">
                           <div className="font-bold text-zinc-900 print:text-black">
                             {formatOperationalDate(arrival.checkIn, 'short')}
                           </div>
                           <div className="text-[11px] text-zinc-500 print:text-zinc-600 mt-0.5">
-                            s.d. {formatOperationalDate(arrival.checkOut, 'short')}
+                            {isHotel && arrival.checkOut
+                              ? `s.d. ${formatOperationalDate(arrival.checkOut, 'short')}`
+                              : `Pukul ${formatOperationalTime(arrival.checkIn)}`}
                           </div>
                           <div className="mt-1.5 print:hidden">
                             {renderUrgencyBadge(arrival.daysUntilArrival)}
@@ -487,18 +707,34 @@ function UpcomingArrivalsPage() {
 
                         {/* 2. Booking ID & HCN */}
                         <td className="py-3 px-4 align-top">
-                          <Link
-                            to="/booking-detail"
-                            search={{ id: String(arrival.id) }}
+                          <button
+                            type="button"
+                            onClick={() => goToDetail(arrival)}
                             className="font-bold text-zinc-900 hover:text-black hover:underline flex items-center gap-1"
                           >
                             <span>{arrival.code}</span>
                             <ExternalLink className="h-3 w-3 text-zinc-400 print:hidden" />
-                          </Link>
+                          </button>
 
-                          {/* HCN Display with Visual Urgency */}
+                          {/* HCN (hotel) or Muthowif/Driver assignment, with visual urgency */}
                           <div className="mt-1">
-                            {arrival.hotelConfirmationNo ? (
+                            {!isHotel ? (
+                              arrival.assigneeName ? (
+                                <div className="inline-flex items-center gap-1 text-[11px] font-semibold text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200 print:border-none print:p-0">
+                                  <span>{arrival.serviceType === 'muthowif' ? 'Muthowif:' : 'Driver:'}</span>
+                                  <span>{arrival.assigneeName}</span>
+                                </div>
+                              ) : isSoon ? (
+                                <div className="inline-flex items-center gap-1 text-[10px] font-bold text-rose-700 bg-rose-100/90 px-2 py-0.5 rounded border border-rose-300 animate-pulse print:animate-none">
+                                  <AlertTriangle className="h-3 w-3" />
+                                  <span>⚠ {arrival.serviceType === 'muthowif' ? 'BUTUH MUTHOWIF' : 'BUTUH DRIVER'} SEGERA</span>
+                                </div>
+                              ) : (
+                                <div className="inline-flex items-center gap-1 text-[10px] font-medium text-amber-700 bg-amber-50 px-2 py-0.5 rounded border border-amber-200">
+                                  <span>{arrival.serviceType === 'muthowif' ? 'Belum ada muthowif' : 'Belum ada driver'}</span>
+                                </div>
+                              )
+                            ) : arrival.hotelConfirmationNo ? (
                               <div className="inline-flex items-center gap-1 text-[11px] font-semibold text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200 print:border-none print:p-0">
                                 <span>HCN:</span>
                                 <span className="font-mono">{arrival.hotelConfirmationNo}</span>
@@ -528,24 +764,52 @@ function UpcomingArrivalsPage() {
                           )}
                           <div className="text-[11px] text-zinc-500 mt-1 flex items-center gap-1">
                             <Users className="h-3 w-3 text-zinc-400" />
-                            <span>{arrival.pax} Pax &bull; {arrival.totalRooms} Kamar</span>
+                            <span>
+                              {arrival.serviceType === 'hotel'
+                                ? `${arrival.pax} Pax • ${arrival.totalRooms} Kamar`
+                                : arrival.serviceType === 'muthowif'
+                                  ? `${arrival.pax} Pax`
+                                  : 'Transportasi'}
+                            </span>
                           </div>
                         </td>
 
-                        {/* 4. Hotel & Kamar */}
+                        {/* 4. Layanan & Detail */}
                         <td className="py-3 px-4 align-top">
-                          <div className="font-semibold text-zinc-900 print:text-black flex items-center gap-1.5 flex-wrap">
-                            <Building className="h-3.5 w-3.5 text-zinc-400 print:hidden shrink-0" />
-                            <span>{arrival.hotelName}</span>
-                            {arrival.source && (
-                              <span className="inline-flex items-center px-1.5 py-0.2 text-[9px] font-medium bg-zinc-100 text-zinc-700 rounded border border-zinc-200 print:hidden">
-                                via {arrival.source}
-                              </span>
-                            )}
-                          </div>
-                          <div className="text-[11px] text-zinc-500 mt-0.5">
-                            {arrival.city} &bull; {arrival.roomSummary}
-                          </div>
+                          <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 mb-1 text-[9px] font-bold uppercase tracking-wider rounded border ${service.badgeClass}`}>
+                            <ServiceIcon className="h-2.5 w-2.5" />
+                            {service.label}
+                          </span>
+                          {isHotel ? (
+                            <>
+                              <div className="font-semibold text-zinc-900 print:text-black flex items-center gap-1.5 flex-wrap">
+                                <span>{arrival.hotelName}</span>
+                                {arrival.source && (
+                                  <span className="inline-flex items-center px-1.5 py-0.2 text-[9px] font-medium bg-zinc-100 text-zinc-700 rounded border border-zinc-200 print:hidden">
+                                    via {arrival.source}
+                                  </span>
+                                )}
+                              </div>
+                              <div className="text-[11px] text-zinc-500 mt-0.5">
+                                {arrival.city} &bull; {arrival.roomSummary}
+                              </div>
+                            </>
+                          ) : (
+                            <>
+                              <div className="font-semibold text-zinc-900 print:text-black flex items-start gap-1.5">
+                                <MapPin className="h-3.5 w-3.5 text-zinc-400 print:hidden shrink-0 mt-0.5" />
+                                <span>{arrival.location}</span>
+                              </div>
+                              {arrival.serviceDetail && (
+                                <div className="text-[11px] text-zinc-500 mt-0.5">{arrival.serviceDetail}</div>
+                              )}
+                              {arrival.assigneePhone && (
+                                <div className="text-[10px] text-zinc-500 mt-0.5">
+                                  {arrival.serviceType === 'muthowif' ? 'HP Muthowif' : 'HP Driver'}: {arrival.assigneePhone}
+                                </div>
+                              )}
+                            </>
+                          )}
                           {arrival.notes && (
                             <div className="text-[10px] text-amber-800 bg-amber-50/60 p-1 rounded mt-1 line-clamp-1 print:line-clamp-none">
                               Catatan: {arrival.notes}
@@ -579,6 +843,17 @@ function UpcomingArrivalsPage() {
                             <div>
                               <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
                                 ✓ Terkirim
+                              </span>
+                              {arrival.voucherNumber && (
+                                <div className="text-[9px] text-zinc-400 font-mono mt-0.5">
+                                  {arrival.voucherNumber}
+                                </div>
+                              )}
+                            </div>
+                          ) : arrival.voucherStatus === 'issued' ? (
+                            <div>
+                              <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                                ✓ Diterbitkan
                               </span>
                               {arrival.voucherNumber && (
                                 <div className="text-[9px] text-zinc-400 font-mono mt-0.5">
@@ -635,7 +910,7 @@ function UpcomingArrivalsPage() {
                           <Button
                             variant="outline"
                             size="sm"
-                            onClick={() => navigate({ to: '/booking-detail', search: { id: String(arrival.id) } })}
+                            onClick={() => goToDetail(arrival)}
                             className="h-8 px-2.5 text-xs border-[#e5e7eb] hover:bg-zinc-50 text-zinc-700 font-semibold"
                           >
                             Kelola &rarr;
@@ -650,6 +925,18 @@ function UpcomingArrivalsPage() {
           </div>
         </div>
       </div>
+
+      <MergeInvoiceModal
+        isOpen={isMergeModalOpen}
+        onClose={() => setIsMergeModalOpen(false)}
+        selectedInvoices={mergeInvoices}
+        onSuccess={(merged) => {
+          setIsMergeModalOpen(false);
+          setSelectedBookings(new Map());
+          queryClient.invalidateQueries({ queryKey: ['arrivals'] });
+          navigate({ to: `/create-manual-invoice?id=${merged.id}` as any });
+        }}
+      />
     </PageLayout>
   );
 }

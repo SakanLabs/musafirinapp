@@ -1,5 +1,5 @@
 import { Hono } from 'hono';
-import { eq, desc, asc, sql } from 'drizzle-orm';
+import { and, eq, desc, asc, sql } from 'drizzle-orm';
 import { db } from '../db';
 import {
   transportationBookings,
@@ -22,6 +22,7 @@ import type {
 } from '../db/schema';
 import { generateTransportationInvoicePDF, generateTransportationReceiptPDF, generateTransportationVoucherPDF, uploadToMinio } from '../utils/pdf';
 import { notificationService } from '../services/NotificationService';
+import { parseOperationalDateTime } from '../lib/date';
 
 const transportationApp = new Hono();
 
@@ -224,10 +225,8 @@ transportationApp.post('/', requireAdmin, async (c) => {
       // Create transportation routes
       if (routesData && routesData.length > 0 && createdBooking?.id) {
         const newRoutes: NewTransportationRoute[] = routesData.map((route: any) => {
-          const pickupDate = (route.pickupDate || '').trim();
-          const pickupTime = (route.pickupTime || '').trim();
-          const dateStr = pickupDate && pickupTime ? `${pickupDate}T${pickupTime}` : (pickupDate || new Date().toISOString());
-          const pickupDateTime = isNaN(new Date(dateStr).getTime()) ? new Date() : new Date(dateStr);
+          // Operators enter pickup times in Saudi (Asia/Riyadh) wall-clock time
+          const pickupDateTime = parseOperationalDateTime(route.pickupDate, route.pickupTime) ?? new Date();
 
           return {
             transportationBookingId: createdBooking.id!,
@@ -270,7 +269,8 @@ transportationApp.put('/:id', requireAdmin, async (c) => {
         customerEmail: bookingData.customerEmail || null,
         totalAmount: bookingData.totalAmount.toString(),
         currency: bookingData.currency || 'SAR',
-        status: bookingData.status,
+        // Only change status when explicitly sent, so editing details never resets it
+        ...(bookingData.status && { status: bookingData.status }),
         notes: bookingData.notes || null,
         updatedAt: new Date(),
       })
@@ -283,14 +283,16 @@ transportationApp.put('/:id', requireAdmin, async (c) => {
 
     // Update routes - delete existing and create new ones
     if (routesData) {
+      // Routes are recreated below; keep driver/vehicle assignments of routes that still exist
+      const previousRoutes = await db.select().from(transportationRoutesTable).where(eq(transportationRoutesTable.transportationBookingId, id));
+      const previousById = new Map(previousRoutes.map((r) => [r.id, r]));
+
       await db.delete(transportationRoutesTable).where(eq(transportationRoutesTable.transportationBookingId, id));
 
       if (routesData.length > 0) {
         const newRoutes: NewTransportationRoute[] = routesData.map((route: any) => {
-          const pickupDate = (route.pickupDate || '').trim();
-          const pickupTime = (route.pickupTime || '').trim();
-          const dateStr = pickupDate && pickupTime ? `${pickupDate}T${pickupTime}` : (pickupDate || new Date().toISOString());
-          const pickupDateTime = isNaN(new Date(dateStr).getTime()) ? new Date() : new Date(dateStr);
+          // Operators enter pickup times in Saudi (Asia/Riyadh) wall-clock time
+          const pickupDateTime = parseOperationalDateTime(route.pickupDate, route.pickupTime) ?? new Date();
 
           return {
             transportationBookingId: id,
@@ -301,6 +303,9 @@ transportationApp.put('/:id', requireAdmin, async (c) => {
             price: (route.price || 0).toString(),
             currency: route.currency || bookingData.currency || 'SAR',
             notes: route.notes || null,
+            driverName: route.driverName ?? previousById.get(Number(route.id))?.driverName ?? null,
+            driverPhone: route.driverPhone ?? previousById.get(Number(route.id))?.driverPhone ?? null,
+            vehiclePlateNumber: route.vehiclePlateNumber ?? previousById.get(Number(route.id))?.vehiclePlateNumber ?? null,
           };
         });
 
@@ -312,6 +317,65 @@ transportationApp.put('/:id', requireAdmin, async (c) => {
   } catch (error) {
     console.error('Error updating transportation booking:', error);
     return c.json({ error: 'Failed to update transportation booking' }, 500);
+  }
+});
+
+// PATCH /api/transportation/:id/operations - Update booking status and driver/vehicle per route
+// (operational fields only; prices and schedule stay untouched)
+transportationApp.patch('/:id/operations', requireAdmin, async (c) => {
+  try {
+    const id = parseInt(c.req.param('id'));
+    if (!id || isNaN(id)) return c.json({ error: 'Invalid transportation booking ID' }, 400);
+
+    const body = await c.req.json().catch(() => ({}));
+    const { status, routes: routeUpdates } = body as {
+      status?: string;
+      routes?: { id: number; driverName?: string | null; driverPhone?: string | null; vehiclePlateNumber?: string | null }[];
+    };
+
+    const allowedStatuses = ['pending', 'confirmed', 'completed', 'cancelled'];
+    if (status !== undefined && !allowedStatuses.includes(status)) {
+      return c.json({ error: 'Status tidak valid' }, 400);
+    }
+
+    const [booking] = await db.select().from(transportationBookings).where(eq(transportationBookings.id, id)).limit(1);
+    if (!booking) return c.json({ error: 'Transportation booking not found' }, 404);
+
+    const clean = (value: string | null | undefined) => (typeof value === 'string' && value.trim() ? value.trim() : null);
+
+    await db.transaction(async (tx) => {
+      if (status) {
+        await tx
+          .update(transportationBookings)
+          .set({ status: status as typeof booking.status, updatedAt: new Date() })
+          .where(eq(transportationBookings.id, id));
+      }
+
+      for (const route of Array.isArray(routeUpdates) ? routeUpdates : []) {
+        await tx
+          .update(transportationRoutesTable)
+          .set({
+            driverName: clean(route.driverName),
+            driverPhone: clean(route.driverPhone),
+            vehiclePlateNumber: clean(route.vehiclePlateNumber),
+            updatedAt: new Date(),
+          })
+          // Scoped to this booking so a route id from another booking can't be modified
+          .where(and(eq(transportationRoutesTable.id, route.id), eq(transportationRoutesTable.transportationBookingId, id)));
+      }
+    });
+
+    const [updated] = await db.select().from(transportationBookings).where(eq(transportationBookings.id, id)).limit(1);
+    const routes = await db
+      .select()
+      .from(transportationRoutesTable)
+      .where(eq(transportationRoutesTable.transportationBookingId, id))
+      .orderBy(transportationRoutesTable.pickupDateTime);
+
+    return c.json({ success: true, data: { ...updated!, routes } });
+  } catch (error) {
+    console.error('Error updating transportation operations:', error);
+    return c.json({ error: 'Gagal memperbarui data operasional' }, 500);
   }
 });
 

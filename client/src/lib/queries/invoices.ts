@@ -259,6 +259,28 @@ export interface ExecuteMergeInvoiceResponse {
   };
 }
 
+export interface MergeFromBookingsResponse {
+  success: boolean;
+  data: {
+    /** Invoice per booking; drafts are auto-created for bookings that had none */
+    invoices: (Invoice & { type: string; created: boolean; alreadyMergedInto: string | null })[];
+    createdCount: number;
+    warnings: string[];
+  };
+}
+
+export function usePrepareMergeFromBookings() {
+  return useMutation({
+    mutationFn: async (bookings: { serviceType: 'hotel' | 'transportation' | 'muthowif'; id: number }[]) => {
+      const response = await apiClient.post<MergeFromBookingsResponse>(
+        API_ENDPOINTS.INVOICE_MERGE_FROM_BOOKINGS,
+        { bookings }
+      );
+      return response.data;
+    },
+  });
+}
+
 export function useMergeInvoicePreview() {
   return useMutation({
     mutationFn: async ({
