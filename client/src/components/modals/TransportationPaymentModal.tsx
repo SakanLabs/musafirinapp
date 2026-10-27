@@ -17,6 +17,9 @@ interface TransportationPaymentModalProps {
   currency?: string;
   clientName?: string;
   clientDepositBalance?: number;
+  /** Overrides for reuse by other services (e.g. muthowif) */
+  title?: string;
+  installmentDescription?: string;
   onSubmit: (data: {
     amount: number;
     method: TransportationPaymentMethod;
@@ -39,6 +42,8 @@ export function TransportationPaymentModal({
   currency = 'SAR',
   clientName,
   clientDepositBalance = 0,
+  title = 'Penerimaan Pembayaran Transportasi',
+  installmentDescription = 'Pembayaran Termin Transportasi',
   onSubmit,
   isLoading = false,
 }: TransportationPaymentModalProps) {
@@ -56,13 +61,13 @@ export function TransportationPaymentModal({
       setAmount('');
       setMethod('bank_transfer');
       setReferenceNumber('');
-      setDescription(paidAmount === 0 ? 'Pembayaran Uang Muka (DP)' : 'Pembayaran Termin Transportasi');
+      setDescription(paidAmount === 0 ? 'Pembayaran Uang Muka (DP)' : installmentDescription);
       setAutoGenerateReceipt(true);
       setSendEmail(false);
       setSendWhatsApp(false);
       setError('');
     }
-  }, [isOpen, remainingBalance, paidAmount]);
+  }, [isOpen, remainingBalance, paidAmount, installmentDescription]);
 
   const numAmount = parseFloat(amount) || 0;
   const isDepositInsufficient = method === 'deposit' && numAmount > clientDepositBalance;
@@ -108,7 +113,7 @@ export function TransportationPaymentModal({
     <Modal
       isOpen={isOpen}
       onClose={onClose}
-      title="Penerimaan Pembayaran Transportasi"
+      title={title}
       size="md"
     >
       <form onSubmit={handleSubmit} className="space-y-4">
@@ -312,7 +317,7 @@ export function TransportationPaymentModal({
             id="description"
             value={description}
             onChange={(e) => setDescription(e.target.value)}
-            placeholder="Contoh: Pembayaran Uang Muka (DP) Transportasi"
+            placeholder={`Contoh: ${installmentDescription}`}
             className="text-xs h-9 border-zinc-200"
           />
         </div>
