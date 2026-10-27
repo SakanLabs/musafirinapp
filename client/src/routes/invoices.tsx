@@ -20,7 +20,7 @@ import {
 } from "lucide-react"
 import { formatCurrency, formatDate } from "@/lib/utils"
 import { useInvoices, type Invoice, useBackfillInvoiceStatus, useDeleteInvoice } from "@/lib/queries/invoices"
-import { useEffect, useState } from "react"
+import { Fragment, useEffect, useState } from "react"
 import { authService } from "@/lib/auth"
 import { MergeInvoiceModal } from "@/components/modals/MergeInvoiceModal"
 
@@ -326,10 +326,26 @@ function InvoicesPage() {
   const paidInvoices = invoices.filter(inv => inv.status === 'paid').length
   const pendingInvoices = invoices.filter(inv => inv.status === 'pending').length
   const overdueInvoices = invoices.filter(inv => inv.status === 'overdue').length
-  const totalAmount = invoices.reduce((sum, inv) => sum + parseInt(inv.amount), 0)
-  const paidAmount = invoices
-    .filter(inv => inv.status === 'paid')
-    .reduce((sum, inv) => sum + parseInt(inv.amount), 0)
+  // Revenue is grouped per currency — amounts in different currencies can't be summed together
+  type CurrencyRevenue = { total: number; paid: number; outstanding: number; totalCount: number; paidCount: number }
+  const revenueByCurrency: Record<string, CurrencyRevenue> = {}
+  for (const inv of invoices) {
+    const currency = inv.currency || 'IDR'
+    const amount = parseFloat(inv.amount) || 0
+    const rev = revenueByCurrency[currency] ??= { total: 0, paid: 0, outstanding: 0, totalCount: 0, paidCount: 0 }
+    rev.total += amount
+    rev.totalCount++
+    if (inv.status === 'paid') {
+      rev.paid += amount
+      rev.paidCount++
+    } else {
+      rev.outstanding += amount
+    }
+  }
+  const revenueEntries = Object.entries(revenueByCurrency)
+  if (revenueEntries.length === 0) {
+    revenueEntries.push(['IDR', { total: 0, paid: 0, outstanding: 0, totalCount: 0, paidCount: 0 }])
+  }
 
   return (
     <PageLayout
@@ -473,31 +489,47 @@ function InvoicesPage() {
         </div>
       </div>
 
-      {/* Revenue Summary */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-        <div className="border border-[#e5e7eb] rounded-xl bg-white p-5 shadow-none flex flex-col justify-between hover:border-[#111111]/30 transition-all">
-          <div>
-            <h3 className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider mb-2">Total Revenue</h3>
-            <p className="text-2xl font-bold text-[#111111] tracking-tight">
-              {formatCurrency(totalAmount.toString(), 'IDR')}
-            </p>
-          </div>
-          <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider mt-3">
-            Berdasarkan {totalInvoices} invoice diterbitkan
-          </p>
-        </div>
+      {/* Revenue Summary — one row of cards per currency */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+        {revenueEntries.map(([currency, rev]) => (
+          <Fragment key={currency}>
+            <div className="border border-[#e5e7eb] rounded-xl bg-white p-5 shadow-none flex flex-col justify-between hover:border-[#111111]/30 transition-all">
+              <div>
+                <h3 className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider mb-2">Total Revenue · {currency}</h3>
+                <p className="text-2xl font-bold text-[#111111] tracking-tight">
+                  {formatCurrency(rev.total, currency)}
+                </p>
+              </div>
+              <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider mt-3">
+                Berdasarkan {rev.totalCount} invoice diterbitkan
+              </p>
+            </div>
 
-        <div className="border border-[#e5e7eb] rounded-xl bg-white p-5 shadow-none flex flex-col justify-between hover:border-[#111111]/30 transition-all">
-          <div>
-            <h3 className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider mb-2">Collected Revenue</h3>
-            <p className="text-2xl font-bold text-[#111111] tracking-tight">
-              {formatCurrency(paidAmount.toString(), 'IDR')}
-            </p>
-          </div>
-          <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider mt-3">
-            Berdasarkan {paidInvoices} invoice lunas
-          </p>
-        </div>
+            <div className="border border-[#e5e7eb] rounded-xl bg-white p-5 shadow-none flex flex-col justify-between hover:border-[#111111]/30 transition-all">
+              <div>
+                <h3 className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider mb-2">Collected Revenue · {currency}</h3>
+                <p className="text-2xl font-bold text-[#111111] tracking-tight">
+                  {formatCurrency(rev.paid, currency)}
+                </p>
+              </div>
+              <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider mt-3">
+                Berdasarkan {rev.paidCount} invoice lunas
+              </p>
+            </div>
+
+            <div className="border border-[#e5e7eb] rounded-xl bg-white p-5 shadow-none flex flex-col justify-between hover:border-[#111111]/30 transition-all">
+              <div>
+                <h3 className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider mb-2">Outstanding Revenue · {currency}</h3>
+                <p className="text-2xl font-bold text-[#111111] tracking-tight">
+                  {formatCurrency(rev.outstanding, currency)}
+                </p>
+              </div>
+              <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider mt-3">
+                Berdasarkan {rev.totalCount - rev.paidCount} invoice belum lunas
+              </p>
+            </div>
+          </Fragment>
+        ))}
       </div>
 
       {/* Merge Mode Action Bar */}
