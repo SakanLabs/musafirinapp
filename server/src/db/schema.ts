@@ -65,7 +65,7 @@ export const customLaRequestStatusEnum = pgEnum('custom_la_request_status', ['pe
 export const invoiceStatusEnum = pgEnum('invoice_status', ['draft', 'sent', 'partially_paid', 'paid', 'overdue', 'cancelled']);
 export const mealPlanEnum = pgEnum('meal_plan', ['Breakfast', 'Half Board', 'Full Board', 'Room Only']);
 // Service Orders enums (new products: Visa Umrah, Siskopatuh)
-export const serviceOrderProductEnum = pgEnum('service_order_product', ['visa_umrah', 'siskopatuh']);
+export const serviceOrderProductEnum = pgEnum('service_order_product', ['visa_umrah', 'siskopatuh', 'visa_siskopatuh']);
 export const serviceOrderStatusEnum = pgEnum('service_order_status', ['draft', 'submitted', 'paid', 'cancelled']);
 
 // Master Services Enum

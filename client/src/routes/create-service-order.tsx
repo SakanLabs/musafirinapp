@@ -41,11 +41,13 @@ function CreateServiceOrderPage() {
   
   const [formData, setFormData] = useState({
     clientId: 0,
-    productType: "visa_umrah" as ProductType,
+    productType: "visa_siskopatuh" as ProductType,
     groupLeaderName: "",
     groupLeaderPhone: "",
     totalPeople: 1,
     unitPriceUSD: 0,
+    visaUnitPriceUSD: 0,
+    siskopatuhUnitPriceUSD: 0,
     departureDate: "",
     returnDate: "",
     notes: "",
@@ -67,6 +69,8 @@ function CreateServiceOrderPage() {
 
   const [errors, setErrors] = useState<Record<string, string>>({})
 
+  const isBundle = formData.productType === "visa_siskopatuh"
+
   const validateForm = () => {
     const newErrors: Record<string, string> = {}
     
@@ -74,7 +78,12 @@ function CreateServiceOrderPage() {
     if (!formData.groupLeaderName.trim()) newErrors.groupLeaderName = "Nama ketua rombongan harus diisi"
     if (!formData.groupLeaderPhone.trim()) newErrors.groupLeaderPhone = "Nomor telepon ketua rombongan harus diisi"
     if (formData.totalPeople < 1) newErrors.totalPeople = "Jumlah jamaah minimal 1"
-    if (formData.unitPriceUSD <= 0) newErrors.unitPriceUSD = "Harga per jamaah harus lebih dari 0"
+    if (isBundle) {
+      if (formData.visaUnitPriceUSD <= 0) newErrors.visaUnitPriceUSD = "Harga Visa Umrah per jamaah harus lebih dari 0"
+      if (formData.siskopatuhUnitPriceUSD <= 0) newErrors.siskopatuhUnitPriceUSD = "Harga SISKOPATUH per jamaah harus lebih dari 0"
+    } else if (formData.unitPriceUSD <= 0) {
+      newErrors.unitPriceUSD = "Harga per jamaah harus lebih dari 0"
+    }
     if (!formData.departureDate) newErrors.departureDate = "Tanggal keberangkatan harus diisi"
     if (!formData.returnDate) newErrors.returnDate = "Tanggal kepulangan harus diisi"
     
@@ -96,17 +105,45 @@ function CreateServiceOrderPage() {
     if (!validateForm()) return
 
     try {
+      const effectiveUnitPriceUSD = isBundle
+        ? +(formData.visaUnitPriceUSD + formData.siskopatuhUnitPriceUSD).toFixed(2)
+        : formData.unitPriceUSD
+
+      const metaToSubmit: VisaMeta = {
+        ...formData.meta,
+        bundleItems: isBundle
+          ? [
+              {
+                productType: "visa_umrah",
+                name: "Visa Umrah",
+                description: "Penerbitan Visa Umrah Elektronik",
+                pax: formData.totalPeople,
+                unitPriceUSD: formData.visaUnitPriceUSD,
+                lineTotalUSD: +(formData.visaUnitPriceUSD * formData.totalPeople).toFixed(2),
+              },
+              {
+                productType: "siskopatuh",
+                name: "SISKOPATUH",
+                description: "Pendaftaran SISKOPATUH",
+                pax: formData.totalPeople,
+                unitPriceUSD: formData.siskopatuhUnitPriceUSD,
+                lineTotalUSD: +(formData.siskopatuhUnitPriceUSD * formData.totalPeople).toFixed(2),
+              },
+            ]
+          : undefined,
+      }
+
       const serviceOrderData: CreateServiceOrderData = {
         clientId: formData.clientId,
         productType: formData.productType,
         groupLeaderName: formData.groupLeaderName,
         groupLeaderPhone: formData.groupLeaderPhone,
         totalPeople: formData.totalPeople,
-        unitPriceUSD: formData.unitPriceUSD,
+        unitPriceUSD: effectiveUnitPriceUSD,
         departureDate: formData.departureDate,
         returnDate: formData.returnDate,
         notes: formData.notes || undefined,
-        meta: formData.meta
+        meta: metaToSubmit
       }
 
       await createServiceOrderMutation.mutateAsync(serviceOrderData)
@@ -183,7 +220,12 @@ function CreateServiceOrderPage() {
     })
   }
 
-  const totalPriceUSD = formData.totalPeople * formData.unitPriceUSD
+  const visaSubtotalUSD = formData.totalPeople * formData.visaUnitPriceUSD
+  const siskopatuhSubtotalUSD = formData.totalPeople * formData.siskopatuhUnitPriceUSD
+  const bundleUnitPriceUSD = formData.visaUnitPriceUSD + formData.siskopatuhUnitPriceUSD
+  const totalPriceUSD = isBundle
+    ? visaSubtotalUSD + siskopatuhSubtotalUSD
+    : formData.totalPeople * formData.unitPriceUSD
 
   return (
     <PageLayout
@@ -226,18 +268,37 @@ function CreateServiceOrderPage() {
                 {errors.clientId && <p className="text-red-600 text-xs font-medium mt-1">{errors.clientId}</p>}
               </div>
 
-              <div className="space-y-1.5">
+              <div className="space-y-1.5 md:col-span-2">
                 <label className="text-xs font-semibold text-gray-700 uppercase tracking-wider block">
                   Jenis Produk *
                 </label>
-                <select
-                  value={formData.productType}
-                  onChange={(e) => handleInputChange("productType", e.target.value as ProductType)}
-                  className="h-10 w-full px-3 border-[#e5e7eb] rounded-md focus:border-[#111111] focus:ring-1 focus:ring-[#111111] focus-visible:ring-[#111111] focus-visible:border-[#111111] focus-visible:ring-offset-0 focus-visible:ring-1 bg-white text-sm transition-colors"
-                >
-                  <option value="visa_umrah">Visa Umrah</option>
-                  <option value="siskopatuh">SISKOPATUH</option>
-                </select>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5" role="group" aria-label="Pilih jenis produk">
+                  {[
+                    { value: "visa_siskopatuh" as ProductType, label: "Visa + SISKOPATUH", hint: "Bundle, 2 item di invoice" },
+                    { value: "visa_umrah" as ProductType, label: "Visa Umrah", hint: "Layanan visa saja" },
+                    { value: "siskopatuh" as ProductType, label: "SISKOPATUH", hint: "Layanan SISKOPATUH saja" },
+                  ].map((option) => {
+                    const active = formData.productType === option.value
+                    return (
+                      <button
+                        key={option.value}
+                        type="button"
+                        aria-pressed={active}
+                        onClick={() => handleInputChange("productType", option.value)}
+                        className={`min-h-[44px] text-left px-3.5 py-2.5 rounded-lg border transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#111111] ${
+                          active
+                            ? "border-[#111111] bg-[#111111] text-white"
+                            : "border-[#e5e7eb] bg-white text-gray-800 hover:bg-gray-50"
+                        }`}
+                      >
+                        <div className="text-sm font-semibold">{option.label}</div>
+                        <div className={`text-xs mt-0.5 ${active ? "text-gray-300" : "text-gray-500"}`}>
+                          {option.hint}
+                        </div>
+                      </button>
+                    )
+                  })}
+                </div>
               </div>
             </div>
           </Card>
@@ -286,47 +347,149 @@ function CreateServiceOrderPage() {
               <h2 className="text-xs font-bold uppercase tracking-wider text-gray-500">Informasi Jamaah & Harga</h2>
             </div>
             
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-              <div className="space-y-1.5">
-                <label className="text-xs font-semibold text-gray-700 uppercase tracking-wider block">
-                  Jumlah Jamaah *
-                </label>
-                <Input
-                  type="number"
-                  min="1"
-                  value={formData.totalPeople}
-                  onChange={(e) => handleInputChange("totalPeople", parseInt(e.target.value) || 1)}
-                  placeholder="1"
-                  className="h-10 px-3 border-[#e5e7eb] rounded-md focus:border-[#111111] focus:ring-1 focus:ring-[#111111] focus-visible:ring-[#111111] focus-visible:border-[#111111] focus-visible:ring-offset-0 focus-visible:ring-1 bg-white"
-                />
-                {errors.totalPeople && <p className="text-red-600 text-xs font-medium mt-1">{errors.totalPeople}</p>}
-              </div>
+            {isBundle ? (
+              <div className="space-y-5">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+                  <div className="space-y-1.5">
+                    <label htmlFor="totalPeople" className="text-xs font-semibold text-gray-700 uppercase tracking-wider block">
+                      Jumlah Jamaah (Pax) *
+                    </label>
+                    <Input
+                      id="totalPeople"
+                      type="number"
+                      min="1"
+                      value={formData.totalPeople}
+                      onChange={(e) => handleInputChange("totalPeople", parseInt(e.target.value) || 1)}
+                      placeholder="1"
+                      className="h-10 px-3 border-[#e5e7eb] rounded-md focus:border-[#111111] focus:ring-1 focus:ring-[#111111] focus-visible:ring-[#111111] focus-visible:border-[#111111] focus-visible:ring-offset-0 focus-visible:ring-1 bg-white"
+                    />
+                    {errors.totalPeople && <p className="text-red-600 text-xs font-medium mt-1">{errors.totalPeople}</p>}
+                  </div>
 
-              <div className="space-y-1.5">
-                <label className="text-xs font-semibold text-gray-700 uppercase tracking-wider block">
-                  Harga per Jamaah (USD) *
-                </label>
-                <Input
-                  type="number"
-                  min="0"
-                  step="0.01"
-                  value={formData.unitPriceUSD}
-                  onChange={(e) => handleInputChange("unitPriceUSD", parseFloat(e.target.value) || 0)}
-                  placeholder="0.00"
-                  className="h-10 px-3 border-[#e5e7eb] rounded-md focus:border-[#111111] focus:ring-1 focus:ring-[#111111] focus-visible:ring-[#111111] focus-visible:border-[#111111] focus-visible:ring-offset-0 focus-visible:ring-1 bg-white font-mono"
-                />
-                {errors.unitPriceUSD && <p className="text-red-600 text-xs font-medium mt-1">{errors.unitPriceUSD}</p>}
-              </div>
+                  <div className="space-y-1.5">
+                    <label htmlFor="visaUnitPriceUSD" className="text-xs font-semibold text-gray-700 uppercase tracking-wider block">
+                      Harga Visa Umrah / Pax (USD) *
+                    </label>
+                    <Input
+                      id="visaUnitPriceUSD"
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      value={formData.visaUnitPriceUSD}
+                      onChange={(e) => handleInputChange("visaUnitPriceUSD", parseFloat(e.target.value) || 0)}
+                      placeholder="0.00"
+                      className="h-10 px-3 border-[#e5e7eb] rounded-md focus:border-[#111111] focus:ring-1 focus:ring-[#111111] focus-visible:ring-[#111111] focus-visible:border-[#111111] focus-visible:ring-offset-0 focus-visible:ring-1 bg-white font-mono"
+                    />
+                    {errors.visaUnitPriceUSD && <p className="text-red-600 text-xs font-medium mt-1">{errors.visaUnitPriceUSD}</p>}
+                  </div>
 
-              <div className="space-y-1.5">
-                <label className="text-xs font-semibold text-gray-700 uppercase tracking-wider block">
-                  Total Harga (USD)
-                </label>
-                <div className="h-10 flex items-center px-3 bg-[#f9fafb] border border-[#e5e7eb] rounded-md text-[#111111] font-semibold font-mono text-sm shadow-inner">
-                  ${totalPriceUSD.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  <div className="space-y-1.5">
+                    <label htmlFor="siskopatuhUnitPriceUSD" className="text-xs font-semibold text-gray-700 uppercase tracking-wider block">
+                      Harga SISKOPATUH / Pax (USD) *
+                    </label>
+                    <Input
+                      id="siskopatuhUnitPriceUSD"
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      value={formData.siskopatuhUnitPriceUSD}
+                      onChange={(e) => handleInputChange("siskopatuhUnitPriceUSD", parseFloat(e.target.value) || 0)}
+                      placeholder="0.00"
+                      className="h-10 px-3 border-[#e5e7eb] rounded-md focus:border-[#111111] focus:ring-1 focus:ring-[#111111] focus-visible:ring-[#111111] focus-visible:border-[#111111] focus-visible:ring-offset-0 focus-visible:ring-1 bg-white font-mono"
+                    />
+                    {errors.siskopatuhUnitPriceUSD && <p className="text-red-600 text-xs font-medium mt-1">{errors.siskopatuhUnitPriceUSD}</p>}
+                  </div>
+                </div>
+
+                {/* Live 2-item invoice preview */}
+                <div className="rounded-lg border border-[#e5e7eb] overflow-hidden bg-[#f9fafb]">
+                  <div className="px-4 py-2.5 border-b border-[#e5e7eb] flex items-center justify-between">
+                    <span className="text-xs font-semibold text-gray-700">Rincian Item di Invoice (2 Item)</span>
+                    <span className="text-xs text-gray-600 font-mono">
+                      Bundle: ${bundleUnitPriceUSD.toFixed(2)} / pax
+                    </span>
+                  </div>
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-xs">
+                      <thead>
+                        <tr className="border-b border-[#e5e7eb] text-gray-600 bg-white">
+                          <th className="text-left py-2 px-4 font-semibold">Item</th>
+                          <th className="text-center py-2 px-3 font-semibold">Pax</th>
+                          <th className="text-right py-2 px-3 font-semibold">Harga / Pax</th>
+                          <th className="text-right py-2 px-4 font-semibold">Total</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-[#e5e7eb] bg-white">
+                        <tr>
+                          <td className="py-2.5 px-4 font-medium text-gray-900">1. Visa Umrah</td>
+                          <td className="py-2.5 px-3 text-center text-gray-700 font-mono">{formData.totalPeople}</td>
+                          <td className="py-2.5 px-3 text-right text-gray-700 font-mono">${formData.visaUnitPriceUSD.toFixed(2)}</td>
+                          <td className="py-2.5 px-4 text-right font-semibold text-gray-900 font-mono">${visaSubtotalUSD.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                        </tr>
+                        <tr>
+                          <td className="py-2.5 px-4 font-medium text-gray-900">2. SISKOPATUH</td>
+                          <td className="py-2.5 px-3 text-center text-gray-700 font-mono">{formData.totalPeople}</td>
+                          <td className="py-2.5 px-3 text-right text-gray-700 font-mono">${formData.siskopatuhUnitPriceUSD.toFixed(2)}</td>
+                          <td className="py-2.5 px-4 text-right font-semibold text-gray-900 font-mono">${siskopatuhSubtotalUSD.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                        </tr>
+                      </tbody>
+                      <tfoot>
+                        <tr className="border-t border-[#e5e7eb] bg-[#f9fafb]">
+                          <td colSpan={3} className="py-2.5 px-4 text-right font-semibold text-gray-700">Total Harga (USD)</td>
+                          <td className="py-2.5 px-4 text-right font-bold text-[#111111] font-mono text-sm">
+                            ${totalPriceUSD.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                          </td>
+                        </tr>
+                      </tfoot>
+                    </table>
+                  </div>
                 </div>
               </div>
-            </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+                <div className="space-y-1.5">
+                  <label htmlFor="totalPeople" className="text-xs font-semibold text-gray-700 uppercase tracking-wider block">
+                    Jumlah Jamaah *
+                  </label>
+                  <Input
+                    id="totalPeople"
+                    type="number"
+                    min="1"
+                    value={formData.totalPeople}
+                    onChange={(e) => handleInputChange("totalPeople", parseInt(e.target.value) || 1)}
+                    placeholder="1"
+                    className="h-10 px-3 border-[#e5e7eb] rounded-md focus:border-[#111111] focus:ring-1 focus:ring-[#111111] focus-visible:ring-[#111111] focus-visible:border-[#111111] focus-visible:ring-offset-0 focus-visible:ring-1 bg-white"
+                  />
+                  {errors.totalPeople && <p className="text-red-600 text-xs font-medium mt-1">{errors.totalPeople}</p>}
+                </div>
+
+                <div className="space-y-1.5">
+                  <label htmlFor="unitPriceUSD" className="text-xs font-semibold text-gray-700 uppercase tracking-wider block">
+                    Harga per Jamaah (USD) *
+                  </label>
+                  <Input
+                    id="unitPriceUSD"
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    value={formData.unitPriceUSD}
+                    onChange={(e) => handleInputChange("unitPriceUSD", parseFloat(e.target.value) || 0)}
+                    placeholder="0.00"
+                    className="h-10 px-3 border-[#e5e7eb] rounded-md focus:border-[#111111] focus:ring-1 focus:ring-[#111111] focus-visible:ring-[#111111] focus-visible:border-[#111111] focus-visible:ring-offset-0 focus-visible:ring-1 bg-white font-mono"
+                  />
+                  {errors.unitPriceUSD && <p className="text-red-600 text-xs font-medium mt-1">{errors.unitPriceUSD}</p>}
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-xs font-semibold text-gray-700 uppercase tracking-wider block">
+                    Total Harga (USD)
+                  </label>
+                  <div className="h-10 flex items-center px-3 bg-[#f9fafb] border border-[#e5e7eb] rounded-md text-[#111111] font-semibold font-mono text-sm">
+                    ${totalPriceUSD.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  </div>
+                </div>
+              </div>
+            )}
           </Card>
 
           {/* Travel Dates */}

@@ -16,7 +16,7 @@ import { ClientSearchCombobox } from "@/components/clients/ClientSearchCombobox"
 
 const editServiceOrderSchema = z.object({
   clientId: z.number().min(1, "Client harus dipilih"),
-  productType: z.enum(["visa_umrah", "siskopatuh"]),
+  productType: z.enum(["visa_umrah", "siskopatuh", "visa_siskopatuh"]),
   groupLeaderName: z.string().min(1, "Nama ketua rombongan harus diisi"),
   groupLeaderPhone: z.string().optional(),
   totalPeople: z.number().min(1, "Jumlah orang minimal 1"),
@@ -75,19 +75,31 @@ function EditServiceOrderPage() {
     }
   })
 
-  const [errors, setErrors] = useState<Partial<Record<keyof EditServiceOrderForm, string>>>({})
+  const [errors, setErrors] = useState<Partial<Record<keyof EditServiceOrderForm | 'visaUnitPriceUSD' | 'siskopatuhUnitPriceUSD', string>>>({})
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [visaUnitPriceUSD, setVisaUnitPriceUSD] = useState(0)
+  const [siskopatuhUnitPriceUSD, setSiskopatuhUnitPriceUSD] = useState(0)
+
+  const isBundle = formData.productType === "visa_siskopatuh"
 
   // Populate form when service order data is loaded
   useEffect(() => {
     if (serviceOrder) {
+      const existingBundleItems = Array.isArray(serviceOrder.meta?.bundleItems)
+        ? serviceOrder.meta.bundleItems
+        : []
+      const visaItem = existingBundleItems.find((i: any) => i.productType === 'visa_umrah')
+      const siskopatuhItem = existingBundleItems.find((i: any) => i.productType === 'siskopatuh')
+      setVisaUnitPriceUSD(visaItem ? Number(visaItem.unitPriceUSD) || 0 : Number(serviceOrder.unitPriceUSD) || 0)
+      setSiskopatuhUnitPriceUSD(siskopatuhItem ? Number(siskopatuhItem.unitPriceUSD) || 0 : 0)
+
       setFormData({
         clientId: serviceOrder.clientId || 0,
         productType: serviceOrder.productType || "visa_umrah",
         groupLeaderName: serviceOrder.groupLeaderName || "",
         groupLeaderPhone: serviceOrder.groupLeaderPhone || "",
         totalPeople: serviceOrder.totalPeople || 1,
-        unitPriceUSD: serviceOrder.unitPriceUSD || 0,
+        unitPriceUSD: Number(serviceOrder.unitPriceUSD) || 0,
         departureDate: serviceOrder.departureDate ? serviceOrder.departureDate.split('T')[0] : "",
         returnDate: serviceOrder.returnDate ? serviceOrder.returnDate.split('T')[0] : "",
         notes: serviceOrder.notes || "",
@@ -112,6 +124,15 @@ function EditServiceOrderPage() {
   const validateForm = (): boolean => {
     try {
       editServiceOrderSchema.parse(formData)
+      if (isBundle) {
+        const bundleErrors: Partial<Record<'visaUnitPriceUSD' | 'siskopatuhUnitPriceUSD', string>> = {}
+        if (visaUnitPriceUSD <= 0) bundleErrors.visaUnitPriceUSD = "Harga Visa Umrah harus lebih dari 0"
+        if (siskopatuhUnitPriceUSD <= 0) bundleErrors.siskopatuhUnitPriceUSD = "Harga SISKOPATUH harus lebih dari 0"
+        if (Object.keys(bundleErrors).length > 0) {
+          setErrors(bundleErrors)
+          return false
+        }
+      }
       setErrors({})
       return true
     } catch (error) {
@@ -208,12 +229,41 @@ function EditServiceOrderPage() {
     setIsSubmitting(true)
 
     try {
+      const effectiveUnitPriceUSD = isBundle
+        ? +(visaUnitPriceUSD + siskopatuhUnitPriceUSD).toFixed(2)
+        : formData.unitPriceUSD
+
+      const updatedMeta: VisaMeta = {
+        ...(formData.meta || {}),
+        bundleItems: isBundle
+          ? [
+              {
+                productType: "visa_umrah",
+                name: "Visa Umrah",
+                description: "Penerbitan Visa Umrah Elektronik",
+                pax: formData.totalPeople,
+                unitPriceUSD: visaUnitPriceUSD,
+                lineTotalUSD: +(visaUnitPriceUSD * formData.totalPeople).toFixed(2),
+              },
+              {
+                productType: "siskopatuh",
+                name: "SISKOPATUH",
+                description: "Pendaftaran SISKOPATUH",
+                pax: formData.totalPeople,
+                unitPriceUSD: siskopatuhUnitPriceUSD,
+                lineTotalUSD: +(siskopatuhUnitPriceUSD * formData.totalPeople).toFixed(2),
+              },
+            ]
+          : undefined,
+      }
+
       const updateData = {
         ...formData,
-        totalPriceUSD: formData.unitPriceUSD * formData.totalPeople,
+        unitPriceUSD: effectiveUnitPriceUSD,
+        totalPriceUSD: +(effectiveUnitPriceUSD * formData.totalPeople).toFixed(2),
         departureDate: new Date(formData.departureDate).toISOString(),
         returnDate: new Date(formData.returnDate).toISOString(),
-        meta: formData.meta
+        meta: updatedMeta
       }
 
       await updateServiceOrder.mutateAsync({
@@ -228,6 +278,7 @@ function EditServiceOrderPage() {
       const msg = error instanceof Error ? error.message : 'An unexpected error occurred'
       toast.error(msg)
     } finally {
+      setIsSubmitting(false)
     }
   }
 
@@ -301,10 +352,11 @@ function EditServiceOrderPage() {
                   id="productType"
                   value={formData.productType}
                   onChange={(e) => handleInputChange('productType', e.target.value)}
-                  className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#111111]"
                 >
+                  <option value="visa_siskopatuh">Visa Umrah + SISKOPATUH (Bundle)</option>
                   <option value="visa_umrah">Visa Umrah</option>
-                  <option value="siskopatuh">Siskopatuh</option>
+                  <option value="siskopatuh">SISKOPATUH</option>
                 </select>
                 {errors.productType && <p className="text-red-500 text-sm mt-1">{errors.productType}</p>}
               </div>
@@ -341,43 +393,105 @@ function EditServiceOrderPage() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div>
-                  <Label htmlFor="totalPeople">Total People *</Label>
-                  <Input
-                    id="totalPeople"
-                    type="number"
-                    min="1"
-                    value={formData.totalPeople}
-                    onChange={(e) => handleInputChange('totalPeople', parseInt(e.target.value) || 1)}
-                    placeholder="Enter total people"
-                  />
-                  {errors.totalPeople && <p className="text-red-500 text-sm mt-1">{errors.totalPeople}</p>}
-                </div>
+              {isBundle ? (
+                <div className="space-y-4">
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div>
+                      <Label htmlFor="totalPeople">Total People (Pax) *</Label>
+                      <Input
+                        id="totalPeople"
+                        type="number"
+                        min="1"
+                        value={formData.totalPeople}
+                        onChange={(e) => handleInputChange('totalPeople', parseInt(e.target.value) || 1)}
+                        placeholder="Enter total people"
+                      />
+                      {errors.totalPeople && <p className="text-red-500 text-sm mt-1">{errors.totalPeople}</p>}
+                    </div>
 
-                <div>
-                  <Label htmlFor="unitPriceUSD">Unit Price (USD) *</Label>
-                  <Input
-                    id="unitPriceUSD"
-                    type="number"
-                    min="0"
-                    step="0.01"
-                    value={formData.unitPriceUSD}
-                    onChange={(e) => handleInputChange('unitPriceUSD', parseFloat(e.target.value) || 0)}
-                    placeholder="Enter unit price"
-                  />
-                  {errors.unitPriceUSD && <p className="text-red-500 text-sm mt-1">{errors.unitPriceUSD}</p>}
-                </div>
+                    <div>
+                      <Label htmlFor="visaUnitPriceUSD">Harga Visa Umrah / Pax (USD) *</Label>
+                      <Input
+                        id="visaUnitPriceUSD"
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        value={visaUnitPriceUSD}
+                        onChange={(e) => setVisaUnitPriceUSD(parseFloat(e.target.value) || 0)}
+                        placeholder="0.00"
+                      />
+                      {errors.visaUnitPriceUSD && <p className="text-red-500 text-sm mt-1">{errors.visaUnitPriceUSD}</p>}
+                    </div>
 
-                <div>
-                  <Label>Total Price (USD)</Label>
-                  <Input
-                    value={`$${(formData.unitPriceUSD * formData.totalPeople).toFixed(2)}`}
-                    disabled
-                    className="bg-gray-50"
-                  />
+                    <div>
+                      <Label htmlFor="siskopatuhUnitPriceUSD">Harga SISKOPATUH / Pax (USD) *</Label>
+                      <Input
+                        id="siskopatuhUnitPriceUSD"
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        value={siskopatuhUnitPriceUSD}
+                        onChange={(e) => setSiskopatuhUnitPriceUSD(parseFloat(e.target.value) || 0)}
+                        placeholder="0.00"
+                      />
+                      {errors.siskopatuhUnitPriceUSD && <p className="text-red-500 text-sm mt-1">{errors.siskopatuhUnitPriceUSD}</p>}
+                    </div>
+                  </div>
+
+                  <div className="rounded-lg border border-gray-200 bg-gray-50 p-3 text-xs space-y-1.5">
+                    <div className="flex justify-between text-gray-700">
+                      <span>1. Visa Umrah ({formData.totalPeople} pax x ${visaUnitPriceUSD.toFixed(2)})</span>
+                      <span className="font-mono font-semibold">${(visaUnitPriceUSD * formData.totalPeople).toFixed(2)}</span>
+                    </div>
+                    <div className="flex justify-between text-gray-700">
+                      <span>2. SISKOPATUH ({formData.totalPeople} pax x ${siskopatuhUnitPriceUSD.toFixed(2)})</span>
+                      <span className="font-mono font-semibold">${(siskopatuhUnitPriceUSD * formData.totalPeople).toFixed(2)}</span>
+                    </div>
+                    <div className="flex justify-between border-t border-gray-200 pt-1.5 font-semibold text-gray-900">
+                      <span>Total Bundle (USD)</span>
+                      <span className="font-mono">${((visaUnitPriceUSD + siskopatuhUnitPriceUSD) * formData.totalPeople).toFixed(2)}</span>
+                    </div>
+                  </div>
                 </div>
-              </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div>
+                    <Label htmlFor="totalPeople">Total People *</Label>
+                    <Input
+                      id="totalPeople"
+                      type="number"
+                      min="1"
+                      value={formData.totalPeople}
+                      onChange={(e) => handleInputChange('totalPeople', parseInt(e.target.value) || 1)}
+                      placeholder="Enter total people"
+                    />
+                    {errors.totalPeople && <p className="text-red-500 text-sm mt-1">{errors.totalPeople}</p>}
+                  </div>
+
+                  <div>
+                    <Label htmlFor="unitPriceUSD">Unit Price (USD) *</Label>
+                    <Input
+                      id="unitPriceUSD"
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      value={formData.unitPriceUSD}
+                      onChange={(e) => handleInputChange('unitPriceUSD', parseFloat(e.target.value) || 0)}
+                      placeholder="Enter unit price"
+                    />
+                    {errors.unitPriceUSD && <p className="text-red-500 text-sm mt-1">{errors.unitPriceUSD}</p>}
+                  </div>
+
+                  <div>
+                    <Label>Total Price (USD)</Label>
+                    <Input
+                      value={`$${(formData.unitPriceUSD * formData.totalPeople).toFixed(2)}`}
+                      disabled
+                      className="bg-gray-50"
+                    />
+                  </div>
+                </div>
+              )}
             </CardContent>
           </Card>
 

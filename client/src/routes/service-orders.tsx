@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Plus, Eye, Edit, Trash2, Loader2 } from "lucide-react"
 import { formatCurrency, formatDate } from "@/lib/utils"
-import { useServiceOrders, useDeleteServiceOrder, type ServiceOrderListItem } from "@/lib/queries/serviceOrders"
+import { useServiceOrders, useDeleteServiceOrder, formatServiceProductLabel, type ServiceOrderListItem } from "@/lib/queries/serviceOrders"
 
 export const Route = createFileRoute("/service-orders")({
   component: ServiceOrdersPage
@@ -52,8 +52,17 @@ function ServiceOrdersPage() {
       key: 'productType',
       header: 'Product',
       sortable: true,
-      width: 'w-36',
-      render: (so) => <span className="capitalize text-gray-600 text-xs">{so.productType?.replace('_', ' ') || '-'}</span>
+      width: 'w-44',
+      render: (so) => (
+        <div className="flex items-center gap-1.5">
+          <span className="text-gray-800 font-medium text-xs">{formatServiceProductLabel(so.productType)}</span>
+          {so.productType === 'visa_siskopatuh' && (
+            <Badge variant="outline" className="text-[10px] font-semibold py-0 px-1.5 rounded bg-zinc-100 text-zinc-700 border-zinc-200 shadow-none">
+              Bundle
+            </Badge>
+          )}
+        </div>
+      )
     },
     {
       key: 'status',
