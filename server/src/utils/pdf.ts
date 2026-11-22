@@ -386,7 +386,13 @@ export async function generateServiceOrderReceiptPDF(
       }
     }
 
-    const productName = serviceOrderReq.productType ? (serviceOrderReq.productType.includes('visa') ? 'Visa Umrah' : serviceOrderReq.productType) : 'Service Order';
+    const productName = serviceOrderReq.productType === 'visa_siskopatuh'
+      ? 'Visa Umrah & SISKOPATUH'
+      : serviceOrderReq.productType === 'siskopatuh'
+        ? 'SISKOPATUH'
+        : serviceOrderReq.productType?.includes('visa')
+          ? 'Visa Umrah'
+          : (serviceOrderReq.productType || 'Service Order');
     const paymentTitle = `Pembayaran ${productName}`;
     const paymentDesc = receiptReq.meta?.description || (serviceOrderReq.notes ? `Catatan: ${serviceOrderReq.notes}` : '');
     const refNumber = receiptReq.meta?.referenceNumber || receiptReq.meta?.payment?.referenceNumber || '-';
@@ -751,11 +757,13 @@ export async function generateServiceOrderInvoicePDF(
       console.warn('Could not fetch dynamic invoice terms for visa:', err);
     }
 
-    // Product name and items
+    // Product name and itemized invoice rows (bundle splits into separate Visa & SISKOPATUH rows)
     const productType = serviceOrder.productType || 'visa_umrah';
     let productName = 'Visa Umrah';
-    if (productType === 'siskopatuh') {
-      productName = 'Siskopatuh';
+    if (productType === 'visa_siskopatuh') {
+      productName = 'Visa Umrah & SISKOPATUH';
+    } else if (productType === 'siskopatuh') {
+      productName = 'SISKOPATUH';
     } else if (productType.includes('visa')) {
       productName = 'Visa Umrah';
     } else {
@@ -764,18 +772,43 @@ export async function generateServiceOrderInvoicePDF(
 
     const totalPeople = parseInt(serviceOrder.totalPeople) || 1;
     const unitPrice = serviceOrder.unitPriceUSD ? parseFloat(serviceOrder.unitPriceUSD) : (totalPeople > 0 ? (totalAmount / totalPeople) : totalAmount);
+    const bundleItems = Array.isArray(serviceOrder.meta?.bundleItems) ? serviceOrder.meta.bundleItems : [];
 
-    const items = [
-      {
-        no: 1,
-        name: productName,
-        description: serviceOrder.servicePackage ? `Paket: ${serviceOrder.servicePackage}` : 'Penerbitan Visa Umrah Elektronik',
-        notes: serviceOrder.groupLeaderName ? `Penanggung Jawab Grup: ${serviceOrder.groupLeaderName}` : '',
-        pax: totalPeople,
-        unitPrice: unitPrice.toFixed(2),
-        lineTotal: totalAmount.toFixed(2)
-      }
-    ];
+    const items = productType === 'visa_siskopatuh' && bundleItems.length > 0
+      ? bundleItems.map((bItem: any, idx: number) => {
+          const pax = parseInt(String(bItem.pax ?? totalPeople)) || totalPeople;
+          const itemUnitPrice = parseFloat(String(bItem.unitPriceUSD ?? 0)) || 0;
+          const itemLineTotal = bItem.lineTotalUSD !== undefined
+            ? parseFloat(String(bItem.lineTotalUSD))
+            : +(itemUnitPrice * pax).toFixed(2);
+          const defaultDesc = bItem.productType === 'siskopatuh'
+            ? 'Pendaftaran SISKOPATUH'
+            : 'Penerbitan Visa Umrah Elektronik';
+          return {
+            no: idx + 1,
+            name: bItem.name || (bItem.productType === 'siskopatuh' ? 'SISKOPATUH' : 'Visa Umrah'),
+            description: bItem.description || defaultDesc,
+            notes: idx === 0 && serviceOrder.groupLeaderName ? `Penanggung Jawab Grup: ${serviceOrder.groupLeaderName}` : '',
+            pax,
+            unitPrice: itemUnitPrice.toFixed(2),
+            lineTotal: itemLineTotal.toFixed(2),
+          };
+        })
+      : [
+          {
+            no: 1,
+            name: productName,
+            description: serviceOrder.servicePackage
+              ? `Paket: ${serviceOrder.servicePackage}`
+              : productType === 'siskopatuh'
+                ? 'Pendaftaran SISKOPATUH'
+                : 'Penerbitan Visa Umrah Elektronik',
+            notes: serviceOrder.groupLeaderName ? `Penanggung Jawab Grup: ${serviceOrder.groupLeaderName}` : '',
+            pax: totalPeople,
+            unitPrice: unitPrice.toFixed(2),
+            lineTotal: totalAmount.toFixed(2)
+          }
+        ];
 
     // Format dates (DD/MM/YYYY)
     const formatDate = (date: any) => {

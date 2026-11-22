@@ -1,8 +1,30 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiClient, API_ENDPOINTS } from '../api';
 
-export type ProductType = 'visa_umrah' | 'siskopatuh';
+export type ProductType = 'visa_umrah' | 'siskopatuh' | 'visa_siskopatuh';
 export type ServiceOrderStatus = 'draft' | 'submitted' | 'paid' | 'cancelled';
+
+export function formatServiceProductLabel(productType?: string | null): string {
+  switch (productType) {
+    case 'visa_siskopatuh':
+      return 'Visa Umrah + SISKOPATUH';
+    case 'visa_umrah':
+      return 'Visa Umrah';
+    case 'siskopatuh':
+      return 'SISKOPATUH';
+    default:
+      return productType ? productType.replace(/_/g, ' ') : '-';
+  }
+}
+
+export interface ServiceOrderBundleItem {
+  productType: 'visa_umrah' | 'siskopatuh';
+  name: string;
+  description?: string;
+  pax: number;
+  unitPriceUSD: number;
+  lineTotalUSD: number;
+}
 
 export interface ServiceOrderListItem {
   id: number;
@@ -37,6 +59,7 @@ export type VisaMeta = {
   };
   jamaah?: Array<{ name: string; passportNo: string; gender: string }>;
   googleDriveLink?: string;
+  bundleItems?: ServiceOrderBundleItem[];
 };
 
 export interface CreateServiceOrderData {

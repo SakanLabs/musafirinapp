@@ -74,15 +74,41 @@ serviceOrderRoutes.post('/', requireAdmin, async (c) => {
 
     const clientId = parseInt(String(body.clientId));
     const totalPeople = parseInt(String(body.totalPeople));
-    const unitPriceUSD = parseFloat(String(body.unitPriceUSD));
     const exchangeRateToSAR = body.exchangeRateToSAR ? parseFloat(String(body.exchangeRateToSAR)) : 3.75;
+
+    // Normalize bundle items when Visa + SISKOPATUH bundle is selected
+    const meta = body.meta && typeof body.meta === 'object' ? { ...body.meta } : null;
+    let unitPriceUSD = parseFloat(String(body.unitPriceUSD));
+    let totalPriceUSD = 0;
+
+    if (body.productType === 'visa_siskopatuh' && Array.isArray(meta?.bundleItems) && meta.bundleItems.length > 0) {
+      const normalizedBundleItems = meta.bundleItems.map((item: any) => {
+        const pax = parseInt(String(item.pax ?? totalPeople)) || totalPeople;
+        const itemUnitPrice = parseFloat(String(item.unitPriceUSD ?? 0)) || 0;
+        const lineTotalUSD = +(itemUnitPrice * pax).toFixed(2);
+        return {
+          productType: item.productType,
+          name: item.name,
+          description: item.description || undefined,
+          pax,
+          unitPriceUSD: itemUnitPrice,
+          lineTotalUSD,
+        };
+      });
+      meta.bundleItems = normalizedBundleItems;
+      totalPriceUSD = +normalizedBundleItems.reduce((sum: number, item: any) => sum + item.lineTotalUSD, 0).toFixed(2);
+      unitPriceUSD = totalPeople > 0 ? +(totalPriceUSD / totalPeople).toFixed(2) : totalPriceUSD;
+    } else {
+      if (isNaN(unitPriceUSD)) {
+        return c.json({ error: 'Numeric fields must be valid numbers' }, 400);
+      }
+      totalPriceUSD = +(unitPriceUSD * totalPeople).toFixed(2);
+    }
 
     if (isNaN(clientId) || isNaN(totalPeople) || isNaN(unitPriceUSD) || isNaN(exchangeRateToSAR)) {
       return c.json({ error: 'Numeric fields must be valid numbers' }, 400);
     }
 
-    // Compute totals
-    const totalPriceUSD = +(unitPriceUSD * totalPeople).toFixed(2);
     const totalPriceSAR = +(totalPriceUSD * exchangeRateToSAR).toFixed(2);
 
     const number = generateServiceOrderNumber();
@@ -103,7 +129,7 @@ serviceOrderRoutes.post('/', requireAdmin, async (c) => {
       departureDate: new Date(body.departureDate),
       returnDate: new Date(body.returnDate),
       notes: body.notes || null,
-      meta: body.meta || null,
+      meta,
       createdAt: new Date(),
       updatedAt: new Date(),
     };
@@ -174,32 +200,54 @@ serviceOrderRoutes.patch('/:id', requireAdmin, async (c) => {
     const updates: any = { ...body };
     let shouldRecalc = false;
 
-    if (body.totalPeople !== undefined || body.unitPriceUSD !== undefined || body.exchangeRateToSAR !== undefined) {
+    if (body.totalPeople !== undefined || body.unitPriceUSD !== undefined || body.exchangeRateToSAR !== undefined || body.productType !== undefined || body.meta !== undefined) {
       shouldRecalc = true;
     }
 
     if (shouldRecalc) {
-      // Fetch current order
       const existing = await db.select().from(serviceOrders).where(eq(serviceOrders.id, id)).limit(1);
       if (!existing.length) return c.json({ error: 'Service order not found' }, 404);
       const current = existing[0]!;
 
+      const effectiveProductType = body.productType ?? current.productType;
       const totalPeople = body.totalPeople !== undefined ? parseInt(String(body.totalPeople)) : Number(current.totalPeople);
-      const unitPriceUSD = body.unitPriceUSD !== undefined ? parseFloat(String(body.unitPriceUSD)) : Number(current.unitPriceUSD);
       const exchangeRateToSAR = body.exchangeRateToSAR !== undefined ? parseFloat(String(body.exchangeRateToSAR)) : Number(current.exchangeRateToSAR);
+      const effectiveMeta = body.meta !== undefined ? body.meta : current.meta;
+
+      let unitPriceUSD = body.unitPriceUSD !== undefined ? parseFloat(String(body.unitPriceUSD)) : Number(current.unitPriceUSD);
+      let totalPriceUSD = 0;
+
+      if (effectiveProductType === 'visa_siskopatuh' && Array.isArray((effectiveMeta as any)?.bundleItems) && (effectiveMeta as any).bundleItems.length > 0) {
+        const normalizedBundleItems = (effectiveMeta as any).bundleItems.map((item: any) => {
+          const pax = parseInt(String(item.pax ?? totalPeople)) || totalPeople;
+          const itemUnitPrice = parseFloat(String(item.unitPriceUSD ?? 0)) || 0;
+          return {
+            productType: item.productType,
+            name: item.name,
+            description: item.description || undefined,
+            pax,
+            unitPriceUSD: itemUnitPrice,
+            lineTotalUSD: +(itemUnitPrice * pax).toFixed(2),
+          };
+        });
+        updates.meta = { ...(effectiveMeta as any), bundleItems: normalizedBundleItems };
+        totalPriceUSD = +normalizedBundleItems.reduce((sum: number, item: any) => sum + item.lineTotalUSD, 0).toFixed(2);
+        unitPriceUSD = totalPeople > 0 ? +(totalPriceUSD / totalPeople).toFixed(2) : totalPriceUSD;
+      } else {
+        totalPriceUSD = +(unitPriceUSD * totalPeople).toFixed(2);
+      }
 
       if (isNaN(totalPeople) || isNaN(unitPriceUSD) || isNaN(exchangeRateToSAR)) {
         return c.json({ error: 'Numeric fields must be valid numbers' }, 400);
       }
 
-      const totalPriceUSD = +(unitPriceUSD * totalPeople).toFixed(2);
       const totalPriceSAR = +(totalPriceUSD * exchangeRateToSAR).toFixed(2);
 
       updates.totalPeople = totalPeople;
-      updates.unitPriceUSD = unitPriceUSD;
-      updates.exchangeRateToSAR = exchangeRateToSAR;
-      updates.totalPriceUSD = totalPriceUSD;
-      updates.totalPriceSAR = totalPriceSAR;
+      updates.unitPriceUSD = unitPriceUSD.toString();
+      updates.exchangeRateToSAR = exchangeRateToSAR.toString();
+      updates.totalPriceUSD = totalPriceUSD.toString();
+      updates.totalPriceSAR = totalPriceSAR.toString();
     }
 
     if (updates.departureDate) updates.departureDate = new Date(updates.departureDate);
@@ -310,6 +358,8 @@ serviceOrderRoutes.post('/:id/generate-invoice', requireAdminOrFinance, async (c
         departureDate: serviceOrders.departureDate,
         returnDate: serviceOrders.returnDate,
         notes: serviceOrders.notes,
+        meta: serviceOrders.meta,
+        servicePackage: serviceOrders.servicePackage,
         createdAt: serviceOrders.createdAt,
         clientName: clients.name,
         clientEmail: clients.email,
@@ -374,14 +424,18 @@ serviceOrderRoutes.post('/:id/generate-invoice', requireAdminOrFinance, async (c
         pdfUrl: null,
       };
 
-      // Create service order object for PDF generation
       const serviceOrderForPDF = {
         id: serviceOrder.id,
         number: serviceOrder.number,
         productType: serviceOrder.productType,
         status: serviceOrder.status,
+        groupLeaderName: serviceOrder.groupLeaderName,
+        servicePackage: serviceOrder.servicePackage,
+        unitPriceUSD: serviceOrder.unitPriceUSD,
+        totalPriceUSD: serviceOrder.totalPriceUSD,
         totalAmount: parseFloat(serviceOrder.totalPriceUSD || serviceOrder.totalPriceSAR),
         totalPeople: serviceOrder.totalPeople,
+        meta: serviceOrder.meta,
         createdAt: serviceOrder.createdAt,
       };
 
@@ -517,6 +571,8 @@ serviceOrderRoutes.post('/:id/regenerate-invoice', requireAdminOrFinance, async 
         departureDate: serviceOrders.departureDate,
         returnDate: serviceOrders.returnDate,
         notes: serviceOrders.notes,
+        meta: serviceOrders.meta,
+        servicePackage: serviceOrders.servicePackage,
         createdAt: serviceOrders.createdAt,
         clientName: clients.name,
         clientEmail: clients.email,
@@ -619,14 +675,18 @@ serviceOrderRoutes.post('/:id/regenerate-invoice', requireAdminOrFinance, async 
         pdfUrl: null,
       };
 
-      // Create service order object for PDF generation
       const serviceOrderForPDF = {
         id: serviceOrder.id,
         number: serviceOrder.number,
         productType: serviceOrder.productType,
         status: serviceOrder.status,
+        groupLeaderName: serviceOrder.groupLeaderName,
+        servicePackage: serviceOrder.servicePackage,
+        unitPriceUSD: serviceOrder.unitPriceUSD,
+        totalPriceUSD: serviceOrder.totalPriceUSD,
         totalAmount: parseFloat(serviceOrder.totalPriceUSD || serviceOrder.totalPriceSAR),
         totalPeople: serviceOrder.totalPeople,
+        meta: serviceOrder.meta,
         createdAt: serviceOrder.createdAt,
       };
 

@@ -45,6 +45,7 @@ import {
   useServiceOrderBilling,
   usePayServiceOrder,
   useDeleteServiceOrderPayment,
+  formatServiceProductLabel,
   type ServiceOrderStatus
 } from "@/lib/queries/serviceOrders"
 import { DueDateModal } from "@/components/modals/DueDateModal"
@@ -464,8 +465,15 @@ Total: ${serviceOrder.totalPriceUSD ? formatCurrency(serviceOrder.totalPriceUSD,
                 <Plane className="h-4 w-4 text-gray-500" />
               </div>
               <div>
-                <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-400">Product Type</p>
-                <p className="font-semibold text-gray-800 text-sm capitalize">{serviceOrder.productType?.replace('_', ' ') || 'N/A'}</p>
+                <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-500">Product Type</p>
+                <div className="flex items-center gap-2 mt-0.5">
+                  <p className="font-semibold text-gray-900 text-sm">{formatServiceProductLabel(serviceOrder.productType)}</p>
+                  {serviceOrder.productType === 'visa_siskopatuh' && (
+                    <Badge variant="outline" className="text-[10px] font-semibold py-0 px-1.5 rounded bg-zinc-100 text-zinc-700 border-zinc-200 shadow-none">
+                      Bundle (2 Item Invoice)
+                    </Badge>
+                  )}
+                </div>
               </div>
             </div>
           </CardContent>
@@ -509,6 +517,56 @@ Total: ${serviceOrder.totalPriceUSD ? formatCurrency(serviceOrder.totalPriceUSD,
             </div>
           </CardContent>
         </Card>
+
+        {/* Bundle Itemized Breakdown */}
+        {serviceOrder.productType === 'visa_siskopatuh' && Array.isArray(serviceOrder.meta?.bundleItems) && serviceOrder.meta.bundleItems.length > 0 && (
+          <Card className="border border-[#e5e7eb] rounded-xl shadow-none bg-white overflow-hidden">
+            <CardHeader className="border-b border-gray-100 py-4 px-6 flex flex-row items-center justify-between space-y-0">
+              <CardTitle className="text-xs font-semibold uppercase tracking-wider text-gray-600 flex items-center space-x-2">
+                <Package className="h-4 w-4 text-gray-500" />
+                <span>Rincian Item Bundle (Invoice)</span>
+              </CardTitle>
+              <span className="text-xs text-gray-600 font-mono">
+                {serviceOrder.meta.bundleItems.length} Item
+              </span>
+            </CardHeader>
+            <CardContent className="p-0">
+              <div className="overflow-x-auto w-full">
+                <table className="w-full border-collapse text-sm">
+                  <thead className="bg-[#f9fafb]">
+                    <tr className="border-b border-[#e5e7eb]">
+                      <th className="text-left text-[10px] font-semibold uppercase tracking-wider text-gray-600 px-6 py-3">No</th>
+                      <th className="text-left text-[10px] font-semibold uppercase tracking-wider text-gray-600 px-6 py-3">Item Layanan</th>
+                      <th className="text-center text-[10px] font-semibold uppercase tracking-wider text-gray-600 px-4 py-3">Pax</th>
+                      <th className="text-right text-[10px] font-semibold uppercase tracking-wider text-gray-600 px-6 py-3">Harga / Pax</th>
+                      <th className="text-right text-[10px] font-semibold uppercase tracking-wider text-gray-600 px-6 py-3">Subtotal</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-[#e5e7eb]">
+                    {serviceOrder.meta.bundleItems.map((item: any, idx: number) => (
+                      <tr key={idx}>
+                        <td className="px-6 py-3 text-gray-600 font-mono">{idx + 1}</td>
+                        <td className="px-6 py-3">
+                          <div className="font-semibold text-gray-900">{item.name}</div>
+                          {item.description && <div className="text-xs text-gray-600">{item.description}</div>}
+                        </td>
+                        <td className="px-4 py-3 text-center text-gray-700 font-mono">{item.pax}</td>
+                        <td className="px-6 py-3 text-right text-gray-700 font-mono">{formatCurrency(item.unitPriceUSD, 'USD')}</td>
+                        <td className="px-6 py-3 text-right font-semibold text-gray-900 font-mono">{formatCurrency(item.lineTotalUSD, 'USD')}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                  <tfoot>
+                    <tr className="bg-[#f9fafb] border-t border-[#e5e7eb]">
+                      <td colSpan={4} className="px-6 py-3 text-right font-semibold text-gray-700">Total Tagihan (USD)</td>
+                      <td className="px-6 py-3 text-right font-bold text-[#111111] font-mono">{formatCurrency(serviceOrder.totalPriceUSD, 'USD')}</td>
+                    </tr>
+                  </tfoot>
+                </table>
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         {/* Travel Information */}
         <Card className="border border-[#e5e7eb] rounded-xl shadow-none bg-white">

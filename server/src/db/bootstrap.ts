@@ -52,6 +52,13 @@ export async function ensureTablesExist() {
         END IF;
       END $$;
     `;
+    await client`
+      DO $$ BEGIN
+        IF EXISTS (SELECT 1 FROM pg_type WHERE typname = 'service_order_product') THEN
+          ALTER TYPE service_order_product ADD VALUE IF NOT EXISTS 'visa_siskopatuh';
+        END IF;
+      END $$;
+    `;
 
     // 2. manual_invoices
     await client`
