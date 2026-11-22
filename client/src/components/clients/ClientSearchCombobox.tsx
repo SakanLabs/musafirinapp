@@ -25,7 +25,7 @@ export function ClientSearchCombobox({
   disabled = false,
   error,
   onAddNewClient,
-  placeholder = "-- Select Existing CRM Client --",
+  placeholder = "Cari & pilih client CRM...",
   className
 }: ClientSearchComboboxProps) {
   const [open, setOpen] = React.useState(false)

@@ -15,6 +15,7 @@ import {
 import { authService } from "@/lib/auth"
 import { useCreateServiceOrder, type CreateServiceOrderData, type ProductType } from "@/lib/queries/serviceOrders"
 import { useClients } from "@/lib/queries"
+import { ClientSearchCombobox } from "@/components/clients/ClientSearchCombobox"
 
 export const Route = createFileRoute("/service-orders/create")({ 
   beforeLoad: async () => {
@@ -102,9 +103,8 @@ function CreateServiceOrderPage() {
   }
 
   const handleClientChange = (clientId: string) => {
-    const id = parseInt(clientId)
     setSelectedClientId(clientId)
-    handleInputChange("clientId", id)
+    handleInputChange("clientId", clientId ? parseInt(clientId) : 0)
   }
 
   const totalPriceUSD = formData.totalPeople * formData.unitPriceUSD
@@ -141,19 +141,15 @@ function CreateServiceOrderPage() {
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Client *
                 </label>
-                <select
-                  value={selectedClientId}
-                  onChange={(e) => handleClientChange(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  disabled={isClientsLoading}
-                >
-                  <option value="">Pilih Client</option>
-                  {clients.map((client) => (
-                    <option key={client.id} value={client.id}>
-                      {client.name}
-                    </option>
-                  ))}
-                </select>
+                <ClientSearchCombobox
+                  clients={clients}
+                  selectedClientId={selectedClientId}
+                  onSelectClient={handleClientChange}
+                  isLoading={isClientsLoading}
+                  error={Boolean(errors.clientId)}
+                  onAddNewClient={() => navigate({ to: "/clients/create", search: { redirectTo: "/service-orders/create" } })}
+                  className="w-full h-10"
+                />
                 {errors.clientId && <p className="text-red-500 text-sm mt-1">{errors.clientId}</p>}
               </div>
 

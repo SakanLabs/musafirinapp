@@ -19,6 +19,7 @@ import {
 import { authService } from "@/lib/auth"
 import { useCreateMuthowifBooking } from "@/lib/queries/muthowifBookings"
 import { useClients } from "@/lib/queries"
+import { ClientSearchCombobox } from "@/components/clients/ClientSearchCombobox"
 
 export const Route = createFileRoute("/create-muthowif-booking")({
   beforeLoad: async () => {
@@ -49,8 +50,7 @@ function CreateMuthowifBookingPage() {
 
   const [errors, setErrors] = useState<Record<string, string>>({})
 
-  const handleClientChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const clientId = e.target.value
+  const handleClientChange = (clientId: string) => {
     setFormData(prev => ({ ...prev, clientId }))
     
     if (clientId) {
@@ -135,19 +135,15 @@ function CreateMuthowifBookingPage() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="space-y-2">
                 <label className="text-sm font-semibold text-slate-700">Select Client <span className="text-red-500">*</span></label>
-                <select
-                  className={`flex h-10 w-full rounded-md border ${errors.clientId ? 'border-red-500' : 'border-slate-300'} bg-transparent px-3 py-2 text-sm placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent disabled:cursor-not-allowed disabled:opacity-50`}
-                  value={formData.clientId}
-                  onChange={handleClientChange}
-                  disabled={isClientsLoading}
-                >
-                  <option value="">Select a client</option>
-                  {clients.map(client => (
-                    <option key={client.id} value={client.id}>
-                      {client.name} {client.companyName ? `(${client.companyName})` : ''}
-                    </option>
-                  ))}
-                </select>
+                <ClientSearchCombobox
+                  clients={clients}
+                  selectedClientId={formData.clientId}
+                  onSelectClient={handleClientChange}
+                  isLoading={isClientsLoading}
+                  error={Boolean(errors.clientId)}
+                  onAddNewClient={() => navigate({ to: "/clients/create", search: { redirectTo: "/create-muthowif-booking" } })}
+                  className="w-full h-10"
+                />
                 {errors.clientId && <p className="text-red-500 text-xs mt-1">{errors.clientId}</p>}
               </div>
 
