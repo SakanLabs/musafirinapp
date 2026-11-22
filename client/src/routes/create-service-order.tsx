@@ -20,6 +20,7 @@ import {
 import { authService } from "@/lib/auth"
 import { useCreateServiceOrder, type CreateServiceOrderData, type ProductType, type VisaMeta } from "@/lib/queries/serviceOrders"
 import { useClients } from "@/lib/queries"
+import { ClientSearchCombobox } from "@/components/clients/ClientSearchCombobox"
 
 export const Route = createFileRoute("/create-service-order")({ 
   beforeLoad: async () => {
@@ -123,9 +124,8 @@ function CreateServiceOrderPage() {
   }
 
   const handleClientChange = (clientId: string) => {
-    const id = parseInt(clientId)
     setSelectedClientId(clientId)
-    handleInputChange("clientId", id)
+    handleInputChange("clientId", clientId ? parseInt(clientId) : 0)
   }
 
   const handleMetaChange = (section: keyof VisaMeta, field: string, value: any) => {
@@ -214,19 +214,15 @@ function CreateServiceOrderPage() {
                 <label className="text-xs font-semibold text-gray-700 uppercase tracking-wider block">
                   Client *
                 </label>
-                <select
-                  value={selectedClientId}
-                  onChange={(e) => handleClientChange(e.target.value)}
-                  className="h-10 w-full px-3 border-[#e5e7eb] rounded-md focus:border-[#111111] focus:ring-1 focus:ring-[#111111] focus-visible:ring-[#111111] focus-visible:border-[#111111] focus-visible:ring-offset-0 focus-visible:ring-1 bg-white text-sm transition-colors"
-                  disabled={isClientsLoading}
-                >
-                  <option value="">Pilih Client</option>
-                  {clients.map((client) => (
-                    <option key={client.id} value={client.id}>
-                      {client.name}
-                    </option>
-                  ))}
-                </select>
+                <ClientSearchCombobox
+                  clients={clients}
+                  selectedClientId={selectedClientId}
+                  onSelectClient={handleClientChange}
+                  isLoading={isClientsLoading}
+                  error={Boolean(errors.clientId)}
+                  onAddNewClient={() => navigate({ to: "/clients/create", search: { redirectTo: "/create-service-order" } })}
+                  className="w-full h-10"
+                />
                 {errors.clientId && <p className="text-red-600 text-xs font-medium mt-1">{errors.clientId}</p>}
               </div>
 

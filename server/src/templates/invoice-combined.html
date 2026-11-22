@@ -119,7 +119,7 @@
             </td>
             <td class="cs-num">
               {{#if unitPriceVariable}}
-                <span class="cs-text-sm cs-text-gray-500">Variable</span>
+                <span class="cs-text-sm cs-text-gray-500">Seasonal</span>
               {{else}}
                 <img src="data:image/svg+xml;base64,{{@root.saudiRiyalSVGBase64}}" alt="SAR" class="cs-sar-icon">
                 {{roomRate}}
@@ -130,6 +130,25 @@
               {{lineTotal}}
             </td>
           </tr>
+          {{#if hasPricingPeriods}}
+          {{#each pricingPeriods}}
+          <tr style="background:#f8fafc;font-size:11px;color:#4b5563">
+            <td colspan="2" style="padding:5px 6px 5px 14px;border-left:2px solid #cbd5e1">
+              <span class="cs-text-gray-500">↳</span> {{startDate}} – {{endDate}}
+            </td>
+            <td class="cs-text-center" style="padding:5px 6px">{{quantity}}</td>
+            <td class="cs-text-center" style="padding:5px 6px">{{nights}}</td>
+            <td class="cs-num" style="padding:5px 6px">
+              <img src="data:image/svg+xml;base64,{{@root.saudiRiyalSVGBase64}}" alt="SAR" class="cs-sar-icon">
+              {{pricePerNight}}
+            </td>
+            <td class="cs-num" style="padding:5px 6px">
+              <img src="data:image/svg+xml;base64,{{@root.saudiRiyalSVGBase64}}" alt="SAR" class="cs-sar-icon">
+              {{subtotal}}
+            </td>
+          </tr>
+          {{/each}}
+          {{/if}}
           {{/each}}
         </tbody>
       </table>

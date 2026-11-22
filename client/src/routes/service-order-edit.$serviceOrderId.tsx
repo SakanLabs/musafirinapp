@@ -12,6 +12,7 @@ import { z } from "zod"
 import { authService } from "@/lib/auth"
 import { useServiceOrder, useUpdateServiceOrder, type VisaMeta } from "@/lib/queries/serviceOrders"
 import { useClients } from "@/lib/queries/clients"
+import { ClientSearchCombobox } from "@/components/clients/ClientSearchCombobox"
 
 const editServiceOrderSchema = z.object({
   clientId: z.number().min(1, "Client harus dipilih"),
@@ -283,19 +284,14 @@ function EditServiceOrderPage() {
             <CardContent className="space-y-4">
               <div>
                 <Label htmlFor="clientId">Client *</Label>
-                <select
-                  id="clientId"
-                  value={formData.clientId}
-                  onChange={(e) => handleInputChange('clientId', parseInt(e.target.value))}
-                  className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                >
-                  <option value={0}>Select a client</option>
-                  {clients?.map((client) => (
-                    <option key={client.id} value={client.id}>
-                      {client.name} - {client.email}
-                    </option>
-                  ))}
-                </select>
+                <ClientSearchCombobox
+                  clients={clients ?? []}
+                  selectedClientId={formData.clientId ? formData.clientId.toString() : ""}
+                  onSelectClient={(id) => handleInputChange('clientId', id ? parseInt(id) : 0)}
+                  isLoading={isLoadingClients}
+                  error={Boolean(errors.clientId)}
+                  className="w-full h-10 mt-1"
+                />
                 {errors.clientId && <p className="text-red-500 text-sm mt-1">{errors.clientId}</p>}
               </div>
 

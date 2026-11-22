@@ -10,6 +10,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { PageLayout } from "@/components/layout/PageLayout";
 import { authService } from "@/lib/auth";
 import { useClients } from "@/lib/queries/clients";
+import { ClientSearchCombobox } from "@/components/clients/ClientSearchCombobox";
 import { useCreateTransportationBooking } from "@/lib/queries/transportationBookings";
 import { useTransportRoutes } from "@/lib/queries/master";
 import { apiClient } from "@/lib/api";
@@ -399,24 +400,15 @@ function CreateTransportationBookingPage() {
               <div className="md:col-span-2">
                 <Label htmlFor="clientSelect" className="block text-xs font-semibold text-zinc-700 uppercase tracking-wider mb-2">Client *</Label>
                 <div className="flex flex-col gap-2 md:flex-row md:items-center">
-                  <select
-                    id="clientSelect"
-                    value={selectedClientId}
-                    onChange={(e) => handleClientSelect(e.target.value)}
-                    className="w-full flex-1 h-10 px-3 border border-[#e5e7eb] rounded-md focus:border-[#111111] focus:ring-1 focus:ring-[#111111] bg-white text-sm text-zinc-800"
-                    disabled={isClientsLoading && clients.length === 0}
-                  >
-                    <option value="">
-                      {isClientsLoading && clients.length === 0
-                        ? "Loading clients..."
-                        : "Pilih client atau isi manual"}
-                    </option>
-                    {clients.map((client) => (
-                      <option key={client.id} value={client.id.toString()}>
-                        {client.name} • {client.email}
-                      </option>
-                    ))}
-                  </select>
+                  <ClientSearchCombobox
+                    clients={clients}
+                    selectedClientId={selectedClientId}
+                    onSelectClient={handleClientSelect}
+                    isLoading={isClientsLoading}
+                    error={Boolean(errors.client)}
+                    onAddNewClient={() => navigate({ to: "/clients/create", search: { redirectTo: "/create-transportation-booking" } })}
+                    className="w-full h-10"
+                  />
                   <Button
                     type="button"
                     variant="outline"

@@ -21,6 +21,22 @@ interface CreateClientSearch {
   redirectTo?: string
 }
 
+// Booking pages that may send the user here to add a client and come back afterwards
+const BOOKING_REDIRECT_TARGETS = [
+  "/create-booking",
+  "/create-transportation-booking",
+  "/create-service-order",
+  "/service-orders/create",
+  "/create-muthowif-booking",
+  "/create-custom-la",
+] as const
+
+type BookingRedirectTarget = (typeof BOOKING_REDIRECT_TARGETS)[number]
+
+function isBookingRedirectTarget(value?: string): value is BookingRedirectTarget {
+  return !!value && (BOOKING_REDIRECT_TARGETS as readonly string[]).includes(value)
+}
+
 export const Route = createFileRoute("/clients/create")({
   validateSearch: (search: Record<string, unknown>): CreateClientSearch => {
     const redirectTo = typeof search.redirectTo === "string" && search.redirectTo.length > 0
@@ -43,6 +59,14 @@ function CreateClientPage() {
   const navigate = useNavigate()
   const { redirectTo } = Route.useSearch()
   const createClientMutation = useCreateClient()
+
+  const goBack = () => {
+    if (isBookingRedirectTarget(redirectTo)) {
+      navigate({ to: redirectTo })
+      return
+    }
+    navigate({ to: "/clients" })
+  }
   const [formData, setFormData] = useState<ClientFormState>({
     name: "",
     email: "",
@@ -102,12 +126,7 @@ function CreateClientPage() {
 
       await createClientMutation.mutateAsync(payload)
 
-      if (redirectTo === "/create-booking") {
-        navigate({ to: "/create-booking" })
-        return
-      }
-
-      navigate({ to: "/clients" })
+      goBack()
     } catch (error) {
       console.error("Failed to create client:", error)
     }
@@ -121,12 +140,7 @@ function CreateClientPage() {
         <Button
           variant="outline"
           onClick={() => {
-            if (redirectTo === "/create-booking") {
-              navigate({ to: "/create-booking" })
-              return
-            }
-
-            navigate({ to: "/clients" })
+            goBack()
           }}
           className="h-9 px-4 border-[#e5e7eb] hover:bg-gray-50 text-gray-700 font-medium rounded-md flex items-center space-x-1.5"
         >
@@ -202,12 +216,7 @@ function CreateClientPage() {
               type="button"
               variant="outline"
               onClick={() => {
-                if (redirectTo === "/create-booking") {
-                  navigate({ to: "/create-booking" })
-                  return
-                }
-
-                navigate({ to: "/clients" })
+                goBack()
               }}
               className="h-10 border-[#e5e7eb] hover:bg-gray-50 text-gray-700 font-semibold rounded-md transition-colors"
             >

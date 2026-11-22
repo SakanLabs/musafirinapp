@@ -31,6 +31,9 @@
     .cs-table th,.cs-table td{padding:8px 0;text-align:left;vertical-align:top}
     .cs-table th{font-weight:700;color:#111827;border-bottom:1px solid #e5e7eb}
     .cs-table td{border-bottom:1px solid #f1f5f9}
+    .cs-table tr.cs-item-parent td{border-bottom:none;padding-bottom:4px}
+    .cs-table tr.cs-period-row td{background:#f8fafc;padding:5px 6px;font-size:11px;color:#4b5563;border-bottom:1px solid #f1f5f9}
+    .cs-table tr.cs-period-row td:first-child{padding-left:14px;border-left:2px solid #cbd5e1}
     .cs-num{text-align:right;white-space:nowrap}
     .cs-muted{color:#6b7280}
 
@@ -141,35 +144,57 @@
         </thead>
         <tbody>
           {{#each items}}
-          <tr>
+          {{#if hasPricingPeriods}}
+          <tr class="cs-item-parent">
             <td>
-              <div class="cs-font-semibold">{{roomType}}</div>
-              <div class="cs-text-sm cs-text-gray-600 cs-mt-1">
-                <strong>Pricing Periods:</strong>
-                {{#each pricingPeriods}}
-                <div style="margin-top: 4px; padding: 4px 8px; background: #f8fafc; border-radius: 4px;">
-                  <div>{{startDate}} - {{endDate}} ({{nights}} nights)</div>
-                  <div>
-                    <img src="data:image/svg+xml;base64,{{@root.saudiRiyalSVGBase64}}" alt="SAR" class="cs-sar-icon">
-                    {{pricePerNight}}/night × {{nights}} nights = 
-                    <img src="data:image/svg+xml;base64,{{@root.saudiRiyalSVGBase64}}" alt="SAR" class="cs-sar-icon">
-                    {{subtotal}}
-                  </div>
-                </div>
-                {{/each}}
-              </div>
+              <div class="cs-font-semibold cs-text-gray-800">{{roomType}}</div>
             </td>
             <td>{{mealPlan}}</td>
             <td class="cs-text-center">{{quantity}}</td>
-            <td class="cs-text-center">Variable</td>
+            <td class="cs-text-center">{{nights}}</td>
             <td class="cs-num">
-              <span class="cs-text-sm cs-text-gray-500">Variable</span>
+              <span class="cs-text-sm cs-text-gray-500">Seasonal</span>
             </td>
-            <td class="cs-num">
+            <td class="cs-num cs-font-semibold cs-text-gray-800">
               <img src="data:image/svg+xml;base64,{{@root.saudiRiyalSVGBase64}}" alt="SAR" class="cs-sar-icon">
               {{lineTotal}}
             </td>
           </tr>
+          {{#each pricingPeriods}}
+          <tr class="cs-period-row">
+            <td colspan="2">
+              <span class="cs-text-gray-500">↳</span> {{startDate}} – {{endDate}}
+            </td>
+            <td class="cs-text-center">{{quantity}}</td>
+            <td class="cs-text-center">{{nights}}</td>
+            <td class="cs-num">
+              <img src="data:image/svg+xml;base64,{{@root.saudiRiyalSVGBase64}}" alt="SAR" class="cs-sar-icon">
+              {{pricePerNight}}
+            </td>
+            <td class="cs-num">
+              <img src="data:image/svg+xml;base64,{{@root.saudiRiyalSVGBase64}}" alt="SAR" class="cs-sar-icon">
+              {{subtotal}}
+            </td>
+          </tr>
+          {{/each}}
+          {{else}}
+          <tr>
+            <td>
+              <div class="cs-font-semibold cs-text-gray-800">{{roomType}}</div>
+            </td>
+            <td>{{mealPlan}}</td>
+            <td class="cs-text-center">{{quantity}}</td>
+            <td class="cs-text-center">{{nights}}</td>
+            <td class="cs-num">
+              <img src="data:image/svg+xml;base64,{{@root.saudiRiyalSVGBase64}}" alt="SAR" class="cs-sar-icon">
+              {{roomRate}}
+            </td>
+            <td class="cs-num cs-font-semibold cs-text-gray-800">
+              <img src="data:image/svg+xml;base64,{{@root.saudiRiyalSVGBase64}}" alt="SAR" class="cs-sar-icon">
+              {{lineTotal}}
+            </td>
+          </tr>
+          {{/if}}
           {{/each}}
         </tbody>
       </table>

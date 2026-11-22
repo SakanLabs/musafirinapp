@@ -45,6 +45,7 @@ export interface InvoiceTemplateData {
       startDate: string;
       endDate: string;
       nights: number;
+      quantity?: number;
       pricePerNight: string;
       subtotal: string;
     }>;
@@ -300,7 +301,11 @@ export class TemplateEngine {
   private replacePlaceholders(template: string, data: any): string {
     let result = template;
 
-    // Handle simple placeholders {{variable}} (top-level only, before loops)
+    // Handle each loops FIRST so loop-scoped placeholders (e.g. period {{subtotal}})
+    // are not overwritten by top-level placeholders with the same name
+    result = this.processEachBlocks(result, data);
+
+    // Handle simple top-level placeholders {{variable}}
     result = result.replace(/\{\{(\w+)\}\}/g, (match, key) => {
       const value = data[key];
       if (value !== undefined && value !== null) {
@@ -308,9 +313,6 @@ export class TemplateEngine {
       }
       return match;
     });
-
-    // Handle each loops with proper nesting support
-    result = this.processEachBlocks(result, data);
 
     // Handle top-level conditional blocks {{#if variable}}...{{/if}} (no else)
     result = result.replace(/\{\{#if\s+(\w+)\}\}([\s\S]*?)\{\{\/if\}\}/g, (match, key, content) => {
@@ -498,6 +500,7 @@ export class TemplateHelpers {
       let lineTotal = 0;
       let roomRatePerNight = 0;
       let pricingPeriods: any[] = [];
+      let itemNights = totalNights || 0;
 
       if (item.hasPricingPeriods && item.pricingPeriods && item.pricingPeriods.length > 0) {
         console.log('Processing item with pricing periods:', {
@@ -505,27 +508,41 @@ export class TemplateHelpers {
           pricingPeriodsCount: item.pricingPeriods.length
         });
 
+        let periodTotalNights = 0;
+
         // Item has pricing periods - use them for calculations
         pricingPeriods = item.pricingPeriods.map((period: any) => {
-          const unitPrice = typeof period.unitPrice === 'string'
+          const unitPriceRaw = typeof period.unitPrice === 'string'
             ? parseFloat(period.unitPrice)
             : Number(period.unitPrice);
-          const periodSubtotal = typeof period.subtotal === 'string'
+          const unitPrice = isNaN(unitPriceRaw) ? 0 : unitPriceRaw;
+          const periodNights = Number(period.nights) || 0;
+          const periodSubtotalRaw = typeof period.subtotal === 'string'
             ? parseFloat(period.subtotal)
             : Number(period.subtotal);
+          const periodSubtotalPerRoom = isNaN(periodSubtotalRaw)
+            ? unitPrice * periodNights
+            : periodSubtotalRaw;
+          const periodTotal = periodSubtotalPerRoom * quantity;
 
-          lineTotal += periodSubtotal;
+          lineTotal += periodTotal;
+          periodTotalNights += periodNights;
 
           return {
             startDate: this.formatDate(period.startDate),
             endDate: this.formatDate(period.endDate),
-            nights: period.nights || 0,
+            nights: periodNights,
+            quantity,
             pricePerNight: TemplateHelpers.formatCurrency(unitPrice),
-            subtotal: TemplateHelpers.formatCurrency(periodSubtotal)
+            subtotal: TemplateHelpers.formatCurrency(periodTotal)
           };
         });
 
-        // For pricing periods, roomRate is shown as "Variable" in template
+        if (periodTotalNights > 0) {
+          itemNights = periodTotalNights;
+        }
+
+        // For pricing periods, roomRate is shown as "Seasonal" in template
         roomRatePerNight = 0; // Not used when hasPricingPeriods is true
       } else {
         console.log('Processing item without pricing periods:', {
@@ -571,13 +588,13 @@ export class TemplateHelpers {
         roomType: roomTypeMap[item.roomType] || item.roomType || 'Standard Room',
         mealPlan: this.formatMealPlan(booking.mealPlan) || 'No Meal',
         quantity: quantity || 1,
-        nights: totalNights || 0,
+        nights: itemNights,
         roomRate: formattedRoomRate,
         lineTotal: formattedLineTotal,
         // Business rules for combined invoice display
         productName: booking.hotelName || 'Hotel',
         detailText: `${roomTypeMap[item.roomType] || item.roomType} • ${this.formatDate(booking.checkIn)} - ${this.formatDate(booking.checkOut)}`,
-        nightsDisplay: (item.hasPricingPeriods ? 'Variable' : String(totalNights || 0)),
+        nightsDisplay: String(itemNights),
         unitPriceVariable: !!item.hasPricingPeriods,
         hasPricingPeriods: item.hasPricingPeriods || false,
         pricingPeriods: pricingPeriods || []

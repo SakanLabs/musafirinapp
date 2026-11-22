@@ -10,6 +10,7 @@ import {
 } from "lucide-react"
 import { authService } from "@/lib/auth"
 import { useCreateCustomLaRequest, useClients, useBookings, useServiceOrders } from "@/lib/queries"
+import { ClientSearchCombobox } from "@/components/clients/ClientSearchCombobox"
 import { useTransportationBookings } from "@/lib/queries/transportationBookings"
 import { formatCurrency } from "@/lib/utils"
 import { toast } from "sonner"
@@ -70,6 +71,16 @@ function CreateCustomLaWizard() {
   const { data: unlinkedServiceOrders = [], refetch: refetchSO, isFetching: isRefetchingSO } = useServiceOrders(formData.clientId, true);
 
   const handleClientChange = (clientId: string) => {
+    if (!clientId) {
+      setFormData(prev => ({
+        ...prev,
+        clientId: 0,
+        linkedBookingIds: [],
+        linkedTransportIds: [],
+        linkedServiceOrderIds: []
+      }))
+      return
+    }
     const id = parseInt(clientId)
     const client = clients.find(c => c.id === id)
     if (client) {
@@ -251,14 +262,14 @@ function CreateCustomLaWizard() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
                 <label className="block text-xs font-semibold text-zinc-700 uppercase tracking-wider mb-2">Pilih Client Terdaftar *</label>
-                <select 
-                  value={formData.clientId} 
-                  onChange={(e) => handleClientChange(e.target.value)} 
-                  className="w-full h-10 px-3 border border-[#e5e7eb] rounded-md focus:border-[#111111] focus:ring-1 focus:ring-[#111111] bg-white text-sm"
-                >
-                  <option value="">Pilih Client</option>
-                  {clients.map((c:any) => <option key={c.id} value={c.id}>{c.name}</option>)}
-                </select>
+                <ClientSearchCombobox
+                  clients={clients}
+                  selectedClientId={formData.clientId ? formData.clientId.toString() : ""}
+                  onSelectClient={handleClientChange}
+                  isLoading={isClientsLoading}
+                  onAddNewClient={() => navigate({ to: "/clients/create", search: { redirectTo: "/create-custom-la" } })}
+                  className="w-full h-10"
+                />
               </div>
               <div>
                 <label className="block text-xs font-semibold text-zinc-700 uppercase tracking-wider mb-2">Nama Group / PIC</label>

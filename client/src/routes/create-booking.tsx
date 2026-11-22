@@ -621,13 +621,13 @@ function CreateBookingPage() {
                   onSelectClient={handleClientSelection}
                   isLoading={isClientsLoading}
                   error={Boolean(errors.client)}
-                  onAddNewClient={() => navigate({ to: "/clients", search: { redirectTo: "/create-booking" } })}
+                  onAddNewClient={() => navigate({ to: "/clients/create", search: { redirectTo: "/create-booking" } })}
                 />
                 <Button
                   type="button"
                   variant="outline"
                   className="text-xs h-9 px-4 border-[#e5e7eb] hover:bg-gray-50 text-[#374151] shrink-0"
-                  onClick={() => navigate({ to: "/clients", search: { redirectTo: "/create-booking" } })}
+                  onClick={() => navigate({ to: "/clients/create", search: { redirectTo: "/create-booking" } })}
                 >
                   New Client
                 </Button>
