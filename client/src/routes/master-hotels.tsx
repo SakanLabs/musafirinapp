@@ -27,6 +27,7 @@ import {
   CheckCircle2,
   XCircle,
   Upload,
+  Download,
   FileSpreadsheet,
   AlertCircle,
   RotateCcw,
@@ -38,6 +39,7 @@ import {
   useDeleteHotel,
   useImportHotelPricing,
   useResetHotelPricing,
+  downloadHotelPricingTemplate,
   type Hotel,
   type ImportPricingResult,
 } from "@/lib/queries/master"
@@ -169,6 +171,15 @@ function MasterHotelsPage() {
     setImportResult(null)
     setResetBeforeImport(true)
     setIsDragOver(false)
+  }
+
+  const handleDownloadTemplate = async () => {
+    try {
+      await downloadHotelPricingTemplate()
+      toast.success('Template Excel berhasil diunduh')
+    } catch (err: any) {
+      toast.error(err.message || 'Gagal mengunduh template Excel')
+    }
   }
 
   const totalHotels = hotels.length
@@ -548,8 +559,20 @@ function MasterHotelsPage() {
               </div>
 
               {/* Format hints */}
-              <div className="bg-zinc-50 border border-zinc-100 rounded-lg p-3">
-                <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider mb-1.5">Format yang didukung</p>
+              <div className="bg-zinc-50 border border-zinc-100 rounded-lg p-3 space-y-2.5">
+                <div className="flex items-center justify-between">
+                  <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider">Format yang didukung</p>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={handleDownloadTemplate}
+                    className="h-7 text-xs px-2.5 border-emerald-200 bg-emerald-50/70 text-emerald-700 hover:bg-emerald-100 hover:text-emerald-800"
+                  >
+                    <Download className="h-3.5 w-3.5 mr-1.5" />
+                    Download Template Excel
+                  </Button>
+                </div>
                 <ul className="text-xs text-zinc-500 space-y-1">
                   <li>• Sheet bernama <span className="font-semibold text-zinc-700">"Makkah"</span> dan/atau <span className="font-semibold text-zinc-700">"Madinah"</span></li>
                   <li>• Kolom: Nama Hotel, Bintang, From, To, Days, Double, Triple, Quad, Meals</li>

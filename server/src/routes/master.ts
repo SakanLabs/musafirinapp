@@ -94,6 +94,67 @@ app.delete('/hotels/:id', requireAdmin, async (c) => {
   }
 });
 
+// GET /hotels/import-template - Download Excel template for bulk hotel pricing import
+app.get('/hotels/import-template', async (c) => {
+  try {
+    const workbook = XLSX.utils.book_new();
+
+    const colWidths = [
+      { wch: 6 },  // No
+      { wch: 32 }, // Nama Hotel
+      { wch: 10 }, // Bintang
+      { wch: 15 }, // From
+      { wch: 15 }, // To
+      { wch: 8 },  // Days
+      { wch: 12 }, // Double
+      { wch: 12 }, // Triple
+      { wch: 12 }, // Quad
+      { wch: 16 }, // Meals
+    ];
+
+    const makkahRows = [
+      ['', 'TEMPLATE IMPORT HARGA HOTEL MAKKAH - MUSAFIRIN'],
+      ['', 'Petunjuk: Isi data mulai baris ke-5. Kolom Meals: Room Only, Breakfast, Half Board, atau Full Board.'],
+      [],
+      ['No', 'Nama Hotel', 'Bintang', 'From', 'To', 'Days', 'Double', 'Triple', 'Quad', 'Meals'],
+      [1, 'Pullman Zamzam Makkah', 5, '01 Aug 2026', '31 Aug 2026', 30, 650, 750, 850, 'Full Board'],
+      [2, 'Pullman Zamzam Makkah', 5, '01 Sep 2026', '30 Sep 2026', 29, 700, 800, 900, 'Full Board'],
+      [3, 'Le Meridien Towers Makkah', 4, '01 Aug 2026', '31 Aug 2026', 30, 350, 420, 480, 'Room Only'],
+    ];
+
+    const madinahRows = [
+      ['', 'TEMPLATE IMPORT HARGA HOTEL MADINAH - MUSAFIRIN'],
+      ['', 'Petunjuk: Isi data mulai baris ke-5. Kolom Meals: Room Only, Breakfast, Half Board, atau Full Board.'],
+      [],
+      ['No', 'Nama Hotel', 'Bintang', 'From', 'To', 'Days', 'Double', 'Triple', 'Quad', 'Meals'],
+      [1, 'Anwar Al Madinah Movenpick', 5, '01 Aug 2026', '31 Aug 2026', 30, 600, 700, 800, 'Full Board'],
+      [2, 'Anwar Al Madinah Movenpick', 5, '01 Sep 2026', '30 Sep 2026', 29, 650, 750, 850, 'Full Board'],
+      [3, 'Emaar Elite Madinah', 4, '01 Aug 2026', '31 Aug 2026', 30, 400, 480, 550, 'Breakfast'],
+    ];
+
+    const makkahSheet = XLSX.utils.aoa_to_sheet(makkahRows);
+    makkahSheet['!cols'] = colWidths;
+    XLSX.utils.book_append_sheet(workbook, makkahSheet, 'Makkah');
+
+    const madinahSheet = XLSX.utils.aoa_to_sheet(madinahRows);
+    madinahSheet['!cols'] = colWidths;
+    XLSX.utils.book_append_sheet(workbook, madinahSheet, 'Madinah');
+
+    const buffer = XLSX.write(workbook, { type: 'buffer', bookType: 'xlsx' });
+
+    return new Response(buffer, {
+      status: 200,
+      headers: {
+        'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        'Content-Disposition': 'attachment; filename="Template_Import_Harga_Hotel.xlsx"',
+      },
+    });
+  } catch (error: any) {
+    console.error('Error generating hotel pricing template:', error);
+    return c.json({ error: 'Failed to generate template' }, 500);
+  }
+});
+
 // POST /hotels/import-pricing - Bulk import hotel pricing from Excel
 app.post('/hotels/import-pricing', requireAdmin, async (c) => {
   try {

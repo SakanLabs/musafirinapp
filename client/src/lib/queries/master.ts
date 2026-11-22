@@ -169,6 +169,10 @@ export interface ImportPricingResult {
   sheets: { name: string; city: string; rows: number }[];
 }
 
+export const downloadHotelPricingTemplate = async () => {
+  await apiClient.downloadFile('/api/master/hotels/import-template', 'Template_Import_Harga_Hotel.xlsx');
+};
+
 export const useImportHotelPricing = () => {
   const queryClient = useQueryClient();
   return useMutation({
