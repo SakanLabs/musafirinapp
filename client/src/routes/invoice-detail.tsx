@@ -12,6 +12,7 @@ import { useInvoice, usePayInvoice, type Invoice } from "@/lib/queries/invoices"
 import { useReceiptsByBooking, useGenerateReceipt } from "@/lib/queries/receipts";
 import { useRegenerateInvoice } from "@/lib/queries/bookings";
 import { authService } from "@/lib/auth";
+import { apiClient } from "@/lib/api";
 import { FileText, Download, Banknote, CalendarDays, Loader2, Info, MessageCircle, Mail, ArrowLeft, RefreshCw, Receipt, Edit } from "lucide-react";
 import { useNavigate } from "@tanstack/react-router";
 
@@ -224,6 +225,24 @@ function InvoiceDetailPage() {
     }
   };
 
+  const [isSendingEmail, setIsSendingEmail] = useState(false);
+
+  const handleSendInvoiceEmail = async () => {
+    if (!invoice) return;
+    setIsSendingEmail(true);
+    try {
+      const res = await apiClient.post<{ success: boolean; message?: string }>(
+        `/api/invoices/${invoice.id}/send-email`,
+        { invoiceNumber: invoice.number }
+      );
+      toast.success(res.message || "Email invoice berhasil dikirim ke klien");
+    } catch (err: any) {
+      toast.error(err?.message || "Gagal mengirim email invoice");
+    } finally {
+      setIsSendingEmail(false);
+    }
+  };
+
   if (!id) {
     return (
       <PageLayout title="Invoice Detail" subtitle="Missing invoice ID">
@@ -324,6 +343,20 @@ function InvoiceDetailPage() {
                 Regenerate
               </Button>
             )}
+            <Button
+              type="button"
+              variant="outline"
+              onClick={handleSendInvoiceEmail}
+              disabled={isSendingEmail}
+              className="h-9 px-3.5 border-zinc-300 text-zinc-900 hover:bg-zinc-100 flex items-center rounded-md text-xs font-semibold transition-colors bg-white shadow-none cursor-pointer"
+            >
+              {isSendingEmail ? (
+                <Loader2 className="h-4 w-4 mr-2 animate-spin text-zinc-600" />
+              ) : (
+                <Mail className="h-4 w-4 mr-2 text-zinc-700" />
+              )}
+              {isSendingEmail ? "Mengirim..." : "Kirim Email"}
+            </Button>
             <Button 
               variant="outline" 
               onClick={handleShareWhatsApp}

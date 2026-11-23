@@ -17,10 +17,11 @@ import { db } from '../db';
 import { bookings, clients, vouchers, bookingItems, notificationLogs, invoices, invoicePayments } from '../db/schema';
 import type { NotificationLog, NewNotificationLog } from '../db/schema';
 import { sendEmail } from '../lib/email';
+import { buildInvoiceEmail, buildReceiptEmail, buildVoucherEmail } from '../lib/emailTemplates';
 import { sendWhatsAppMessage, normalizePhoneNumber } from '../lib/whatsapp';
 import { formatOperationalDate } from '../lib/date';
 
-export type NotificationType = 'payment_confirmation' | 'voucher' | 'invoice';
+export type NotificationType = 'payment_confirmation' | 'voucher' | 'invoice' | 'receipt';
 export type NotificationChannel = 'email' | 'whatsapp';
 
 export interface SendPaymentConfirmationParams {
@@ -51,12 +52,15 @@ export interface SendVoucherParams {
   channels?: NotificationChannel[];
   forceResend?: boolean;
   sentBy?: string;
+  pdfBuffer?: Buffer;
 }
 
 export interface SendInvoiceParams {
   bookingId?: number;
   clientId?: number;
   invoiceNumber: string;
+  bookingCode?: string;
+  serviceSummary?: string;
   recipientName: string;
   recipientEmail?: string;
   recipientPhone?: string;
@@ -68,6 +72,23 @@ export interface SendInvoiceParams {
   channels?: NotificationChannel[];
   forceResend?: boolean;
   sentBy?: string;
+}
+
+export interface SendReceiptParams {
+  bookingId?: number;
+  receiptNumber: string;
+  invoiceNumber?: string;
+  bookingCode?: string;
+  serviceSummary?: string;
+  recipientName: string;
+  recipientEmail?: string;
+  totalAmount: number | string;
+  paidAmount: number | string;
+  balanceDue: number | string;
+  currency?: string;
+  issueDate?: Date | string;
+  paymentMethod?: string;
+  downloadUrl?: string;
 }
 
 export interface ChannelSendResult {
@@ -206,80 +227,25 @@ export class NotificationService {
           }
         }
 
-        // Prepare email content
-        const subject = `Konfirmasi Pembayaran — ${bookingCode}`;
-        const textMessage = `Assalamu'alaikum Bapak/Ibu ${recipientName},\n\n` +
-          `Pembayaran untuk ${bookingCode} (${hotelName}) telah kami terima dan konfirmasi.\n\n` +
-          `Rincian Pembayaran:\n` +
-          `• Kode: ${bookingCode}\n` +
-          `• Layanan/Hotel: ${hotelName}${city ? ` (${city})` : ''}\n` +
-          `• Jadwal: ${formattedCheckIn} s.d. ${formattedCheckOut}\n` +
-          `• Status Pembayaran: ${paymentStatus.toUpperCase()} (${terminLabel})\n` +
-          `• Jumlah Diterima: ${currency} ${formattedAmount}\n` +
-          `• Sisa Pembayaran: ${currency} ${formattedRemaining}\n` +
-          `• Metode: ${method}\n\n` +
-          `Terima kasih telah mempercayakan perjalanan ibadah Anda kepada Musafirin.`;
-
-        const htmlMessage = `
-          <!DOCTYPE html>
-          <html>
-          <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background-color: #f8fafc; padding: 24px; margin: 0;">
-            <div style="max-width: 600px; margin: 0 auto; background: #ffffff; border-radius: 12px; border: 1px solid #e2e8f0; overflow: hidden; box-shadow: 0 4px 12px rgba(0,0,0,0.05);">
-              <div style="background: #111111; padding: 28px; text-align: center; color: #ffffff;">
-                <h1 style="margin: 0; font-size: 20px; font-weight: 700; letter-spacing: -0.02em;">MUSAFIRIN</h1>
-                <p style="margin: 6px 0 0; font-size: 13px; color: #9ca3af;">Bukti Konfirmasi Pembayaran</p>
-              </div>
-
-              <div style="padding: 28px;">
-                <div style="background-color: #ecfdf5; border: 1px solid #d1fae5; border-radius: 8px; padding: 16px; margin-bottom: 24px; text-align: center;">
-                  <span style="display: inline-block; font-size: 11px; font-weight: 700; text-transform: uppercase; color: #047857; letter-spacing: 0.05em;">Pembayaran Dikonfirmasi</span>
-                  <div style="font-size: 26px; font-weight: 800; color: #065f46; margin-top: 4px;">${currency} ${formattedAmount}</div>
-                  <div style="font-size: 12px; color: #047857; margin-top: 2px;">${terminLabel}</div>
-                </div>
-
-                <p style="font-size: 14px; color: #374151; line-height: 1.6; margin-top: 0;">
-                  Assalamu'alaikum <strong>${recipientName}</strong>,<br/>
-                  Pembayaran untuk reservasi Anda telah berhasil kami terima dan catat di sistem Musafirin.
-                </p>
-
-                <table style="width: 100%; border-collapse: collapse; margin-top: 20px; font-size: 13px;">
-                  <tr style="border-bottom: 1px solid #f1f5f9;">
-                    <td style="padding: 10px 0; color: #6b7280; font-weight: 500;">Kode / Nomor</td>
-                    <td style="padding: 10px 0; color: #111827; font-weight: 700; text-align: right;">${bookingCode}</td>
-                  </tr>
-                  <tr style="border-bottom: 1px solid #f1f5f9;">
-                    <td style="padding: 10px 0; color: #6b7280; font-weight: 500;">Layanan</td>
-                    <td style="padding: 10px 0; color: #111827; font-weight: 600; text-align: right;">${hotelName}${city ? ` (${city})` : ''}</td>
-                  </tr>
-                  <tr style="border-bottom: 1px solid #f1f5f9;">
-                    <td style="padding: 10px 0; color: #6b7280; font-weight: 500;">Jadwal</td>
-                    <td style="padding: 10px 0; color: #111827; font-weight: 500; text-align: right;">${formattedCheckIn} &ndash; ${formattedCheckOut}</td>
-                  </tr>
-                  <tr style="border-bottom: 1px solid #f1f5f9;">
-                    <td style="padding: 10px 0; color: #6b7280; font-weight: 500;">Metode Pembayaran</td>
-                    <td style="padding: 10px 0; color: #111827; font-weight: 500; text-align: right;">${method}</td>
-                  </tr>
-                  <tr style="border-bottom: 1px solid #f1f5f9;">
-                    <td style="padding: 10px 0; color: #6b7280; font-weight: 500;">Status Pembayaran</td>
-                    <td style="padding: 10px 0; color: ${paymentStatus === 'paid' ? '#059669' : '#d97706'}; font-weight: 700; text-align: right; text-transform: uppercase;">
-                      ${paymentStatus}
-                    </td>
-                  </tr>
-                  <tr>
-                    <td style="padding: 10px 0; color: #6b7280; font-weight: 500;">Sisa Pembayaran</td>
-                    <td style="padding: 10px 0; color: #111827; font-weight: 700; text-align: right;">${currency} ${formattedRemaining}</td>
-                  </tr>
-                </table>
-
-                <div style="margin-top: 32px; padding-top: 20px; border-top: 1px solid #e5e7eb; text-align: center; color: #6b7280; font-size: 12px; line-height: 1.5;">
-                  Terima kasih telah mempercayakan perjalanan Anda kepada <strong>Musafirin</strong>.<br/>
-                  Jika ada pertanyaan, silakan hubungi tim operasional kami.
-                </div>
-              </div>
-            </div>
-          </body>
-          </html>
-        `;
+        const totalForReceipt = (typeof paymentAmount === 'number' ? paymentAmount : parseFloat(String(paymentAmount)) || 0) + remainingBalance;
+        const formattedTotal = totalForReceipt.toLocaleString('id-ID', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        const emailContent = buildReceiptEmail({
+          recipientName,
+          receiptNumber: referenceId,
+          bookingCode,
+          serviceSummary: `${hotelName}${city ? ` (${city})` : ''} (${formattedCheckIn} s.d. ${formattedCheckOut})`,
+          issueDate: formatOperationalDate(new Date(), 'long'),
+          currency,
+          formattedPaidAmount: formattedAmount,
+          formattedTotalAmount: formattedTotal,
+          formattedBalanceDue: formattedRemaining,
+          paymentMethod: method,
+          paymentStatusLabel: paymentStatus === 'paid' ? 'Lunas' : terminLabel,
+          isPaidFull: paymentStatus === 'paid' || remainingBalance <= 0.01,
+        });
+        const subject = emailContent.subject;
+        const textMessage = emailContent.text;
+        const htmlMessage = emailContent.html;
 
         let logId: number | null = null;
         if (bookingId) {
@@ -472,9 +438,9 @@ export class NotificationService {
     const roomSummary = items.map(i => `${i.roomCount}x ${i.roomType}`).join(', ') || 'Kamar Standar';
     const referenceId = voucher.number;
 
-    const recipientName = voucher.guestName || voucher.clientName || meta.guestName || 'Pelanggan Musafirin';
-    const recipientEmail = voucher.clientEmail || meta.guestEmail || '';
-    const recipientPhone = voucher.clientPhone || meta.guestPhone || '';
+    const recipientName = voucher.guestName || meta.guestName || voucher.clientName || 'Pelanggan Musafirin';
+    const recipientEmail = (meta.guestEmail && String(meta.guestEmail).includes('@') ? String(meta.guestEmail) : '') || voucher.clientEmail || '';
+    const recipientPhone = meta.guestPhone || voucher.clientPhone || '';
 
     // Secure download URL
     const baseUrl = this.getBaseUrl();
@@ -512,81 +478,21 @@ export class NotificationService {
           continue;
         }
 
-        const subject = `Voucher Booking ${voucher.bookingCode} — Musafirin`;
-        const textMessage =
-          `Assalamu'alaikum Bapak/Ibu ${recipientName},\n\n` +
-          `Voucher untuk booking ${voucher.bookingCode} telah tersedia.\n\n` +
-          `Rincian Reservasi:\n` +
-          `• No. Voucher: ${voucher.number}\n` +
-          `• Hotel: ${voucher.hotelName} (${voucher.city})\n` +
-          `• HCN (Hotel Confirmation): ${voucher.hcn || 'Terkonfirmasi'}\n` +
-          `• Check-in: ${formattedCheckIn}\n` +
-          `• Check-out: ${formattedCheckOut}\n` +
-          `• Tipe Kamar: ${roomSummary}\n\n` +
-          `Voucher dapat diunduh melalui link berikut:\n${voucherDownloadUrl}\n\n` +
-          `Mohon periksa kembali nama tamu, tanggal, hotel, dan detail reservasi Anda.\n` +
-          `Terima kasih telah mempercayakan perjalanan Anda kepada Musafirin.`;
-
-        const htmlMessage = `
-          <!DOCTYPE html>
-          <html>
-          <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background-color: #f8fafc; padding: 24px; margin: 0;">
-            <div style="max-width: 600px; margin: 0 auto; background: #ffffff; border-radius: 12px; border: 1px solid #e2e8f0; overflow: hidden; box-shadow: 0 4px 12px rgba(0,0,0,0.05);">
-              <div style="background: #111111; padding: 28px; text-align: center; color: #ffffff;">
-                <h1 style="margin: 0; font-size: 20px; font-weight: 700; letter-spacing: -0.02em;">MUSAFIRIN</h1>
-                <p style="margin: 6px 0 0; font-size: 13px; color: #9ca3af;">Hotel Reservation Voucher</p>
-              </div>
-
-              <div style="padding: 28px;">
-                <div style="background-color: #eff6ff; border: 1px solid #dbeafe; border-radius: 8px; padding: 16px; margin-bottom: 24px; text-align: center;">
-                  <span style="display: inline-block; font-size: 11px; font-weight: 700; text-transform: uppercase; color: #1e40af; letter-spacing: 0.05em;">Nomor Voucher</span>
-                  <div style="font-size: 22px; font-weight: 800; color: #1e3a8a; margin-top: 4px; font-family: monospace;">${voucher.number}</div>
-                  ${voucher.hcn ? `<div style="font-size: 12px; color: #1e40af; margin-top: 4px;">HCN: <strong>${voucher.hcn}</strong></div>` : ''}
-                </div>
-
-                <p style="font-size: 14px; color: #374151; line-height: 1.6; margin-top: 0;">
-                  Assalamu'alaikum <strong>${recipientName}</strong>,<br/>
-                  Voucher reservasi hotel Anda telah resmi diterbitkan. Silakan periksa rincian reservasi di bawah ini:
-                </p>
-
-                <table style="width: 100%; border-collapse: collapse; margin-top: 20px; font-size: 13px;">
-                  <tr style="border-bottom: 1px solid #f1f5f9;">
-                    <td style="padding: 10px 0; color: #6b7280; font-weight: 500;">Kode Booking</td>
-                    <td style="padding: 10px 0; color: #111827; font-weight: 700; text-align: right;">${voucher.bookingCode}</td>
-                  </tr>
-                  <tr style="border-bottom: 1px solid #f1f5f9;">
-                    <td style="padding: 10px 0; color: #6b7280; font-weight: 500;">Hotel & Kota</td>
-                    <td style="padding: 10px 0; color: #111827; font-weight: 600; text-align: right;">${voucher.hotelName} (${voucher.city})</td>
-                  </tr>
-                  <tr style="border-bottom: 1px solid #f1f5f9;">
-                    <td style="padding: 10px 0; color: #6b7280; font-weight: 500;">Check-in</td>
-                    <td style="padding: 10px 0; color: #111827; font-weight: 600; text-align: right;">${formattedCheckIn}</td>
-                  </tr>
-                  <tr style="border-bottom: 1px solid #f1f5f9;">
-                    <td style="padding: 10px 0; color: #6b7280; font-weight: 500;">Check-out</td>
-                    <td style="padding: 10px 0; color: #111827; font-weight: 600; text-align: right;">${formattedCheckOut}</td>
-                  </tr>
-                  <tr>
-                    <td style="padding: 10px 0; color: #6b7280; font-weight: 500;">Kamar</td>
-                    <td style="padding: 10px 0; color: #111827; font-weight: 600; text-align: right;">${roomSummary}</td>
-                  </tr>
-                </table>
-
-                <div style="text-align: center; margin: 32px 0 20px 0;">
-                  <a href="${voucherDownloadUrl}" style="background-color: #111111; color: #ffffff; padding: 12px 28px; border-radius: 6px; text-decoration: none; font-weight: 600; display: inline-block; font-size: 14px;">
-                    Unduh Dokumen Voucher (PDF) &rarr;
-                  </a>
-                </div>
-
-                <div style="margin-top: 28px; padding-top: 20px; border-top: 1px solid #e5e7eb; text-align: center; color: #6b7280; font-size: 12px; line-height: 1.5;">
-                  Tunjukkan voucher ini kepada resepsionis hotel saat check-in.<br/>
-                  Terima kasih telah mempercayakan perjalanan Anda kepada <strong>Musafirin</strong>.
-                </div>
-              </div>
-            </div>
-          </body>
-          </html>
-        `;
+        const voucherEmail = buildVoucherEmail({
+          recipientName,
+          voucherNumber: voucher.number,
+          bookingCode: voucher.bookingCode,
+          hotelName: voucher.hotelName,
+          city: voucher.city,
+          hcn: voucher.hcn,
+          checkIn: formattedCheckIn,
+          checkOut: formattedCheckOut,
+          roomSummary,
+          downloadUrl: voucherDownloadUrl,
+        });
+        const subject = voucherEmail.subject;
+        const textMessage = voucherEmail.text;
+        const htmlMessage = voucherEmail.html;
 
         const logId = await this.recordPendingLog({
           bookingId,
@@ -598,12 +504,34 @@ export class NotificationService {
           metadata: { voucherNumber: voucher.number, pdfUrl: voucher.pdfUrl },
         });
 
+        let pdfAttachmentBuffer: Buffer | undefined = params.pdfBuffer;
+        if (!pdfAttachmentBuffer && voucher.pdfUrl) {
+          try {
+            const { getFileStreamFromMinio } = await import('../utils/pdf');
+            const urlParts = voucher.pdfUrl.split('/');
+            const fileName = urlParts.slice(-2).join('/');
+            const stream = await getFileStreamFromMinio(fileName);
+            const chunks: Buffer[] = [];
+            for await (const chunk of stream) {
+              chunks.push(typeof chunk === 'string' ? Buffer.from(chunk) : chunk);
+            }
+            if (chunks.length > 0) {
+              pdfAttachmentBuffer = Buffer.concat(chunks);
+            }
+          } catch (attachErr) {
+            console.warn(`[NotificationService] Could not attach voucher PDF from MinIO for ${voucher.number}, sending link only:`, attachErr);
+          }
+        }
+
         try {
           const emailRes = await sendEmail({
             to: recipientEmail,
             subject,
             text: textMessage,
             html: htmlMessage,
+            attachments: pdfAttachmentBuffer
+              ? [{ filename: `${voucher.number}.pdf`, content: pdfAttachmentBuffer, contentType: 'application/pdf' }]
+              : undefined,
           });
 
           if (emailRes.success) {
@@ -790,75 +718,20 @@ export class NotificationService {
           }
         }
 
-        const subject = `Tagihan Invoice ${invoiceNumber} — Musafirin`;
-        const textMessage =
-          `Assalamu'alaikum Bapak/Ibu ${recipientName},\n\n` +
-          `Berikut adalah rincian tagihan Invoice resmi dari Musafirin:\n\n` +
-          `Rincian Tagihan:\n` +
-          `• No. Invoice: ${invoiceNumber}\n` +
-          `• Tanggal Terbit: ${formattedIssueDate}\n` +
-          `• Jatuh Tempo: ${formattedDueDate}\n` +
-          `• Total Tagihan: ${currency} ${formattedAmount}\n\n` +
-          `Dokumen invoice resmi dapat diunduh melalui tautan berikut:\n${invoicePdfUrl}\n\n` +
-          `Mohon untuk melakukan pembayaran sebelum tanggal jatuh tempo.\n` +
-          `Terima kasih telah mempercayakan perjalanan Anda kepada Musafirin.`;
-
-        const htmlMessage = `
-          <!DOCTYPE html>
-          <html>
-          <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background-color: #f8fafc; padding: 24px; margin: 0;">
-            <div style="max-width: 600px; margin: 0 auto; background: #ffffff; border-radius: 12px; border: 1px solid #e2e8f0; overflow: hidden; box-shadow: 0 4px 12px rgba(0,0,0,0.05);">
-              <div style="background: #111111; padding: 28px; text-align: center; color: #ffffff;">
-                <h1 style="margin: 0; font-size: 20px; font-weight: 700; letter-spacing: -0.02em;">MUSAFIRIN</h1>
-                <p style="margin: 6px 0 0; font-size: 13px; color: #9ca3af;">Tagihan Invoice Resmi</p>
-              </div>
-
-              <div style="padding: 28px;">
-                <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 18px; margin-bottom: 24px; text-align: center;">
-                  <span style="display: inline-block; font-size: 11px; font-weight: 700; text-transform: uppercase; color: #475569; letter-spacing: 0.05em;">Total Tagihan Invoice</span>
-                  <div style="font-size: 26px; font-weight: 800; color: #0f172a; margin-top: 4px;">${currency} ${formattedAmount}</div>
-                  <div style="font-size: 12px; color: #e11d48; margin-top: 4px; font-weight: 600;">Jatuh Tempo: ${formattedDueDate}</div>
-                </div>
-
-                <p style="font-size: 14px; color: #374151; line-height: 1.6; margin-top: 0;">
-                  Assalamu'alaikum <strong>${recipientName}</strong>,<br/>
-                  Invoice tagihan resmi Anda telah diterbitkan. Berikut rincian ringkasan invoice:
-                </p>
-
-                <table style="width: 100%; border-collapse: collapse; margin-top: 20px; font-size: 13px;">
-                  <tr style="border-bottom: 1px solid #f1f5f9;">
-                    <td style="padding: 10px 0; color: #6b7280; font-weight: 500;">Nomor Invoice</td>
-                    <td style="padding: 10px 0; color: #111827; font-weight: 700; text-align: right; font-family: monospace;">${invoiceNumber}</td>
-                  </tr>
-                  <tr style="border-bottom: 1px solid #f1f5f9;">
-                    <td style="padding: 10px 0; color: #6b7280; font-weight: 500;">Tanggal Terbit</td>
-                    <td style="padding: 10px 0; color: #111827; font-weight: 600; text-align: right;">${formattedIssueDate}</td>
-                  </tr>
-                  <tr style="border-bottom: 1px solid #f1f5f9;">
-                    <td style="padding: 10px 0; color: #6b7280; font-weight: 500;">Jatuh Tempo</td>
-                    <td style="padding: 10px 0; color: #e11d48; font-weight: 700; text-align: right;">${formattedDueDate}</td>
-                  </tr>
-                  <tr>
-                    <td style="padding: 10px 0; color: #6b7280; font-weight: 500;">Total Tagihan</td>
-                    <td style="padding: 10px 0; color: #111827; font-weight: 800; text-align: right;">${currency} ${formattedAmount}</td>
-                  </tr>
-                </table>
-
-                <div style="text-align: center; margin: 32px 0 20px 0;">
-                  <a href="${invoicePdfUrl}" style="background-color: #111111; color: #ffffff; padding: 12px 28px; border-radius: 6px; text-decoration: none; font-weight: 600; display: inline-block; font-size: 14px;">
-                    Unduh Dokumen Invoice (PDF) &rarr;
-                  </a>
-                </div>
-
-                <div style="margin-top: 28px; padding-top: 20px; border-top: 1px solid #e5e7eb; text-align: center; color: #6b7280; font-size: 12px; line-height: 1.5;">
-                  Silakan lakukan pembayaran sebelum tanggal jatuh tempo.<br/>
-                  Terima kasih atas kerja sama dan kepercayaannya kepada <strong>Musafirin</strong>.
-                </div>
-              </div>
-            </div>
-          </body>
-          </html>
-        `;
+        const invoiceEmail = buildInvoiceEmail({
+          recipientName,
+          invoiceNumber,
+          bookingCode: params.bookingCode,
+          serviceSummary: params.serviceSummary,
+          issueDate: formattedIssueDate,
+          dueDate: formattedDueDate,
+          currency,
+          formattedAmount,
+          downloadUrl: invoicePdfUrl,
+        });
+        const subject = invoiceEmail.subject;
+        const textMessage = invoiceEmail.text;
+        const htmlMessage = invoiceEmail.html;
 
         let logId: number | null = null;
         if (bookingId) {
@@ -996,6 +869,70 @@ export class NotificationService {
       invoiceNumber,
       type: 'invoice',
       results,
+    };
+  }
+
+  /**
+   * Mengirim email Kwitansi (Receipt) resmi ke klien secara manual
+   */
+  async sendReceipt(params: SendReceiptParams): Promise<ChannelSendResult> {
+    const recipientEmail = (params.recipientEmail || '').trim();
+    if (!recipientEmail || !recipientEmail.includes('@')) {
+      return {
+        channel: 'email',
+        status: 'failed',
+        recipient: recipientEmail || '(email tidak tersedia)',
+        errorMessage: 'Alamat email klien tidak valid atau belum diisi',
+      };
+    }
+
+    const totalNum = typeof params.totalAmount === 'number' ? params.totalAmount : parseFloat(String(params.totalAmount || '0')) || 0;
+    const paidNum = typeof params.paidAmount === 'number' ? params.paidAmount : parseFloat(String(params.paidAmount || '0')) || 0;
+    const balanceNum = typeof params.balanceDue === 'number' ? params.balanceDue : parseFloat(String(params.balanceDue || '0')) || 0;
+    const isPaidFull = balanceNum <= 0.01 && totalNum > 0;
+    const currency = params.currency || 'SAR';
+    const formatNum = (n: number) => n.toLocaleString('id-ID', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+    const receiptUrl = params.downloadUrl || `${this.getBaseUrl()}/api/receipts/by-number/${params.receiptNumber}/download`;
+
+    const emailContent = buildReceiptEmail({
+      recipientName: params.recipientName || 'Pelanggan Musafirin',
+      receiptNumber: params.receiptNumber,
+      invoiceNumber: params.invoiceNumber,
+      bookingCode: params.bookingCode,
+      serviceSummary: params.serviceSummary,
+      issueDate: params.issueDate ? formatOperationalDate(params.issueDate, 'long') : formatOperationalDate(new Date(), 'long'),
+      currency,
+      formattedTotalAmount: formatNum(totalNum),
+      formattedPaidAmount: formatNum(paidNum),
+      formattedBalanceDue: formatNum(balanceNum),
+      paymentMethod: params.paymentMethod,
+      paymentStatusLabel: isPaidFull ? 'Lunas' : 'Pembayaran Sebagian',
+      isPaidFull,
+      downloadUrl: receiptUrl,
+    });
+
+    const emailRes = await sendEmail({
+      to: recipientEmail,
+      subject: emailContent.subject,
+      text: emailContent.text,
+      html: emailContent.html,
+    });
+
+    if (emailRes.success) {
+      return {
+        channel: 'email',
+        status: 'sent',
+        recipient: recipientEmail,
+        providerMessageId: emailRes.messageId,
+      };
+    }
+
+    return {
+      channel: 'email',
+      status: 'failed',
+      recipient: recipientEmail,
+      errorMessage: emailRes.error || 'Gagal mengirim email kwitansi',
     };
   }
 

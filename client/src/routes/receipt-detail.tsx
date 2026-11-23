@@ -1,10 +1,13 @@
+import { useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
+import { toast } from "sonner";
 import { PageLayout } from "@/components/layout/PageLayout";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { formatCurrency, formatDate } from "@/lib/utils";
+import { apiClient } from "@/lib/api";
 import { useReceipt } from "@/lib/queries/receipts";
-import { Download, FileText, Loader2, MessageCircle, Building2, User, Banknote } from "lucide-react";
+import { Download, FileText, Loader2, Mail, MessageCircle, Building2, User, Banknote } from "lucide-react";
 
 export const Route = createFileRoute("/receipt-detail")({
   validateSearch: (search: Record<string, unknown>) => {
@@ -41,6 +44,23 @@ function ReceiptDetailPage() {
   const { id, number } = Route.useSearch();
   const queryParam = number || id;
   const { data: receipt, isLoading, error } = useReceipt(queryParam);
+  const [isSendingEmail, setIsSendingEmail] = useState(false);
+
+  const handleSendReceiptEmail = async () => {
+    if (!receipt) return;
+    setIsSendingEmail(true);
+    try {
+      const res = await apiClient.post<{ success: boolean; message?: string }>(
+        `/api/receipts/${receipt.id}/send-email`,
+        { receiptNumber: receipt.number }
+      );
+      toast.success(res.message || "Email kwitansi berhasil dikirim ke klien");
+    } catch (err: any) {
+      toast.error(err?.message || "Gagal mengirim email kwitansi");
+    } finally {
+      setIsSendingEmail(false);
+    }
+  };
 
   const handleDownload = () => {
     if (!receipt) return;
@@ -107,6 +127,20 @@ function ReceiptDetailPage() {
           >
             <Download className="h-4 w-4 mr-2" />
             Download PDF
+          </Button>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={handleSendReceiptEmail}
+            disabled={isSendingEmail}
+            className="h-9 px-4 border-zinc-300 text-zinc-900 hover:bg-zinc-100 flex items-center rounded-md font-semibold text-xs bg-white shadow-none cursor-pointer"
+          >
+            {isSendingEmail ? (
+              <Loader2 className="h-4 w-4 mr-2 animate-spin text-zinc-600" />
+            ) : (
+              <Mail className="h-4 w-4 mr-2 text-zinc-700" />
+            )}
+            {isSendingEmail ? "Mengirim..." : "Kirim Email"}
           </Button>
           <Button 
             variant="outline" 

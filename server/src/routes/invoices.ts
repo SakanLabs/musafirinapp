@@ -3400,6 +3400,186 @@ invoiceRoutes.post('/:invoiceId/pay', requireAdminOrFinance, async (c) => {
   }
 });
 
+// POST /api/invoices/:id/send-email - Manually send invoice email to client via Resend
+invoiceRoutes.post('/:id/send-email', requireAdminOrFinance, async (c) => {
+  try {
+    const idParam = c.req.param('id');
+    const invoiceId = parseInt(idParam, 10);
+    const body = await c.req.json().catch(() => ({}));
+    const invoiceNumberHint = typeof body?.invoiceNumber === 'string' ? body.invoiceNumber.trim() : '';
+
+    let resolved: {
+      bookingId?: number;
+      clientId?: number;
+      invoiceNumber: string;
+      bookingCode?: string;
+      serviceSummary?: string;
+      recipientName: string;
+      recipientEmail: string;
+      totalAmount: number;
+      currency: string;
+      dueDate: Date | string;
+      issueDate?: Date | string;
+    } | null = null;
+
+    if (invoiceNumberHint.startsWith('INV-MAN-') || invoiceNumberHint.startsWith('INV-MRG-')) {
+      const rows = await db
+        .select()
+        .from(manualInvoices)
+        .where(eq(manualInvoices.number, invoiceNumberHint))
+        .limit(1);
+      if (rows.length > 0) {
+        const inv = rows[0]!;
+        resolved = {
+          clientId: inv.clientId || undefined,
+          invoiceNumber: inv.number,
+          serviceSummary: inv.title || 'Invoice Layanan Musafirin',
+          recipientName: inv.clientName || 'Pelanggan',
+          recipientEmail: inv.clientEmail || '',
+          totalAmount: parseFloat(inv.amount || '0') || 0,
+          currency: inv.currency || 'SAR',
+          dueDate: inv.dueDate,
+          issueDate: inv.issueDate,
+        };
+      }
+    }
+
+    if (!resolved && !isNaN(invoiceId)) {
+      const rows = await db
+        .select({
+          id: invoices.id,
+          number: invoices.number,
+          bookingId: invoices.bookingId,
+          amount: invoices.amount,
+          currency: invoices.currency,
+          issueDate: invoices.issueDate,
+          dueDate: invoices.dueDate,
+          bookingCode: bookings.code,
+          hotelName: bookings.hotelName,
+          city: bookings.city,
+          clientId: clients.id,
+          clientName: clients.name,
+          clientEmail: clients.email,
+        })
+        .from(invoices)
+        .leftJoin(bookings, eq(invoices.bookingId, bookings.id))
+        .leftJoin(clients, eq(bookings.clientId, clients.id))
+        .where(eq(invoices.id, invoiceId))
+        .limit(1);
+
+      if (rows.length > 0 && (!invoiceNumberHint || rows[0]!.number === invoiceNumberHint)) {
+        const inv = rows[0]!;
+        resolved = {
+          bookingId: inv.bookingId || undefined,
+          clientId: inv.clientId || undefined,
+          invoiceNumber: inv.number,
+          bookingCode: inv.bookingCode || undefined,
+          serviceSummary: inv.hotelName ? `${inv.hotelName}${inv.city ? ` (${inv.city})` : ''}` : undefined,
+          recipientName: inv.clientName || 'Pelanggan',
+          recipientEmail: inv.clientEmail || '',
+          totalAmount: parseFloat(inv.amount || '0') || 0,
+          currency: inv.currency || 'SAR',
+          dueDate: inv.dueDate,
+          issueDate: inv.issueDate,
+        };
+      }
+    }
+
+    if (!resolved && invoiceNumberHint.startsWith('INV-SO-')) {
+      const rows = await db
+        .select({
+          number: serviceOrderInvoices.number,
+          amount: serviceOrderInvoices.amount,
+          currency: serviceOrderInvoices.currency,
+          issueDate: serviceOrderInvoices.issueDate,
+          dueDate: serviceOrderInvoices.dueDate,
+          orderNumber: serviceOrders.number,
+          productType: serviceOrders.productType,
+          clientId: clients.id,
+          clientName: clients.name,
+          clientEmail: clients.email,
+        })
+        .from(serviceOrderInvoices)
+        .leftJoin(serviceOrders, eq(serviceOrderInvoices.serviceOrderId, serviceOrders.id))
+        .leftJoin(clients, eq(serviceOrders.clientId, clients.id))
+        .where(eq(serviceOrderInvoices.number, invoiceNumberHint))
+        .limit(1);
+      if (rows.length > 0) {
+        const inv = rows[0]!;
+        resolved = {
+          clientId: inv.clientId || undefined,
+          invoiceNumber: inv.number,
+          bookingCode: inv.orderNumber || undefined,
+          serviceSummary: inv.productType === 'visa_siskopatuh' ? 'Visa Umrah & SISKOPATUH' : inv.productType === 'siskopatuh' ? 'SISKOPATUH' : 'Visa Umrah',
+          recipientName: inv.clientName || 'Pelanggan',
+          recipientEmail: inv.clientEmail || '',
+          totalAmount: parseFloat(inv.amount || '0') || 0,
+          currency: inv.currency || 'USD',
+          dueDate: inv.dueDate,
+          issueDate: inv.issueDate,
+        };
+      }
+    }
+
+    if (!resolved && !isNaN(invoiceId)) {
+      const manRows = await db.select().from(manualInvoices).where(eq(manualInvoices.id, invoiceId)).limit(1);
+      if (manRows.length > 0) {
+        const inv = manRows[0]!;
+        resolved = {
+          clientId: inv.clientId || undefined,
+          invoiceNumber: inv.number,
+          serviceSummary: inv.title || 'Invoice Layanan Musafirin',
+          recipientName: inv.clientName || 'Pelanggan',
+          recipientEmail: inv.clientEmail || '',
+          totalAmount: parseFloat(inv.amount || '0') || 0,
+          currency: inv.currency || 'SAR',
+          dueDate: inv.dueDate,
+          issueDate: inv.issueDate,
+        };
+      }
+    }
+
+    if (!resolved) {
+      return c.json({ error: 'Invoice tidak ditemukan' }, 404);
+    }
+
+    const overrideEmail = typeof body?.email === 'string' && body.email.trim() ? body.email.trim() : resolved.recipientEmail;
+    if (!overrideEmail || !overrideEmail.includes('@')) {
+      return c.json({ error: 'Alamat email klien belum diisi atau tidak valid' }, 400);
+    }
+
+    const dispatch = await notificationService.sendInvoice({
+      bookingId: resolved.bookingId,
+      clientId: resolved.clientId,
+      invoiceNumber: resolved.invoiceNumber,
+      bookingCode: resolved.bookingCode,
+      serviceSummary: resolved.serviceSummary,
+      recipientName: resolved.recipientName,
+      recipientEmail: overrideEmail,
+      totalAmount: resolved.totalAmount,
+      currency: resolved.currency,
+      dueDate: resolved.dueDate,
+      issueDate: resolved.issueDate,
+      channels: ['email'],
+      forceResend: true,
+    });
+
+    const emailResult = dispatch.results.find((r) => r.channel === 'email');
+    if (!emailResult || emailResult.status !== 'sent') {
+      return c.json({ error: emailResult?.errorMessage || 'Gagal mengirim email invoice' }, 500);
+    }
+
+    return c.json({
+      success: true,
+      message: `Email invoice berhasil dikirim ke ${overrideEmail}`,
+      data: emailResult,
+    });
+  } catch (error: any) {
+    console.error('Error sending invoice email:', error);
+    return c.json({ error: error?.message || 'Gagal mengirim email invoice' }, 500);
+  }
+});
+
 // POST /api/invoices/backfill-status - Sync historical invoice.status with related booking payment status
 invoiceRoutes.post('/backfill-status', requireAdminOrFinance, async (c) => {
   try {

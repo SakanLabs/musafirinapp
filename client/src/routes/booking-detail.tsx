@@ -281,6 +281,47 @@ function BookingDetailPage() {
     }
   }
 
+  const [sendingEmailType, setSendingEmailType] = useState<'invoice' | 'voucher' | null>(null)
+
+  const handleSendBookingInvoiceEmail = async () => {
+    if (!existingInvoice) return
+    setSendingEmailType('invoice')
+    try {
+      const { apiClient } = await import("@/lib/api")
+      const res = await apiClient.post<{ success: boolean; message?: string }>(
+        `/api/invoices/${existingInvoice.id}/send-email`,
+        { invoiceNumber: existingInvoice.number }
+      )
+      toast.success(res.message || "Email invoice berhasil dikirim ke klien")
+    } catch (err: any) {
+      toast.error(err?.message || "Gagal mengirim email invoice")
+    } finally {
+      setSendingEmailType(null)
+    }
+  }
+
+  const handleSendBookingVoucherEmail = async () => {
+    if (!booking || !existingVoucher) return
+    setSendingEmailType('voucher')
+    try {
+      const { apiClient } = await import("@/lib/api")
+      const res = await apiClient.post<{ success: boolean; data?: { results?: Array<{ channel: string; status: string; recipient?: string; errorMessage?: string }> } }>(
+        `/api/vouchers/${booking.id}/send`,
+        { channels: ['email'], forceResend: true }
+      )
+      const emailRes = res.data?.results?.find((r) => r.channel === 'email')
+      if (emailRes?.status === 'sent') {
+        toast.success(`Email voucher berhasil dikirim ke ${emailRes.recipient || booking.clientEmail}`)
+      } else {
+        toast.error(emailRes?.errorMessage || "Gagal mengirim email voucher")
+      }
+    } catch (err: any) {
+      toast.error(err?.message || "Gagal mengirim email voucher")
+    } finally {
+      setSendingEmailType(null)
+    }
+  }
+
   const handleGenerateVoucher = async () => {
     if (!booking || !id) {
       toast.warning("Booking data tidak tersedia")
@@ -290,17 +331,31 @@ function BookingDetailPage() {
     try {
       const guestForVoucher = booking.guestName || (booking.meta as any)?.guestName || booking.clientName || 'Guest'
       if (existingVoucher) {
-        await regenerateVoucherMutation.mutateAsync({
+        const res: any = await regenerateVoucherMutation.mutateAsync({
           bookingId: id.toString(),
           guestName: guestForVoucher
         })
-        toast.success("Voucher berhasil digenerate ulang dan diunduh!")
+        const emailStatus = res?.emailNotification
+        if (emailStatus?.status === 'sent') {
+          toast.success(`Voucher digenerate ulang, diunduh, dan dikirim ke email ${emailStatus.recipient}`)
+        } else if (emailStatus?.status === 'failed') {
+          toast.warning(`Voucher digenerate ulang dan diunduh, namun email gagal dikirim: ${emailStatus.errorMessage || 'periksa email tamu'}`)
+        } else {
+          toast.success("Voucher berhasil digenerate ulang dan diunduh!")
+        }
       } else {
-        await generateVoucherMutation.mutateAsync({
+        const res: any = await generateVoucherMutation.mutateAsync({
           bookingId: id.toString(),
           guestName: guestForVoucher
         })
-        toast.success("Voucher berhasil digenerate dan diunduh!")
+        const emailStatus = res?.emailNotification
+        if (emailStatus?.status === 'sent') {
+          toast.success(`Voucher berhasil digenerate, diunduh, dan dikirim ke email ${emailStatus.recipient}`)
+        } else if (emailStatus?.status === 'failed') {
+          toast.warning(`Voucher berhasil digenerate dan diunduh, namun email gagal dikirim: ${emailStatus.errorMessage || 'periksa email tamu'}`)
+        } else {
+          toast.success("Voucher berhasil digenerate dan diunduh!")
+        }
       }
     } catch (error) {
       console.error("Failed to generate voucher:", error)
@@ -768,6 +823,23 @@ function BookingDetailPage() {
                     )}
                   </Button>
 
+                  {existingInvoice && (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className="w-full text-xs h-9 border-zinc-300 hover:bg-zinc-100 text-zinc-900 font-semibold flex items-center justify-center gap-1.5 cursor-pointer"
+                      onClick={handleSendBookingInvoiceEmail}
+                      disabled={sendingEmailType !== null}
+                    >
+                      {sendingEmailType === 'invoice' ? (
+                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                      ) : (
+                        <Mail className="h-3.5 w-3.5 text-zinc-700" />
+                      )}
+                      {sendingEmailType === 'invoice' ? "Mengirim Email..." : "Kirim Email Invoice"}
+                    </Button>
+                  )}
+
                   <Button
                     variant="outline"
                     className="w-full text-xs h-9 border-[#e5e7eb] hover:bg-gray-50 text-gray-600 font-semibold flex items-center justify-center gap-1"
@@ -785,6 +857,23 @@ function BookingDetailPage() {
                       existingVoucher ? "Regenerate Voucher" : "Generate Voucher"
                     )}
                   </Button>
+
+                  {existingVoucher && (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className="w-full text-xs h-9 border-zinc-300 hover:bg-zinc-100 text-zinc-900 font-semibold flex items-center justify-center gap-1.5 cursor-pointer"
+                      onClick={handleSendBookingVoucherEmail}
+                      disabled={sendingEmailType !== null}
+                    >
+                      {sendingEmailType === 'voucher' ? (
+                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                      ) : (
+                        <Mail className="h-3.5 w-3.5 text-zinc-700" />
+                      )}
+                      {sendingEmailType === 'voucher' ? "Mengirim Email..." : "Kirim Email Voucher"}
+                    </Button>
+                  )}
 
                   <Button
                     variant="outline"

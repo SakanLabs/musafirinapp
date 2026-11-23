@@ -283,11 +283,39 @@ voucherRoutes.post('/:bookingId/generate', requireAdmin, async (c) => {
       .values(newVoucher)
       .returning();
 
+    // Automatically email voucher PDF (attachment + download link) to guest/client
+    let emailNotification: { status: string; recipient?: string; errorMessage?: string } | null = null;
+    try {
+      const dispatch = await notificationService.sendVoucher({
+        bookingId,
+        voucherId: insertedVoucher?.id,
+        voucherNumber,
+        channels: ['email'],
+        forceResend: true,
+        pdfBuffer,
+      });
+      const emailRes = dispatch.results.find((r) => r.channel === 'email');
+      if (emailRes) {
+        emailNotification = {
+          status: emailRes.status,
+          recipient: emailRes.recipient,
+          errorMessage: emailRes.errorMessage,
+        };
+      }
+    } catch (emailErr: any) {
+      console.error('[Voucher] Auto-send voucher email failed (non-blocking):', emailErr);
+      emailNotification = {
+        status: 'failed',
+        errorMessage: emailErr?.message || 'Gagal mengirim email voucher',
+      };
+    }
+
     return c.json({
       success: true,
       data: insertedVoucher,
       message: 'Voucher generated successfully',
-      downloadUrl: `/api/vouchers/by-number/${voucherNumber}`
+      downloadUrl: `/api/vouchers/by-number/${voucherNumber}`,
+      emailNotification,
     }, 201);
   } catch (error) {
     console.error('Error generating voucher:', error);
