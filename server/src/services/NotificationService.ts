@@ -53,6 +53,7 @@ export interface SendVoucherParams {
   forceResend?: boolean;
   sentBy?: string;
   pdfBuffer?: Buffer;
+  overrideEmail?: string;
 }
 
 export interface SendInvoiceParams {
@@ -439,7 +440,11 @@ export class NotificationService {
     const referenceId = voucher.number;
 
     const recipientName = voucher.guestName || meta.guestName || voucher.clientName || 'Pelanggan Musafirin';
-    const recipientEmail = (meta.guestEmail && String(meta.guestEmail).includes('@') ? String(meta.guestEmail) : '') || voucher.clientEmail || '';
+    const recipientEmail =
+      (params.overrideEmail && params.overrideEmail.includes('@') ? params.overrideEmail.trim() : '') ||
+      (meta.guestEmail && String(meta.guestEmail).includes('@') ? String(meta.guestEmail) : '') ||
+      voucher.clientEmail ||
+      '';
     const recipientPhone = meta.guestPhone || voucher.clientPhone || '';
 
     // Secure download URL

@@ -643,7 +643,10 @@ receiptRoutes.post('/:id/send-email', requireAdminOrFinance, async (c) => {
     const receiptNumberHint = typeof body?.receiptNumber === 'string' ? body.receiptNumber.trim() : '';
 
     let resolved: {
+      receiptId?: number;
+      source?: 'standard' | 'service_order' | 'manual';
       bookingId?: number;
+      clientId?: number;
       receiptNumber: string;
       invoiceNumber?: string;
       bookingCode?: string;
@@ -661,6 +664,7 @@ receiptRoutes.post('/:id/send-email', requireAdminOrFinance, async (c) => {
     if (!isNaN(receiptId)) {
       const rows = await db
         .select({
+          id: receipts.id,
           number: receipts.number,
           bookingId: receipts.bookingId,
           totalAmount: receipts.totalAmount,
@@ -674,6 +678,7 @@ receiptRoutes.post('/:id/send-email', requireAdminOrFinance, async (c) => {
           meta: receipts.meta,
           bookingCode: bookings.code,
           invoiceNumber: invoices.number,
+          clientId: clients.id,
           clientEmail: clients.email,
         })
         .from(receipts)
@@ -687,7 +692,10 @@ receiptRoutes.post('/:id/send-email', requireAdminOrFinance, async (c) => {
         const r = rows[0]!;
         const meta = (r.meta as any) || {};
         resolved = {
+          receiptId: r.id,
+          source: 'standard',
           bookingId: r.bookingId || undefined,
+          clientId: r.clientId || undefined,
           receiptNumber: r.number,
           invoiceNumber: r.invoiceNumber || undefined,
           bookingCode: r.bookingCode || undefined,
@@ -707,6 +715,7 @@ receiptRoutes.post('/:id/send-email', requireAdminOrFinance, async (c) => {
     if (!resolved && receiptNumberHint) {
       const soRows = await db
         .select({
+          id: serviceOrderReceipts.id,
           number: serviceOrderReceipts.number,
           totalAmount: serviceOrderReceipts.totalAmount,
           paidAmount: serviceOrderReceipts.paidAmount,
@@ -717,6 +726,7 @@ receiptRoutes.post('/:id/send-email', requireAdminOrFinance, async (c) => {
           payerEmail: serviceOrderReceipts.payerEmail,
           orderNumber: serviceOrders.number,
           productType: serviceOrders.productType,
+          clientId: serviceOrders.clientId,
           invoiceNumber: serviceOrderInvoices.number,
         })
         .from(serviceOrderReceipts)
@@ -728,6 +738,9 @@ receiptRoutes.post('/:id/send-email', requireAdminOrFinance, async (c) => {
       if (soRows.length > 0) {
         const r = soRows[0]!;
         resolved = {
+          receiptId: r.id,
+          source: 'service_order',
+          clientId: r.clientId || undefined,
           receiptNumber: r.number,
           invoiceNumber: r.invoiceNumber || undefined,
           bookingCode: r.orderNumber || undefined,
@@ -746,6 +759,7 @@ receiptRoutes.post('/:id/send-email', requireAdminOrFinance, async (c) => {
     if (!resolved && receiptNumberHint) {
       const manRows = await db
         .select({
+          id: manualInvoiceReceipts.id,
           number: manualInvoiceReceipts.number,
           totalAmount: manualInvoiceReceipts.totalAmount,
           paidAmount: manualInvoiceReceipts.paidAmount,
@@ -754,6 +768,7 @@ receiptRoutes.post('/:id/send-email', requireAdminOrFinance, async (c) => {
           issueDate: manualInvoiceReceipts.issueDate,
           payerName: manualInvoiceReceipts.payerName,
           payerEmail: manualInvoiceReceipts.payerEmail,
+          clientId: manualInvoices.clientId,
           invoiceNumber: manualInvoices.number,
           title: manualInvoices.title,
         })
@@ -765,6 +780,9 @@ receiptRoutes.post('/:id/send-email', requireAdminOrFinance, async (c) => {
       if (manRows.length > 0) {
         const r = manRows[0]!;
         resolved = {
+          receiptId: r.id,
+          source: 'manual',
+          clientId: r.clientId || undefined,
           receiptNumber: r.number,
           invoiceNumber: r.invoiceNumber || undefined,
           serviceSummary: r.title || 'Layanan Musafirin',
@@ -786,6 +804,24 @@ receiptRoutes.post('/:id/send-email', requireAdminOrFinance, async (c) => {
     const overrideEmail = typeof body?.email === 'string' && body.email.trim() ? body.email.trim() : resolved.recipientEmail;
     if (!overrideEmail || !overrideEmail.includes('@')) {
       return c.json({ error: 'Alamat email klien belum diisi atau tidak valid' }, 400);
+    }
+
+    // Optionally persist updated email to receipt & client record
+    if (body?.updateClientEmail && overrideEmail !== resolved.recipientEmail) {
+      try {
+        if (resolved.receiptId && resolved.source === 'standard') {
+          await db.update(receipts).set({ payerEmail: overrideEmail }).where(eq(receipts.id, resolved.receiptId));
+        } else if (resolved.receiptId && resolved.source === 'service_order') {
+          await db.update(serviceOrderReceipts).set({ payerEmail: overrideEmail }).where(eq(serviceOrderReceipts.id, resolved.receiptId));
+        } else if (resolved.receiptId && resolved.source === 'manual') {
+          await db.update(manualInvoiceReceipts).set({ payerEmail: overrideEmail }).where(eq(manualInvoiceReceipts.id, resolved.receiptId));
+        }
+        if (resolved.clientId) {
+          await db.update(clients).set({ email: overrideEmail, updatedAt: new Date() }).where(eq(clients.id, resolved.clientId));
+        }
+      } catch (updateErr) {
+        console.warn('[Receipt SendEmail] Could not persist client email update:', updateErr);
+      }
     }
 
     const emailResult = await notificationService.sendReceipt({

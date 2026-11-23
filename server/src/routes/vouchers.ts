@@ -476,12 +476,26 @@ voucherRoutes.post('/:bookingId/send', requireAdmin, async (c) => {
     }
 
     const body = await c.req.json().catch(() => ({}));
-    const { channels, forceResend } = body;
+    const { channels, forceResend, email, updateClientEmail } = body;
+    const overrideEmail = typeof email === 'string' && email.trim() ? email.trim() : undefined;
+
+    if (updateClientEmail && overrideEmail && overrideEmail.includes('@')) {
+      try {
+        const bRows = await db.select({ clientId: bookings.clientId }).from(bookings).where(eq(bookings.id, bookingId)).limit(1);
+        const clientId = bRows[0]?.clientId;
+        if (clientId) {
+          await db.update(clients).set({ email: overrideEmail, updatedAt: new Date() }).where(eq(clients.id, clientId));
+        }
+      } catch (updateErr) {
+        console.warn('[Voucher Send] Could not persist client email update:', updateErr);
+      }
+    }
 
     const result = await notificationService.sendVoucher({
       bookingId,
       channels: channels && channels.length > 0 ? channels : ['email', 'whatsapp'],
       forceResend: Boolean(forceResend),
+      overrideEmail,
     });
 
     return c.json({

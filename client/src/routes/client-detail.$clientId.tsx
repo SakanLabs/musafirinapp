@@ -10,11 +10,11 @@ import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { formatCurrency, formatDate } from '@/lib/utils'
 
-import { ArrowLeft, Plus, Minus, DollarSign, Calendar, User, Mail, Phone, MapPin, Loader2 } from 'lucide-react'
-// toast import removed – not used in this file
+import { ArrowLeft, Plus, Minus, DollarSign, Calendar, User, Mail, Phone, MapPin, Loader2, Edit } from 'lucide-react'
+import { Modal } from '@/components/ui/modal'
 
 // Import query hooks
-import { useClient, useClientBookings } from '@/lib/queries/clients'
+import { useClient, useClientBookings, useUpdateClient } from '@/lib/queries/clients'
 import {
   useClientDepositBalance,
   useClientDepositTransactions,
@@ -109,10 +109,62 @@ function ClientDetailPage() {
   const { data: depositBalance, isLoading: balanceLoading } = useClientDepositBalance(clientId)
   const { data: transactions = [], isLoading: transactionsLoading } = useClientDepositTransactions(clientId)
 
+  // Edit client profile state
+  const [isEditClientOpen, setIsEditClientOpen] = useState(false)
+  const [editClientForm, setEditClientForm] = useState({
+    name: "",
+    email: "",
+    phone: "",
+    address: "",
+    notes: "",
+  })
+
   // Mutations
   const addDepositMutation = useAddDeposit()
   const updateTransactionMutation = useUpdateDepositTransaction()
   const deleteTransactionMutation = useDeleteDepositTransaction()
+  const updateClientMutation = useUpdateClient()
+
+  const handleOpenEditClient = () => {
+    if (!client) return
+    setEditClientForm({
+      name: client.name || "",
+      email: client.email || "",
+      phone: client.phone || "",
+      address: client.address || "",
+      notes: client.notes || "",
+    })
+    setIsEditClientOpen(true)
+  }
+
+  const handleSaveClient = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!client) return
+    const trimmedName = editClientForm.name.trim()
+    const trimmedEmail = editClientForm.email.trim()
+    if (!trimmedName) {
+      toast.error("Nama client wajib diisi")
+      return
+    }
+    if (!trimmedEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmedEmail)) {
+      toast.error("Masukkan alamat email yang valid")
+      return
+    }
+    try {
+      await updateClientMutation.mutateAsync({
+        id: client.id,
+        name: trimmedName,
+        email: trimmedEmail,
+        phone: editClientForm.phone.trim(),
+        address: editClientForm.address.trim() || undefined,
+        notes: editClientForm.notes.trim() || undefined,
+      })
+      toast.success("Data client berhasil diperbarui")
+      setIsEditClientOpen(false)
+    } catch (err: any) {
+      toast.error(err?.message || "Gagal memperbarui data client")
+    }
+  }
 
   // Handle form submissions
   const handleAddDeposit = async (e: React.FormEvent) => {
@@ -305,11 +357,21 @@ function ClientDetailPage() {
 
         {/* Client Information */}
         <Card className="border border-[#e5e7eb] rounded-xl shadow-none bg-white">
-          <CardHeader className="border-b border-gray-100 pb-3">
+          <CardHeader className="border-b border-gray-100 pb-3 flex flex-row items-center justify-between space-y-0">
             <CardTitle className="text-xs font-semibold uppercase tracking-wider text-gray-500 flex items-center space-x-2">
               <User className="h-4 w-4 text-gray-400" />
               <span>Client Profile</span>
             </CardTitle>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={handleOpenEditClient}
+              className="h-8 px-3 border-zinc-300 text-zinc-800 hover:bg-zinc-100 text-xs font-semibold rounded-md cursor-pointer"
+            >
+              <Edit className="h-3.5 w-3.5 mr-1.5" />
+              Edit Client
+            </Button>
           </CardHeader>
           <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4">
             <div className="flex items-center space-x-3.5">
@@ -732,6 +794,107 @@ function ClientDetailPage() {
           </CardContent>
         </Card>
       </div>
+
+      <Modal
+        isOpen={isEditClientOpen}
+        onClose={() => !updateClientMutation.isPending && setIsEditClientOpen(false)}
+        title="Edit Data Client"
+        size="md"
+      >
+        <form onSubmit={handleSaveClient} className="space-y-4">
+          <div className="space-y-1.5">
+            <Label htmlFor="edit-client-name" className="text-xs font-semibold text-zinc-800">
+              Nama Client *
+            </Label>
+            <Input
+              id="edit-client-name"
+              value={editClientForm.name}
+              onChange={(e) => setEditClientForm((prev) => ({ ...prev, name: e.target.value }))}
+              required
+              className="h-10 border-zinc-300"
+            />
+          </div>
+
+          <div className="space-y-1.5">
+            <Label htmlFor="edit-client-email" className="text-xs font-semibold text-zinc-800">
+              Alamat Email *
+            </Label>
+            <Input
+              id="edit-client-email"
+              type="email"
+              value={editClientForm.email}
+              onChange={(e) => setEditClientForm((prev) => ({ ...prev, email: e.target.value }))}
+              placeholder="nama@travel.com"
+              required
+              className="h-10 border-zinc-300"
+            />
+          </div>
+
+          <div className="space-y-1.5">
+            <Label htmlFor="edit-client-phone" className="text-xs font-semibold text-zinc-800">
+              Nomor Telepon / WhatsApp
+            </Label>
+            <Input
+              id="edit-client-phone"
+              value={editClientForm.phone}
+              onChange={(e) => setEditClientForm((prev) => ({ ...prev, phone: e.target.value }))}
+              className="h-10 border-zinc-300"
+            />
+          </div>
+
+          <div className="space-y-1.5">
+            <Label htmlFor="edit-client-address" className="text-xs font-semibold text-zinc-800">
+              Alamat
+            </Label>
+            <Textarea
+              id="edit-client-address"
+              rows={2}
+              value={editClientForm.address}
+              onChange={(e) => setEditClientForm((prev) => ({ ...prev, address: e.target.value }))}
+              className="border-zinc-300"
+            />
+          </div>
+
+          <div className="space-y-1.5">
+            <Label htmlFor="edit-client-notes" className="text-xs font-semibold text-zinc-800">
+              Catatan
+            </Label>
+            <Textarea
+              id="edit-client-notes"
+              rows={2}
+              value={editClientForm.notes}
+              onChange={(e) => setEditClientForm((prev) => ({ ...prev, notes: e.target.value }))}
+              className="border-zinc-300"
+            />
+          </div>
+
+          <div className="flex justify-end gap-2 pt-2 border-t border-zinc-100">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setIsEditClientOpen(false)}
+              disabled={updateClientMutation.isPending}
+              className="h-9 px-4 text-xs font-semibold border-zinc-300 cursor-pointer"
+            >
+              Batal
+            </Button>
+            <Button
+              type="submit"
+              disabled={updateClientMutation.isPending}
+              className="h-9 px-4 text-xs font-semibold bg-[#111111] hover:bg-zinc-800 text-white cursor-pointer"
+            >
+              {updateClientMutation.isPending ? (
+                <>
+                  <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />
+                  Menyimpan...
+                </>
+              ) : (
+                "Simpan Perubahan"
+              )}
+            </Button>
+          </div>
+        </form>
+      </Modal>
     </PageLayout>
   )
 }

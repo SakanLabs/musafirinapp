@@ -3548,6 +3548,20 @@ invoiceRoutes.post('/:id/send-email', requireAdminOrFinance, async (c) => {
       return c.json({ error: 'Alamat email klien belum diisi atau tidak valid' }, 400);
     }
 
+    // Optionally persist updated email to client / manual invoice record
+    if (body?.updateClientEmail && overrideEmail !== resolved.recipientEmail) {
+      try {
+        if (resolved.clientId) {
+          await db.update(clients).set({ email: overrideEmail, updatedAt: new Date() }).where(eq(clients.id, resolved.clientId));
+        }
+        if (resolved.invoiceNumber.startsWith('INV-MAN-') || resolved.invoiceNumber.startsWith('INV-MRG-')) {
+          await db.update(manualInvoices).set({ clientEmail: overrideEmail, updatedAt: new Date() }).where(eq(manualInvoices.number, resolved.invoiceNumber));
+        }
+      } catch (updateErr) {
+        console.warn('[Invoice SendEmail] Could not persist client email update:', updateErr);
+      }
+    }
+
     const dispatch = await notificationService.sendInvoice({
       bookingId: resolved.bookingId,
       clientId: resolved.clientId,
