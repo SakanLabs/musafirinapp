@@ -5,8 +5,10 @@ import { PageLayout } from "@/components/layout/PageLayout";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { formatCurrency, formatDate } from "@/lib/utils";
+import { useQueryClient } from "@tanstack/react-query";
 import { apiClient } from "@/lib/api";
-import { useReceipt } from "@/lib/queries/receipts";
+import { useReceipt, receiptKeys } from "@/lib/queries/receipts";
+import { SendEmailModal } from "@/components/modals/SendEmailModal";
 import { Download, FileText, Loader2, Mail, MessageCircle, Building2, User, Banknote } from "lucide-react";
 
 export const Route = createFileRoute("/receipt-detail")({
@@ -43,18 +45,24 @@ export const Route = createFileRoute("/receipt-detail")({
 function ReceiptDetailPage() {
   const { id, number } = Route.useSearch();
   const queryParam = number || id;
+  const queryClient = useQueryClient();
   const { data: receipt, isLoading, error } = useReceipt(queryParam);
   const [isSendingEmail, setIsSendingEmail] = useState(false);
+  const [isEmailModalOpen, setIsEmailModalOpen] = useState(false);
 
-  const handleSendReceiptEmail = async () => {
+  const handleConfirmSendReceiptEmail = async ({ email, updateClientEmail }: { email: string; updateClientEmail: boolean }) => {
     if (!receipt) return;
     setIsSendingEmail(true);
     try {
       const res = await apiClient.post<{ success: boolean; message?: string }>(
         `/api/receipts/${receipt.id}/send-email`,
-        { receiptNumber: receipt.number }
+        { receiptNumber: receipt.number, email, updateClientEmail }
       );
-      toast.success(res.message || "Email kwitansi berhasil dikirim ke klien");
+      toast.success(res.message || `Email kwitansi berhasil dikirim ke ${email}`);
+      setIsEmailModalOpen(false);
+      if (updateClientEmail) {
+        queryClient.invalidateQueries({ queryKey: receiptKeys.detail(queryParam) });
+      }
     } catch (err: any) {
       toast.error(err?.message || "Gagal mengirim email kwitansi");
     } finally {
@@ -131,16 +139,12 @@ function ReceiptDetailPage() {
           <Button
             type="button"
             variant="outline"
-            onClick={handleSendReceiptEmail}
+            onClick={() => setIsEmailModalOpen(true)}
             disabled={isSendingEmail}
             className="h-9 px-4 border-zinc-300 text-zinc-900 hover:bg-zinc-100 flex items-center rounded-md font-semibold text-xs bg-white shadow-none cursor-pointer"
           >
-            {isSendingEmail ? (
-              <Loader2 className="h-4 w-4 mr-2 animate-spin text-zinc-600" />
-            ) : (
-              <Mail className="h-4 w-4 mr-2 text-zinc-700" />
-            )}
-            {isSendingEmail ? "Mengirim..." : "Kirim Email"}
+            <Mail className="h-4 w-4 mr-2 text-zinc-700" />
+            Kirim Email
           </Button>
           <Button 
             variant="outline" 
@@ -274,6 +278,17 @@ function ReceiptDetailPage() {
           </div>
         </div>
       </div>
+
+      <SendEmailModal
+        isOpen={isEmailModalOpen}
+        onClose={() => setIsEmailModalOpen(false)}
+        title="Kirim Email Kwitansi"
+        documentLabel={receipt.number}
+        recipientName={receipt.payerName || receipt.clientName}
+        defaultEmail={receipt.payerEmail || receipt.clientEmail || ""}
+        isSending={isSendingEmail}
+        onConfirm={handleConfirmSendReceiptEmail}
+      />
     </PageLayout>
   );
 }

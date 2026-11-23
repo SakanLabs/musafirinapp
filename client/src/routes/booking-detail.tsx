@@ -53,6 +53,7 @@ import { useReceiptsByBooking, useGenerateReceipt } from "@/lib/queries/receipts
 import { useCheckInvoiceExists } from "@/lib/queries/invoices"
 import { useCheckVoucherExists } from "@/lib/queries/vouchers"
 import { BookingNotificationCard } from "@/components/bookings/BookingNotificationCard"
+import { SendEmailModal } from "@/components/modals/SendEmailModal"
 
 function parseBookingPayments(meta: unknown) {
   if (!meta || typeof meta !== "object") return []
@@ -282,41 +283,35 @@ function BookingDetailPage() {
   }
 
   const [sendingEmailType, setSendingEmailType] = useState<'invoice' | 'voucher' | null>(null)
+  const [emailModalType, setEmailModalType] = useState<'invoice' | 'voucher' | null>(null)
 
-  const handleSendBookingInvoiceEmail = async () => {
-    if (!existingInvoice) return
-    setSendingEmailType('invoice')
+  const handleConfirmSendBookingEmail = async ({ email, updateClientEmail }: { email: string; updateClientEmail: boolean }) => {
+    if (!emailModalType) return
+    setSendingEmailType(emailModalType)
     try {
       const { apiClient } = await import("@/lib/api")
-      const res = await apiClient.post<{ success: boolean; message?: string }>(
-        `/api/invoices/${existingInvoice.id}/send-email`,
-        { invoiceNumber: existingInvoice.number }
-      )
-      toast.success(res.message || "Email invoice berhasil dikirim ke klien")
-    } catch (err: any) {
-      toast.error(err?.message || "Gagal mengirim email invoice")
-    } finally {
-      setSendingEmailType(null)
-    }
-  }
-
-  const handleSendBookingVoucherEmail = async () => {
-    if (!booking || !existingVoucher) return
-    setSendingEmailType('voucher')
-    try {
-      const { apiClient } = await import("@/lib/api")
-      const res = await apiClient.post<{ success: boolean; data?: { results?: Array<{ channel: string; status: string; recipient?: string; errorMessage?: string }> } }>(
-        `/api/vouchers/${booking.id}/send`,
-        { channels: ['email'], forceResend: true }
-      )
-      const emailRes = res.data?.results?.find((r) => r.channel === 'email')
-      if (emailRes?.status === 'sent') {
-        toast.success(`Email voucher berhasil dikirim ke ${emailRes.recipient || booking.clientEmail}`)
-      } else {
-        toast.error(emailRes?.errorMessage || "Gagal mengirim email voucher")
+      if (emailModalType === 'invoice' && existingInvoice) {
+        const res = await apiClient.post<{ success: boolean; message?: string }>(
+          `/api/invoices/${existingInvoice.id}/send-email`,
+          { invoiceNumber: existingInvoice.number, email, updateClientEmail }
+        )
+        toast.success(res.message || `Email invoice berhasil dikirim ke ${email}`)
+        setEmailModalType(null)
+      } else if (emailModalType === 'voucher' && booking && existingVoucher) {
+        const res = await apiClient.post<{ success: boolean; data?: { results?: Array<{ channel: string; status: string; recipient?: string; errorMessage?: string }> } }>(
+          `/api/vouchers/${booking.id}/send`,
+          { channels: ['email'], forceResend: true, email, updateClientEmail }
+        )
+        const emailRes = res.data?.results?.find((r) => r.channel === 'email')
+        if (emailRes?.status === 'sent') {
+          toast.success(`Email voucher berhasil dikirim ke ${emailRes.recipient || email}`)
+          setEmailModalType(null)
+        } else {
+          toast.error(emailRes?.errorMessage || "Gagal mengirim email voucher")
+        }
       }
     } catch (err: any) {
-      toast.error(err?.message || "Gagal mengirim email voucher")
+      toast.error(err?.message || "Gagal mengirim email")
     } finally {
       setSendingEmailType(null)
     }
@@ -828,15 +823,11 @@ function BookingDetailPage() {
                       type="button"
                       variant="outline"
                       className="w-full text-xs h-9 border-zinc-300 hover:bg-zinc-100 text-zinc-900 font-semibold flex items-center justify-center gap-1.5 cursor-pointer"
-                      onClick={handleSendBookingInvoiceEmail}
+                      onClick={() => setEmailModalType('invoice')}
                       disabled={sendingEmailType !== null}
                     >
-                      {sendingEmailType === 'invoice' ? (
-                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                      ) : (
-                        <Mail className="h-3.5 w-3.5 text-zinc-700" />
-                      )}
-                      {sendingEmailType === 'invoice' ? "Mengirim Email..." : "Kirim Email Invoice"}
+                      <Mail className="h-3.5 w-3.5 text-zinc-700" />
+                      Kirim Email Invoice
                     </Button>
                   )}
 
@@ -863,15 +854,11 @@ function BookingDetailPage() {
                       type="button"
                       variant="outline"
                       className="w-full text-xs h-9 border-zinc-300 hover:bg-zinc-100 text-zinc-900 font-semibold flex items-center justify-center gap-1.5 cursor-pointer"
-                      onClick={handleSendBookingVoucherEmail}
+                      onClick={() => setEmailModalType('voucher')}
                       disabled={sendingEmailType !== null}
                     >
-                      {sendingEmailType === 'voucher' ? (
-                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                      ) : (
-                        <Mail className="h-3.5 w-3.5 text-zinc-700" />
-                      )}
-                      {sendingEmailType === 'voucher' ? "Mengirim Email..." : "Kirim Email Voucher"}
+                      <Mail className="h-3.5 w-3.5 text-zinc-700" />
+                      Kirim Email Voucher
                     </Button>
                   )}
 
@@ -1531,6 +1518,25 @@ function BookingDetailPage() {
           </div>
         </div>
       </Modal>
+
+      <SendEmailModal
+        isOpen={emailModalType !== null}
+        onClose={() => setEmailModalType(null)}
+        title={emailModalType === 'voucher' ? 'Kirim Email Voucher Hotel' : 'Kirim Email Invoice'}
+        documentLabel={
+          emailModalType === 'voucher'
+            ? (existingVoucher?.number || booking.code)
+            : (existingInvoice?.number || booking.code)
+        }
+        recipientName={booking.clientName || (booking.meta as any)?.guestName || ''}
+        defaultEmail={
+          emailModalType === 'voucher'
+            ? ((booking.meta as any)?.guestEmail || booking.clientEmail || '')
+            : (booking.clientEmail || (booking.meta as any)?.guestEmail || '')
+        }
+        isSending={sendingEmailType !== null}
+        onConfirm={handleConfirmSendBookingEmail}
+      />
     </PageLayout>
   )
 }
