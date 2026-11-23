@@ -4,6 +4,7 @@ import { db } from '../db';
 import { receipts, bookings, clients, invoices, transportationReceipts, transportationInvoices, transportationBookings, serviceOrderReceipts, serviceOrderInvoices, serviceOrders, customLaReceipts, customLaInvoices, customLaRequests, muthowifReceipts, muthowifInvoices, muthowifBookings, manualInvoiceReceipts, manualInvoices } from '../db/schema';
 import { requireAdminOrFinance } from '../middleware/auth';
 import { ReceiptService } from '../services/ReceiptService';
+import { notificationService } from '../services/NotificationService';
 
 const receiptRoutes = new Hono();
 const receiptService = new ReceiptService();
@@ -632,6 +633,191 @@ const serveReceiptPdfByNumber = async (c: any) => {
     return c.json({ error: 'Failed to download receipt' }, 500);
   }
 };
+
+// POST /api/receipts/:id/send-email - Manually send receipt email to client via Resend
+receiptRoutes.post('/:id/send-email', requireAdminOrFinance, async (c) => {
+  try {
+    const idParam = c.req.param('id');
+    const receiptId = parseInt(idParam, 10);
+    const body = await c.req.json().catch(() => ({}));
+    const receiptNumberHint = typeof body?.receiptNumber === 'string' ? body.receiptNumber.trim() : '';
+
+    let resolved: {
+      bookingId?: number;
+      receiptNumber: string;
+      invoiceNumber?: string;
+      bookingCode?: string;
+      serviceSummary?: string;
+      recipientName: string;
+      recipientEmail: string;
+      totalAmount: string;
+      paidAmount: string;
+      balanceDue: string;
+      currency: string;
+      issueDate?: Date | string;
+      paymentMethod?: string;
+    } | null = null;
+
+    if (!isNaN(receiptId)) {
+      const rows = await db
+        .select({
+          number: receipts.number,
+          bookingId: receipts.bookingId,
+          totalAmount: receipts.totalAmount,
+          paidAmount: receipts.paidAmount,
+          balanceDue: receipts.balanceDue,
+          currency: receipts.currency,
+          issueDate: receipts.issueDate,
+          payerName: receipts.payerName,
+          payerEmail: receipts.payerEmail,
+          hotelName: receipts.hotelName,
+          meta: receipts.meta,
+          bookingCode: bookings.code,
+          invoiceNumber: invoices.number,
+          clientEmail: clients.email,
+        })
+        .from(receipts)
+        .leftJoin(bookings, eq(receipts.bookingId, bookings.id))
+        .leftJoin(invoices, eq(receipts.invoiceId, invoices.id))
+        .leftJoin(clients, eq(bookings.clientId, clients.id))
+        .where(eq(receipts.id, receiptId))
+        .limit(1);
+
+      if (rows.length > 0 && (!receiptNumberHint || rows[0]!.number === receiptNumberHint)) {
+        const r = rows[0]!;
+        const meta = (r.meta as any) || {};
+        resolved = {
+          bookingId: r.bookingId || undefined,
+          receiptNumber: r.number,
+          invoiceNumber: r.invoiceNumber || undefined,
+          bookingCode: r.bookingCode || undefined,
+          serviceSummary: r.hotelName || undefined,
+          recipientName: r.payerName || 'Pelanggan',
+          recipientEmail: r.payerEmail || r.clientEmail || '',
+          totalAmount: r.totalAmount,
+          paidAmount: r.paidAmount,
+          balanceDue: r.balanceDue,
+          currency: r.currency || 'SAR',
+          issueDate: r.issueDate,
+          paymentMethod: meta?.payment?.method || undefined,
+        };
+      }
+    }
+
+    if (!resolved && receiptNumberHint) {
+      const soRows = await db
+        .select({
+          number: serviceOrderReceipts.number,
+          totalAmount: serviceOrderReceipts.totalAmount,
+          paidAmount: serviceOrderReceipts.paidAmount,
+          balanceDue: serviceOrderReceipts.balanceDue,
+          currency: serviceOrderReceipts.currency,
+          issueDate: serviceOrderReceipts.issueDate,
+          payerName: serviceOrderReceipts.payerName,
+          payerEmail: serviceOrderReceipts.payerEmail,
+          orderNumber: serviceOrders.number,
+          productType: serviceOrders.productType,
+          invoiceNumber: serviceOrderInvoices.number,
+        })
+        .from(serviceOrderReceipts)
+        .leftJoin(serviceOrders, eq(serviceOrderReceipts.serviceOrderId, serviceOrders.id))
+        .leftJoin(serviceOrderInvoices, eq(serviceOrderReceipts.serviceOrderInvoiceId, serviceOrderInvoices.id))
+        .where(eq(serviceOrderReceipts.number, receiptNumberHint))
+        .limit(1);
+
+      if (soRows.length > 0) {
+        const r = soRows[0]!;
+        resolved = {
+          receiptNumber: r.number,
+          invoiceNumber: r.invoiceNumber || undefined,
+          bookingCode: r.orderNumber || undefined,
+          serviceSummary: r.productType === 'visa_siskopatuh' ? 'Visa Umrah & SISKOPATUH' : r.productType === 'siskopatuh' ? 'SISKOPATUH' : 'Visa Umrah',
+          recipientName: r.payerName || 'Pelanggan',
+          recipientEmail: r.payerEmail || '',
+          totalAmount: r.totalAmount,
+          paidAmount: r.paidAmount,
+          balanceDue: r.balanceDue,
+          currency: r.currency || 'USD',
+          issueDate: r.issueDate,
+        };
+      }
+    }
+
+    if (!resolved && receiptNumberHint) {
+      const manRows = await db
+        .select({
+          number: manualInvoiceReceipts.number,
+          totalAmount: manualInvoiceReceipts.totalAmount,
+          paidAmount: manualInvoiceReceipts.paidAmount,
+          balanceDue: manualInvoiceReceipts.balanceDue,
+          currency: manualInvoiceReceipts.currency,
+          issueDate: manualInvoiceReceipts.issueDate,
+          payerName: manualInvoiceReceipts.payerName,
+          payerEmail: manualInvoiceReceipts.payerEmail,
+          invoiceNumber: manualInvoices.number,
+          title: manualInvoices.title,
+        })
+        .from(manualInvoiceReceipts)
+        .leftJoin(manualInvoices, eq(manualInvoiceReceipts.manualInvoiceId, manualInvoices.id))
+        .where(eq(manualInvoiceReceipts.number, receiptNumberHint))
+        .limit(1);
+
+      if (manRows.length > 0) {
+        const r = manRows[0]!;
+        resolved = {
+          receiptNumber: r.number,
+          invoiceNumber: r.invoiceNumber || undefined,
+          serviceSummary: r.title || 'Layanan Musafirin',
+          recipientName: r.payerName || 'Pelanggan',
+          recipientEmail: r.payerEmail || '',
+          totalAmount: r.totalAmount,
+          paidAmount: r.paidAmount,
+          balanceDue: r.balanceDue,
+          currency: r.currency || 'SAR',
+          issueDate: r.issueDate,
+        };
+      }
+    }
+
+    if (!resolved) {
+      return c.json({ error: 'Kwitansi tidak ditemukan' }, 404);
+    }
+
+    const overrideEmail = typeof body?.email === 'string' && body.email.trim() ? body.email.trim() : resolved.recipientEmail;
+    if (!overrideEmail || !overrideEmail.includes('@')) {
+      return c.json({ error: 'Alamat email klien belum diisi atau tidak valid' }, 400);
+    }
+
+    const emailResult = await notificationService.sendReceipt({
+      bookingId: resolved.bookingId,
+      receiptNumber: resolved.receiptNumber,
+      invoiceNumber: resolved.invoiceNumber,
+      bookingCode: resolved.bookingCode,
+      serviceSummary: resolved.serviceSummary,
+      recipientName: resolved.recipientName,
+      recipientEmail: overrideEmail,
+      totalAmount: resolved.totalAmount,
+      paidAmount: resolved.paidAmount,
+      balanceDue: resolved.balanceDue,
+      currency: resolved.currency,
+      issueDate: resolved.issueDate,
+      paymentMethod: resolved.paymentMethod,
+    });
+
+    if (emailResult.status !== 'sent') {
+      return c.json({ error: emailResult.errorMessage || 'Gagal mengirim email kwitansi' }, 500);
+    }
+
+    return c.json({
+      success: true,
+      message: `Email kwitansi berhasil dikirim ke ${overrideEmail}`,
+      data: emailResult,
+    });
+  } catch (error: any) {
+    console.error('Error sending receipt email:', error);
+    return c.json({ error: error?.message || 'Gagal mengirim email kwitansi' }, 500);
+  }
+});
 
 receiptRoutes.get('/by-number/:number', serveReceiptPdfByNumber);
 receiptRoutes.get('/by-number/:number/download', serveReceiptPdfByNumber);
