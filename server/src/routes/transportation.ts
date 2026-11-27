@@ -313,7 +313,16 @@ transportationApp.put('/:id', requireAdmin, async (c) => {
       }
     }
 
-    return c.json(updatedBooking[0]);
+    const latestRoutes = await db
+      .select()
+      .from(transportationRoutesTable)
+      .where(eq(transportationRoutesTable.transportationBookingId, id))
+      .orderBy(transportationRoutesTable.pickupDateTime);
+
+    return c.json({
+      ...updatedBooking[0],
+      routes: latestRoutes,
+    });
   } catch (error) {
     console.error('Error updating transportation booking:', error);
     return c.json({ error: 'Failed to update transportation booking' }, 500);

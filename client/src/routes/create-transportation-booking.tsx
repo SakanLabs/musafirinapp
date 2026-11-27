@@ -346,15 +346,27 @@ function CreateTransportationBookingPage() {
           `Kepulangan: ${fullTripReturnDate} • ${fullTripReturnPlace}`,
         ].filter(Boolean).join('\n')
         : formData.notes,
-      routes: routeMode === 'perRoute' ? routes.map(route => ({
-        pickupDate: route.pickupDate,
-        pickupTime: route.pickupTime,
-        origin: route.origin,
-        destination: route.destination,
-        vehicleType: route.vehicleType,
-        price: parseFloat(route.price) || 0,
-        notes: route.notes,
-      })) : [],
+      routes: routeMode === 'perRoute'
+        ? routes.map(route => ({
+            pickupDate: route.pickupDate,
+            pickupTime: route.pickupTime,
+            origin: route.origin,
+            destination: route.destination,
+            vehicleType: route.vehicleType,
+            price: parseFloat(route.price) || 0,
+            notes: route.notes,
+          }))
+        : [
+            {
+              pickupDate: fullTripDepartureDate,
+              pickupTime: "00:00",
+              origin: fullTripDeparturePlace || "Full Trip",
+              destination: fullTripReturnPlace || "Full Trip",
+              vehicleType: "bus",
+              price: parseFloat(fullTripPrice) || 0,
+              notes: `Paket Full Trip | Kepulangan: ${fullTripReturnDate} (${fullTripReturnPlace})`,
+            },
+          ],
       totalAmount: calculateTotalPrice(),
       currency: "SAR",
       status: "pending" as const,
