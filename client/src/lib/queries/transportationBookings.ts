@@ -145,11 +145,15 @@ export function useUpdateTransportationBooking() {
       const response = await apiClient.put<TransportationBooking>(`${API_ENDPOINTS.TRANSPORTATION}/${id}`, updateData);
       return response;
     },
-    onSuccess: (response) => {
-      // Update the specific booking in cache
-      queryClient.setQueryData(transportationBookingKeys.detail(response.id), response);
-      // Invalidate bookings list to refresh
+    onSuccess: (response, variables) => {
+      if (Array.isArray(response?.routes)) {
+        queryClient.setQueryData(transportationBookingKeys.detail(variables.id), (prev: TransportationBooking | undefined) =>
+          prev ? { ...prev, ...response } : response
+        );
+      }
+      queryClient.invalidateQueries({ queryKey: transportationBookingKeys.detail(variables.id) });
       queryClient.invalidateQueries({ queryKey: transportationBookingKeys.lists() });
+      queryClient.invalidateQueries({ queryKey: ['arrivals'] });
     },
   });
 }

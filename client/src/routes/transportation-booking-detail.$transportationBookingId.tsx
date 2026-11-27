@@ -621,9 +621,48 @@ function TransportationBookingDetailPage() {
                   </div>
                 </div>
               ))
+            ) : transportationBooking.notes && transportationBooking.notes.includes('Detail Full Trip:') ? (
+              <div className="border border-[#e5e7eb] rounded-lg p-5 bg-zinc-50/60 space-y-3">
+                <div className="flex items-center justify-between border-b border-gray-200 pb-2.5">
+                  <h3 className="text-xs font-bold text-[#111111] uppercase tracking-wider">
+                    Paket Full Trip
+                  </h3>
+                  <span className="text-xs font-bold text-[#111111] bg-zinc-200/70 px-2 py-0.5 rounded">
+                    Full Trip
+                  </span>
+                </div>
+                <p className="text-xs font-medium text-zinc-700 whitespace-pre-wrap leading-relaxed">
+                  {transportationBooking.notes}
+                </p>
+                <div className="pt-2 flex items-center justify-between border-t border-gray-200">
+                  <span className="text-xs text-zinc-600">
+                    Total Paket: <strong className="text-[#111111] font-mono">{formatCurrency(transportationBooking.totalAmount, transportationBooking.currency)}</strong>
+                  </span>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={handleEdit}
+                    className="h-8 px-3 border-zinc-300 text-zinc-800 hover:bg-white text-xs font-semibold cursor-pointer"
+                  >
+                    <Edit className="h-3.5 w-3.5 mr-1.5" />
+                    Tambah / Ubah Rute
+                  </Button>
+                </div>
+              </div>
             ) : (
-              <div className="text-center py-8 border border-dashed border-[#e5e7eb] rounded-lg">
+              <div className="text-center py-8 border border-dashed border-[#e5e7eb] rounded-lg space-y-3">
                 <p className="text-xs text-zinc-500 font-medium">No routes found for this transportation booking.</p>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={handleEdit}
+                  className="h-8 px-3 border-zinc-300 text-zinc-800 hover:bg-zinc-50 text-xs font-semibold cursor-pointer"
+                >
+                  <Edit className="h-3.5 w-3.5 mr-1.5" />
+                  Tambah Rute
+                </Button>
               </div>
             )}
           </div>
